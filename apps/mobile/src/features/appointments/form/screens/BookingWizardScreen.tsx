@@ -19,6 +19,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { CareSelectionStep } from '../components/CareSelectionStep';
 import { FormScheduleSection } from '../components/FormScheduleSection';
 import { PreferredNurseGenderButtons } from '../components/PreferredNurseGenderButtons';
+import { Button } from '@/components/ui/Button';
 import { ProNurseAssignmentSection } from '../components/ProNurseAssignmentSection';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import { FormPatientSection } from '../components/FormPatientSection';
@@ -238,7 +239,7 @@ export function BookingWizardScreen({
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
             onPrimary={bw.wizardNext}
             primaryLoading={bw.saving}
-            primaryDisabled={bw.saving}
+            primaryDisabled={bw.saving || (mode === 'dashboard' && bw.isFinalWizardStep && w.patientMode === 'existing' && (w.patientProfileLoading || w.patientProfileError))}
           />
         }
       >
@@ -257,6 +258,12 @@ export function BookingWizardScreen({
           />
         ) : null}
 
+        {bw.profileDocsError && (bw.section === 'documents' || bw.section === 'personal') ? (
+          <View style={styles.errorBox}>
+            <AppText accessibilityRole="alert" style={styles.errorText}>Documents enregistrés indisponibles.</AppText>
+            <Button title="Recharger les documents" variant="outline" onPress={bw.retryProfileDocs} />
+          </View>
+        ) : null}
         {bw.validationError ? (
           <View style={styles.errorBox}>
             <AppText style={styles.errorText}>{bw.validationError}</AppText>
@@ -397,6 +404,12 @@ export function BookingWizardScreen({
               <>
                 <FormPatientSection
                   patients={w.patientOptions}
+                  patientsLoading={w.patientsLoading}
+                  patientsError={w.patientsError}
+                  retryPatients={w.retryPatients}
+                  patientProfileLoading={w.patientProfileLoading}
+                  patientProfileError={w.patientProfileError}
+                  retryPatientProfile={w.retryPatientProfile}
                   patientMode={w.patientMode}
                   onPatientModeChange={w.setPatientMode}
                   selectedPatientId={w.selectedPatientId}

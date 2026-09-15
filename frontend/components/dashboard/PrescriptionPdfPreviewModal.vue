@@ -4,7 +4,7 @@
       <div class="p-4 sm:p-6 space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-lg font-medium truncate">{{ title }}</h3>
-          <UButton color="neutral" variant="ghost" icon="i-lucide-x" @click="open = false" />
+          <UButton color="neutral" variant="ghost" icon="i-lucide-x" @click="($event) => { open = false }" />
         </div>
         <div v-if="loading" class="flex justify-center py-16">
           <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary" />
@@ -27,7 +27,7 @@
           >
             Télécharger
           </UButton>
-          <UButton color="neutral" variant="outline" @click="open = false">Fermer</UButton>
+          <UButton color="neutral" variant="outline" @click="($event) => { open = false }">Fermer</UButton>
         </div>
       </div>
     </template>

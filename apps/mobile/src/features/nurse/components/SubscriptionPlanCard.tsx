@@ -49,7 +49,7 @@ export function SubscriptionPlanCard({
         isCurrent && styles.cardCurrent,
       ]}
     >
-      {recommended ? (
+      {recommended && !isCurrent ? (
         <View style={styles.badge}>
           <AppText style={styles.badgeText}>Recommandé</AppText>
         </View>
@@ -61,7 +61,7 @@ export function SubscriptionPlanCard({
       ) : null}
 
       <AppText style={styles.name}>{name}</AppText>
-      <Row align="baseline" gap={spacing[1]}>
+      <Row align="baseline" gap={spacing[1]} wrap>
         <AppText style={styles.price}>{price}</AppText>
         <AppText style={styles.priceSuffix}>{priceSuffix}</AppText>
       </Row>
@@ -118,9 +118,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.textTertiary,
   },
   badge: {
-    position: 'absolute' as const,
-    top: spacing[3],
-    right: spacing[3],
+    alignSelf: 'flex-start' as const,
     backgroundColor: c.primary,
     paddingHorizontal: spacing[2.5],
     paddingVertical: 4,
@@ -132,7 +130,7 @@ function buildStyles(c: AppColors) {
   badgeText: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.xs,
-    color: c.textInverse,
+    color: c.onPrimary,
     letterSpacing: 0.3,
   },
   badgeTextCurrent: {
@@ -142,7 +140,6 @@ function buildStyles(c: AppColors) {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.lg,
     color: c.textPrimary,
-    paddingRight: 72,
   },
   price: {
     fontFamily: fontFamily.extraBold,

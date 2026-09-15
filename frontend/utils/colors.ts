@@ -46,7 +46,7 @@ export type BadgeColorKey = keyof typeof BADGE_COLORS
 export const STATUS_BADGE_COLOR: Record<string, BadgeColorKey> = {
   pending: 'warning',
   confirmed: 'primary',
-  planned: 'info',
+  planned: 'blue',
   inProgress: 'primary',
   completed: 'success',
   canceled: 'error',

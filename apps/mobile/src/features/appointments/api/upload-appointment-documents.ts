@@ -1,3 +1,4 @@
+import type { ResumableAppointmentBatch } from '@oneandlab/shared-utils';
 import type { AppointmentCreatePayload } from './create-multiple-appointments';
 import { copyMedicalDocumentToAppointment } from './medical-documents.service';
 import { buildMedicalDocumentForm, uploadFormData } from '@/lib/uploads/upload-file';
@@ -30,8 +31,9 @@ const FIELD_MAP: Record<string, string> = {
 export async function uploadAppointmentDocuments(
   appointmentId: string,
   payload: AppointmentCreatePayload,
+  attempt?: ResumableAppointmentBatch<AppointmentCreatePayload>,
 ): Promise<void> {
-  const files = (payload.files ?? payload.form_data?.files) as
+  const files = { ...payload.form_data?.files, ...payload.files } as
     | Record<string, LocalFileRef | ProfileDocRef | undefined>
     | undefined;
   if (!files) return;
@@ -56,16 +58,16 @@ export async function uploadAppointmentDocuments(
 
   await new Promise((r) => setTimeout(r, 300));
 
+  const once = (key: string, operation: () => Promise<void>) => attempt ? attempt.completeOnce(key, operation) : operation();
   for (const doc of profileDocs) {
-    try {
-      await copyMedicalDocumentToAppointment(
+    await once(`${appointmentId}:copy:${doc.fieldName}:${doc.medicalDocumentId}`, async () => {
+      const result = await copyMedicalDocumentToAppointment(
         doc.medicalDocumentId,
         appointmentId,
         doc.documentType,
       );
-    } catch (e) {
-      if (__DEV__) console.warn(`[copy profile doc ${doc.fieldName}]`, e);
-    }
+      if (!result.success) throw new Error(result.error || 'Copie du document impossible');
+    });
   }
 
   for (const { fieldName, file } of uploads) {
@@ -74,6 +76,6 @@ export async function uploadAppointmentDocuments(
       { uri: file.uri, fileName: file.name, mimeType: file.mimeType },
       { appointment_id: appointmentId, document_type: docType },
     );
-    await uploadFormData('/medical-documents', fd);
+    await once(`${appointmentId}:upload:${fieldName}:${file.uri}`, () => uploadFormData('/medical-documents', fd));
   }
 }

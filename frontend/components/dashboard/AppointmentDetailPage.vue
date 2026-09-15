@@ -1,5 +1,6 @@
 <template>
   <div class="space-y-6 rdv-no-mobile-zoom">
+    <h1 class="sr-only">Détails du rendez-vous</h1>
     <div v-if="loading" class="flex flex-col items-center justify-center py-16">
       <UIcon name="i-lucide-loader-2" class="w-10 h-10 animate-spin text-primary-500 mb-4" />
       <p class="text-gray-500 dark:text-gray-400">Chargement des détails...</p>
@@ -10,7 +11,7 @@
       icon="i-lucide-alert-circle"
       title="Rendez-vous introuvable"
       description="Le rendez-vous demandé n'existe pas ou vous n'avez pas les permissions pour y accéder."
-      variant="outline"
+      variant="default"
     />
 
     <div v-else class="space-y-6">
@@ -318,6 +319,10 @@
 
       <!-- Colonne de droite (masquée si pas d’Actions ni d’assignation — ex. portail patient). -->
       <div v-if="hasRightColumn" class="order-1 space-y-6 xl:order-none xl:col-span-1">
+        <UButton class="xl:hidden" color="neutral" variant="outline" block :aria-expanded="mobileActionsOpen" :aria-controls="actionsPanelId" :trailing-icon="mobileActionsOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" @click="() => { mobileActionsOpen = !mobileActionsOpen }">
+          {{ slots.assignationSection ? 'Actions et affectation' : 'Actions du rendez-vous' }}
+        </UButton>
+        <div :id="actionsPanelId" :class="mobileActionsOpen ? 'space-y-6' : 'hidden space-y-6 xl:block'">
         <UCard
           v-if="slots.sidebarActions && showSidebarActionsCard"
           class="overflow-hidden"
@@ -334,6 +339,7 @@
           :batch-appointment-ids="batchAppointmentIds"
           :batch-is-multi="batchIsMulti"
         />
+        </div>
       </div>
     </div>
     </div>
@@ -357,6 +363,8 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ (e: 'appointment-loaded', appointment: any): void }>();
 const slots = useSlots();
+const mobileActionsOpen = ref(false);
+const actionsPanelId = useId();
 const route = useRoute();
 const router = useRouter();
 

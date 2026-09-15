@@ -3,7 +3,7 @@
     <!-- Header: Navigation & Actions -->
     <header class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4 border-b border-default bg-default/95 sticky top-0 z-20">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        
+
         <!-- Navigation Date -->
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
           <div class="flex items-center bg-muted/50 rounded-lg p-0.5 sm:p-1 border border-default">
@@ -42,12 +42,14 @@
         </div>
 
         <!-- View Switcher & Actions -->
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
           <div class="flex bg-muted/50 p-1 rounded-lg border border-default">
             <button
               v-for="v in views"
               :key="v.id"
-              class="px-3 py-1 text-xs font-medium rounded-md transition-all duration-200"
+              type="button"
+              :aria-pressed="currentView === v.id"
+              class="min-h-11 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
               :class="currentView === v.id ? 'bg-default text-foreground shadow-sm ring-1 ring-default' : 'text-muted-foreground hover:text-foreground'"
               @click="currentView = v.id"
             >
@@ -86,7 +88,7 @@
 
     <!-- Main Content -->
     <div class="flex-1 overflow-hidden relative min-h-[400px] sm:min-h-[500px] md:min-h-[600px] bg-muted/5">
-      
+
       <!-- MONTH VIEW -->
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
@@ -103,7 +105,7 @@
               <div
                 v-for="d in weekDays"
                 :key="d"
-                class="py-2 text-center text-[10px] font-normal uppercase tracking-wider text-muted-foreground"
+                class="py-2 text-center text-xs font-normal uppercase tracking-wider text-muted-foreground"
               >
                 {{ d }}
               </div>
@@ -113,19 +115,21 @@
                 v-for="day in calendarDays"
                 :key="day.dateStr"
                 type="button"
-                class="min-h-[40px] flex flex-col items-center justify-center rounded-lg transition-all duration-200 touch-manipulation"
+                class="min-h-11 flex flex-col items-center justify-center rounded-lg transition-all duration-200 touch-manipulation"
                 :class="[
                   !day.isCurrentMonth && 'opacity-40',
                   day.isToday && !selectedDayId && 'bg-primary/15 ring-1 ring-primary/30',
-                  selectedDayId === day.dateStr && 'bg-primary text-white shadow-md ring-2 ring-primary ring-offset-2 ring-offset-default',
+                  selectedDayId === day.dateStr && 'bg-primary text-primary-950 shadow-md ring-2 ring-primary ring-offset-2 ring-offset-default',
                   selectedDayId !== day.dateStr && day.isCurrentMonth && !day.isToday && 'hover:bg-muted/50 active:bg-muted'
                 ]"
+                :aria-label="`${day.dateStr}, ${day.items.length} rendez-vous`"
+                :aria-pressed="selectedDayId === day.dateStr"
                 @click="handleDayClick(day)"
               >
                 <span
                   class="text-sm font-normal tabular-nums w-7 h-7 flex items-center justify-center rounded-full transition-colors"
                   :class="[
-                    day.isToday && selectedDayId !== day.dateStr && 'bg-primary text-white',
+                    day.isToday && selectedDayId !== day.dateStr && 'bg-primary text-primary-950',
                     selectedDayId === day.dateStr && 'bg-white/20',
                     selectedDayId !== day.dateStr && !day.isToday && 'text-foreground'
                   ]"
@@ -159,7 +163,7 @@
               </div>
               <p
                 v-if="mobileListFromToday && !selectedDayId"
-                class="text-[11px] text-muted-foreground leading-snug"
+                class="text-xs text-muted-foreground leading-snug"
               >
                 Liste : à partir d’aujourd’hui. Touchez un jour pour le détail.
               </p>
@@ -173,10 +177,10 @@
                 v-if="mobileListFromToday && !selectedDayId"
                 class="flex items-center justify-between gap-2 pb-1"
               >
-                <span class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">À venir</span>
+                <span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">À venir</span>
                 <button
                   type="button"
-                  class="text-[11px] font-medium text-primary py-1 px-2 rounded-md hover:bg-primary/10"
+                  class="text-xs font-medium text-primary py-1 px-2 rounded-md hover:bg-primary/10"
                   @click="mobileShowPastMonth = !mobileShowPastMonth"
                 >
                   {{ mobileShowPastMonth ? 'Masquer le passé' : 'Voir aussi le passé du mois' }}
@@ -232,7 +236,7 @@
               <div
                 v-for="(day, i) in weekDays"
                 :key="day"
-                class="py-2 text-center text-[10px] sm:text-xs font-normal uppercase tracking-wider text-muted-foreground"
+                class="py-2 text-center text-xs sm:text-xs font-normal uppercase tracking-wider text-muted-foreground"
               >
                 {{ day }}
               </div>
@@ -243,6 +247,7 @@
             <div
               v-for="(day, index) in calendarDays"
               :key="day.dateStr"
+              :data-calendar-date="day.dateStr"
               class="group relative border-b border-r border-default/50 bg-default p-1 sm:p-2 transition-colors hover:bg-muted/30 flex flex-col gap-1 min-h-[80px] sm:min-h-[100px] md:min-h-[110px]"
               :class="[
                 !day.isCurrentMonth && 'bg-muted/5 text-muted-foreground/60',
@@ -257,15 +262,15 @@
                 <span
                   class="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 text-xs sm:text-sm font-normal rounded-full transition-all"
                   :class="[
-                    day.isToday 
-                      ? 'bg-primary text-white shadow-md shadow-primary/25 scale-110' 
+                    day.isToday
+                      ? 'bg-primary text-primary-950 shadow-md shadow-primary/25 scale-110'
                       : 'text-foreground/80 group-hover:text-foreground group-hover:bg-muted',
                     selectedDayId === day.dateStr && !day.isToday && 'ring-2 ring-primary/50 bg-primary/10'
                   ]"
                 >
                   {{ day.dayNumber }}
                 </span>
-                
+
                 <!-- Quick Add Button (Desktop only, masqué si disableAdd) -->
                 <button
                   v-if="!disableAdd"
@@ -286,7 +291,8 @@
                   class="w-full text-left rounded-xl border border-default/60 bg-default/80 hover:bg-muted/40 hover:border-primary/30 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset focus:border-primary/40 shadow-sm hover:shadow"
                   @click.stop="$emit('item-click', item)"
                   @dragstart="onDragStart($event, item)"
-                  draggable="true"
+                  :draggable="canMoveItem(item)"
+                  :data-appointment-id="item[itemIdKey]"
                 >
                   <UBadge
                     :color="getStatusBadgeColor(item[itemStatusKey])"
@@ -306,7 +312,7 @@
                 <button
                   v-if="day.items.length > 4"
                   type="button"
-                  class="text-[10px] sm:text-xs text-muted-foreground hover:text-primary font-medium text-left px-1 mt-auto focus:outline-none py-0.5"
+                  class="text-xs sm:text-xs text-muted-foreground hover:text-primary font-medium text-left px-1 mt-auto focus:outline-none py-0.5"
                   @click.stop="$emit('day-click', day)"
                 >
                   +{{ day.items.length - 4 }} de plus
@@ -405,7 +411,7 @@
                         </span>
                       </div>
                       <p class="text-sm text-muted-foreground truncate">
-                        {{ item.address || 'Aucune adresse' }}
+                        {{ getItemAddress(item) || 'Aucune adresse' }}
                       </p>
                     </div>
                     <UButton
@@ -428,6 +434,8 @@
 </template>
 
 <script setup lang="ts">
+import { appointmentDayFrance, appointmentTimeFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
+import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 import { computed, nextTick, ref, watch } from 'vue';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
@@ -446,6 +454,7 @@ interface Props {
   startDate?: Date;
   selectedDay?: Date | null;
   disableAdd?: boolean;
+  canMoveItem?: (item: CalendarItem) => boolean;
   /**
    * Mobile (vue mois) : sans jour sélectionné, n’afficher que les RDV à partir d’aujourd’hui
    * (évite de voir d’abord des jours passés du mois alors que le calendrier affiche le mois courant).
@@ -458,9 +467,10 @@ const props = withDefaults(defineProps<Props>(), {
   itemDateKey: 'scheduled_at',
   itemIdKey: 'id',
   itemStatusKey: 'status',
-  startDate: () => new Date(),
+  startDate: () => new Date(appointmentDayFrance(new Date()) + 'T12:00:00'),
   selectedDay: null,
   disableAdd: false,
+  canMoveItem: () => true,
   mobileListFromToday: false,
 });
 
@@ -479,7 +489,7 @@ const currentView = ref<'month' | 'list'>('month');
 const mobileShowPastMonth = ref(false);
 const weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-const views = [
+const views: Array<{ id: 'list' | 'month'; label: string }> = [
   { id: 'month', label: 'Mois' },
   { id: 'list', label: 'Liste' }
 ];
@@ -506,15 +516,15 @@ const selectedDayId = computed(() => props.selectedDay ? formatDateId(props.sele
 const calendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
   const month = currentDate.value.getMonth();
-  
+
   // First day of the month
   const firstDayOfMonth = new Date(year, month, 1);
   // Padding days (start from Monday)
   const dayOfWeek = firstDayOfMonth.getDay(); // 0 (Sun) to 6 (Sat)
   const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 0 = Mon, 6 = Sun
-  
+
   const startDate = new Date(year, month, 1 - diff);
-  const today = new Date();
+  const today = new Date(appointmentDayFrance(new Date()) + 'T12:00:00');
   today.setHours(0,0,0,0);
 
   const days = [];
@@ -523,12 +533,11 @@ const calendarDays = computed(() => {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
     const dateStr = formatDateId(date);
-    
+
     // Filter items for this day
     const dayItems = props.items.filter(item => {
-      const itemDate = new Date(item[props.itemDateKey]);
-      return formatDateId(itemDate) === dateStr;
-    }).sort((a, b) => new Date(a[props.itemDateKey]).getTime() - new Date(b[props.itemDateKey]).getTime());
+      return appointmentDayFrance(item[props.itemDateKey]) === dateStr;
+    }).sort((a, b) => parseAppointmentDateFrance(a[props.itemDateKey]).getTime() - parseAppointmentDateFrance(b[props.itemDateKey]).getTime());
 
     days.push({
       dateStr,
@@ -546,17 +555,17 @@ const calendarDays = computed(() => {
 const allSortedItems = computed(() => {
   const start = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth(), 1);
   const end = new Date(currentDate.value.getFullYear(), currentDate.value.getMonth() + 1, 0);
-  
+
   return props.items.filter(item => {
-    const d = new Date(item[props.itemDateKey]);
-    return d >= start && d <= end;
-  }).sort((a, b) => new Date(a[props.itemDateKey]).getTime() - new Date(b[props.itemDateKey]).getTime());
+    const key = appointmentDayFrance(item[props.itemDateKey]);
+    return key >= formatDateId(start) && key <= formatDateId(end);
+  }).sort((a, b) => parseAppointmentDateFrance(a[props.itemDateKey]).getTime() - parseAppointmentDateFrance(b[props.itemDateKey]).getTime());
 });
 
 const groupedItems = computed(() => {
   const groups: Record<string, any[]> = {};
   allSortedItems.value.forEach(item => {
-    const dateStr = formatDateId(new Date(item[props.itemDateKey]));
+    const dateStr = appointmentDayFrance(item[props.itemDateKey]);
     if (!groups[dateStr]) groups[dateStr] = [];
     groups[dateStr].push(item);
   });
@@ -568,16 +577,16 @@ const mobileListGroups = computed(() => {
   if (selectedDayId.value) {
     const id = selectedDayId.value;
     const items = props.items
-      .filter((item) => formatDateId(new Date(item[props.itemDateKey])) === id)
+      .filter((item) => appointmentDayFrance(item[props.itemDateKey]) === id)
       .sort(
         (a, b) =>
-          new Date(a[props.itemDateKey]).getTime() - new Date(b[props.itemDateKey]).getTime(),
+          parseAppointmentDateFrance(a[props.itemDateKey]).getTime() - parseAppointmentDateFrance(b[props.itemDateKey]).getTime(),
       );
     return items.length ? { [id]: items } : {};
   }
   const base = groupedItems.value;
   if (props.mobileListFromToday && !mobileShowPastMonth.value) {
-    const today = new Date();
+    const today = new Date(appointmentDayFrance(new Date()) + 'T12:00:00');
     today.setHours(0, 0, 0, 0);
     const todayStr = formatDateId(today);
     const filtered: Record<string, any[]> = {};
@@ -615,12 +624,11 @@ function formatDateId(date: Date) {
 }
 
 function formatDateFull(dateStr: string) {
-  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateStr));
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateStr + 'T12:00:00'));
 }
 
 function formatItemTime(item: any): string {
-  const d = new Date(item[props.itemDateKey]);
-  return isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return appointmentTimeFrance(item[props.itemDateKey]) || '--:--';
 }
 
 // Icône selon le type (aligné admin / cartes RDV)
@@ -630,30 +638,9 @@ function getTypeIcon(item: any): string {
 
 // Créneau horaire ou "TLJ" (toute la journée) — même logique que AppointmentListPage / getCreneauHoraireLabel
 function getCreneauLabel(item: any): string {
-  const availability = item.form_data?.availability;
-  if (availability != null) {
-    try {
-      let avail: any = availability;
-      if (typeof availability === 'string') {
-        const trimmed = availability.trim();
-        if (trimmed) {
-          avail = JSON.parse(trimmed);
-          if (avail?.type === 'all_day') return 'TLJ';
-        }
-      } else if (typeof avail === 'object' && avail.type === 'all_day') {
-        return 'TLJ';
-      }
-      if (avail?.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-        const start = Math.floor(Number(avail.range[0]));
-        const end = Math.floor(Number(avail.range[1]));
-        if (!Number.isNaN(start) && !Number.isNaN(end)) return `${start}h - ${end}h`;
-      }
-    } catch {
-      // ignore
-    }
-  }
   if (item.form_data?.availability_type === 'all_day') return 'TLJ';
-  return formatItemTime(item);
+  const label = formatAvailabilityDisplayFr(item.form_data?.availability, item[props.itemDateKey], item.form_data);
+  return label === 'Toute la journée' ? 'TLJ' : label || '--:--';
 }
 
 // Nom du patient : helper unifié (form_data chaîne ou objet, relative, racine)
@@ -676,13 +663,14 @@ function getItemAddress(item: any): string {
 
 function navigate(dir: number) {
   const d = new Date(currentDate.value);
+  d.setDate(1);
   d.setMonth(d.getMonth() + dir);
   currentDate.value = d;
   emit('update:date', d);
 }
 
 function goToToday() {
-  const now = new Date();
+  const now = new Date(appointmentDayFrance(new Date()) + 'T12:00:00');
   currentDate.value = now;
   emit('update:date', now);
 }
@@ -701,19 +689,20 @@ function handleDayClick(day: any) {
 
 // Drag & Drop Logic
 function onDragStart(event: DragEvent, item: any) {
+  if (!props.canMoveItem(item)) { event.preventDefault(); return; }
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move';
     event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('application/json', JSON.stringify(item));
+    event.dataTransfer.setData('application/x-cary-appointment-id', String(item[props.itemIdKey]));
   }
 }
 
 function onDrop(event: DragEvent, day: any) {
-  const data = event.dataTransfer?.getData('application/json');
-  if (data) {
-    const item = JSON.parse(data);
+  const id = event.dataTransfer?.getData('application/x-cary-appointment-id');
+  const item = props.items.find(item => String(item[props.itemIdKey]) === id);
+  if (item && day.fullDate && props.canMoveItem(item)) {
     // Don't emit if same day
-    const oldDateStr = formatDateId(new Date(item[props.itemDateKey]));
+    const oldDateStr = appointmentDayFrance(item[props.itemDateKey]);
     if (oldDateStr !== day.dateStr) {
       emit('item-drop', item, day.fullDate);
     }

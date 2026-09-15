@@ -17,7 +17,7 @@
           Les questions qu’on nous pose le plus
         </h2>
         <p class="text-base leading-[1.75] text-[#3D3D52] dark:text-gray-300">
-          Une question absente ? Écrivez-nous : nous répondons sous 24 heures ouvrées.
+          Vous avez besoin d’aide ? Notre équipe peut vous accompagner.
         </p>
         <NuxtLink
           to="/contact"
@@ -42,6 +42,7 @@
                 : 'text-[#0A0A0F] hover:bg-[#F7F7FB] dark:text-white dark:hover:bg-gray-800/80'
             "
             :aria-expanded="openIndex === index"
+            :aria-controls="`${faqId}-${index}`"
             @click="toggle(index)"
           >
             {{ item.question }}
@@ -56,6 +57,9 @@
             />
           </button>
           <div
+            :id="`${faqId}-${index}`"
+            :aria-hidden="openIndex !== index"
+            :inert="openIndex !== index"
             class="grid transition-[grid-template-rows] duration-300 ease-out"
             :class="openIndex === index ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
           >
@@ -64,6 +68,7 @@
                 class="px-6 pb-5 text-[0.9375rem] leading-[1.78] text-[#3D3D52] sm:px-7 dark:text-gray-400"
               >
                 {{ item.answer }}
+                <a v-if="item.sourceUrl" :href="item.sourceUrl" class="mt-3 block text-sm font-medium text-primary-800 underline underline-offset-4 dark:text-primary-300">{{ item.sourceLabel || 'En savoir plus' }}</a>
               </p>
             </div>
           </div>
@@ -76,7 +81,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    items: Array<{ question: string; answer: string }>;
+    items: Array<{ question: string; answer: string; sourceUrl?: string; sourceLabel?: string }>;
     anchorId?: string;
     sectionClass?: string;
   }>(),
@@ -87,6 +92,21 @@ const props = withDefaults(
 );
 
 const openIndex = ref(0);
+const faqId = useId();
+
+useHead(() => ({
+  script: [{
+    key: `faq-${props.anchorId}`,
+    type: 'application/ld+json',
+    children: JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: props.items.map(item => ({
+        '@type': 'Question', name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer },
+      })),
+    }).replace(/</g, '\\u003c'),
+  }],
+}));
 
 function toggle(i: number) {
   openIndex.value = openIndex.value === i ? -1 : i;

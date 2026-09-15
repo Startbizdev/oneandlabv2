@@ -179,7 +179,7 @@ export const useAuth = () => {
       if (typeof window !== 'undefined') {
         (window as any).__csrfTokenCache = null;
       }
-      let apiBase = 'http://localhost:8888/api';
+      let apiBase = '/api';
       if (typeof window !== 'undefined') {
         if ((window as any).__NUXT__?.config?.public?.apiBase) {
           apiBase = (window as any).__NUXT__.config.public.apiBase;
@@ -232,10 +232,11 @@ export const useAuth = () => {
 
   const forgotPassword = async (email: string) => {
     try {
-      await apiFetch('/auth/password/forgot', {
+      const response = await apiFetch('/auth/password/forgot', {
         method: 'POST',
         body: { email },
       });
+      if (!response.success) return { success: false, error: response.error || 'Envoi impossible. Réessayez.' };
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erreur' };
@@ -250,10 +251,11 @@ export const useAuth = () => {
     email?: string;
   }) => {
     try {
-      await apiFetch('/auth/password/reset', {
+      const response = await apiFetch('/auth/password/reset', {
         method: 'POST',
         body: payload,
       });
+      if (!response.success) return { success: false, error: response.error || 'Modification impossible. Réessayez.' };
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error?.message || 'Erreur' };
@@ -360,4 +362,3 @@ export const useAuth = () => {
     fetchCurrentUser,
   };
 };
-

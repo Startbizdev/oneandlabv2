@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $planSlug = $sub ? ($sub['plan_slug'] ?? 'free') : 'free';
     $limits = require __DIR__ . '/../../../config/plan-limits.php';
     $labLimits = $limits['lab'][$planSlug] ?? $limits['lab']['free'];
-    $maxPreleveurs = $labLimits['max_preleveurs'] ?? 0;
+    $maxPreleveurs = array_key_exists('max_preleveurs', $labLimits) ? $labLimits['max_preleveurs'] : 0;
     if ($maxPreleveurs !== null) {
         $teamLabIds = [$labId];
         $stmtSub = $db->prepare("SELECT id FROM profiles WHERE lab_id = ? AND role = 'subaccount'");

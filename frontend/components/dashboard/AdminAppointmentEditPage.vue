@@ -17,6 +17,7 @@
 
       <div v-if="loadError" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
         {{ loadError }}
+        <UButton class="mt-3 block" :on-click="bootstrap">Réessayer</UButton>
       </div>
 
       <div v-else-if="loading" class="flex flex-col items-center justify-center gap-3 py-24">
@@ -58,7 +59,7 @@
                   :search-input="{ placeholder: 'Rechercher…' }"
                   size="md"
                 >
-                  <template #label>
+                  <template #default>
                     <span v-if="!editLabId" class="text-muted">Aucun</span>
                     <span v-else>{{ labSelectItems.find((i) => i.value === editLabId)?.label }}</span>
                   </template>
@@ -76,7 +77,7 @@
                   :search-input="{ placeholder: 'Rechercher…' }"
                   size="md"
                 >
-                  <template #label>
+                  <template #default>
                     <span v-if="!editNurseId" class="text-muted">Aucun</span>
                     <span v-else>{{ nurseSelectItems.find((i) => i.value === editNurseId)?.label }}</span>
                   </template>
@@ -104,6 +105,7 @@
             @submit="onUnifiedSubmit"
           />
 
+          <p v-if="saveError" role="alert" class="mt-6 rounded-xl border border-red-200 p-4 text-sm text-red-700 dark:border-red-800 dark:text-red-300">{{ saveError }}</p>
           <div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-6 dark:border-gray-800">
             <UButton variant="outline" color="neutral" :to="`/admin/appointments/${appointmentId}`">
               Annuler
@@ -148,6 +150,8 @@ const router = useRouter();
 const loading = ref(true);
 const loadError = ref('');
 const saving = ref(false);
+const saveError = ref('');
+const uploadedFiles = new Map<string, WeakSet<File>>();
 const ready = ref(false);
 
 const appointment = ref<Appointment | null>(null);
@@ -246,18 +250,19 @@ async function uploadAppointmentFiles(apptId: string, filesMap: Record<string, F
     autres_assurances: 'autres_assurances',
   };
   for (const [key, file] of Object.entries(filesMap)) {
+    const uploadKey = `${apptId}:${key}`;
+    if (uploadedFiles.get(uploadKey)?.has(file)) continue;
     try {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('appointment_id', apptId);
       fd.append('document_type', fieldMapping[key] || key);
-      await apiFetch('/medical-documents', { method: 'POST', body: fd });
+      const response = await apiFetch('/medical-documents', { method: 'POST', body: fd });
+      if (!response.success) throw new Error('Upload rejected');
+      if (!uploadedFiles.has(uploadKey)) uploadedFiles.set(uploadKey, new WeakSet());
+      uploadedFiles.get(uploadKey)!.add(file);
     } catch {
-      toast.add({
-        title: 'Document non enregistré',
-        description: `Échec de l’envoi (${key}).`,
-        color: 'orange',
-      });
+      throw new Error('Les informations du rendez-vous sont enregistrées, mais une pièce jointe n’a pas pu être envoyée. Réessayez : les fichiers déjà acceptés ne seront pas renvoyés.');
     }
   }
 }
@@ -346,6 +351,7 @@ async function onUnifiedSubmit(payload: Record<string, unknown>) {
   });
 
   saving.value = true;
+  saveError.value = '';
   try {
     const res = await apiFetch(`/appointments/${appointment.value.id}`, {
       method: 'PUT',
@@ -373,6 +379,8 @@ async function onUnifiedSubmit(payload: Record<string, unknown>) {
     });
 
     await router.push(`/admin/appointments/${appointment.value.id}`);
+  } catch (error) {
+    saveError.value = error instanceof Error ? error.message : 'Enregistrement impossible. Réessayez.';
   } finally {
     saving.value = false;
   }

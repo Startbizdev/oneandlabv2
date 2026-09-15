@@ -13,7 +13,7 @@
       icon="i-lucide-file-pen-line"
       title="Génération d'ordonnances désactivée"
       description="La création d'ordonnances n'est pas activée pour votre compte. Contactez l'administration Cary si vous souhaitez l'activer."
-      variant="outline"
+      variant="default"
       class="py-16"
     />
 
@@ -25,7 +25,7 @@
         :color="workspaceTab === 'create' ? 'primary' : 'neutral'"
         :variant="workspaceTab === 'create' ? 'solid' : 'ghost'"
         icon="i-lucide-plus-circle"
-        @click="workspaceTab = 'create'"
+        @click="($event) => { workspaceTab = 'create' }"
       >
         Créer
       </UButton>
@@ -35,7 +35,7 @@
         :color="workspaceTab === 'history' ? 'primary' : 'neutral'"
         :variant="workspaceTab === 'history' ? 'solid' : 'ghost'"
         icon="i-lucide-history"
-        @click="workspaceTab = 'history'"
+        @click="($event) => { workspaceTab = 'history' }"
       >
         Historique
       </UButton>
@@ -168,7 +168,7 @@
               size="sm"
               :color="linkMode === 'standalone' ? 'primary' : 'neutral'"
               :variant="linkMode === 'standalone' ? 'solid' : 'soft'"
-              @click="linkMode = 'standalone'"
+              @click="($event) => { linkMode = 'standalone' }"
             >
               Sans rendez-vous
             </UButton>
@@ -176,7 +176,7 @@
               size="sm"
               :color="linkMode === 'appointment' ? 'primary' : 'neutral'"
               :variant="linkMode === 'appointment' ? 'solid' : 'soft'"
-              @click="linkMode = 'appointment'"
+              @click="($event) => { linkMode = 'appointment' }"
             >
               Liée à un rendez-vous
             </UButton>
@@ -462,7 +462,7 @@ function revokePreviewBlob() {
   }
 }
 
-async function previewPrescription(row: ProPrescriptionRow) {
+async function previewPrescription(row: import('~/utils/prescription-history-display').PrescriptionHistoryRow) {
   revokePreviewBlob();
   previewUrl.value = null;
   previewFileName.value = row.file_name || 'ordonnance.pdf';
@@ -477,7 +477,7 @@ async function previewPrescription(row: ProPrescriptionRow) {
   }
 }
 
-async function downloadPrescription(row: ProPrescriptionRow) {
+async function downloadPrescription(row: import('~/utils/prescription-history-display').PrescriptionHistoryRow) {
   downloadingId.value = row.id;
   try {
     const blob = await fetchPdfBlob(row.id);

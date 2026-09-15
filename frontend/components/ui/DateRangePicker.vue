@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDate, DateFormatter } from '@internationalized/date'
+import { CalendarDate, DateFormatter, parseDate } from '@internationalized/date'
 
 const props = withDefaults(
   defineProps<{
@@ -34,11 +34,14 @@ const df = new DateFormatter('fr-FR', {
   timeZone: 'Europe/Paris',
 })
 
-const internalStart = ref<CalendarDate | null>(null)
-const internalEnd = ref<CalendarDate | null>(null)
+const internalStart = shallowRef<CalendarDate | null>(null)
+const internalEnd = shallowRef<CalendarDate | null>(null)
 
 function parseToCalendarDate(val: string | null | undefined): CalendarDate | null {
   if (!val) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    try { return parseDate(val) } catch { return null }
+  }
   const d = new Date(val)
   if (Number.isNaN(d.getTime())) return null
   return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate())
@@ -67,17 +70,23 @@ const maxDate = computed(() => {
 const isOpenStart = ref(false)
 const isOpenEnd = ref(false)
 
-function handleSelectStart(value: CalendarDate | null) {
-  if (!value) return
+function isSingleDate(value: unknown): value is { year: number; month: number; day: number } {
+  return !!value && typeof value === 'object' && 'year' in value && 'month' in value && 'day' in value
+    && typeof value.year === 'number' && typeof value.month === 'number' && typeof value.day === 'number'
+}
+
+function handleSelectStart(value: unknown) {
+  if (!isSingleDate(value)) return
   const y = value.year
   const m = String(value.month).padStart(2, '0')
   const d = String(value.day).padStart(2, '0')
   emit('update:start', `${y}-${m}-${d}`)
+  if (internalEnd.value && new CalendarDate(value.year, value.month, value.day).compare(internalEnd.value) > 0) emit('update:end', null)
   isOpenStart.value = false
 }
 
-function handleSelectEnd(value: CalendarDate | null) {
-  if (!value) return
+function handleSelectEnd(value: unknown) {
+  if (!isSingleDate(value)) return
   const y = value.year
   const m = String(value.month).padStart(2, '0')
   const d = String(value.day).padStart(2, '0')
@@ -85,12 +94,8 @@ function handleSelectEnd(value: CalendarDate | null) {
   isOpenEnd.value = false
 }
 
-const displayStart = computed(() =>
-  props.start ? df.format(new Date(props.start)) : 'Du…',
-)
-const displayEnd = computed(() =>
-  props.end ? df.format(new Date(props.end)) : 'au…',
-)
+const displayStart = computed(() => internalStart.value ? df.format(internalStart.value.toDate('Europe/Paris')) : 'Date de début')
+const displayEnd = computed(() => internalEnd.value ? df.format(internalEnd.value.toDate('Europe/Paris')) : 'Date de fin')
 </script>
 
 <template>
@@ -104,7 +109,6 @@ const displayEnd = computed(() =>
         size="lg"
         block
         class="w-full justify-start bg-white dark:bg-white/5 rounded-xl"
-        @click="isOpenStart = true"
       >
         {{ displayStart }}
       </UButton>
@@ -129,7 +133,6 @@ const displayEnd = computed(() =>
         size="lg"
         block
         class="w-full justify-start bg-white dark:bg-white/5 rounded-xl"
-        @click="isOpenEnd = true"
       >
         {{ displayEnd }}
       </UButton>

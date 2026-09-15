@@ -21,7 +21,7 @@
           icon="i-lucide-search"
           size="md"
           class="w-full min-w-0"
-          :ui="{ rounded: 'rounded-lg' }"
+          aria-label="Rechercher un patient"
           clearable
         />
       </div>
@@ -31,6 +31,9 @@
         <p class="text-[15px] text-gray-500 dark:text-gray-400 font-medium">Chargement de la liste...</p>
       </div>
 
+      <UAlert v-else-if="loadError" color="error" variant="soft" title="Impossible de charger vos patients">
+        <template #actions><UButton color="neutral" variant="outline" @click="fetchPatients">Réessayer</UButton></template>
+      </UAlert>
       <UEmpty
         v-else-if="!loading && filteredPatients.length === 0"
         icon="i-lucide-users"
@@ -56,6 +59,9 @@
 </template>
 
 <script setup lang="ts">
+const toast = useAppToast();
+const { user } = useAuth();
+const loadError = ref(false);
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth', 'role'],
@@ -87,11 +93,11 @@ const filteredPatients = computed(() => {
 
 const fetchPatients = async () => {
   loading.value = true;
+  loadError.value = false;
   try {
     patients.value = await fetchAllPatientsForDashboard(apiFetch);
   } catch (error) {
-    console.error('Erreur chargement patients:', error);
-    patients.value = [];
+    loadError.value = true;
   } finally {
     loading.value = false;
   }

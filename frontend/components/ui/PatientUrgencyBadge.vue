@@ -16,7 +16,7 @@ const show = computed(() => isPatientUrgencyBooking(props.appointment as Paramet
     variant="subtle"
     size="sm"
     leading-icon="i-lucide-star"
-    label="Horaire VIP"
+    label="Horaire prioritaire"
     class="shrink-0 border-0 font-semibold shadow-none ring-1 ring-amber-500/25 dark:ring-amber-400/25"
   />
 </template>

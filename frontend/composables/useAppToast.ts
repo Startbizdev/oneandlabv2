@@ -12,8 +12,14 @@ let lastTime = 0
 
 export function useAppToast() {
   const toast = useToast()
+  type NativeOptions = Parameters<typeof toast.add>[0]
+  type LegacyColor = 'red' | 'green' | 'gray' | 'yellow' | 'amber' | 'orange' | 'blue' | 'purple'
+  type ToastOptions = Omit<NativeOptions, 'color'> & { color?: NativeOptions['color'] | LegacyColor; timeout?: number }
+  const legacyColors: Record<LegacyColor, NonNullable<NativeOptions['color']>> = {
+    red: 'error', green: 'success', gray: 'neutral', yellow: 'warning', amber: 'warning', orange: 'warning', blue: 'info', purple: 'secondary',
+  }
 
-  function add(options: Parameters<typeof toast.add>[0]) {
+  function add(options: ToastOptions) {
     const title = options?.title ?? ''
     const description = typeof options?.description === 'string' ? options.description : ''
     const key = `${String(title)}|${description}`
@@ -23,9 +29,11 @@ export function useAppToast() {
     }
     lastKey = key
     lastTime = now
-    const opts = {
-      ...options,
-      timeout: options?.timeout ?? DEFAULT_TIMEOUT,
+    const { color, timeout, ...rest } = options
+    const opts: NativeOptions = {
+      ...rest,
+      color: color && color in legacyColors ? legacyColors[color as LegacyColor] : color as NativeOptions['color'],
+      duration: options.duration ?? timeout ?? DEFAULT_TIMEOUT,
     }
     return toast.add(opts)
   }

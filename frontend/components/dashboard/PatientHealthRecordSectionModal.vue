@@ -67,7 +67,7 @@
               Enregistrer
             </UButton>
             <UButton variant="ghost" color="neutral" @click="skipQuestion">Passer</UButton>
-            <UButton v-if="stepIndex > 0" variant="outline" @click="stepIndex -= 1">Précédent</UButton>
+            <UButton v-if="stepIndex > 0" variant="outline" @click="($event) => { stepIndex -= 1 }">Précédent</UButton>
           </div>
         </template>
 
@@ -90,7 +90,7 @@ const emit = defineEmits<{
 }>();
 
 const config = useRuntimeConfig();
-const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+const apiBase = config.public.apiBase || '/api';
 
 interface HealthRecordQuestion {
   key: string;

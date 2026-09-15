@@ -41,7 +41,7 @@
           size="sm"
           :color="linkMode === 'standalone' ? 'primary' : 'neutral'"
           :variant="linkMode === 'standalone' ? 'solid' : 'soft'"
-          @click="linkMode = 'standalone'"
+          @click="($event) => { linkMode = 'standalone' }"
         >
           Sans rendez-vous
         </UButton>
@@ -49,7 +49,7 @@
           size="sm"
           :color="linkMode === 'appointment' ? 'primary' : 'neutral'"
           :variant="linkMode === 'appointment' ? 'solid' : 'soft'"
-          @click="linkMode = 'appointment'"
+          @click="($event) => { linkMode = 'appointment' }"
         >
           Liée à un rendez-vous
         </UButton>
@@ -239,7 +239,7 @@ async function fetchPdfBlob(docId: string): Promise<Blob | null> {
   return res.blob();
 }
 
-async function previewRow(row: PrescriptionRow) {
+async function previewRow(row: import('~/utils/prescription-history-display').PrescriptionHistoryRow) {
   revokePreviewBlob();
   previewUrl.value = null;
   previewFileName.value = row.file_name || 'ordonnance.pdf';
@@ -257,7 +257,7 @@ async function previewRow(row: PrescriptionRow) {
   }
 }
 
-async function downloadRow(row: PrescriptionRow) {
+async function downloadRow(row: import('~/utils/prescription-history-display').PrescriptionHistoryRow) {
   downloadingId.value = row.id;
   try {
     const blob = await fetchPdfBlob(row.id);

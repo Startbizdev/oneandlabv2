@@ -895,6 +895,23 @@ export function PassageDetailScreen() {
 
 
 
+  if (!loading && (appointmentQ.isError || seriesQ.isError || patientQ.isError || !apt || (seriesId && !series))) {
+    return (
+      <StackChromeScreen title="Détail passage">
+        <View style={[styles.centered, { paddingTop: contentTopInset }]}>
+          <Stack gap={spacing[4]}>
+            <AppText>Impossible de charger ce passage.</AppText>
+            <Button title="Réessayer" variant="outline" onPress={() => {
+              if (seriesId) void seriesQ.refetch();
+              if (appointmentId) void appointmentQ.refetch();
+              if (patientId) void patientQ.refetch();
+            }} />
+          </Stack>
+        </View>
+      </StackChromeScreen>
+    );
+  }
+
   if (loading || !apt || (seriesId && !series)) {
 
     return (
@@ -1101,7 +1118,12 @@ export function PassageDetailScreen() {
 
           >
 
-            <PassageDetailDocumentsPanel
+            {docsQ.isError ? (
+              <Stack gap={spacing[4]}>
+                <AppText>Impossible de charger les documents.</AppText>
+                <Button title="Réessayer" variant="outline" onPress={() => { void docsQ.refetch(); }} />
+              </Stack>
+            ) : <PassageDetailDocumentsPanel
               patientId={patientId}
               appointmentId={appointmentId}
               apt={apt}
@@ -1110,7 +1132,7 @@ export function PassageDetailScreen() {
               onDocumentsChanged={async () => {
                 await qc.invalidateQueries({ queryKey: ['appointment-docs', appointmentId] });
               }}
-            />
+            />}
 
           </ScrollView>
 

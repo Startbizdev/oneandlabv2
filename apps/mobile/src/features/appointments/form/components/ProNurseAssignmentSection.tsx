@@ -128,6 +128,7 @@ function buildStyles(c: AppColors) {
     },
     modePill: {
       flex: 1,
+      minWidth: 0,
       paddingVertical: spacing[2],
       paddingHorizontal: spacing[2],
       borderRadius: radius.md,

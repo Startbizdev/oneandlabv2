@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/Button';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
@@ -63,20 +65,14 @@ export function ProfilePatientView() {
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    setFirstName(d.first_name ?? '');
-    setLastName(d.last_name ?? '');
-    setPhone(d.phone ?? '');
-    setBirthDate(d.birth_date ?? '');
-    setNir(d.nir ?? '');
-    setGender(d.gender ?? '');
-    setProfileUrl(d.profile_image_url ?? null);
-    const parsed = parseProfileAddress(d.address);
-    setAddress(parsed);
-    setAddressComplement(parsed?.complement ?? '');
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data,
+    { firstName, lastName, phone, birthDate, nir, gender, profileUrl, address, addressComplement },
+    d => {
+      const parsed = parseProfileAddress(d.address);
+      return { firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', birthDate: d.birth_date ?? '', nir: d.nir ?? '', gender: d.gender ?? '', profileUrl: d.profile_image_url ?? null, address: parsed, addressComplement: parsed?.complement ?? '' };
+    },
+    d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setBirthDate(d.birthDate); setNir(d.nir); setGender(d.gender); setProfileUrl(d.profileUrl); setAddress(d.address); setAddressComplement(d.addressComplement); },
+  );
 
   const emailShown = patientUiEmailLine({
     email: user?.email,
@@ -130,9 +126,10 @@ export function ProfilePatientView() {
     [savePhotos],
   );
 
-  if (q.isLoading) {
+  if (q.isLoading || !user?.id) {
     return <SkeletonProfileScreen cards={2} />;
   }
+  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
 
   return (
     <StackChromeScreen>

@@ -66,7 +66,7 @@
           <UDropdownMenu
             :items="patientMenuItems(patient)"
             :popper="{ placement: 'bottom-end', offsetDistance: 6 }"
-            :ui="{ width: 'w-56' }"
+            :ui="{ content: 'w-56' }"
           >
             <UButton
               variant="ghost"

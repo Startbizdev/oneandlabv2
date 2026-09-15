@@ -3,7 +3,7 @@
     v-model:open="open"
     title="Filtres"
     :ui="{
-      width: 'w-full max-w-md',
+      content: 'w-full max-w-md',
       body: 'flex flex-col gap-5 p-4 sm:p-5 overflow-y-auto',
       footer: 'border-t border-gray-200 dark:border-gray-800 p-4 sm:p-5',
     }"
@@ -63,7 +63,7 @@
             size="sm"
             icon="i-lucide-inbox"
             class="w-full justify-center"
-            @click="nurseSegment = 'en_attente'"
+            @click="($event) => { nurseSegment = 'en_attente' }"
           >
             Voir les demandes à accepter
           </UButton>
@@ -116,7 +116,7 @@
           placeholder="Tous les statuts"
           size="md"
           class="w-full"
-          :ui="{ rounded: 'rounded-xl' }"
+          :ui="{ base: 'rounded-xl' }"
         >
           <template #leading="{ modelValue: statusVal }">
             <UIcon :name="statusIconForValue(statusVal)" class="w-4 h-4 text-gray-400 shrink-0" />

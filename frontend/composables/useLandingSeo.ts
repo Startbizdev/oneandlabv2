@@ -1,21 +1,19 @@
 const SITE_NAME = 'Cary'
-const FALLBACK_ORIGIN = 'https://cary.fr'
+const FALLBACK_ORIGIN = 'https://cary.bio'
 
 export function useLandingSeo(options: {
   title: string
   description: string
-  keywords: string
+  keywords?: string
   path: string
 }) {
   const config = useRuntimeConfig()
   const publicConfig = config.public as { siteUrl?: string }
   let origin = publicConfig?.siteUrl ?? ''
-  if (!origin && typeof window !== 'undefined') {
-    origin = window.location.origin
-  }
   if (!origin) {
     origin = FALLBACK_ORIGIN
   }
+  origin = origin.replace(/\/$/, '')
   const fullPath = options.path.startsWith('/') ? options.path : `/${options.path}`
   const canonicalUrl = `${origin}${fullPath}`
 
@@ -50,7 +48,8 @@ export function useLandingSeo(options: {
     script: [
       {
         type: 'application/ld+json',
-        children: JSON.stringify(jsonLd),
+        key: 'landing-webpage',
+        textContent: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
       },
     ],
   })

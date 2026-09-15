@@ -82,7 +82,7 @@ export function formatPassageDurationSummary(duration: number, customDuration: s
 
 export function formatCareSummary(
   items: NursePassageNursingItem[],
-  categories: Array<{ id: string; name?: string; label?: string; options?: unknown[] }> = [],
+  categories: Parameters<typeof formatPassageNursingItemLabel>[1] = [],
 ): string {
   if (items.length === 0) return 'Ajouter au moins un soin';
   return items

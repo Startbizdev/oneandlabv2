@@ -17,11 +17,10 @@
 </template>
 
 <script setup lang="ts">
-import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import { resolveTourStopRouteMetrics } from '@oneandlab/shared-utils';
 
 const props = defineProps<{
-  stop: NurseTourStop;
+  stop: Parameters<typeof resolveTourStopRouteMetrics>[0];
 }>();
 
 const metrics = computed(() => resolveTourStopRouteMetrics(props.stop));

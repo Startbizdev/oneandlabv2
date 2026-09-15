@@ -9,7 +9,7 @@
     </template>
 
     <UTable :data="testData" :columns="columns">
-      <template #actions-data="{ row }">
+      <template #actions-cell="{ row: { original: row } }">
         <UButton size="sm">Voir</UButton>
       </template>
     </UTable>
@@ -17,6 +17,11 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: ['super_admin'] });
+if (!import.meta.dev) {
+  throw createError({ statusCode: 404, statusMessage: 'Page introuvable' });
+}
+
 const columns = [
   { id: 'id', accessorKey: 'id', header: 'ID' },
   { id: 'name', accessorKey: 'name', header: 'Nom' },

@@ -39,7 +39,7 @@ export async function cancelAppointmentWithOptionalPhoto(
     formData.append('file', payload.photoFile);
     formData.append('appointment_id', appointmentId);
     formData.append('document_type', 'cancellation_photo');
-    const uploadRes = await apiFetch<{ id?: string }>('/medical-documents', {
+    const uploadRes = await apiFetch<{ success: boolean; data?: { id?: string }; error?: string }>('/medical-documents', {
       method: 'POST',
       body: formData,
     });

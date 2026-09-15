@@ -1,3 +1,4 @@
+import { appointmentDayFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
 import { Platform } from 'react-native';
 import * as Calendar from 'expo-calendar';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -30,7 +31,7 @@ type CalendarEventInput = {
 
 function buildStopEvent(stop: NurseTourStop) {
   if (!stop.scheduled_at) return null;
-  const start = dayjs(stop.scheduled_at);
+  const start = dayjs(parseAppointmentDateFrance(stop.scheduled_at));
   const end = start.add(45, 'minute');
   const title = stop.category_name
     ? `${stop.patient_name} — ${stop.category_name}`
@@ -49,7 +50,7 @@ function buildStopEvent(stop: NurseTourStop) {
 
 function stopToNativeEvent(stop: NurseTourStop): CalendarEventInput | null {
   if (!stop.scheduled_at) return null;
-  const start = dayjs(stop.scheduled_at);
+  const start = dayjs(parseAppointmentDateFrance(stop.scheduled_at));
   const title = stop.category_name
     ? `${stop.patient_name} — ${stop.category_name}`
     : stop.patient_name;
@@ -73,7 +74,7 @@ function appointmentToNativeEvent(apt: Appointment): CalendarEventInput | null {
   const location = addrObj?.label?.trim() || apt.address?.trim() || undefined;
   const complement =
     typeof fd?.address_complement === 'string' ? fd.address_complement.trim() : '';
-  const start = dayjs(apt.scheduled_at);
+  const start = dayjs(parseAppointmentDateFrance(apt.scheduled_at));
   return {
     title,
     startDate: start.toDate(),
@@ -163,7 +164,7 @@ async function fetchAllUpcomingNurseAppointments(): Promise<Appointment[]> {
         apt.type === 'nursing' &&
         Boolean(apt.scheduled_at) &&
         UPCOMING_STATUSES.has(String(apt.status ?? '')) &&
-        !dayjs(apt.scheduled_at).isBefore(dayjs(), 'day'),
+        appointmentDayFrance(apt.scheduled_at) >= appointmentDayFrance(new Date()),
     );
     all.push(...filtered);
     if (!pagination.has_more) break;
@@ -282,7 +283,7 @@ export async function shareTourStopCalendarEvent(stop: NurseTourStop): Promise<T
   if (isTourStopAbsent(stop)) return { ok: false, reason: 'no_events' };
   return importTourToDeviceCalendar({
     scope: 'today',
-    date: dayjs(stop.scheduled_at).format('YYYY-MM-DD'),
+    date: appointmentDayFrance(stop.scheduled_at),
     todayStops: [stop],
   });
 }

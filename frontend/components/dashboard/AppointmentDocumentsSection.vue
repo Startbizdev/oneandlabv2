@@ -117,7 +117,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-download"
-                  :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+                  :loading="containsPending(downloadingIds, doc.id)"
                   :loading-auto="false"
                   aria-label="Télécharger"
                   :on-click="() => $emit('download', doc)"
@@ -137,7 +137,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-refresh-cw"
-                  :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+                  :loading="containsPending(uploadingTypes, doc.document_type)"
                   :loading-auto="false"
                   aria-label="Remplacer"
                   :on-click="() => triggerReplace(doc)"
@@ -184,7 +184,7 @@
                     variant="outline"
                     size="sm"
                     class="min-w-[6rem] justify-center"
-                    :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                    :loading="containsPending(uploadingTypes, docType.value)"
                     :loading-auto="false"
                     :on-click="() => triggerUpload(docType.value)"
                   >
@@ -281,7 +281,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-download"
-                  :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+                  :loading="containsPending(downloadingIds, doc.id)"
                   :loading-auto="false"
                   aria-label="Télécharger"
                   :on-click="() => $emit('download', doc)"
@@ -292,7 +292,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-refresh-cw"
-                  :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+                  :loading="containsPending(uploadingTypes, doc.document_type)"
                   :loading-auto="false"
                   aria-label="Remplacer"
                   :on-click="() => triggerReplace(doc)"
@@ -333,7 +333,7 @@
                     variant="outline"
                     size="sm"
                     class="min-w-[6rem] justify-center"
-                    :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                    :loading="containsPending(uploadingTypes, docType.value)"
                     :loading-auto="false"
                     :on-click="() => triggerUpload(docType.value)"
                   >
@@ -440,7 +440,7 @@
               variant="ghost"
               size="xs"
               icon="i-lucide-download"
-              :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+              :loading="containsPending(downloadingIds, doc.id)"
               :loading-auto="false"
               aria-label="Télécharger"
               :on-click="() => $emit('download', doc)"
@@ -460,7 +460,7 @@
               variant="ghost"
               size="xs"
               icon="i-lucide-refresh-cw"
-              :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+              :loading="containsPending(uploadingTypes, doc.document_type)"
               :loading-auto="false"
               aria-label="Remplacer"
               :on-click="() => triggerReplace(doc)"
@@ -499,7 +499,7 @@
                 variant="outline"
                 size="sm"
                 class="min-w-[6rem] justify-center"
-                :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                :loading="containsPending(uploadingTypes, docType.value)"
                 :loading-auto="false"
                 :on-click="() => triggerUpload(docType.value)"
               >
@@ -610,7 +610,7 @@
                 variant="ghost"
                 size="xs"
                 icon="i-lucide-download"
-                :loading="downloadingIds?.has?.(doc.id) ?? downloadingIds?.includes?.(doc.id)"
+                :loading="containsPending(downloadingIds, doc.id)"
                 :loading-auto="false"
                 aria-label="Télécharger"
                 :on-click="() => $emit('download', doc)"
@@ -621,7 +621,7 @@
                 variant="ghost"
                 size="xs"
                 icon="i-lucide-refresh-cw"
-                :loading="uploadingTypes?.has?.(doc.document_type) ?? uploadingTypes?.includes?.(doc.document_type)"
+                :loading="containsPending(uploadingTypes, doc.document_type)"
                 :loading-auto="false"
                 aria-label="Remplacer"
                 :on-click="() => triggerReplace(doc)"
@@ -660,7 +660,7 @@
                   variant="outline"
                   size="sm"
                   class="min-w-[6rem] justify-center"
-                  :loading="uploadingTypes?.has?.(docType.value) ?? uploadingTypes?.includes?.(docType.value)"
+                  :loading="containsPending(uploadingTypes, docType.value)"
                   :loading-auto="false"
                   :on-click="() => triggerUpload(docType.value)"
                 >
@@ -742,6 +742,10 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   care_photo: 'i-lucide-camera',
   other: 'i-lucide-file',
 };
+
+function containsPending(collection: Set<string> | string[] | undefined, value: string): boolean {
+  return Array.isArray(collection) ? collection.includes(value) : collection?.has(value) ?? false;
+}
 
 const props = withDefaults(
   defineProps<{

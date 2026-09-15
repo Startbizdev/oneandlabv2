@@ -1,0 +1,28 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const Module = require('node:module');
+const path = require('node:path');
+const ts = require('typescript');
+const { QueryClient } = require('@tanstack/query-core');
+const file = path.resolve(__dirname, '../apps/mobile/src/lib/query-keys.ts');
+const compiled = new Module(file);
+compiled._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, file);
+const { queryKeys } = compiled.exports;
+(async () => {
+  const client = new QueryClient();
+  const compact = queryKeys.profile.user('fixture-user');
+  const full = queryKeys.profile.fullUser('fixture-user');
+  const other = queryKeys.profile.fullUser('other-user');
+  client.setQueryData(full, { id: 'fixture-user', nurse_qualifications: ['IDE'], signature: 'fixture-signature' });
+  client.setQueryData(compact, { id: 'fixture-user' });
+  client.setQueryData(other, { id: 'other-user' });
+  assert.deepEqual(client.getQueryData(full).nurse_qualifications, ['IDE']);
+  assert.equal(client.getQueryData(full).signature, 'fixture-signature');
+  assert.equal(client.getQueryData(compact).nurse_qualifications, undefined);
+  await client.invalidateQueries({ queryKey: compact, refetchType: 'none' });
+  assert.equal(client.getQueryState(compact).isInvalidated, true);
+  assert.equal(client.getQueryState(full).isInvalidated, true);
+  assert.equal(client.getQueryState(other).isInvalidated, false);
+  client.clear();
+  console.log('6 assertions passed: compact/full profile isolation, shared invalidation and account separation using QueryClient.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

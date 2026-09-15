@@ -151,7 +151,7 @@
             <!-- Messages d'erreur -->
             <UAlert 
               v-if="error" 
-              color="red" 
+              color="error"
               icon="i-lucide-alert-circle" 
               variant="soft"
               :title="error"
@@ -300,7 +300,7 @@ function firstStepAfterCareSelection(): number {
 const bookingWizardIndex = ref(0);
 const rdvFormStepRef = ref<{ flushBookingDraftToParent?: () => void } | null>(null);
 /** Services sélectionnés (multi-sélection) : { id, type, name, category_id } */
-const selectedServices = ref<Array<{ id: string; type: string; name: string; category_id: string | null; icon?: string; category_image_url?: string | null }>>([]);
+const selectedServices = ref<Array<{ id: string; type: string; name: string; category_id: string | null; icon?: string; category_image_url?: string | null; skip_prescription_documents?: boolean }>>([]);
 const consent = ref(true);
 
 watch(isAuthenticated, (auth, wasAuth) => {
@@ -376,7 +376,7 @@ const resending = ref(false);
 const error = ref('');
 const validationError = ref('');
 /** type number → clavier numérique mobile (reka-ui PinInput) */
-const otpCode = ref<(number | string)[]>([]);
+const otpCode = ref<number[]>([]);
 const otpCodeString = computed(() =>
   otpCode.value.map((x) => (x === undefined || x === null ? '' : String(x))).join(''),
 );
@@ -707,7 +707,7 @@ function pushPatientAvailabilityErrors(
     const h = svcData.urgentHour;
     const m = Number(svcData.urgentMinute ?? 0);
     if (h == null || Number(h) < 6 || Number(h) > 19) {
-      missingFields.push(`Indiquez une heure entre 6h et 19h pour l’option Horaire VIP (${svcName}).`);
+      missingFields.push(`Indiquez une heure entre 6h et 19h pour l’option Horaire prioritaire (${svcName}).`);
     }
     if (![0, 15, 30, 45].includes(m)) {
       missingFields.push(`Les minutes doivent être par pas de 15 min (${svcName}).`);
@@ -744,7 +744,7 @@ function pushPatientAvailabilityErrors(
           hour <= 19 &&
           [0, 15, 30, 45].includes(minute);
         if (!availabilityValid) {
-          missingFields.push(`Créneau Horaire VIP invalide pour ${svcName}`);
+          missingFields.push(`Créneau Horaire prioritaire invalide pour ${svcName}`);
         }
         return;
       } else if (availabilityData.type === 'custom' || availabilityData.type === 'all_day') {

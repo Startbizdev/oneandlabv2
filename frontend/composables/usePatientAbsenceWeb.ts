@@ -6,7 +6,7 @@ export async function fetchPatientAbsencesWeb(
   activeOnly = false,
 ): Promise<PatientAbsence[]> {
   const qs = activeOnly ? '?active=1' : '';
-  const res = await apiFetch<PatientAbsence[]>(
+  const res = await apiFetch<{ success: boolean; data?: PatientAbsence[]; error?: string }>(
     `/nurse/patients/${encodeURIComponent(patientId)}/absences${qs}`,
     { method: 'GET' },
   );
@@ -20,7 +20,7 @@ export async function createPatientAbsenceWeb(
   patientId: string,
   input: PatientAbsenceInput,
 ): Promise<PatientAbsence> {
-  const res = await apiFetch<PatientAbsence>(
+  const res = await apiFetch<{ success: boolean; data?: PatientAbsence; error?: string }>(
     `/nurse/patients/${encodeURIComponent(patientId)}/absences`,
     { method: 'POST', body: input },
   );
@@ -33,7 +33,7 @@ export async function updatePatientAbsenceWeb(
   absenceId: string,
   input: Partial<PatientAbsenceInput>,
 ): Promise<PatientAbsence> {
-  const res = await apiFetch<PatientAbsence>(
+  const res = await apiFetch<{ success: boolean; data?: PatientAbsence; error?: string }>(
     `/nurse/patients/${encodeURIComponent(patientId)}/absences/${encodeURIComponent(absenceId)}`,
     { method: 'PATCH', body: input },
   );
@@ -42,7 +42,7 @@ export async function updatePatientAbsenceWeb(
 }
 
 export async function deletePatientAbsenceWeb(patientId: string, absenceId: string): Promise<void> {
-  const res = await apiFetch<unknown>(
+  const res = await apiFetch<{ success: boolean; data?: unknown; error?: string }>(
     `/nurse/patients/${encodeURIComponent(patientId)}/absences/${encodeURIComponent(absenceId)}`,
     { method: 'DELETE' },
   );

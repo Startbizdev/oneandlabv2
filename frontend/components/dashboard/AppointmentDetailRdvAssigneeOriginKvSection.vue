@@ -267,7 +267,7 @@
             size="sm"
             icon="i-lucide-id-card"
             class="w-full justify-center sm:w-auto"
-            @click="proCreatorProfileOpen = true"
+            @click="($event) => { proCreatorProfileOpen = true }"
           >
             Voir le profil
           </UButton>
@@ -335,7 +335,7 @@
                 size="sm"
                 icon="i-lucide-id-card"
                 class="justify-center sm:min-w-[9rem]"
-                @click="proCreatorProfileOpen = true"
+                @click="($event) => { proCreatorProfileOpen = true }"
               >
                 Voir le profil
               </UButton>

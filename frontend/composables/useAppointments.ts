@@ -3,6 +3,7 @@
  */
 
 import { apiFetch } from '~/utils/api';
+import { ResumableAppointmentBatch } from '@oneandlab/shared-utils';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
 
@@ -15,46 +16,52 @@ export interface AppointmentsPagination {
   has_more?: boolean;
 }
 
-export const useAppointments = () => {
-  const appointments = useState<Appointment[]>('appointments.list', () => []);
-  const loading = useState<boolean>('appointments.loading', () => false);
-  const error = useState<string | null>('appointments.error', () => null);
-  const pagination = useState<AppointmentsPagination | null>('appointments.pagination', () => null);
+export const useAppointments = (scope = 'appointments') => {
+  const appointments = useState<Appointment[]>(`${scope}.list`, () => []);
+  const loading = useState<boolean>(`${scope}.loading`, () => false);
+  const error = useState<string | null>(`${scope}.error`, () => null);
+  const pagination = useState<AppointmentsPagination | null>(`${scope}.pagination`, () => null);
 
-  const fetchAppointments = async (filters?: AppointmentFilters) => {
+  const requestVersion = useState<number>(`${scope}.requestVersion`, () => 0);
+  const fetchAppointments = async (filters: AppointmentFilters = {}, options: { allPages?: boolean; calendar?: boolean; progressive?: boolean } = {}) => {
+    const version = ++requestVersion.value;
     loading.value = true;
     error.value = null;
-
     try {
-      const params: Record<string, string> = {};
-      if (filters) {
-        if (filters.status != null) params.status = String(filters.status);
-        if (filters.type != null) params.type = String(filters.type);
-        if (filters.page != null) params.page = String(filters.page);
-        if (filters.limit != null) params.limit = String(filters.limit);
-        if (filters.patient_id != null && filters.patient_id !== '') params.patient_id = String(filters.patient_id);
-        if (filters.nurse_tab != null) params.nurse_tab = String(filters.nurse_tab);
-        if (filters.patient_period != null) params.patient_period = String(filters.patient_period);
+      const params = new URLSearchParams();
+      for (const key of ['status', 'type', 'page', 'limit', 'patient_id', 'nurse_tab', 'nurse_segment', 'patient_period', 'filter_assigned_to', 'date_from', 'date_to'] as const) {
+        const value = filters[key];
+        if (value != null && value !== '') params.set(key, String(value));
       }
-      const queryString = Object.keys(params).length ? '?' + new URLSearchParams(params).toString() : '';
-      const response = await apiFetch<{ success: boolean; data?: Appointment[]; pagination?: AppointmentsPagination; error?: string }>(`/appointments${queryString}`, {
-        method: 'GET',
-      });
-
-      if (response.success && response.data) {
-        appointments.value = response.data;
-        if (response.pagination) {
-          pagination.value = response.pagination;
-        } else {
-          pagination.value = null;
+      let page = options.allPages ? 1 : filters.page ?? 1;
+      if (options.calendar) params.set('view', 'calendar');
+      if (options.allPages) params.set('limit', options.calendar ? '250' : '50');
+      const collected: Appointment[] = [];
+      const ids = new Set<string>();
+      let lastPagination: AppointmentsPagination | null = null;
+      while (true) {
+        params.set('page', String(page));
+        const response = await apiFetch<{ success: boolean; data?: Appointment[]; pagination?: AppointmentsPagination; error?: string }>(`/appointments?${params}`, { method: 'GET' });
+        if (version !== requestVersion.value) return;
+        if (!response.success || !Array.isArray(response.data)) throw new Error(response.error || 'Erreur lors du chargement');
+        lastPagination = response.pagination ?? null;
+        const before = collected.length;
+        for (const appointment of response.data) {
+          if (!ids.has(appointment.id)) { ids.add(appointment.id); collected.push(appointment); }
         }
-      } else {
-        error.value = response.error || 'Erreur lors du chargement';
+        if (options.progressive) appointments.value = [...collected];
+        const hasMore = lastPagination?.has_more === true || Number(lastPagination?.pages || 0) > page;
+        if (!options.allPages || !hasMore) break;
+        // Fail explicitly instead of silently showing a partial calendar if the API repeats a page.
+        if (collected.length === before) throw new Error('La liste complète des rendez-vous n’a pas pu être chargée. Réessayez.');
+        page++;
       }
-    } catch (err: any) {
-      error.value = err.message || 'Erreur réseau';
+      appointments.value = collected;
+      pagination.value = lastPagination;
+    } catch (err) {
+      if (version === requestVersion.value) error.value = err instanceof Error ? err.message : 'Erreur réseau';
     } finally {
-      loading.value = false;
+      if (version === requestVersion.value) loading.value = false;
     }
   };
 
@@ -78,8 +85,7 @@ export const useAppointments = () => {
     }
 
     if (!hasAuth) {
-      console.warn('Utilisateur non authentifié, upload des documents médicaux ignoré');
-      return;
+      throw new Error('Reconnectez-vous pour envoyer les documents du rendez-vous.');
     }
 
     const fieldMapping: Record<string, string> = {
@@ -92,21 +98,20 @@ export const useAppointments = () => {
     for (const [fieldName, file] of Object.entries(files)) {
       if (!file) continue;
 
-      try {
+      await batchAttempt.completeOnce(`${appointmentId}:upload:${fieldName}`, async () => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('appointment_id', appointmentId);
         const documentType = fieldMapping[fieldName] || fieldName;
         formData.append('document_type', documentType);
 
-        await apiFetch('/medical-documents', {
+        const uploaded = await apiFetch('/medical-documents', {
           method: 'POST',
           body: formData,
           timeout: 180000,
         });
-      } catch (err: any) {
-        console.error(`Erreur upload ${fieldName}:`, err);
-      }
+        if (!uploaded.success) throw new Error(uploaded.error || 'Envoi du document impossible');
+      });
     }
   };
 
@@ -150,9 +155,9 @@ export const useAppointments = () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     for (const doc of profileDocumentsToLink) {
-      try {
+      await batchAttempt.completeOnce(`${appointmentId}:copy:${doc.fieldName}:${doc.medicalDocumentId}`, async () => {
         bookingDbg('createAppointment: copy medical-document', { field: doc.fieldName });
-        await apiFetch('/medical-documents/copy', {
+        const copied = await apiFetch('/medical-documents/copy', {
           method: 'POST',
           body: {
             source_medical_document_id: doc.medicalDocumentId,
@@ -161,9 +166,8 @@ export const useAppointments = () => {
           },
           timeout: 120000,
         });
-      } catch (err: any) {
-        console.error(`Erreur lors de la liaison du document du profil ${doc.fieldName}:`, err);
-      }
+        if (!copied.success) throw new Error(copied.error || 'Copie du document impossible');
+      });
     }
 
     if (Object.keys(filesToUpload).length > 0) {
@@ -220,12 +224,12 @@ export const useAppointments = () => {
           rawSuccess: response?.success,
           hasDataId: Boolean(response?.data?.id),
         });
-        return { success: false, error: error.value };
+        return { success: false, error: error.value || undefined };
       }
     } catch (err: any) {
       error.value = err.message || 'Erreur réseau';
       bookingDbg('createAppointment: exception', { message: error.value });
-      return { success: false, error: error.value };
+      return { success: false, error: error.value || undefined };
     } finally {
       if (!options?.skipLoading) {
         loading.value = false;
@@ -233,122 +237,45 @@ export const useAppointments = () => {
     }
   };
 
-  /**
-   * Crée plusieurs rendez-vous (y compris **un seul** : même pipeline que le panier multi).
-   * Multi-RDV : POST séquentiels puis artefacts (copy profil + uploads) après tous les IDs connus.
-   */
+  const batchAttempt = new ResumableAppointmentBatch<AppointmentCreatePayload>();
+  const fileIdentities = new WeakMap<File, number>();
+  let nextFileIdentity = 0;
+
+  /** Retry only appointments not already acknowledged by the server in this mounted form. */
   const createMultipleAppointments = async (
-    payloads: AppointmentCreatePayload[]
+    payloads: AppointmentCreatePayload[],
   ): Promise<{ success: boolean; createdIds: string[]; error?: string }> => {
     loading.value = true;
     error.value = null;
-    const createdIds: string[] = [];
-    const deferPostCreateArtifacts = payloads.length > 1;
-
     try {
-      const types = new Set(payloads.map((p) => p.type));
-      const sameTypeMulti =
-        payloads.length > 1 &&
-        types.size === 1 &&
-        (types.has('nursing') || types.has('blood_test'));
-      const firstBatch = payloads[0]?.creation_batch_id;
-      const allShareExplicitBatch =
-        sameTypeMulti &&
-        !!firstBatch &&
-        payloads.every((p) => p.creation_batch_id === firstBatch);
-      const sharedBatch = allShareExplicitBatch
-        ? firstBatch
-        : sameTypeMulti
-          ? (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
-              ? globalThis.crypto.randomUUID()
-              : undefined)
-          : undefined;
-
-      const batchTotal = payloads.length;
-      const patientEmailFromPayloads = payloads.map((p) => (p as { patient_email?: string }).patient_email).find((e) => e && String(e).trim() !== '');
-
-      for (let i = 0; i < payloads.length; i++) {
-        const payload: AppointmentCreatePayload = { ...payloads[i] };
-        bookingDbg('createMultipleAppointments: itération', {
-          index: i + 1,
-          total: payloads.length,
-          type: payload.type,
-        });
-        if (sharedBatch) {
-          payload.creation_batch_id = sharedBatch;
-          payload.creation_batch_size = batchTotal;
-          if (patientEmailFromPayloads && !(payload as { patient_email?: string }).patient_email) {
-            (payload as { patient_email?: string }).patient_email = patientEmailFromPayloads;
-          }
+      const fingerprint = JSON.stringify(payloads, (key, value) => {
+        if (key === 'creation_batch_id' || key === 'creation_batch_size') return undefined;
+        if (typeof File !== 'undefined' && value instanceof File) {
+          if (!fileIdentities.has(value)) fileIdentities.set(value, ++nextFileIdentity);
+          return { fileIdentity: fileIdentities.get(value) };
         }
-        const result = await createAppointment(payload, {
-          skipLoading: true,
-          skipPostCreateArtifacts: deferPostCreateArtifacts,
-        });
-        if (result.success && result.data?.id) {
-          createdIds.push(result.data.id);
-          bookingDbg('createMultipleAppointments: itération OK', {
-            index: i + 1,
-            id: result.data.id,
-          });
-        } else {
-          const msg = result.error || 'Erreur lors de la création';
-          bookingDbg('createMultipleAppointments: arrêt sur erreur', {
-            iteration: i + 1,
-            total: payloads.length,
-            error: msg,
-          });
-          if (deferPostCreateArtifacts && createdIds.length > 0) {
-            bookingDbg('createMultipleAppointments: post-création partielle après erreur', {
-              rdvs: createdIds.length,
-            });
-            for (let j = 0; j < createdIds.length; j++) {
-              await runAppointmentPostCreateArtifacts(payloads[j], createdIds[j]);
-            }
-          }
-          return {
-            success: false,
-            createdIds,
-            error: createdIds.length > 0
-              ? `${msg} (${createdIds.length}/${payloads.length} RDV créés)`
-              : msg,
-          };
-        }
-      }
-      if (deferPostCreateArtifacts) {
-        bookingDbg('createMultipleAppointments: post-création séquentielle (profils + fichiers)', {
-          rdvs: createdIds.length,
-        });
-        for (let i = 0; i < payloads.length; i++) {
-          bookingDbg('createMultipleAppointments: artefacts RDV', {
-            index: i + 1,
-            id: createdIds[i],
-          });
-          await runAppointmentPostCreateArtifacts(payloads[i], createdIds[i]);
-        }
-      }
-      return { success: true, createdIds };
-    } catch (err: any) {
-      error.value = err.message || 'Erreur réseau';
-      if (deferPostCreateArtifacts && createdIds.length > 0) {
-        try {
-          bookingDbg('createMultipleAppointments: post-création partielle après exception', {
-            rdvs: createdIds.length,
-          });
-          for (let j = 0; j < createdIds.length; j++) {
-            await runAppointmentPostCreateArtifacts(payloads[j], createdIds[j]);
-          }
-        } catch {
-          /* ne pas masquer l’erreur d’origine */
-        }
-      }
-      return {
-        success: false,
-        createdIds,
-        error: createdIds.length > 0
-          ? `${err.message} (${createdIds.length}/${payloads.length} RDV créés)`
-          : err.message,
-      };
+        return value;
+      });
+      const sameTypeMulti = payloads.length > 1 && payloads.every(p => p.type === payloads[0].type);
+      const sharedBatch = sameTypeMulti
+        ? payloads[0].creation_batch_id || globalThis.crypto?.randomUUID?.()
+        : undefined;
+      const patientEmail = payloads.find(p => p.patient_email)?.patient_email;
+      const prepared = payloads.map(payload => ({
+        ...payload,
+        ...(sharedBatch ? {
+          creation_batch_id: sharedBatch,
+          creation_batch_size: payloads.length,
+          patient_email: payload.patient_email || patientEmail,
+        } : {}),
+      }));
+      const result = await batchAttempt.run(fingerprint, prepared, async (payload, requestId) => {
+        const created = await createAppointment({ ...payload, client_request_id: requestId }, { skipLoading: true, skipPostCreateArtifacts: true });
+        if (!created.success || !created.data?.id) throw new Error(created.error || 'Création impossible');
+        return created.data.id;
+      }, runAppointmentPostCreateArtifacts);
+      if (!result.success) error.value = result.error || 'Création impossible';
+      return result;
     } finally {
       loading.value = false;
     }

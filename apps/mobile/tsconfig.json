@@ -4,7 +4,12 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@oneandlab/shared-api": ["../../packages/shared-api/src/index.ts"],
+      "@oneandlab/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@oneandlab/shared-utils": ["../../packages/shared-utils/src/index.ts"],
+      "@oneandlab/shared-constants": ["../../packages/shared-constants/src/index.ts"],
+      "@oneandlab/onboarding": ["../../packages/onboarding/src/index.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]

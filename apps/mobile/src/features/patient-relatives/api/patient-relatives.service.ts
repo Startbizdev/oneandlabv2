@@ -32,13 +32,15 @@ export async function createPatientRelative(body: {
   first_name: string;
   last_name: string;
   relationship_type: string;
-  gender?: string;
-  birth_date?: string;
-  email?: string;
-  phone?: string;
+  gender?: string | null;
+  birth_date?: string | null;
+  email?: string | null;
+  phone?: string | null;
   address?: AddressPayload | null;
 }) {
-  return api.post<PatientRelative>('/patient-relatives', body);
+  const response = await api.post<PatientRelative>('/patient-relatives', body);
+  if (!response.success) throw new Error(response.error ?? 'Impossible d’ajouter le proche');
+  return response;
 }
 
 export async function updatePatientRelative(
@@ -54,9 +56,13 @@ export async function updatePatientRelative(
     address: AddressPayload | null;
   }>,
 ) {
-  return api.put<PatientRelative>(`/patient-relatives/${id}`, body);
+  const response = await api.put<PatientRelative>(`/patient-relatives/${encodeURIComponent(id)}`, body);
+  if (!response.success) throw new Error(response.error ?? 'Impossible de modifier le proche');
+  return response;
 }
 
 export async function deletePatientRelative(id: string) {
-  return api.delete(`/patient-relatives/${id}`);
+  const response = await api.delete(`/patient-relatives/${encodeURIComponent(id)}`);
+  if (!response.success) throw new Error(response.error ?? 'Impossible de supprimer le proche');
+  return response;
 }

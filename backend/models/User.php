@@ -694,7 +694,7 @@ class User
             $params[] = $lastNameEncrypted['dek'];
         }
         
-        if (isset($data['phone'])) {
+        if (array_key_exists('phone', $data)) {
             if (!empty($data['phone'])) {
                 $phoneEncrypted = $this->crypto->encryptField($data['phone']);
                 $updates[] = 'phone_encrypted = ?, phone_dek = ?';
@@ -717,7 +717,7 @@ class User
             }
         }
         
-        if (isset($data['address'])) {
+        if (array_key_exists('address', $data)) {
             if (!empty($data['address'])) {
                 $addressJson = json_encode($data['address']);
                 $addressEncrypted = $this->crypto->encryptField($addressJson);
@@ -739,7 +739,7 @@ class User
             }
         }
         
-        if (isset($data['gender'])) {
+        if (array_key_exists('gender', $data)) {
             if (!empty($data['gender'])) {
                 $genderEncrypted = $this->crypto->encryptField($data['gender']);
                 $updates[] = 'gender_encrypted = ?, gender_dek = ?';
@@ -750,7 +750,7 @@ class User
             }
         }
         
-        if (isset($data['birth_date'])) {
+        if (array_key_exists('birth_date', $data)) {
             if (!empty($data['birth_date'])) {
                 $birthDateEncrypted = $this->crypto->encryptField($data['birth_date']);
                 $updates[] = 'birth_date_encrypted = ?, birth_date_dek = ?';
@@ -2040,6 +2040,7 @@ class User
         
         // Déchiffrer en place (éviter N+1 getById)
         $decryptedUsers = [];
+        $decryptAudit = [];
         foreach ($users as $u) {
             try {
                 $u['email'] = !empty($u['email_encrypted']) && !empty($u['email_dek'])
@@ -2077,7 +2078,7 @@ class User
                     $url = trim((string) ($u['profile_image_url'] ?? ''));
                     $u['profile_image_url'] = $url !== '' ? $url : null;
                 }
-                $this->logger->logDecrypt($requesterId, $requesterRole, 'profile', $u['id'], array_fill_keys($logFields, true));
+                $decryptAudit[$u['id']] = $logFields;
                 $decryptedUsers[] = $u;
             } catch (Exception $e) {
                 $decryptedUsers[] = [
@@ -2096,6 +2097,7 @@ class User
             }
         }
 
+        $this->logger->logDecryptBatch($requesterId, $requesterRole, 'profile', $decryptAudit);
         $creatorIdsForDisplay = [];
         foreach ($decryptedUsers as $u) {
             if (($u['role'] ?? '') !== 'patient' || empty($u['created_by'])) {
@@ -2281,4 +2283,3 @@ class User
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 }
-

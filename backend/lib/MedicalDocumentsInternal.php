@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/UploadMimeTypes.php';
+require_once __DIR__ . '/MedicalDocumentSubject.php';
+require_once __DIR__ . '/BookingFileJournal.php';
 
 /**
  * Création / copie de pièces médicales sans requête HTTP (webhook, brouillon patient).
@@ -27,10 +29,11 @@ final class MedicalDocumentsInternal
         string $patientUserId,
         string $sourceMedicalDocumentId,
         string $appointmentId,
-        ?string $documentType = null
+        ?string $documentType = null,
+        ?BookingFileJournal $fileJournal = null
     ): void {
         $stmt = $db->prepare(
-            'SELECT md.id, md.file_name, md.file_path, md.file_size, md.mime_type, md.document_type, md.file_dek, md.appointment_id, a.patient_id AS src_apt_patient
+            'SELECT md.id, md.file_name, md.file_path, md.file_size, md.mime_type, md.document_type, md.file_dek, md.appointment_id, a.patient_id AS src_apt_patient, md.patient_id AS standalone_patient_id, a.relative_id AS src_relative_id
              FROM medical_documents md
              LEFT JOIN appointments a ON md.appointment_id = a.id
              WHERE md.id = ?'
@@ -51,7 +54,7 @@ final class MedicalDocumentsInternal
         $appointmentRelativeId = $appointment['relative_id'] ?? null;
         $sourceDocumentPatientId = $sourceDoc['src_apt_patient'];
 
-        $sourceDocumentRelativeId = null;
+        $sourceDocumentRelativeId = $sourceDoc['src_relative_id'] ?? null;
         if ($sourceDocumentPatientId === null) {
             $pdStmt = $db->prepare('SELECT patient_id FROM patient_documents WHERE medical_document_id = ? LIMIT 1');
             $pdStmt->execute([$sourceMedicalDocumentId]);
@@ -72,13 +75,12 @@ final class MedicalDocumentsInternal
             }
         }
 
+        $sourceDocumentPatientId ??= $sourceDoc['standalone_patient_id'] ?? null;
+
         if ($sourceDocumentPatientId !== $patientUserId || $appointmentPatientId !== $patientUserId) {
             throw new RuntimeException('Patient non autorisé pour cette copie de document');
         }
-        if ($appointmentRelativeId && $sourceDocumentRelativeId !== $appointmentRelativeId) {
-            throw new RuntimeException('Document proche incompatible avec ce rendez-vous');
-        }
-        if (($appointmentRelativeId === null || $appointmentRelativeId === '') && $sourceDocumentRelativeId !== null && $sourceDocumentRelativeId !== '') {
+        if (!MedicalDocumentSubject::matches($sourceDocumentPatientId, $sourceDocumentRelativeId, $appointmentPatientId, $appointmentRelativeId)) {
             throw new RuntimeException('Document proche incompatible avec ce rendez-vous');
         }
 
@@ -117,6 +119,7 @@ final class MedicalDocumentsInternal
             mkdir($documentDir, 0755, true);
         }
         $newFilePath = $documentDir . $fileName . '.encrypted';
+        $fileJournal?->trackNewFile($newFilePath);
         if (file_put_contents($newFilePath, $fileContent) === false) {
             throw new RuntimeException('Écriture fichier copie impossible');
         }
@@ -168,7 +171,8 @@ final class MedicalDocumentsInternal
         string $appointmentId,
         string $localPath,
         string $originalFilename,
-        string $documentType
+        string $documentType,
+        ?BookingFileJournal $fileJournal = null
     ): void {
         $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'resultats', 'other', 'cancellation_photo'];
         if (!in_array($documentType, $allowedTypes, true)) {
@@ -213,6 +217,7 @@ final class MedicalDocumentsInternal
             mkdir($documentDir, 0755, true);
         }
         $filePath = $documentDir . $fileName . '.encrypted';
+        $fileJournal?->trackNewFile($filePath);
         $decryptedContent = base64_decode($encryptedData['encrypted'], true);
         if ($decryptedContent === false) {
             throw new RuntimeException('Décodage chiffrement fichier');

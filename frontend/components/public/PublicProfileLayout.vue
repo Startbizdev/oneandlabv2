@@ -2,7 +2,7 @@
   <!-- État de chargement -->
   <div
     v-if="loading"
-    :class="embedded ? 'py-12 flex items-center justify-center' : 'min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800'"
+    :class="embedded ? 'py-12 flex items-center justify-center' : 'min-h-screen flex items-center justify-center bg-app-canvas dark:bg-gray-950'"
   >
     <div class="text-center space-y-4">
       <div class="relative">
@@ -18,7 +18,7 @@
   <!-- État d'erreur : empty state marketing (infirmiers / laboratoires) -->
   <div
     v-else-if="error"
-    :class="embedded ? 'px-2 py-4' : 'min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-primary-950/20 px-4 py-12'"
+    :class="embedded ? 'px-2 py-4' : 'min-h-screen flex items-center justify-center bg-app-canvas dark:bg-gray-950 px-4 py-12'"
   >
     <div v-if="embedded" class="w-full">
       <UAlert
@@ -38,7 +38,7 @@
             ? 'Ce professionnel n\'a pas activé sa fiche ou le lien a changé.'
             : 'Ce laboratoire n\'a pas activé sa fiche ou le lien a changé. Découvrez les laboratoires de prélèvement à domicile près de chez vous.'"
         variant="naked"
-        size="lg"
+        size="md"
         :actions="[
           {
             label: type === 'nurse' ? 'Voir les autres infirmiers' : 'Voir les autres laboratoires',
@@ -61,7 +61,7 @@
   <!-- Contenu principal (design partagé infirmier / lab) -->
   <div
     v-else-if="profile"
-    :class="embedded ? 'bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800' : 'min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800'"
+    :class="embedded ? 'bg-app-canvas dark:bg-gray-950' : 'min-h-screen bg-app-canvas dark:bg-gray-950'"
   >
     <PublicProfileHeader
       :profile="{ ...profile, reviews: profile.reviews }"
@@ -97,7 +97,7 @@
           <UCard
             v-if="aboutSectionHasContent(profile)"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-6 lg:p-8' } }"
+            :ui="{ body: 'p-6 lg:p-8' }"
           >
             <PublicProfileBio :biography="profile.biography" :about-title="aboutTitle(profile)" />
           </UCard>
@@ -106,7 +106,7 @@
           <UCard
             v-if="type === 'nurse' && (profile.years_experience || (profile.qualifications?.length > 0))"
             class="lg:hidden shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-5 sm:p-6' } }"
+            :ui="{ body: 'p-5 sm:p-6' }"
           >
             <div class="space-y-4">
               <div v-if="profile.years_experience">
@@ -139,7 +139,7 @@
           <UCard
             v-if="type === 'pro' && profile.emploi"
             class="shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-5 sm:p-6' } }"
+            :ui="{ body: 'p-5 sm:p-6' }"
           >
             <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <UIcon name="i-lucide-briefcase-medical" class="w-4 h-4 text-primary-500 shrink-0" />
@@ -151,7 +151,7 @@
           <UCard
             v-if="(type === 'nurse' || type === 'pro') && nurseExtraHasContent(profile)"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-6 lg:p-8' } }"
+            :ui="{ body: 'p-6 lg:p-8' }"
           >
             <div class="space-y-5">
               <h3 class="text-xl font-normal text-gray-900 dark:text-white flex items-center gap-2">
@@ -265,7 +265,7 @@
           <UCard
             v-if="servicesToShow.length > 0"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-6 lg:p-8' } }"
+            :ui="{ body: 'p-6 lg:p-8' }"
           >
             <PublicProfileServices
               :specializations="servicesToShow"
@@ -277,7 +277,7 @@
           <UCard
             v-if="type !== 'pro' && profile?.reviews"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-6 lg:p-8' } }"
+            :ui="{ body: 'p-6 lg:p-8' }"
           >
             <PublicProfileReviews
               :reviews="profile.reviews"
@@ -291,7 +291,7 @@
           <UCard
             v-if="faqItems && faqItems.length > 0"
             class="shadow-sm hover:shadow-md transition-shadow duration-300 border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-            :ui="{ body: { padding: 'p-6 lg:p-8' } }"
+            :ui="{ body: 'p-6 lg:p-8' }"
           >
             <PublicProfileFAQ :faq="faqItems" />
           </UCard>
@@ -386,7 +386,7 @@
             <UCard
               v-if="type === 'nurse' && (profile.years_experience || (profile.qualifications?.length > 0))"
               class="hidden lg:block shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800"
-              :ui="{ body: { padding: 'p-5 sm:p-6' } }"
+              :ui="{ body: 'p-5 sm:p-6' }"
             >
               <div class="space-y-4">
                 <div v-if="profile.years_experience">

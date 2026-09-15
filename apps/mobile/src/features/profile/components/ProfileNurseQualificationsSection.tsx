@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -10,6 +10,10 @@ import { SkeletonList } from '@/components/ui/skeletons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GraduationCap, Plus, Trash2 } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { IconActionButton } from '@/components/ui/IconActionButton';
+import { qualificationSaveOptions } from '@/features/profile/utils/qualification-save';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import {
   buildNurseQualificationsPayload,
@@ -43,28 +47,26 @@ export function ProfileNurseQualificationsSection({
   const otherDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const q = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    const { codes, otherFormations: others } = parseNurseQualificationsFromApi(
-      (d as { nurse_qualifications?: unknown }).nurse_qualifications,
-    );
-    setQualificationCodes(codes);
-    setOtherFormations(others.length ? others : codes.includes('AUTRE') ? [''] : []);
-    setHydrated(true);
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data, { qualificationCodes, otherFormations },
+    d => {
+      const { codes, otherFormations: others } = parseNurseQualificationsFromApi(d.nurse_qualifications);
+      return { qualificationCodes: codes, otherFormations: others.length ? others : codes.includes('AUTRE') ? [''] : [] };
+    },
+    d => { setQualificationCodes(d.qualificationCodes); setOtherFormations(d.otherFormations); setHydrated(true); },
+  );
 
   const save = useMutation({
-    mutationFn: (payload: { codes: string[]; others: string[] }) =>
-      updateUser(user!.id, {
+    ...qualificationSaveOptions(user?.id ?? '', () => useAuthStore.getState().user?.id,
+      (userId, payload) => updateUser(userId, {
         nurse_qualifications: buildNurseQualificationsPayload(payload.codes, payload.others),
-      }),
+      })),
     onSuccess: async () => {
+      if (useAuthStore.getState().user?.id !== user?.id) return;
       await fetchMe();
       void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
       toast('Diplôme mis à jour', { type: 'success' });
@@ -74,7 +76,8 @@ export function ProfileNurseQualificationsSection({
 
   const persist = useCallback(
     (codes: string[], others: string[]) => {
-      if (!hydrated || !user?.id) return;
+      if (otherDebounceRef.current) clearTimeout(otherDebounceRef.current);
+      if (!hydrated || !user?.id || useAuthStore.getState().user?.id !== user.id) return;
       save.mutate({ codes, others });
     },
     [hydrated, user?.id, save],
@@ -119,8 +122,17 @@ export function ProfileNurseQualificationsSection({
 
   const body = q.isLoading ? (
     <SkeletonList count={4} itemHeight={52} gap={spacing[2]} />
+  ) : q.isError || !q.data ? (
+    <View style={styles.list}>
+      <AppText style={styles.hint}>Impossible de charger vos diplômes et formations.</AppText>
+      <Button title="Réessayer" loading={q.isFetching} onPress={() => void q.refetch()} />
+    </View>
   ) : (
     <>
+      {save.isError ? <Button title="Réessayer l’enregistrement" loading={save.isPending} onPress={() => {
+        if (otherDebounceRef.current) clearTimeout(otherDebounceRef.current);
+        persist(qualificationCodes, otherFormations);
+      }} /> : null}
       <AppText style={[styles.hint, bare && styles.hintBare]}>
         Activez les diplômes affichés sur votre fiche publique. Chaque changement est enregistré
         automatiquement.
@@ -136,6 +148,7 @@ export function ProfileNurseQualificationsSection({
               actions={
                 <ToggleSwitch
                   value={on}
+                  accessibilityLabel={item.label}
                   disabled={busy}
                   onValueChange={(v) => toggleQualification(item.code, v)}
                 />
@@ -165,20 +178,22 @@ export function ProfileNurseQualificationsSection({
                   placeholder="Ex. Formation spécifique…"
                 />
               </View>
-              <Pressable
+              <IconActionButton
+                label={`Supprimer la formation ${idx + 1}`}
                 onPress={() => {
                   const next = otherFormations.filter((_, i) => i !== idx);
                   setOtherFormations(next.length ? next : ['']);
                   persist(qualificationCodes, next.length ? next : ['']);
                 }}
-                hitSlop={8}
                 style={styles.trashBtn}
               >
                 <Trash2 size={iconSize.mdSm} color={c.error} strokeWidth={2} />
-              </Pressable>
+              </IconActionButton>
             </Row>
           ))}
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ajouter une formation"
             onPress={() => {
               const next = [...otherFormations, ''];
               setOtherFormations(next);
@@ -259,8 +274,9 @@ function buildStyles(c: AppColors) {
   },
   otherRow: {},
   otherInput: { minWidth: 0, flex: 1 },
-  trashBtn: { paddingTop: spacing[3] },
+  trashBtn: { minHeight: 44, minWidth: 44 },
   addBtn: {
+    minHeight: 44,
     paddingVertical: spacing[2],
   },
   addText: {

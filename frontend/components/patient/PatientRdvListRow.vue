@@ -25,7 +25,7 @@
         <div class="flex shrink-0 flex-wrap items-start justify-end gap-1.5">
           <PatientUrgencyBadge :appointment="appointment" />
           <UBadge
-            :color="patientRdvStatusColor(appointment.status)"
+            :color="resolveUiColor(patientRdvStatusColor(appointment.status))"
             variant="subtle"
             size="sm"
             class="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-tight tracking-tight"
@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor } from '~/utils/ui-appearance';
 import { computed } from 'vue';
 import {
   buildCategoryAccentMapForList,

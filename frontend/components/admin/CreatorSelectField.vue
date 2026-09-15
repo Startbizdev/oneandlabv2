@@ -5,13 +5,14 @@
       :items="selectItems"
       value-key="value"
       :loading="loading"
+      :disabled="loading || !!loadError"
       placeholder="Moi (administration Cary)"
       class="w-full min-w-0"
       clearable
       :filter-fields="['label', 'description', 'searchText', 'group']"
       :search-input="{ placeholder: 'Rechercher un pro, infirmier ou labo…' }"
     >
-      <template #label>
+      <template #default>
         <span v-if="!selectedValue" class="text-muted">{{ emptyLabel }}</span>
         <span v-else>{{ selectedLabel }}</span>
       </template>
@@ -22,6 +23,10 @@
         </div>
       </template>
     </USelectMenu>
+    <div v-if="loadError" role="alert" class="mt-2 space-y-2">
+      <p class="text-sm text-error">{{ loadError }}</p>
+      <UButton color="neutral" variant="outline" size="sm" :loading="loading" @click="loadUsers">Réessayer</UButton>
+    </div>
     <p v-if="help" class="mt-1.5 text-xs text-muted leading-relaxed">{{ help }}</p>
   </UFormField>
 </template>
@@ -41,7 +46,7 @@ const props = withDefaults(
     modelValue: null,
     label: 'Créateur du rendez-vous',
     name: 'on_behalf_of_user_id',
-    help: 'Optionnel — le professionnel sélectionné apparaîtra comme créateur du RDV et aura accès au patient (audit HDS).',
+    help: 'Le professionnel choisi apparaîtra comme créateur du rendez-vous et aura accès au dossier patient.',
     emptyLabel: 'Moi (administration Cary)',
   },
 );
@@ -49,6 +54,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [value: string | null] }>();
 
 const loading = ref(false);
+const loadError = ref('');
 const users = ref<any[]>([]);
 
 const selectedValue = computed({
@@ -89,11 +95,13 @@ const selectItems = computed(() =>
 
 const selectedLabel = computed(() => {
   const hit = selectItems.value.find((i) => i.value === selectedValue.value);
-  return hit?.label ?? props.emptyLabel;
+  return hit?.label ?? (selectedValue.value ? 'Professionnel sélectionné' : props.emptyLabel);
 });
 
-onMounted(async () => {
+async function loadUsers() {
+  if (loading.value) return;
   loading.value = true;
+  loadError.value = '';
   try {
     const [pros, nurses, labs, subaccounts] = await Promise.all([
       fetchAllUsers({ role: 'pro', status: 'active' }),
@@ -102,8 +110,12 @@ onMounted(async () => {
       fetchAllUsers({ role: 'subaccount', status: 'active' }),
     ]);
     users.value = sortUsersByLabel([...pros, ...nurses, ...labs, ...subaccounts]);
+  } catch {
+    loadError.value = 'Impossible de charger les professionnels. Votre sélection est conservée.';
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(loadUsers);
 </script>

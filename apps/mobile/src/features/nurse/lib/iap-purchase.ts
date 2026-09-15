@@ -54,7 +54,7 @@ export function buildSubscriptionPurchaseRequest(
   if (!product) {
     return {
       ok: false,
-      reason: `Produit « ${productId} » introuvable dans la boutique.`,
+      reason: 'Cette offre est temporairement indisponible dans la boutique. Réessayez plus tard.',
     };
   }
 
@@ -62,7 +62,7 @@ export function buildSubscriptionPurchaseRequest(
   if (platform === 'android' && !androidOffers?.length) {
     return {
       ok: false,
-      reason: 'Offre d’abonnement Google Play indisponible (offerToken manquant).',
+      reason: 'Cette offre est temporairement indisponible sur Google Play. Réessayez plus tard.',
     };
   }
 

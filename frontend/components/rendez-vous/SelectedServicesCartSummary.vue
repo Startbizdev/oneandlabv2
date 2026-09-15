@@ -1,18 +1,19 @@
 <template>
   <div class="min-w-0 flex-1 text-left">
     <button
+      ref="cartTrigger"
       type="button"
-      class="group w-full rounded-md py-0.5 text-left outline-none transition-colors hover:bg-gray-100/80 focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:bg-gray-800/50 dark:focus-visible:ring-offset-gray-950"
+      class="group min-h-12 w-full rounded-xl py-1 text-left outline-none transition-colors hover:bg-gray-100/80 focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:hover:bg-gray-800/50 dark:focus-visible:ring-offset-gray-950"
       :aria-haspopup="true"
       :aria-expanded="modalOpen"
       aria-controls="selected-services-cart-modal"
       @click="modalOpen = true"
     >
-      <p class="text-[11px] font-semibold leading-tight text-gray-900 dark:text-white sm:text-xs">
+      <p class="text-sm font-semibold leading-snug text-gray-900 dark:text-white">
         {{ headline }}
       </p>
       <p
-        class="mt-px flex items-center gap-1 text-[10px] font-medium leading-tight text-emerald-700/95 dark:text-emerald-400/95 sm:text-[11px]"
+        class="mt-px flex items-center gap-1 text-xs font-medium leading-snug text-emerald-700/95 dark:text-emerald-400/95 sm:text-[11px]"
       >
         <span class="min-w-0">{{ detailActionLabel }}</span>
         <UIcon
@@ -27,7 +28,7 @@
     <ClientOnly>
       <UModal
         v-model:open="modalOpen"
-        :content="careAutreDetailPopoverModalContentProps"
+        :content="{ ...careAutreDetailPopoverModalContentProps, onCloseAutoFocus: restoreCartFocus }"
         :ui="{
           content:
             'max-w-[min(100vw-1.5rem,26rem)] w-full overflow-hidden rounded-xl border border-gray-200/90 bg-white p-0 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.18)] ring-0 sm:max-w-md dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]',
@@ -46,7 +47,7 @@
               <div class="min-w-0">
                 <h2
                   id="selected-services-cart-title"
-                  class="text-[15px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50"
+                  class="text-lg font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-50"
                 >
                   {{ modalTitle }}
                 </h2>
@@ -56,7 +57,7 @@
               </div>
               <button
                 type="button"
-                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 dark:hover:bg-gray-800/80 dark:hover:text-gray-200"
+                class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/50 dark:hover:bg-gray-800/80 dark:hover:text-gray-200"
                 aria-label="Fermer"
                 @click="close"
               >
@@ -87,7 +88,7 @@
                       </p>
                       <button
                         type="button"
-                        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                        class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:hover:bg-red-950/40 dark:hover:text-red-400"
                         :aria-label="`Retirer ${cartServiceDisplayName(svc)} du panier`"
                         @click="confirmRemove(svc)"
                       >
@@ -96,7 +97,7 @@
                     </div>
                     <dl
                       v-if="detailLinesFor(svc).length"
-                      class="mt-1.5 space-y-0.5 border-l border-gray-200/90 pl-2.5 text-[10.5px] leading-tight dark:border-gray-700 sm:text-[11px] sm:leading-snug"
+                      class="mt-1.5 space-y-0.5 border-l border-gray-200/90 pl-2.5 text-sm leading-relaxed dark:border-gray-700 sm:text-sm sm:leading-relaxed"
                     >
                       <div
                         v-for="(ln, i) in detailLinesFor(svc)"
@@ -171,6 +172,12 @@ const emit = defineEmits<{
 }>();
 
 const modalOpen = ref(false);
+const cartTrigger = ref<HTMLButtonElement | null>(null);
+function restoreCartFocus(event: Event) {
+  if (!cartTrigger.value?.isConnected) return;
+  event.preventDefault();
+  cartTrigger.value.focus({ preventScroll: true });
+}
 const config = useRuntimeConfig();
 
 const modalTitle = computed(() => {
@@ -181,7 +188,7 @@ const modalTitle = computed(() => {
 const detailActionLabel = computed(() => {
   const n = props.selectedServices.length;
   if (n <= 0) return 'Aucun soin';
-  return n === 1 ? 'Voir le détail du soin' : 'Détails des soins';
+  return 'Voir les soins';
 });
 
 function emojiFor(svc: SelectedServiceInput): string {

@@ -34,8 +34,8 @@
             <span v-if="wave.actor?.display_name"> · par {{ wave.actor.display_name }}</span>
           </p>
           <ul v-if="wave.recipients.length" class="mt-2 max-h-24 overflow-y-auto text-xs text-muted">
-            <li v-for="r in wave.recipients.slice(0, 8)" :key="r.profile_id || r.id">
-              {{ r.display_name || r.profile_id || r.id }} ({{ roleLabel(r.role) }})
+            <li v-for="r in wave.recipients.slice(0, 8)" :key="r.id">
+              {{ r.display_name || r.id }} ({{ roleLabel(r.role) }})
             </li>
             <li v-if="wave.recipients.length > 8" class="italic">+ {{ wave.recipients.length - 8 }} autres</li>
           </ul>

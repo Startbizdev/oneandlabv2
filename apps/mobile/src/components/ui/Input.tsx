@@ -31,7 +31,7 @@ function resolveReturnKeyType(
   return returnKeyType;
 }
 
-interface InputProps extends TextInputProps {
+export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   hint?: string;
@@ -117,6 +117,7 @@ function InputComponent(
     blurOnSubmit: isMultiline ? false : (blurOnSubmitProp ?? true),
     submitBehavior: (isMultiline ? 'newline' : 'blurAndSubmit') as TextInputProps['submitBehavior'],
     accessibilityLabel: props.accessibilityLabel ?? label,
+    accessibilityHint: props.accessibilityHint ?? error ?? hint,
     placeholderTextColor: c.textTertiary,
     selectionColor: c.primary,
     cursorColor: c.primary,
@@ -144,7 +145,7 @@ function InputComponent(
         </Row>
       )}
 
-      {error ? <AppText style={styles.error}>{error}</AppText> : hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
+      {error ? <AppText style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</AppText> : hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
     </View>
   );
 }

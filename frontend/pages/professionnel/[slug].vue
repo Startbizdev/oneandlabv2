@@ -15,12 +15,8 @@ definePageMeta({
   layout: 'default',
 });
 
-const route = useRoute();
-const config = useRuntimeConfig();
 
-const profile = ref<any>(null);
-const loading = ref(true);
-const error = ref<string | null>(null);
+const { profile, loading, error, fetchProfile, locationLabel: metaLocation } = await usePublicProfile('pro');
 
 const defaultProFaq = [
   {
@@ -35,11 +31,6 @@ const defaultProFaq = [
 
 const faqToDisplay = computed(() => defaultProFaq);
 
-const metaLocation = computed(() => {
-  const p = profile.value;
-  if (!p) return '';
-  return (p.address || p.city_plain || '').toString().trim() || '';
-});
 
 useHead({
   title: computed(() => {
@@ -68,38 +59,4 @@ useHead({
   ],
 });
 
-const fetchProfile = async () => {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const slug = route.params.slug as string;
-    const base = config.public.apiBase || '/api';
-    const apiBase = import.meta.server && (base.startsWith('/') || !base.startsWith('http'))
-      ? 'http://127.0.0.1:8888/api'
-      : base;
-    const url = `${apiBase}/public/pro/${slug}`;
-
-    const response = await $fetch<{ success: boolean; data?: any; redirect?: boolean; new_slug?: string; error?: string }>(url, {
-      method: 'GET',
-    });
-
-    if (response.redirect && response.new_slug) {
-      await navigateTo(`/professionnel/${response.new_slug}`, { redirectCode: 301 });
-      return;
-    }
-
-    if (response.success && response.data) {
-      profile.value = response.data;
-    } else {
-      error.value = response.error || 'Profil introuvable';
-    }
-  } catch (e: any) {
-    error.value = e?.data?.error || e?.message || 'Impossible de charger ce profil';
-  } finally {
-    loading.value = false;
-  }
-};
-
-await fetchProfile();
 </script>

@@ -1,4 +1,4 @@
-import { careCategoryEmojiForCategory, isCareCategoryEmoji } from '@oneandlab/shared-utils'
+import { careSymbol, isCareCategoryEmoji } from '@oneandlab/shared-utils'
 
 /**
  * URL affichable pour une image de catégorie (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`).
@@ -23,24 +23,13 @@ export function resolveCareCategoryImageSrc(
 /**
  * Mappe une entrée care_categories (icône BDD) vers un nom d’icône Nuxt UI (UIcon).
  */
-export function resolveCareIconFromCategory(cat: { icon?: string | null; type: string }): string {
-  const raw = cat.icon && String(cat.icon).trim()
-  if (raw && isCareCategoryEmoji(raw)) {
-    return cat.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'
-  }
-  if (raw) {
-    if (raw.startsWith('medical-icon:')) return 'i-medical-icon-' + raw.slice('medical-icon:'.length)
-    if (raw.startsWith('healthicons:')) return 'i-healthicons-' + raw.slice('healthicons:'.length)
-    if (raw.startsWith('covid:')) return 'i-covid-' + raw.slice('covid:'.length)
-    const name = raw.replace(/^i-lucide-/, '').replace(/^lucide:/, '').replace(/\s+/g, '-').toLowerCase()
-    if (name) return `i-lucide-${name}`
-  }
-  return cat.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'
+export function resolveCareIconFromCategory(cat: { icon?: string | null; type: string; name?: string | null }): string {
+  return `i-lucide-${careSymbol({ type: cat.type, name: cat.name, label: cat.icon })}`
 }
 
 /** Couleur par défaut si besoin (analyses vs domicile) */
 export function defaultColorClassForCategory(type: string): string {
-  return type === 'blood_test' ? 'text-red-500' : 'text-blue-600'
+  return 'text-primary-800 dark:text-primary-200'
 }
 
 /** Couleur d’icône + fond de pastille (HSL, pas de doublon entre catégories du même écran) */
@@ -67,8 +56,8 @@ function careCategoryImageSrcForDisplay(
 }
 
 const ACCENT_FALLBACK: CareAccent = {
-  iconColor: 'hsl(217 88% 52%)',
-  tileBg: 'hsl(217 85% 96%)',
+  iconColor: 'var(--color-primary-800, #115e59)',
+  tileBg: 'var(--color-primary-50, #f0fdfa)',
 }
 
 /**
@@ -76,17 +65,7 @@ const ACCENT_FALLBACK: CareAccent = {
  * qui pourrait fusionner deux rangs si n est grand). Aucune collision entre catégories distinctes.
  */
 export function buildAccentMapForSortedIds(sortedUniqueIds: string[]): ReadonlyMap<string, CareAccent> {
-  const n = Math.max(sortedUniqueIds.length, 1)
-  const m = new Map<string, CareAccent>()
-  sortedUniqueIds.forEach((id, i) => {
-    const hue = (i * 360) / n
-    m.set(id, {
-      /** Icônes vives, fond pastel saturé (lisible, pas terne) */
-      iconColor: `hsl(${hue} 78% 46%)`,
-      tileBg: `hsl(${hue} 62% 94%)`,
-    })
-  })
-  return m
+  return new Map(sortedUniqueIds.map(id => [id, ACCENT_FALLBACK]))
 }
 
 export function getAccentFallback(): CareAccent {
@@ -209,20 +188,16 @@ export function careListBadgeDisplay(
 
   const categoryRow = idStr ? categories.find((c) => String(c.id) === idStr) : undefined
 
-  const emoji = careCategoryEmojiForCategory({
+  const iconName = resolveCareIconFromCategory({
     name: categoryRow?.name,
     icon: iconFromSource ?? null,
     type: typeStr,
   })
 
-  const iconName = resolveCareIconFromCategory({
-    icon: iconFromSource ?? null,
-    type: typeStr,
-  })
 
   const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
 
-  return { emoji, iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
+  return { emoji: '', iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }
 
 /**
@@ -279,17 +254,13 @@ export function careListBadgeForCatalogItem(
   }
 
   const row = catId ? categories.find((c) => String(c.id) === catId) : undefined
-  const emoji = careCategoryEmojiForCategory({
+  const iconName = resolveCareIconFromCategory({
     name: row?.name,
     icon: iconFromSource ?? null,
     type: typeStr,
   })
 
-  const iconName = resolveCareIconFromCategory({
-    icon: iconFromSource ?? null,
-    type: typeStr,
-  })
   const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
 
-  return { emoji, iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
+  return { emoji: '', iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }

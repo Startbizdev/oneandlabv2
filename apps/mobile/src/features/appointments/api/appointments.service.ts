@@ -34,7 +34,7 @@ export async function fetchAppointmentsPaginated(
   filters: AppointmentListFilters,
 ): Promise<{ appointments: Appointment[]; pagination: AppointmentsPagination }> {
   const res = await api.get<Appointment[]>(buildAppointmentsQuery(filters));
-  if (!res.success) {
+  if (!res.success || !Array.isArray(res.data)) {
     throw new Error(res.error ?? 'Erreur chargement RDV');
   }
   const p = res.pagination as
@@ -56,6 +56,21 @@ export async function fetchAppointmentsPaginated(
     appointments: res.data ?? [],
     pagination: { page, limit, total, pages, has_more },
   };
+}
+
+/** Calendar windows must include all pages: the server caps a page at 50 visits. */
+export async function fetchCalendarAppointments(filters: AppointmentListFilters): Promise<Appointment[]> {
+  const appointments: Appointment[] = [];
+  const ids = new Set<string>();
+  for (let page = 1; ; page++) {
+    const result = await fetchAppointmentsPaginated({ ...filters, page, limit: 50 });
+    const before = appointments.length;
+    for (const appointment of result.appointments) {
+      if (!ids.has(appointment.id)) { ids.add(appointment.id); appointments.push(appointment); }
+    }
+    if (!result.pagination.has_more && result.pagination.pages <= page) return appointments;
+    if (appointments.length === before) throw new Error('Le calendrier complet n’a pas pu être chargé. Réessayez.');
+  }
 }
 
 export async function fetchPendingOffers(role: string) {

@@ -254,6 +254,8 @@
 </template>
 
 <script setup lang="ts">
+import { appointmentTimeFrance, parseAppointmentDateFrance, createAppointmentRequestId } from '@oneandlab/shared-utils';
+const creationRequestId = ref(createAppointmentRequestId());
 import { apiFetch } from '~/utils/api'
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
 import { buildReschedulePutPayload, nurseCanRescheduleInPlace } from '~/utils/build-reschedule-payload'
@@ -404,7 +406,7 @@ function normalizeRescheduleDate(dateValue: string | null | undefined) {
   const raw = String(dateValue).trim()
   const originalYmd = /^\d{4}-\d{2}-\d{2}$/.test(raw)
     ? raw
-    : parisDateYmd(new Date(raw))
+    : parisDateYmd(parseAppointmentDateFrance(raw))
   if (!/^\d{4}-\d{2}-\d{2}$/.test(originalYmd)) return todayParis
   return originalYmd < todayParis ? todayParis : originalYmd
 }
@@ -445,14 +447,14 @@ function initFormFromAppointment() {
   availabilityRange.value = [9, 11]
   if (a.form_data?.availability) {
     try {
-      const av = JSON.parse(a.form_data.availability)
+      const av = typeof a.form_data.availability === 'string' ? JSON.parse(a.form_data.availability) : a.form_data.availability
       if (av.type === 'all_day') form.availability_type = 'all_day'
       else if (av.range?.length === 2) availabilityRange.value = [av.range[0], av.range[1]]
     } catch {
       /* ignore */
     }
   } else if (a.scheduled_at) {
-    const h = new Date(a.scheduled_at).getHours()
+    const h = Number((appointmentTimeFrance(a.scheduled_at) || '09:00').split(':')[0])
     const start = Math.max(6, Math.min(15, h))
     availabilityRange.value = [start, start + AVAILABILITY_MIN_SPAN_HOURS]
   }
@@ -595,7 +597,7 @@ async function submit() {
 
     const createRes = await apiFetch('/appointments', {
       method: 'POST',
-      body: { ...payload, ...staffConsentPayloadFields() },
+      body: { ...payload, ...staffConsentPayloadFields(), client_request_id: creationRequestId.value },
     })
     if (!createRes?.success || !createRes?.data?.id) {
       toast.add({ title: 'Erreur', description: (createRes as { error?: string })?.error || 'Impossible de créer le rendez-vous', color: 'error' })
@@ -629,6 +631,7 @@ async function submit() {
 }
 
 function close() {
+  creationRequestId.value = createAppointmentRequestId()
   isOpen.value = false
   step.value = 'choice'
   choiceMode.value = null

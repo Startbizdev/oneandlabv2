@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import {
   buildCareTileOrbColorMap,
@@ -45,11 +46,7 @@ export function RdvCareTagsRow({
   const c = useAppColors();
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const { data: categories = [] } = useAppointmentCareCategories();
-  const styleFactory = useMemo(
-    () => (colors: AppColors) => buildStyles(colors, density),
-    [density],
-  );
-  const styles = useThemedStyles(styleFactory, 'RdvCareTagsRow');
+  const styles = useThemedStyles(density === 'compact' ? buildCompactStyles : buildDefaultStyles, 'RdvCareTagsRow');
   const orbColorMap = useMemo(
     () => buildCareTileOrbColorMap(categories),
     [categories, colorblindType],
@@ -101,10 +98,8 @@ export function RdvCareTagsRow({
               },
             ]}
           >
-            <AppText style={styles.emoji} accessibilityElementsHidden>
-              {line.emoji}
-            </AppText>
-            <AppText style={styles.label} numberOfLines={1}>
+            <CarePictogram label={line.label} type={apt.type} size={compact ? 14 : 16} />
+            <AppText style={styles.label}>
               {line.label}
             </AppText>
           </Row>
@@ -113,6 +108,9 @@ export function RdvCareTagsRow({
     </Row>
   );
 }
+
+function buildDefaultStyles(c: AppColors) { return buildStyles(c, 'default'); }
+function buildCompactStyles(c: AppColors) { return buildStyles(c, 'compact'); }
 
 function buildStyles(c: AppColors, density: 'default' | 'compact') {
   const type = buildRdvListCardTypography(c);
@@ -137,6 +135,8 @@ function buildStyles(c: AppColors, density: 'default' | 'compact') {
       lineHeight: lh(labelSize),
     },
     label: {
+      flexShrink: 1,
+      minWidth: 0,
       fontFamily: type.careTag.fontFamily,
       fontSize: labelSize,
       lineHeight: lh(labelSize),

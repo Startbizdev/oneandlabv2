@@ -12,23 +12,27 @@
     <template v-else-if="fatalError">
       <UIcon name="i-lucide-circle-x" class="size-12 text-error" aria-hidden="true" />
       <div class="space-y-2">
-        <h1 class="text-xl font-semibold text-foreground">Paiement enregistré, création RDV impossible</h1>
+        <h1 class="text-xl font-semibold text-foreground">{{ errorTitle }}</h1>
         <p class="text-sm text-muted">{{ fatalError }}</p>
       </div>
-      <UButton color="primary" to="/patient">Mon espace</UButton>
+      <div class="flex flex-wrap justify-center gap-3">
+        <UButton color="primary" @click="startPolling">Vérifier à nouveau</UButton>
+        <UButton color="neutral" variant="outline" to="/patient">Mes rendez-vous</UButton>
+      </div>
     </template>
 
     <template v-else-if="pollStatus === 'completed'">
       <UIcon name="i-lucide-circle-check" class="size-12 text-success" aria-hidden="true" />
       <div class="space-y-2">
-        <h1 class="text-xl font-semibold text-foreground">Merci&nbsp;!</h1>
-        <p class="text-sm text-muted">Votre rendez-vous est confirmé avec l’option Horaire VIP.</p>
+        <h1 class="text-xl font-semibold text-foreground">Demande enregistrée</h1>
+        <p class="text-sm text-muted">Retrouvez vos rendez-vous et suivez leur prise en charge dans votre espace patient.</p>
       </div>
       <p class="text-xs text-muted">Redirection automatique vers votre liste de rendez-vous…</p>
+      <UButton color="primary" to="/patient">Mes rendez-vous</UButton>
     </template>
 
     <template v-else>
-      <div class="relative">
+      <div class="relative" role="status" aria-label="Vérification de la réservation">
         <UIcon name="i-lucide-loader-circle" class="size-14 animate-spin text-primary" aria-hidden="true" />
       </div>
       <div class="space-y-2">
@@ -46,7 +50,8 @@ import { apiFetch } from '~/utils/api';
 
 definePageMeta({
   layout: 'patient',
-  middleware: ['auth'],
+  middleware: ['auth', 'role'],
+  role: 'patient',
 });
 
 const route = useRoute();
@@ -59,71 +64,83 @@ const sessionIdParam = computed(() => {
 
 const pollStatus = ref<'idle' | 'pending' | 'completed' | 'failed'>('idle');
 const fatalError = ref('');
+const errorTitle = ref('Vérification indisponible');
+useHead({ title: 'Suivi de votre réservation | Cary', meta: [{ name: 'robots', content: 'noindex, nofollow' }] });
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let redirectTimer: ReturnType<typeof setTimeout> | null = null;
+let generation = 0;
 let attempts = 0;
 const maxAttempts = 50;
 
-async function pollOnce() {
-  if (!sessionIdParam.value) return;
+function stopTimers() {
+  if (pollTimer) clearTimeout(pollTimer);
+  if (redirectTimer) clearTimeout(redirectTimer);
+  pollTimer = null;
+  redirectTimer = null;
+}
+
+function startPolling() {
+  stopTimers();
+  const version = ++generation;
+  fatalError.value = '';
+  attempts = 0;
+  if (!sessionIdParam.value) { pollStatus.value = 'idle'; return; }
+  pollStatus.value = 'pending';
+  void pollOnce(version, sessionIdParam.value);
+}
+
+async function pollOnce(version: number, sessionId: string) {
+  if (version !== generation) return;
   attempts += 1;
   if (attempts > maxAttempts) {
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = null;
+    errorTitle.value = 'Confirmation en attente';
     fatalError.value =
-      'La confirmation prend plus de temps que prévu. Vos rendez-vous peuvent être disponibles sous peu : vérifiez votre espace patient.';
+      'La confirmation prend plus de temps que prévu. Vérifiez vos rendez-vous avant de recommencer un paiement.';
     pollStatus.value = 'failed';
     return;
   }
   try {
     const res = (await apiFetch(
-      `/patient/booking-draft/status?session_id=${encodeURIComponent(sessionIdParam.value)}`,
+      `/patient/booking-draft/status?session_id=${encodeURIComponent(sessionId)}`,
       { method: 'GET' },
     )) as { success?: boolean; data?: { status?: string; error_message?: string } };
-    if (!res?.success) {
-      return;
-    }
+    if (version !== generation) return;
+    if (!res?.success) throw new Error('Vérification indisponible');
     const st = String(res.data?.status ?? '');
     if (st === 'completed') {
       pollStatus.value = 'completed';
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = null;
-      setTimeout(() => {
-        try {
-          void router.replace('/patient');
-        } catch {
-          if (typeof window !== 'undefined') window.location.assign('/patient');
-        }
+      redirectTimer = setTimeout(() => {
+        if (version === generation) void router.replace('/patient').catch(() => { /* The visible link remains available. */ });
       }, 1200);
       return;
     }
     if (st === 'failed') {
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = null;
-      fatalError.value = String(res.data?.error_message ?? 'Une erreur est survenue après le paiement.');
+      errorTitle.value = 'Réservation à vérifier';
+      fatalError.value = 'Votre demande n’a pas pu être finalisée. Consultez votre espace patient ou contactez-nous avant de recommencer un paiement.';
       pollStatus.value = 'failed';
+      return;
     }
     if (st === 'expired') {
-      if (pollTimer) clearInterval(pollTimer);
-      pollTimer = null;
-      fatalError.value = 'Le brouillon a expiré. Reprenez la réservation si besoin.';
+      errorTitle.value = 'Session expirée';
+      fatalError.value = 'Cette session a expiré. Vérifiez votre espace patient pour connaître les rendez-vous déjà enregistrés.';
       pollStatus.value = 'failed';
+      return;
     }
+    pollTimer = setTimeout(() => { void pollOnce(version, sessionId); }, 1500);
   } catch {
-    /* continue polling */
+    if (version !== generation) return;
+    errorTitle.value = 'Vérification indisponible';
+    fatalError.value = 'Nous ne pouvons pas vérifier votre réservation pour le moment. Réessayez la vérification ou consultez vos rendez-vous.';
+    pollStatus.value = 'failed';
   }
 }
 
-onMounted(() => {
-  if (!sessionIdParam.value) return;
-  pollStatus.value = 'pending';
-  void pollOnce();
-  pollTimer = setInterval(() => {
-    void pollOnce();
-  }, 1500);
-});
+onMounted(startPolling);
+watch(sessionIdParam, startPolling);
 
 onBeforeUnmount(() => {
-  if (pollTimer) clearInterval(pollTimer);
+  generation++;
+  stopTimers();
 });
 </script>

@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { getAppColors } from '@/theme/colors';
+import { useAppColors } from '@/theme/use-app-colors';
 import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import {
@@ -191,6 +191,7 @@ export function CoverageSquareMapLive({
   onDragEnd,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'CoverageSquareMapLive');
+  const colors = useAppColors();
   const sessionVertices = useRef<CoverageVertex[] | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const center = useMemo(() => ({ lat, lng }), [lat, lng]);
@@ -207,7 +208,6 @@ export function CoverageSquareMapLive({
     : '';
 
   const html = useMemo(() => {
-    const colors = getAppColors();
     const verts = ensureSixVertices(center, verticesProp ?? null, halfSideKm);
     sessionVertices.current = verts;
     const mapZoom = zoomForCoverageHalfSideKm(maxVertexDistanceKm(center, verts));
@@ -224,7 +224,7 @@ export function CoverageSquareMapLive({
     );
     // readOnlyVertsKey : preview seulement ; mapInitKey : (re)montage éditeur
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapInitKey, readOnlyVertsKey]);
+  }, [mapInitKey, readOnlyVertsKey, colors.primary, colors.primaryMid]);
 
   const webViewKey = `${mapInitKey}|${readOnlyVertsKey}`;
 
@@ -294,7 +294,7 @@ export function CoverageSquareMapLive({
 }
 
 function buildStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     wrap: { gap: spacing[2] },
     webview: {
       width: '100%',
@@ -321,5 +321,5 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

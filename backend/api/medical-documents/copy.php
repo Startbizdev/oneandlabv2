@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentSubject.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -69,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 md.document_type,
                 md.file_dek,
                 md.appointment_id,
-                a.patient_id
+                a.patient_id,
+                md.patient_id AS standalone_patient_id,
+                a.relative_id AS source_relative_id
             FROM medical_documents md
             LEFT JOIN appointments a ON md.appointment_id = a.id
             WHERE md.id = ?
@@ -97,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $appointmentPatientId = $appointment['patient_id'];
         $appointmentRelativeId = $appointment['relative_id'] ?? null;
         $sourceDocumentPatientId = $sourceDoc['patient_id']; // NULL si document de profil (appointment_id NULL)
-        $sourceDocumentRelativeId = null;
+        $sourceDocumentRelativeId = $sourceDoc['source_relative_id'] ?? null;
         
         // Document de profil : récupérer patient_id via patient_documents ou patient_relative_documents
         if ($sourceDocumentPatientId === null) {
@@ -120,6 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
+        $sourceDocumentPatientId ??= $sourceDoc['standalone_patient_id'] ?? null;
+
         $allowed = false;
         if ($user['role'] === 'super_admin') {
             $allowed = true;
@@ -165,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['success' => false, 'error' => 'Le document ne concerne pas le patient de ce rendez-vous']);
             exit;
         }
-        if ($appointmentRelativeId && $sourceDocumentRelativeId !== $appointmentRelativeId) {
+        if (!MedicalDocumentSubject::matches($sourceDocumentPatientId, $sourceDocumentRelativeId, $appointmentPatientId, $appointmentRelativeId)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Le document ne concerne pas le proche de ce rendez-vous']);
             exit;
@@ -292,4 +297,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);
 }
-

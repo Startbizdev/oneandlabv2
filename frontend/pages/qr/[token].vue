@@ -14,17 +14,22 @@ useHead({
 if (import.meta.server && token.value) {
   const apiBase = (config.public as { apiBase?: string }).apiBase || 'https://cary.bio/api';
   const siteUrl = (config.public as { siteUrl?: string }).siteUrl || 'https://cary.bio';
-  const base = apiBase.startsWith('http') ? apiBase : `${siteUrl.replace(/\/$/, '')}${apiBase}`;
+  const base = apiBase.startsWith('http') ? apiBase : (config.apiInternalBase || `${siteUrl.replace(/\/$/, '')}${apiBase}`);
+  let destination = '';
   try {
     const res = await $fetch<{ success: boolean; data?: { redirect_url?: string } }>(
       `${base}/qr/resolve?token=${encodeURIComponent(token.value)}`,
     );
     if (res.success && res.data?.redirect_url) {
-      await navigateTo(res.data.redirect_url, { redirectCode: 302, external: false });
+      const target = new URL(res.data.redirect_url, siteUrl);
+      if (target.origin === new URL(siteUrl).origin && target.pathname === '/rendez-vous/nouveau') {
+        destination = target.pathname + target.search + target.hash;
+      }
     }
   } catch {
-    await navigateTo(`${siteUrl}/rendez-vous/nouveau`, { redirectCode: 302, external: false });
+    // Keep the token: the client can retry the existing QR redirect endpoint.
   }
+  if (destination) await navigateTo(destination, { redirectCode: 302, external: false });
 }
 
 onMounted(async () => {

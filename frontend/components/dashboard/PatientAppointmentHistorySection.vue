@@ -254,7 +254,7 @@ async function downloadResult(doc: HistoryDocument) {
   downloadingIds.value = next;
   try {
     const config = useRuntimeConfig();
-    const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+    const apiBase = config.public.apiBase || '/api';
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const response = await fetch(`${apiBase}/medical-documents/${encodeURIComponent(doc.id)}/download`, {
       method: 'GET',

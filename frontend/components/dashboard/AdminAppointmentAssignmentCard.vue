@@ -72,7 +72,7 @@
                     title="Aucun laboratoire"
                     description="Aucun labo actif ne correspond à votre recherche."
                     variant="naked"
-                    size="sm"
+                    size="md"
                   />
                 </template>
               </USelectMenu>
@@ -107,7 +107,7 @@
                     title="Aucun préleveur"
                     description="Aucun préleveur rattaché à ce laboratoire."
                     variant="naked"
-                    size="sm"
+                    size="md"
                   />
                 </template>
               </USelectMenu>
@@ -153,7 +153,7 @@
                 title="Aucun infirmier"
                 description="Aucun infirmier actif ne correspond à votre recherche."
                 variant="naked"
-                size="sm"
+                size="md"
               />
             </template>
           </USelectMenu>

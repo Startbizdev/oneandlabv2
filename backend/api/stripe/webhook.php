@@ -75,6 +75,7 @@ if ($type === 'checkout.session.completed') {
             echo json_encode(['received' => true, 'ignored' => true, 'reason' => 'payment_incomplete']);
             exit;
         }
+        $fileJournal = new BookingFileJournal();
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare('SELECT * FROM patient_booking_drafts WHERE id = ? FOR UPDATE');
@@ -117,22 +118,14 @@ if ($type === 'checkout.session.completed') {
                     exit;
                 }
             }
-            $pdo->commit();
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            error_log('patient_booking_draft_lock: ' . $e->getMessage());
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'lock_failed']);
-            exit;
-        }
-
-        try {
-            $createdIds = PatientBookingDraftExecutor::run($pdo, $draft + ['stripe_checkout_session_id' => (string) $session->id]);
+            $afterCommit = [];
+            $createdIds = PatientBookingDraftExecutor::run($pdo, $draft + ['stripe_checkout_session_id' => (string) $session->id], $afterCommit, $fileJournal);
             $pdo->prepare(
                 'UPDATE patient_booking_drafts SET status = ?, completed_at = NOW(), created_appointment_ids_json = ?, error_message = NULL WHERE id = ?'
             )->execute(['completed', json_encode($createdIds), $draftId]);
+            $pdo->commit();
+            $fileJournal->commit();
+            PatientBookingDraftExecutor::afterCommit($pdo, $afterCommit);
             try {
                 require_once __DIR__ . '/../../lib/AdminEmailNotifier.php';
                 require_once __DIR__ . '/../../models/User.php';
@@ -151,9 +144,13 @@ if ($type === 'checkout.session.completed') {
             echo json_encode(['received' => true]);
             exit;
         } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $fileJournal->rollback($pdo);
             error_log('patient_booking_draft_finalize: ' . $e->getMessage());
-            $pdo->prepare('UPDATE patient_booking_drafts SET status = ?, error_message = ? WHERE id = ?')->execute([
-                'failed',
+            // The entire attempt rolled back: retain the payable state for Stripe's retry.
+            $pdo->prepare("UPDATE patient_booking_drafts SET error_message = ? WHERE id = ? AND status IN ('pending_payment', 'paid_processing')")->execute([
                 substr((string) $e->getMessage(), 0, 2000),
                 $draftId,
             ]);

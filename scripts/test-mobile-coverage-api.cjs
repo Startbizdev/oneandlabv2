@@ -1,0 +1,35 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const Module = require('node:module');
+const path = require('node:path');
+const ts = require('typescript');
+const file = path.resolve(__dirname, '../apps/mobile/src/features/profile/api/profile.service.ts');
+let response = { success: false, error: 'Refus synthétique' };
+const requests = [];
+const api = Object.fromEntries(['get', 'post'].map(method => [method, async (url, body) => {
+  requests.push({ method, url, body });
+  return response;
+}]));
+const compiled = new Module(file);
+compiled.require = name => name === '@/api/client' ? { api } : require(name);
+compiled._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, file);
+const { fetchCoverageZones, saveCoverageZone } = compiled.exports;
+(async () => {
+  const body = { center_lat: 48.85, center_lng: 2.35, radius_km: 12, zone_type: 'polygon', role: 'nurse', bounds_json: { vertices: [{ lat: 48.85, lng: 2.35 }] } };
+  await assert.rejects(fetchCoverageZones('nurse/id', 'nurse'), /Refus/);
+  await assert.rejects(saveCoverageZone(body), /Refus/);
+  assert.equal(requests[0].url, '/coverage-zones?owner_id=nurse%2Fid&role=nurse');
+  response = { success: true, data: null };
+  await assert.rejects(fetchCoverageZones('nurse/id', 'nurse'), /indisponible/);
+  response = { success: true, data: [] };
+  assert.deepEqual((await fetchCoverageZones('nurse/id', 'nurse')).data, []);
+  response = { success: true, data: { id: 'first-zone' } };
+  assert.equal((await saveCoverageZone(body)).data.id, 'first-zone');
+  assert.deepEqual(requests.at(-1).body, body);
+  response = { success: false };
+  await assert.rejects(saveCoverageZone(body), /impossible/);
+  response = { success: true, data: { id: 'first-zone' } };
+  assert.equal((await saveCoverageZone(body)).success, true);
+  assert.deepEqual(requests.at(-1).body, body);
+  console.log('10 assertions passed: coverage load/save refusal, empty initial zone, invalid data, encoded owner and preserved polygon retry.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

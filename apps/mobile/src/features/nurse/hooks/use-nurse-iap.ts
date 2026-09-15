@@ -28,7 +28,7 @@ async function verifyPurchaseOnServer(purchase: Purchase): Promise<NurseIapSubsc
       transactionId: purchase.transactionId ?? undefined,
       signedTransaction: purchase.purchaseToken ?? undefined,
     });
-    if (!res.data) {
+    if (!res.success || !res.data) {
       throw new Error(res.error ?? 'Validation serveur échouée');
     }
     return res.data;
@@ -43,7 +43,7 @@ async function verifyPurchaseOnServer(purchase: Purchase): Promise<NurseIapSubsc
       productId: purchase.productId,
       purchaseToken: token,
     });
-    if (!res.data) {
+    if (!res.success || !res.data) {
       throw new Error(res.error ?? 'Validation serveur échouée');
     }
     return res.data;
@@ -64,7 +64,8 @@ export function useNurseIap() {
     queryKey: queryKeys.iap.subscription,
     queryFn: async () => {
       const res = await fetchNurseIapSubscription();
-      return res.data ?? null;
+      if (!res.success || !res.data) throw new Error('Impossible de vérifier votre abonnement. Réessayez.');
+      return res.data;
     },
   });
 
@@ -78,11 +79,11 @@ export function useNurseIap() {
     onPurchaseSuccess: async (purchase) => {
       setPurchaseLoading(true);
       try {
-        await verifyPurchaseOnServer(purchase);
+        const verified = await verifyPurchaseOnServer(purchase);
         await finishRef.current?.(purchase);
         await qc.invalidateQueries({ queryKey: queryKeys.iap.subscription });
         await qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
-        toast('Abonnement Cary Pro activé', { type: 'success' });
+        toast(verified.plan_slug === 'nurse_pro' ? 'Abonnement Cary Pro activé' : 'Achat vérifié. Aucun abonnement Pro actif pour cet achat.', { type: verified.plan_slug === 'nurse_pro' ? 'success' : 'info' });
       } catch (error) {
         handleApiError(error, toast, 'iap-verify');
       } finally {
@@ -96,10 +97,7 @@ export function useNurseIap() {
       }
       let message = error.message || 'Achat impossible';
       if (error.code === ErrorCode.EmptySkuList) {
-        message =
-          Platform.OS === 'ios'
-            ? 'Produit App Store introuvable. Vérifiez que cary.pro.monthly est actif dans App Store Connect (accord Paid Apps signé) et testez avec un build EAS natif.'
-            : 'Produit Google Play introuvable ou offerToken manquant.';
+        message = 'Cette offre est temporairement indisponible dans la boutique. Réessayez plus tard.';
       }
       toast(message, { type: 'error' });
     },
@@ -116,10 +114,12 @@ export function useNurseIap() {
     setStoreLoading(true);
     try {
       await fetchProducts({ skus: [NURSE_IAP_PRODUCT_ID], type: 'subs' });
+    } catch (error) {
+      handleApiError(error, toast, 'iap-products');
     } finally {
       setStoreLoading(false);
     }
-  }, [connected, fetchProducts]);
+  }, [connected, fetchProducts, toast]);
 
   useEffect(() => {
     if (!connected) {
@@ -136,6 +136,11 @@ export function useNurseIap() {
   const localizedProPrice = storeProduct?.displayPrice ?? null;
 
   const purchasePro = useCallback(async () => {
+    if (purchaseLoading || restoreLoading) return;
+    if (subscriptionQ.isError || subscriptionQ.isFetching || !subscriptionQ.data) {
+      toast('Vérifiez votre abonnement avant de souscrire. Réessayez le chargement.', { type: 'error' });
+      return;
+    }
     if (!connected) {
       toast('Boutique indisponible, réessayez dans un instant', { type: 'error' });
       return;
@@ -152,6 +157,9 @@ export function useNurseIap() {
       setStoreLoading(true);
       try {
         product = await loadStoreProductFromStore(NURSE_IAP_PRODUCT_ID);
+      } catch (error) {
+        handleApiError(error, toast, 'iap-products');
+        return;
       } finally {
         setStoreLoading(false);
       }
@@ -159,7 +167,7 @@ export function useNurseIap() {
 
     if (!product) {
       toast(
-        `Produit « ${NURSE_IAP_PRODUCT_ID} » introuvable dans la boutique. Vérifiez qu’il est actif dans ${Platform.OS === 'ios' ? 'App Store Connect' : 'Google Play Console'} et testez avec un build natif (pas Expo Go).`,
+        'Cette offre est temporairement indisponible dans la boutique. Réessayez plus tard.',
         { type: 'error' },
       );
       return;
@@ -192,12 +200,17 @@ export function useNurseIap() {
     }
   }, [
     connected,
+    purchaseLoading,
+    restoreLoading,
     storeProduct,
-    subscriptionQ.data?.can_purchase_store,
+    subscriptionQ.data,
+    subscriptionQ.isError,
+    subscriptionQ.isFetching,
     toast,
   ]);
 
   const restore = useCallback(async () => {
+    if (restoreLoading || purchaseLoading) return;
     if (!connected) {
       toast('Boutique indisponible', { type: 'error' });
       return;
@@ -207,20 +220,23 @@ export function useNurseIap() {
       await restorePurchases();
       const purchases = await getAvailablePurchases({ onlyIncludeActiveItemsIOS: true });
       let verified = false;
+      let verificationFailed = false;
       for (const purchase of purchases) {
         if (purchase.productId !== NURSE_IAP_PRODUCT_ID) {
           continue;
         }
         try {
-          await verifyPurchaseOnServer(purchase);
+          const subscription = await verifyPurchaseOnServer(purchase);
           await finishTransaction({ purchase, isConsumable: false });
-          verified = true;
+          verified = verified || subscription.plan_slug === 'nurse_pro';
         } catch (error) {
+          verificationFailed = true;
           handleApiError(error, toast, 'iap-restore-verify');
         }
       }
       await qc.invalidateQueries({ queryKey: queryKeys.iap.subscription });
       await qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
+      if (!verified && verificationFailed) return;
       toast(
         verified ? 'Abonnement restauré' : 'Aucun abonnement Cary Pro à restaurer',
         { type: verified ? 'success' : 'info' },
@@ -230,13 +246,14 @@ export function useNurseIap() {
     } finally {
       setRestoreLoading(false);
     }
-  }, [connected, finishTransaction, qc, restorePurchases, toast]);
+  }, [connected, finishTransaction, qc, restorePurchases, toast, restoreLoading, purchaseLoading]);
 
   return {
     connected,
     storeLoading,
     subscription: subscriptionQ.data,
-    subscriptionLoading: subscriptionQ.isLoading,
+    subscriptionLoading: subscriptionQ.isFetching,
+    subscriptionError: subscriptionQ.isError,
     refetchSubscription: subscriptionQ.refetch,
     localizedProPrice,
     purchasePro,

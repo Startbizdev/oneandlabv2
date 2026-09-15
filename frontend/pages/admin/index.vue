@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout
     title="Tableau de bord"
-    description="Vue d'ensemble de la plateforme Cary — statistiques, derniers rendez-vous et activité en temps réel."
+    description="L’activité de Cary en un coup d’œil."
     :loading="loading"
     :error="error"
     :stats-cards="statsCards"
@@ -30,77 +30,42 @@
       <template v-if="data">
           <!-- Historique des rendez-vous -->
           <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-              <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
+              <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
                 <UIcon name="i-lucide-calendar-clock" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Historique des rendez-vous
               </h2>
-              <UButton variant="ghost" size="xs" to="/admin/appointments">Voir tout</UButton>
+              <UButton variant="ghost" size="sm" to="/admin/appointments">Voir tout</UButton>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[640px] text-left text-sm">
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                  <tr
-                    v-for="rdv in data.lastAppointments"
-                    :key="rdv.id"
-                    class="hover:bg-gray-50/80 dark:hover:bg-gray-800/50"
-                  >
-                    <td class="px-4 py-2.5 font-medium text-gray-900 dark:text-white md:px-5">
-                      {{ getPatientName(rdv) }}
-                    </td>
-                    <td class="px-4 py-2.5 md:px-5">
-                      <UBadge
-                        v-if="rdv.type === 'blood_test'"
-                        color="error"
-                        variant="soft"
-                        size="xs"
-                        leading-icon="i-lucide-syringe"
-                      >
-                        Prélèvement
-                      </UBadge>
-                      <UBadge
-                        v-else
-                        color="info"
-                        variant="soft"
-                        size="xs"
-                        leading-icon="i-lucide-stethoscope"
-                      >
-                        Soins infirmiers
-                      </UBadge>
-                    </td>
-                    <td class="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-400 md:px-5">
-                      {{ rdv.scheduled_at ? formatDateOnly(rdv.scheduled_at) : '—' }}
-                    </td>
-                    <td class="px-4 py-2.5 text-xs text-gray-600 dark:text-gray-400 md:px-5">
-                      {{ getCreneauHoraire(rdv) }}
-                    </td>
-                    <td class="px-4 py-2.5 md:px-5">
-                      <UBadge :color="getStatusColor(rdv.status)" variant="soft" size="xs">
-                        {{ getStatusLabel(rdv.status) }}
-                      </UBadge>
-                    </td>
-                    <td class="px-4 py-2.5 md:px-5">
-                      <UButton size="xs" variant="ghost" icon="i-lucide-eye" :to="`/admin/appointments/${rdv.id}`" />
-                    </td>
-                  </tr>
-                  <tr v-if="data.lastAppointments.length === 0">
-                    <td colspan="6" class="px-4 py-8 text-center text-xs text-gray-500 dark:text-gray-400 md:px-5">
-                      Aucun rendez-vous récent.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800" role="list">
+              <li v-for="rdv in data.lastAppointments" :key="rdv.id">
+                <NuxtLink :to="`/admin/appointments/${rdv.id}`" class="group flex min-w-0 items-center gap-3 px-4 py-4 transition-colors hover:bg-gray-50 sm:px-5 dark:hover:bg-gray-800/50">
+                  <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    <UIcon :name="rdv.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-stethoscope'" class="size-5" aria-hidden="true" />
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p class="break-words text-sm font-semibold text-gray-900 dark:text-white">{{ getPatientName(rdv) }}</p>
+                      <UBadge :color="getStatusColor(rdv.status)" variant="soft" size="sm">{{ getStatusLabel(rdv.status) }}</UBadge>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ rdv.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}</p>
+                    <p class="mt-1 text-sm tabular-nums text-gray-500 dark:text-gray-400">{{ rdv.scheduled_at ? formatDateOnly(rdv.scheduled_at) : 'Date à définir' }} · {{ getCreneauHoraire(rdv) }}</p>
+                  </div>
+                  <UIcon name="i-lucide-chevron-right" class="size-4 shrink-0 text-gray-400 group-hover:text-primary-700" aria-hidden="true" />
+                </NuxtLink>
+              </li>
+              <li v-if="data.lastAppointments.length === 0" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">Aucun rendez-vous récent.</li>
+            </ul>
           </section>
 
           <!-- Derniers inscrits -->
           <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-              <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
+              <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
                 <UIcon name="i-lucide-user-plus" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Derniers inscrits
               </h2>
-              <UButton variant="ghost" size="xs" to="/admin/users">Voir tout</UButton>
+              <UButton variant="ghost" size="sm" to="/admin/users">Voir tout</UButton>
             </div>
             <ul class="divide-y divide-gray-200 dark:divide-gray-800" role="list">
               <li v-for="u in data.lastUsers" :key="u.id">
@@ -125,7 +90,7 @@
                     </p>
                   </div>
                   <div class="flex shrink-0 items-center gap-2 sm:gap-3">
-                    <UBadge :color="getRoleBadgeColor(u.role)" variant="soft" size="xs" class="tabular-nums">
+                    <UBadge :color="resolveUiColor(getRoleBadgeColor(u.role))" variant="soft" size="sm" class="tabular-nums">
                       {{ getRoleLabel(u.role) }}
                     </UBadge>
                     <time
@@ -155,7 +120,7 @@
           <section class="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-                <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+                <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
                   <UIcon name="i-lucide-activity" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Dernières activités
                 </h2>
@@ -178,7 +143,7 @@
             </div>
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
               <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800 md:px-5">
-                <h2 class="flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+                <h2 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
                   <UIcon name="i-lucide-user-cog" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   Mises à jour compte
                 </h2>
@@ -195,7 +160,7 @@
                         {{ profileUpdateName(p) }}
                       </p>
                       <div class="mt-0.5">
-                        <UBadge :color="getRoleBadgeColor(p.role)" variant="soft" size="xs">{{ getRoleLabel(p.role) }}</UBadge>
+                        <UBadge :color="resolveUiColor(getRoleBadgeColor(p.role))" variant="soft" size="sm">{{ getRoleLabel(p.role) }}</UBadge>
                       </div>
                     </div>
                     <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">{{ formatDateShort(p.updated_at) }}</span>
@@ -213,7 +178,7 @@
     <template #sidebar>
       <template v-if="data">
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
               <UIcon name="i-lucide-users" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Répartition comptes
             </h3>
@@ -230,7 +195,7 @@
           </div>
 
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
               <UIcon name="i-lucide-pie-chart" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Bilan historique RDV
             </h3>
@@ -258,7 +223,7 @@
           </div>
 
           <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 md:p-5">
-            <h3 class="mb-3 flex items-center gap-2 text-sm font-normal text-gray-900 dark:text-white">
+            <h3 class="mb-3 flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
               <UIcon name="i-lucide-zap" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Accès rapide
             </h3>
@@ -280,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor } from "~/utils/ui-appearance";
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth', 'role'],
@@ -330,7 +296,7 @@ const roleStats = [
   { key: 'subaccount', label: 'Sous-labos' },
   { key: 'preleveur', label: 'Préleveurs' },
   { key: 'pro', label: 'Pros santé' },
-];
+] as const;
 
 const bilanRdvItems = [
   { key: 'pending', label: 'En attente', icon: 'i-lucide-clock' },
@@ -339,7 +305,7 @@ const bilanRdvItems = [
   { key: 'completed', label: 'Terminé', icon: 'i-lucide-circle-check' },
   { key: 'canceled', label: 'Annulé', icon: 'i-lucide-x-circle' },
   { key: 'refused', label: 'Refusé', icon: 'i-lucide-ban' },
-];
+] as const;
 
 
 const quickLinks = [
@@ -417,8 +383,8 @@ function getStatusLabel(status: string): string {
 }
 
 /** Couleurs Nuxt UI : primary, success, info, warning, error, neutral */
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
+function getStatusColor(status: string): 'primary' | 'success' | 'info' | 'warning' | 'error' | 'neutral' {
+  const colors: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'> = {
     pending: 'warning',
     confirmed: 'info',
     planned: 'info',

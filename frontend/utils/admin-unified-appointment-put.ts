@@ -4,35 +4,14 @@
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
 import type { SelectedServiceInput } from '~/utils/dashboard-unified-rdv';
 
-function toIsoScheduledAt(raw: unknown): string | undefined {
-  if (raw == null || typeof raw !== 'string' || raw.trim() === '') return undefined;
-  const s = raw.trim();
-  if (s.includes('T') && s.length >= 16) {
-    try {
-      const d = new Date(s);
-      if (!Number.isNaN(d.getTime())) return d.toISOString();
-    } catch {
-      /* ignore */
-    }
-  }
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const datePart = s.slice(0, 10);
-    const timePart = s.includes(' ') ? s.slice(11).trim() : '';
-    const time =
-      timePart && /^\d{1,2}:\d{2}/.test(timePart)
-        ? timePart.length === 5
-          ? `${timePart}:00`
-          : timePart
-        : '09:00:00';
-    const local = `${datePart} ${time.includes(':') && time.split(':').length === 2 ? `${time}:00` : time}`;
-    try {
-      const d = new Date(local.replace(' ', 'T'));
-      if (!Number.isNaN(d.getTime())) return d.toISOString();
-    } catch {
-      /* ignore */
-    }
-  }
-  return s;
+function toAppointmentScheduledAt(raw: unknown): string | undefined {
+  if (typeof raw !== 'string' || !raw.trim()) return undefined;
+  const value = raw.trim();
+  // An entered clock time belongs to France, independently of the browser timezone.
+  const local = value.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::(\d{2}))?)?$/);
+  if (local) return `${local[1]} ${local[2] || '09:00'}:${local[3] || '00'}`;
+  // Explicit instants retain their offset; the API converts them to Europe/Paris.
+  return value;
 }
 
 function stripFilesFromFormData(fd: unknown): Record<string, unknown> {
@@ -64,13 +43,23 @@ export function buildAdminAppointmentPutBody(
   const type = first?.type ?? '';
 
   const scheduled =
-    toIsoScheduledAt(unifiedPayload.scheduled_at) ||
-    toIsoScheduledAt((unifiedPayload.form_data as Record<string, unknown> | undefined)?.scheduled_at);
+    toAppointmentScheduledAt(unifiedPayload.scheduled_at) ||
+    toAppointmentScheduledAt((unifiedPayload.form_data as Record<string, unknown> | undefined)?.scheduled_at);
 
   const address = unifiedPayload.address as Record<string, unknown> | null | undefined;
 
   const rawFd = unifiedPayload.form_data as Record<string, unknown> | undefined;
   const form_data = stripFilesFromFormData(rawFd || {});
+  if (selected.length && (isBloodTestAppointment(type) || isNursingAppointment(type))) {
+    const itemKey = isBloodTestAppointment(type) ? 'blood_test_items' : 'nursing_items';
+    const perService = unifiedPayload.formDataByService as Record<string, Record<string, unknown>> | undefined;
+    form_data[itemKey] = selected.map((service, index) => ({
+      category_id: service.category_id ?? null,
+      label: service.name,
+      care_options: perService?.[service.id]?.care_options ?? (selected.length === 1 ? form_data.care_options : {}) ?? {},
+      sort_order: index,
+    }));
+  }
 
   const category_id =
     opts.category_id != null && String(opts.category_id).trim() !== ''
@@ -112,10 +101,12 @@ export function buildAdminAppointmentPutBody(
 /** Fichiers binaires à uploader après PUT (médecine — même champ que AppointmentForm). */
 export function extractUnifiedPayloadFiles(payload: Record<string, unknown>): Record<string, File> {
   const out: Record<string, File> = {};
-  const top = payload.files as Record<string, unknown> | undefined;
-  if (top && typeof top === 'object') {
-    for (const [k, v] of Object.entries(top)) {
-      if (v instanceof File) out[k] = v;
+  const fields = payload.form_data as Record<string, unknown> | undefined;
+  for (const candidate of [fields?.files, payload.files]) {
+    if (candidate && typeof candidate === 'object') {
+      for (const [k, v] of Object.entries(candidate)) {
+        if (v instanceof File) out[k] = v;
+      }
     }
   }
   return out;

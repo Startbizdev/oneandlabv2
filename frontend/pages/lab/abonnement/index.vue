@@ -9,14 +9,15 @@
     </template>
 
     <!-- Onglets : index 0 = Offres, 1 = Mon abonnement -->
-    <div class="flex gap-2 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6">
       <UButton
         v-for="(tab, index) in tabs"
         :key="tab.value"
         :variant="activeTabIndex === index ? 'solid' : 'ghost'"
-        :color="activeTabIndex === index ? 'primary' : 'gray'"
+        :color="activeTabIndex === index ? 'primary' : 'neutral'"
+        :aria-pressed="activeTabIndex === index"
         size="md"
-        :on-click="() => activeTabIndex = index"
+        :on-click="() => { activeTabIndex = index }"
       >
         <UIcon :name="tab.icon" class="w-4 h-4 mr-2" />
         {{ tab.label }}
@@ -24,91 +25,11 @@
     </div>
 
     <!-- Tab Offres : cartes tarifs -->
+    <UAlert v-if="loadError" color="error" variant="soft" title="Impossible de vérifier votre abonnement">
+      <template #actions><UButton color="neutral" variant="outline" @click="loadSubscription">Réessayer</UButton></template>
+    </UAlert>
     <div v-show="activeTabIndex === 0" class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl">
-        <!-- Starter -->
-        <UCard class="flex flex-col h-full overflow-visible">
-          <template #header>
-            <h2 class="text-xl font-normal text-gray-900 dark:text-white">Starter</h2>
-            <p class="text-3xl font-normal text-gray-900 dark:text-white mt-2">49 €<span class="text-base text-gray-500">/mois</span></p>
-            <p class="text-sm text-gray-500 mt-1">30 jours d'essai gratuit</p>
-            <div class="mt-4">
-              <UButton
-                block
-                size="lg"
-                variant="outline"
-                :loading="loadingStarter"
-                :on-click="() => startCheckout('lab_starter')"
-              >
-                Commencer l'essai
-              </UButton>
-            </div>
-          </template>
-          <ul class="space-y-3 text-gray-600 dark:text-gray-400 flex-1 min-h-0">
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Jusqu'à 2 préleveurs.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Gestion des rendez-vous et assignation.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Calendrier commun.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Statistiques basiques.</span>
-            </li>
-          </ul>
-        </UCard>
-
-        <!-- Pro -->
-        <UCard class="relative flex flex-col h-full border-2 border-primary-500">
-          <div class="absolute top-3 right-3 z-10">
-            <UBadge color="primary" size="sm">Recommandé</UBadge>
-          </div>
-          <template #header>
-            <h2 class="text-xl font-normal text-gray-900 dark:text-white">Pro</h2>
-            <p class="text-3xl font-normal text-gray-900 dark:text-white mt-2">129 €<span class="text-base text-gray-500">/mois</span></p>
-            <p class="text-sm text-gray-500 mt-1">30 jours d'essai gratuit</p>
-            <div class="mt-4">
-              <UButton
-                block
-                size="lg"
-                color="primary"
-                :loading="loadingPro"
-                :on-click="() => startCheckout('lab_pro')"
-              >
-                Commencer l'essai gratuit
-              </UButton>
-            </div>
-          </template>
-          <ul class="space-y-3 text-gray-600 dark:text-gray-400 flex-1">
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Préleveurs illimités.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Sous-comptes (sous-labos) illimités.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Rendez-vous et calendrier.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Statistiques complètes.</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <UIcon name="i-lucide-check" class="w-5 h-5 text-primary-500 shrink-0 mt-0.5" />
-              <span>Avis et fiche laboratoire.</span>
-            </li>
-          </ul>
-        </UCard>
-      </div>
+      <LabPlanCards free-to="/lab" free-label="Accéder à mon espace" :busy-plan="loadingStarter ? 'lab_starter' : loadingPro ? 'lab_pro' : null" :disabled="loading || loadError" :current-plan="subscription?.plan_slug" :has-subscription="hasCurrentSubscription" @choose="startCheckout" />
       <p class="text-sm text-gray-500">
         Annulation possible à tout moment. Gérez votre abonnement dans l'onglet « Mon abonnement ».
       </p>
@@ -120,19 +41,19 @@
         <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary-500" />
       </div>
 
-      <UCard v-else-if="!subscription" class="max-w-xl">
+      <UCard v-else-if="!subscription && !loadError" class="max-w-xl">
         <template #header>
           <h2 class="text-xl font-normal text-gray-900 dark:text-white">Aucun abonnement actif</h2>
         </template>
         <p class="text-gray-600 dark:text-gray-400 mb-6">
           Vous n'avez pas encore d'abonnement actif. Choisissez l'offre Starter ou Pro dans l'onglet « Offres » pour gérer vos préleveurs et sous-comptes.
         </p>
-        <UButton variant="outline" size="lg" :on-click="() => activeTabIndex = 0">
+        <UButton variant="outline" size="lg" :on-click="() => { activeTabIndex = 0 }">
           Voir les offres
         </UButton>
       </UCard>
 
-      <UCard v-else class="max-w-xl">
+      <UCard v-else-if="subscription" class="max-w-xl">
         <template #header>
           <h2 class="text-xl font-normal text-gray-900 dark:text-white">Votre abonnement</h2>
         </template>
@@ -152,7 +73,7 @@
             <dd class="text-gray-900 dark:text-white">{{ formatDate(subscription.trial_ends_at) }}</dd>
           </div>
           <div v-if="subscription.current_period_end">
-            <dt class="text-sm text-gray-500 dark:text-gray-400">Prochaine facturation</dt>
+            <dt class="text-sm text-gray-500 dark:text-gray-400">Fin de la période en cours</dt>
             <dd class="text-gray-900 dark:text-white">{{ formatDate(subscription.current_period_end) }}</dd>
           </div>
         </dl>
@@ -177,11 +98,13 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'dashboard', middleware: ['auth'] })
+import { apiFetch } from '~/utils/api';
+definePageMeta({ layout: 'dashboard', middleware: ['auth', 'role'], role: 'lab' })
 
 const { user } = useAuth()
 const toast = useAppToast()
 const loading = ref(true)
+const loadError = ref(false)
 const loadingPortal = ref(false)
 const loadingStarter = ref(false)
 const loadingPro = ref(false)
@@ -200,11 +123,13 @@ const subscription = ref<{
   current_period_end: string | null
 } | null>(null)
 
+const hasCurrentSubscription = computed(() => ['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused'].includes(subscription.value?.status ?? ''))
+
 const planLabel = computed(() => {
   if (!subscription.value?.plan_slug) return '—'
   const labels: Record<string, string> = {
-    lab_starter: 'Starter (49 €/mois)',
-    lab_pro: 'Pro (129 €/mois)',
+    lab_starter: 'Starter',
+    lab_pro: 'Pro',
   }
   return labels[subscription.value.plan_slug] || subscription.value.plan_slug
 })
@@ -217,15 +142,18 @@ const statusLabel = computed(() => {
     past_due: 'Paiement en attente',
     canceled: 'Annulé',
     incomplete: 'Incomplet',
+    incomplete_expired: 'Souscription expirée',
+    unpaid: 'Paiement à régulariser',
+    paused: 'En pause',
   }
   return labels[subscription.value.status] || subscription.value.status
 })
 
 const statusColor = computed(() => {
   const s = subscription.value?.status
-  if (s === 'active' || s === 'trialing') return 'green'
-  if (s === 'canceled') return 'gray'
-  return 'amber'
+  if (s === 'active' || s === 'trialing') return 'success'
+  if (s === 'canceled') return 'neutral'
+  return 'warning'
 })
 
 function formatDate(value: string | null) {
@@ -235,12 +163,14 @@ function formatDate(value: string | null) {
 
 async function loadSubscription() {
   loading.value = true
+  loadError.value = false
   try {
     const res = await apiFetch('/stripe/subscription', { method: 'GET' })
-    if (res?.success) subscription.value = res.data ?? null
+    if (!res?.success) throw new Error('Chargement impossible')
+    subscription.value = res.data ?? null
     if (subscription.value?.id) activeTabIndex.value = 1
   } catch {
-    subscription.value = null
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -268,6 +198,9 @@ async function openPortal() {
 }
 
 async function startCheckout(planSlug: 'lab_starter' | 'lab_pro') {
+  if (loadingStarter.value || loadingPro.value) return
+  if (hasCurrentSubscription.value) { activeTabIndex.value = 1; return }
+  if (loading.value || loadError.value) return
   if (planSlug === 'lab_starter') loadingStarter.value = true
   else loadingPro.value = true
   try {

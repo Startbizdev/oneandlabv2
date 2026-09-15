@@ -60,7 +60,8 @@
                   <template v-if="opt.field_type === 'select'">
                     <UFormField :label="opt.label" :required="!!opt.is_required" size="sm">
                       <USelect
-                        v-model="draft.care_options![opt.option_key]"
+                        :model-value="String(draft.care_options[opt.option_key] ?? '')"
+                        @update:model-value="draft.care_options[opt.option_key] = $event ?? ''"
                         :items="(opt.options || []).map((o) => ({ label: o.label, value: o.value }))"
                         value-key="value"
                         placeholder="Choisir une option"
@@ -138,7 +139,7 @@
                     <div class="space-y-2">
                       <USelect
                         v-model="draft.duration_days"
-                        :items="durationOptions"
+                        :items="[...durationOptions] as Array<{ label: string; value: string }>"
                         value-key="value"
                         placeholder="Choisir une option"
                         size="md"
@@ -163,7 +164,7 @@
                   >
                     <USelect
                       v-model="draft.frequency"
-                      :items="frequencyOptions"
+                      :items="[...frequencyOptions] as Array<{ label: string; value: string }>"
                       value-key="value"
                       placeholder="Choisir une option"
                       size="md"
@@ -216,6 +217,7 @@ export type QuickModalCategoryRow = {
   type: string;
   icon?: string | null;
   image_url?: string | null;
+  options?: CategoryOpt[];
 };
 
 type CategoryOpt = {

@@ -50,6 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $appointmentId = $_GET['appointment_id'] ?? null;
     
     if (!$appointmentId) {
+        if ($user['role'] === 'patient') {
+            require_once __DIR__ . '/../../lib/PatientDocumentLibrary.php';
+            try {
+                $documents = PatientDocumentLibrary::list($db, (string) $user['user_id']);
+                $logger->log($user['user_id'], 'patient', 'read', 'medical_document', null, ['scope' => 'own_document_library', 'count' => count($documents)]);
+                echo json_encode(['success' => true, 'data' => $documents]);
+            } catch (Throwable $error) {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Chargement des documents impossible']);
+            }
+            exit;
+        }
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'appointment_id requis']);
         exit;
@@ -823,4 +835,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Méthode non autorisée']);
 }
-

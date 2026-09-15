@@ -10,7 +10,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
 import { animation, elevation, radius, spacing, AppText } from '@/theme';
@@ -60,7 +59,7 @@ export function BookingPremiumStepCta({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingPremiumStepCta_tsx_styles');
   const isList = variant === 'list';
-  const cornerRadius = isList ? radius.lg : radius.full;
+  const cornerRadius = radius.xl;
   const badgeValue =
     selectionCount != null && selectionCount > 0
       ? selectionCount > 99
@@ -101,16 +100,14 @@ export function BookingPremiumStepCta({
         disabled={disabled || loading}
         accessibilityRole="button"
         accessibilityLabel={a11yLabel}
+        accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }}
         style={({ pressed }) => [
           styles.hit,
           { borderRadius: cornerRadius },
           (pressed || disabled) && !loading && styles.hitDim,
         ]}
       >
-        <LinearGradient
-          colors={[c.gradientStart, c.gradientEnd]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
+        <View
           style={[
             styles.gradient,
             { borderRadius: cornerRadius },
@@ -122,7 +119,7 @@ export function BookingPremiumStepCta({
           {badgeValue != null ? (
             onSelectionBadgePress ? (
               <Pressable
-                onPress={onSelectionBadgePress}
+                onPress={(event) => { event.stopPropagation(); onSelectionBadgePress(); }}
                 disabled={disabled || loading}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -151,11 +148,11 @@ export function BookingPremiumStepCta({
           ) : null}
 
           <View style={styles.copy}>
-            <AppText style={[styles.title, isList && styles.titleList]} numberOfLines={1}>
+            <AppText style={[styles.title, isList && styles.titleList]} numberOfLines={2}>
               {title}
             </AppText>
             {!isList && subtitle ? (
-              <AppText style={styles.subtitle} numberOfLines={1}>
+              <AppText style={styles.subtitle} numberOfLines={2}>
                 {subtitle}
               </AppText>
             ) : null}
@@ -163,17 +160,17 @@ export function BookingPremiumStepCta({
 
           <View style={[styles.arrowOrb, isList && styles.arrowOrbList]}>
             {loading ? (
-              <ActivityIndicator color={c.textInverse} size="small" />
+              <ActivityIndicator color={c.onPrimary} size="small" />
             ) : (
               <ArrowRight
                 size={isList ? 18 : 20}
-                color={c.textInverse}
+                color={c.onPrimary}
                 strokeWidth={2.5}
               />
             )}
           </View>
           </Row>
-        </LinearGradient>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -187,16 +184,10 @@ function buildStyles(c: AppColors) {
   return {
   root: {
     width: '100%' as const,
-    ...elevation.lg,
-    shadowColor: c.gradientEnd,
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    ...elevation.xs,
   },
   rootList: {
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    ...elevation.xs,
   },
   hit: {
     overflow: 'hidden' as const,
@@ -208,6 +199,7 @@ function buildStyles(c: AppColors) {
     opacity: 0.75,
   },
   gradient: {
+    backgroundColor: c.primary,
     minWidth: 0,
     minHeight: 56,
     paddingVertical: spacing[3],
@@ -242,7 +234,7 @@ function buildStyles(c: AppColors) {
   stepNum: {
     fontFamily: fontFamily.extraBold,
     fontSize: fontSize.lg,
-    color: c.primary,
+    color: c.textLink,
     letterSpacing: -0.5,
   },
   copy: {
@@ -254,7 +246,7 @@ function buildStyles(c: AppColors) {
   title: {
     fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
-    color: c.textInverse,
+    color: c.onPrimary,
     letterSpacing: -0.15,
   },
   titleList: {
@@ -263,7 +255,7 @@ function buildStyles(c: AppColors) {
   subtitle: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.sm,
-    color: 'rgba(255,255,255,0.92)',
+    color: c.onPrimary,
     letterSpacing: 0.1,
   },
   arrowOrb: {

@@ -83,14 +83,14 @@
                   icon="i-lucide-x"
                   size="sm"
                   aria-label="Fermer"
-                  :on-click="() => isDeleteModalOpen = false"
+                  :on-click="() => { isDeleteModalOpen = false }"
                 />
               </div>
               <p class="border-b border-default px-5 py-4 text-sm text-muted">
                 Cette action est irréversible. Le rendez-vous et ses données associées seront définitivement supprimés.
               </p>
               <div class="flex justify-end gap-2 px-5 py-4">
-                <UButton color="neutral" variant="ghost" :on-click="() => isDeleteModalOpen = false">
+                <UButton color="neutral" variant="ghost" :on-click="() => { isDeleteModalOpen = false }">
                   Annuler
                 </UButton>
                 <UButton color="error" variant="solid" :loading="isDeleting" :on-click="confirmDelete">
@@ -116,7 +116,7 @@ import { apiFetch } from '~/utils/api';
 
 const route = useRoute();
 const toast = useAppToast();
-const listRef = ref<{ fetchAppointments: () => void; loading?: boolean } | null>(null);
+const listRef = ref<{ fetchAppointments: () => void | Promise<void>; invalidateAdminCardsCache?: () => void; loading?: boolean } | null>(null);
 const isDeleteModalOpen = ref(false);
 const selectedAppointment = ref<{ id: string } | null>(null);
 const isDeleting = ref(false);

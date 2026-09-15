@@ -1,3 +1,4 @@
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
@@ -76,9 +77,7 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
                 },
               ]}
             >
-              <AppText style={tagStyles.careTagEmoji} accessibilityElementsHidden>
-                {line.emoji}
-              </AppText>
+              <CarePictogram label={line.label} type={primaryType} />
               <AppText style={tagStyles.careTagLabel} numberOfLines={1}>
                 {line.label}
               </AppText>

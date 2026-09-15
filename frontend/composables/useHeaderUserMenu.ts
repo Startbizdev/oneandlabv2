@@ -66,7 +66,7 @@ export function useHeaderUserMenu() {
       });
     }
 
-    items.push({ type: 'divider' } as { type: string });
+    items.push({ type: 'divider', label: '', icon: '' });
     items.push({
       label: 'Déconnexion',
       icon: 'i-lucide-log-out',

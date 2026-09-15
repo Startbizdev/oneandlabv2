@@ -11,7 +11,7 @@
             color="neutral"
             variant="outline"
             size="sm"
-            icon="i-lucide-calendar-download"
+            icon="i-lucide-calendar-arrow-down"
             :disabled="loading || saving"
             @click="downloadIcs"
           >
@@ -34,6 +34,8 @@
       <button
         v-for="day in dayStrip"
         :key="day.date"
+        :disabled="saving"
+        :aria-pressed="day.date === selectedDate"
         type="button"
         class="relative shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors"
         :class="
@@ -129,6 +131,10 @@
       <p class="text-sm text-gray-500">Organisation de votre tournée…</p>
     </div>
 
+    <UAlert v-else-if="error" color="error" variant="soft" :title="error">
+      <template #actions><UButton color="neutral" variant="outline" @click="refresh">Réessayer</UButton></template>
+    </UAlert>
+
     <template v-else-if="tour && tour.stops.length">
       <ul class="space-y-2">
         <template v-for="group in tourStopGroups" :key="group.slot">
@@ -212,7 +218,7 @@
       color="primary"
       class="fixed bottom-8 right-8 z-30 min-h-[52px] rounded-full px-5 shadow-lg"
       aria-label="Ajouter un passage"
-      @click="passageModalOpen = true"
+      @click="($event) => { passageModalOpen = true }"
     />
   </AppPageShell>
 </template>
@@ -235,6 +241,7 @@ useHead({ title: 'Ma tournée – Infirmier' });
 const {
   selectedDate,
   loading,
+  error,
   saving,
   tour,
   dayStrip,

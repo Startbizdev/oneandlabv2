@@ -9,6 +9,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/ProfessionalAppointmentLinks.php';
 
 class Email
 {
@@ -487,15 +488,12 @@ Cary — Prélèvement et soins infirmiers à domicile
         if ($dateCreneau) {
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
         }
-        $content .= '<p style="margin:0;">Connectez-vous à votre espace pour l\'accepter.</p>';
+        $content .= '<p style="margin:0;">Ouvrez la demande dans votre espace pour consulter les détails et les actions disponibles.</p>';
         $baseUrl = $_ENV['FRONTEND_URL'] ?? 'https://oneandlab.fr';
         $appointmentId = $p['appointment_id'] ?? '';
-        $role = ($p['role'] ?? '') === 'nurse' ? 'nurse' : 'lab';
-        $listPath = $role === 'nurse' ? '/nurse/appointments' : '/lab/appointments';
-        $detailPath = $listPath;
-        if ($appointmentId) {
-            $detailPath .= '/' . $appointmentId;
-        }
+        $role = (string) ($p['role'] ?? 'lab');
+        $listPath = ProfessionalAppointmentLinks::listPath($role);
+        $detailPath = ProfessionalAppointmentLinks::detailPath($role, (string) $appointmentId);
         $body = $this->baseLayout($content, [
             'title' => 'Nouveau rendez-vous disponible',
             'preheader' => 'Un rendez-vous est disponible dans votre zone. Ouvrez-le pour agir.',
@@ -1263,4 +1261,3 @@ Cary — Prélèvement et soins infirmiers à domicile
         ]);
     }
 }
-

@@ -18,7 +18,7 @@
       @card-click="(a) => openAppointmentModal(a.id)"
     />
 
-    <DashboardAppointmentListAccessModals list-path="/preleveur" />
+    <AppointmentListAccessModals list-path="/preleveur" />
   </AppPageShell>
 </template>
 

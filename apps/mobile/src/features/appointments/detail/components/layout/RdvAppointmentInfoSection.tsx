@@ -1,3 +1,4 @@
+import { CarePictogram } from '@/components/ui/CarePictogram';
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -135,9 +136,7 @@ function InfoRow({
           <AppText style={styles.label}>{row.label}</AppText>
           <Row align="start" wrap gap={6}>
             {row.emoji ? (
-              <AppText style={styles.valueEmoji} accessibilityElementsHidden>
-                {row.emoji}
-              </AppText>
+              <CarePictogram label={String(row.value)} />
             ) : null}
             <AppText style={[styles.value, row.strikethrough && styles.valueMuted]}>
               {row.value}

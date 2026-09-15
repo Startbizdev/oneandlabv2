@@ -22,14 +22,19 @@ export interface AdminDispatchFilters {
 }
 
 export function useAdminDispatch() {
-  const dashboardData = useState<AdminDispatchDashboardData | null>('admin.dispatch.data', () => null);
-  const detailData = useState<AdminDispatchDetail | null>('admin.dispatch.detail', () => null);
-  const loading = useState<boolean>('admin.dispatch.loading', () => false);
-  const detailLoading = useState<boolean>('admin.dispatch.detailLoading', () => false);
-  const error = useState<string | null>('admin.dispatch.error', () => null);
-  const detailError = useState<string | null>('admin.dispatch.detailError', () => null);
+  const dashboardData = ref<AdminDispatchDashboardData | null>(null);
+  const detailData = ref<AdminDispatchDetail | null>(null);
+  const loading = ref<boolean>(false);
+  const detailLoading = ref<boolean>(false);
+  const error = ref<string | null>(null);
+  const detailError = ref<string | null>(null);
+
+  let dashboardRequest = 0;
+  let detailRequest = 0;
 
   const fetchDashboard = async (filters: AdminDispatchFilters = {}) => {
+    const request = ++dashboardRequest;
+    dashboardData.value = null;
     loading.value = true;
     error.value = null;
     try {
@@ -50,19 +55,23 @@ export function useAdminDispatch() {
         `/admin/dispatch${qs ? `?${qs}` : ''}`,
         { method: 'GET' },
       );
+      if (request !== dashboardRequest) return;
       if (response.success && response.data) {
         dashboardData.value = response.data;
       } else {
         error.value = response.error || 'Erreur lors du chargement du dispatch';
       }
     } catch (err: unknown) {
+      if (request !== dashboardRequest) return;
       error.value = err instanceof Error ? err.message : 'Erreur réseau';
     } finally {
-      loading.value = false;
+      if (request === dashboardRequest) loading.value = false;
     }
   };
 
   const fetchDetail = async (appointmentId: string) => {
+    const request = ++detailRequest;
+    detailData.value = null;
     detailLoading.value = true;
     detailError.value = null;
     try {
@@ -70,22 +79,28 @@ export function useAdminDispatch() {
         `/admin/dispatch/${encodeURIComponent(appointmentId)}`,
         { method: 'GET' },
       );
+      if (request !== detailRequest) return;
       if (response.success && response.data) {
         detailData.value = response.data;
       } else {
         detailError.value = response.error || 'Erreur lors du chargement du détail';
       }
     } catch (err: unknown) {
+      if (request !== detailRequest) return;
       detailError.value = err instanceof Error ? err.message : 'Erreur réseau';
     } finally {
-      detailLoading.value = false;
+      if (request === detailRequest) detailLoading.value = false;
     }
   };
 
   const clearDetail = () => {
+    ++detailRequest;
+    detailLoading.value = false;
     detailData.value = null;
     detailError.value = null;
   };
+
+  onScopeDispose(() => { ++dashboardRequest; ++detailRequest; });
 
   return {
     dashboardData,

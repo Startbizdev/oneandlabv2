@@ -1,92 +1,30 @@
 <template>
-  <footer class="landing-footer relative overflow-hidden text-white/[0.88]">
-    <span class="landing-footer-pattern" aria-hidden="true" />
-
-    <div class="relative z-[2]">
-      <div
-        class="landing-footer-inner mx-auto max-w-[1200px] px-6 pb-14 pt-[clamp(56px,8vw,96px)] lg:px-12"
-      >
-        <div
-          class="flex flex-col gap-8 border-b border-white/[0.08] pb-[clamp(40px,6vw,64px)] lg:gap-11"
-        >
-          <div class="flex flex-wrap gap-3">
-            <a
-              v-for="soc in socials"
-              :key="soc.label"
-              :href="soc.href"
-              class="flex h-12 w-12 items-center justify-center rounded-xl border border-white/14 bg-white/[0.07] text-white/75 transition-all hover:-translate-y-px hover:border-white/28 hover:bg-white/14 hover:text-white"
-              :aria-label="soc.label"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <UIcon :name="soc.icon" class="h-[22px] w-[22px]" />
-            </a>
-          </div>
-
-          <nav
-            class="grid w-full grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-[72px]"
-            aria-label="Liens du pied de page"
-          >
-            <div v-for="block in footerBlocks" :key="block.title">
-              <h4 class="mb-[22px] text-[11px] font-bold uppercase tracking-[0.14em] text-white/50">
-                {{ block.title }}
-              </h4>
-              <ul class="m-0 flex list-none flex-col gap-3 p-0">
-                <li v-for="link in block.links" :key="link.label + link.to">
-                  <NuxtLink
-                    v-if="!link.external"
-                    :to="link.to"
-                    class="text-sm font-medium text-white/55 transition-colors hover:text-white"
-                  >
-                    {{ link.label }}
-                  </NuxtLink>
-                  <a
-                    v-else
-                    :href="link.to"
-                    class="text-sm font-medium text-white/55 transition-colors hover:text-white"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {{ link.label }}
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </nav>
+  <footer class="border-t border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300">
+    <div class="mx-auto max-w-[1200px] px-6 py-12 lg:px-12 lg:py-16">
+      <div class="grid gap-10 lg:grid-cols-[1fr_2fr]">
+        <div class="max-w-xs">
+          <NuxtLink to="/" aria-label="Cary, accueil"><img src="/images/logo-cary.png" alt="Cary" width="120" height="44" class="h-10 w-auto object-contain" loading="lazy" /></NuxtLink>
+          <p class="mt-5 text-sm leading-relaxed text-gray-600 dark:text-gray-400">Les soins à domicile, organisés autour des patients et des professionnels qui les accompagnent.</p>
         </div>
-
-        <div class="pt-[22px] pb-[clamp(80px,14vw,140px)]">
-          <div
-            class="flex flex-col items-start justify-between gap-4 text-[0.8125rem] text-white/32 sm:flex-row sm:items-center"
-          >
-            <span>© {{ year }} Cary · Données de santé hébergées, conforme RGPD.</span>
-            <div class="flex flex-wrap gap-x-[22px] gap-y-2">
-              <NuxtLink
-                to="/politique-confidentialite"
-                class="text-white/38 transition-colors hover:text-white/75"
-              >
-                Confidentialité
-              </NuxtLink>
-              <NuxtLink to="/cgv" class="text-white/38 transition-colors hover:text-white/75">
-                Conditions d'utilisation
-              </NuxtLink>
-              <NuxtLink
-                to="/mentions-legales"
-                class="text-white/38 transition-colors hover:text-white/75"
-              >
-                Mentions légales
-              </NuxtLink>
-            </div>
+        <nav class="grid grid-cols-2 gap-8 sm:grid-cols-3" aria-label="Liens du pied de page">
+          <div v-for="block in footerBlocks" :key="block.title">
+            <h2 class="mb-3 text-sm font-semibold text-gray-950 dark:text-white">{{ block.title }}</h2>
+            <ul>
+              <li v-for="link in block.links" :key="link.to + link.label">
+                <NuxtLink :to="link.to" class="inline-flex min-h-11 items-center py-2 text-sm leading-snug hover:text-primary-800 hover:underline dark:hover:text-primary-300">{{ link.label }}</NuxtLink>
+              </li>
+            </ul>
           </div>
+        </nav>
+      </div>
+      <div class="mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-gray-200 pt-6 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <span>© {{ year }} Cary</span>
+        <div class="flex flex-wrap gap-x-5 gap-y-2">
+          <NuxtLink to="/politique-confidentialite" class="inline-flex min-h-11 items-center hover:underline">Confidentialité</NuxtLink>
+          <NuxtLink to="/cgv" class="inline-flex min-h-11 items-center hover:underline">Conditions d’utilisation</NuxtLink>
+          <NuxtLink to="/mentions-legales" class="inline-flex min-h-11 items-center hover:underline">Mentions légales</NuxtLink>
         </div>
       </div>
-    </div>
-
-    <div
-      class="landing-footer-watermark pointer-events-none select-none"
-      aria-hidden="true"
-    >
-      <span class="landing-footer-watermark-text">Cary</span>
     </div>
   </footer>
 </template>
@@ -94,12 +32,6 @@
 <script setup lang="ts">
 const { appointmentNewUrl } = useAppointmentNewUrl();
 const year = new Date().getFullYear();
-
-const socials = [
-  { label: 'LinkedIn', href: 'https://www.linkedin.com', icon: 'i-lucide-linkedin' },
-  { label: 'Instagram', href: 'https://www.instagram.com', icon: 'i-lucide-instagram' },
-  { label: 'Facebook', href: 'https://www.facebook.com', icon: 'i-lucide-facebook' },
-] as const;
 
 const footerBlocks = computed(() => {
   const rdv = appointmentNewUrl.value;
@@ -120,7 +52,7 @@ const footerBlocks = computed(() => {
     links: [
       { label: 'Infirmiers', to: '/pour-les-infirmiers', external: false },
       { label: 'Laboratoires', to: '/pour-les-laboratoires', external: false },
-      { label: 'Devenir infirmier', to: '/nurse/register', external: false },
+      { label: 'Créer mon compte infirmier', to: '/nurse/register', external: false },
       { label: 'Espace médecin', to: '/pour-les-professionnels', external: false },
     ],
   },
@@ -129,82 +61,9 @@ const footerBlocks = computed(() => {
     links: [
       { label: 'Contact', to: '/contact', external: false },
       { label: 'Questions fréquentes', to: '/#faq', external: false },
-      { label: 'Nous écrire', to: '/contact', external: false },
+
     ],
   },
   ];
 });
 </script>
-
-<style scoped>
-.landing-footer {
-  background: linear-gradient(
-    180deg,
-    #1cc7b5 0%,
-    #18b5a5 14%,
-    #16b6d6 32%,
-    #1299b8 52%,
-    #0c6478 72%,
-    #084352 88%,
-    #030508 96%,
-    #000000 100%
-  );
-}
-.landing-footer::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: min(22%, 200px);
-  max-height: 220px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.15) 40%,
-    rgba(0, 0, 0, 0.55) 78%,
-    rgba(0, 0, 0, 0.92) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
-}
-.landing-footer-pattern {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.22;
-  background-color: transparent;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
-  background-size: 22px 22px;
-  pointer-events: none;
-}
-.landing-footer-watermark {
-  position: relative;
-  z-index: 1;
-  height: clamp(100px, 18vw, 220px);
-  margin-top: clamp(-112px, -14vw, -80px);
-  overflow: hidden;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-.landing-footer-watermark-text {
-  display: block;
-  font-size: clamp(4rem, 21vw, 17rem);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 0.72;
-  color: rgba(255, 255, 255, 0.5);
-  transform: translateY(26%);
-  text-align: center;
-  white-space: nowrap;
-}
-
-@media (max-width: 768px) {
-  .landing-footer-watermark {
-    height: clamp(72px, 22vw, 120px);
-    margin-top: -64px;
-  }
-}
-</style>

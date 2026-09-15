@@ -3,7 +3,7 @@
     <template #pageHeader>
     <AppPageHeader :edge-bleed="false" 
       title="Mes patients"
-      description="Patients du laboratoire et des sous-comptes (liste et prises de sang)."
+      description="Les patients suivis par votre équipe."
     >
       <template #actions>
         <UButton color="primary" icon="i-lucide-plus" to="/lab/patients/new">
@@ -17,11 +17,12 @@
       <div class="rounded-xl border border-gray-200/80 dark:border-gray-800 bg-white/90 dark:bg-gray-900/50 px-3 py-2.5 sm:px-3.5 sm:py-3 shadow-sm">
         <UInput
           v-model="searchQuery"
+          aria-label="Rechercher un patient"
           placeholder="Nom, email, téléphone…"
           icon="i-lucide-search"
           size="md"
           class="w-full min-w-0"
-          :ui="{ rounded: 'rounded-lg' }"
+          :ui="{ base: 'rounded-lg' }"
           clearable
         />
       </div>
@@ -31,6 +32,9 @@
         <p class="text-[15px] text-gray-500 dark:text-gray-400 font-medium">Chargement de la liste...</p>
       </div>
 
+      <UAlert v-else-if="loadError" color="error" variant="soft" title="Impossible de charger vos patients">
+        <template #actions><UButton color="neutral" variant="outline" @click="fetchPatients">Réessayer</UButton></template>
+      </UAlert>
       <UEmpty
         v-else-if="!loading && filteredPatients.length === 0"
         icon="i-lucide-users"
@@ -72,6 +76,7 @@ const { user } = useAuth();
 
 const patients = ref<any[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
 const searchQuery = ref('');
 
 const filteredPatients = computed(() => {
@@ -90,11 +95,11 @@ const filteredPatients = computed(() => {
 
 const fetchPatients = async () => {
   loading.value = true;
+  loadError.value = false;
   try {
     patients.value = await fetchAllPatientsForDashboard(apiFetch);
   } catch (error) {
-    console.error('Erreur chargement patients:', error);
-    patients.value = [];
+    loadError.value = true;
   } finally {
     loading.value = false;
   }

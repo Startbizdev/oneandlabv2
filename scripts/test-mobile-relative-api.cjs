@@ -1,0 +1,30 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const Module = require('node:module');
+const path = require('node:path');
+const ts = require('typescript');
+const file = path.resolve(__dirname, '../apps/mobile/src/features/patient-relatives/api/patient-relatives.service.ts');
+let success = false;
+const requests = [];
+const api = Object.fromEntries(['get', 'post', 'put', 'delete'].map(method => [method, async (url, body) => {
+  requests.push({ method, url, body });
+  return { success, error: success ? undefined : 'Refus synthétique', data: success ? { id: 'relative-fixture' } : undefined };
+}]));
+const compiled = new Module(file);
+compiled.require = name => name === '@/api/client' ? { api } : require(name);
+compiled._compile(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, file);
+const { createPatientRelative, updatePatientRelative, deletePatientRelative } = compiled.exports;
+(async () => {
+  const body = { first_name: 'Alice', last_name: 'Exemple', relationship_type: 'parent', email: null, address: null };
+  await assert.rejects(createPatientRelative(body), /Refus/);
+  await assert.rejects(updatePatientRelative('relative/id', body), /Refus/);
+  await assert.rejects(deletePatientRelative('relative/id'), /Refus/);
+  success = true;
+  assert.equal((await createPatientRelative(body)).success, true);
+  assert.equal((await updatePatientRelative('relative/id', body)).success, true);
+  assert.equal((await deletePatientRelative('relative/id')).success, true);
+  assert.equal(requests[4].url, '/patient-relatives/relative%2Fid');
+  assert.equal(requests[5].url, '/patient-relatives/relative%2Fid');
+  assert.deepEqual(requests[4].body, body);
+  console.log('9 assertions passed: rejected create/update/delete, explicit cleared values, retry success and encoded relative identifiers.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,4 +1,5 @@
 import { PASSAGE_SLOT_DEFAULT_HOURS, type PassageTimeSlot } from '@oneandlab/shared-types';
+import { parseAppointmentDateFrance } from './appointment-date-france';
 
 export const PASSAGE_TIME_SLOT_LABELS: Record<PassageTimeSlot, string> = {
   morning: 'Matin',
@@ -131,7 +132,7 @@ export function isNursePassageFormData(
 function formatParisTimeFromScheduledAt(scheduledAt: string | null | undefined): string | null {
   if (!scheduledAt) return null;
   try {
-    const d = new Date(scheduledAt);
+    const d = parseAppointmentDateFrance(scheduledAt);
     if (Number.isNaN(d.getTime())) return null;
     return d.toLocaleTimeString('fr-FR', {
       timeZone: 'Europe/Paris',

@@ -940,7 +940,7 @@ function compactDateOnlyShort(date: string | null | undefined) {
   }
 }
 
-const formatDateTime = date => {
+const formatDateTime = (date: string | null | undefined) => {
   if (!date) return '-';
   try {
     const d = new Date(date);
@@ -955,9 +955,9 @@ const formatDateTime = date => {
   }
 }
 
-const formatDateOnly = d => new Date(d).toLocaleDateString('fr-FR')
+const formatDateOnly = (d: string) => new Date(d).toLocaleDateString('fr-FR')
 
-const getAppointmentTypeLabel = t => (t === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers')
+const getAppointmentTypeLabel = (t: string | null | undefined) => (t === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers')
 
 const getBloodTestTypeLabel = (formData: any) => {
   if (!formData?.blood_test_type) return ''
@@ -974,7 +974,7 @@ const getBloodTestTypeLabel = (formData: any) => {
   return ''
 }
 
-const getFrequencyLabel = v =>
+const getFrequencyLabel = (v: string) =>
   ({
     once_daily: '1 fois par jour',
     twice_daily: '2 fois par jour',
@@ -984,10 +984,10 @@ const getFrequencyLabel = v =>
     to_define: 'A voir avec le professionnel',
     daily: '1 fois par jour',
     every_other_day: '1 jour sur 2',
-  }[v] || v)
+  } as Record<string, string>)[v] || v
 
-const getGenderLabel = v =>
-  ({ male: 'Homme', female: 'Femme', other: 'Autre' }[v] || v)
+const getGenderLabel = (v: string) =>
+  ({ male: 'Homme', female: 'Femme', other: 'Autre' } as Record<string, string>)[v] || v
 
 function formatAvailability(raw: unknown, scheduledAt?: string | null) {
   const v = formatAvailabilityDisplayFr(raw, scheduledAt ?? null)

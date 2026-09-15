@@ -33,8 +33,9 @@
             <template v-if="modelValue && showRemoveButton" #trailing>
               <button
                 type="button"
+                aria-label="Modifier l’adresse"
                 @click.stop="handleRemove"
-                class="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
+                class="min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
               >
                 <UIcon name="i-heroicons-x-mark" class="w-5 h-5 text-gray-500 hover:text-gray-700" />
               </button>
@@ -43,14 +44,15 @@
         </div>
 
         <template #content>
-          <div :style="{ width: popoverWidth + 'px' }" class="min-w-[300px]">
+          <div :style="{ width: popoverWidth + 'px' }" class="max-w-[calc(100vw-2rem)]">
             <!-- Liste des suggestions -->
             <div v-if="addressOptions.length > 0" class="max-h-64 overflow-y-auto">
-              <div
+              <button
+                type="button"
                 v-for="(option, index) in addressOptions"
                 :key="`${option.label}-${index}`"
                 @click="handleSelect(option)"
-                class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                class="w-full text-left px-4 py-3 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-500 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
               >
                 <div class="flex items-start gap-3">
                   <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -61,7 +63,7 @@
                     </p>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
 
             <!-- Message : aucune adresse trouvée -->
@@ -303,4 +305,3 @@ const handleComplementChange = (value: string) => {
 }
 
 </script>
-

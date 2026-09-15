@@ -3,10 +3,11 @@
     :title="title"
     :description="description"
     :loading="loading"
-    :error="null"
+    :error="error"
     :stats-cards="statsCards"
   >
     <template #actions>
+      <UButton v-if="error" color="neutral" variant="outline" :loading="loading" :on-click="refresh">Réessayer</UButton>
       <UButton
         :to="`${basePath}/appointments`"
         color="primary"
@@ -19,7 +20,7 @@
 
     <template #main>
     <!-- RDV du jour (date = Aujourd'hui, créneau = Toute la journée ou 9h-11h) -->
-    <DashboardTodayAppointments
+    <DashboardTodayAppointments v-if="!todayError"
       :appointments="todayAppointments"
       :loading="loading"
       :base-path="basePath"
@@ -28,7 +29,7 @@
     />
 
     <!-- RDV en attente (date sans heure, créneau = Toute la journée ou 9h-11h) — modal unique dans layout -->
-    <DashboardPendingAppointments
+    <DashboardPendingAppointments v-if="!pendingError"
       :appointments="pendingAppointments"
       :base-path="basePath"
       :categories="careCategoriesForCards"
@@ -48,7 +49,7 @@
             v-for="link in quickLinks"
             :key="link.to"
             :to="link.to"
-            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted transition hover:bg-default/80 hover:text-foreground"
+            class="flex min-h-11 items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted transition hover:bg-default/80 hover:text-foreground"
             :aria-busy="quickAccessPendingTo === link.to && isQuickAccessCalendar(link.to) ? 'true' : undefined"
             @click="(e) => onQuickAccessClick(e, link)"
           >
@@ -84,7 +85,7 @@ const basePath = computed(() => (props.mode === 'lab' ? '/lab' : '/subaccount'))
 const role = computed(() => props.mode);
 
 const title = computed(() =>
-  props.mode === 'lab' ? 'Dashboard Laboratoire' : 'Dashboard Sous-compte'
+  props.mode === 'lab' ? 'Activité du laboratoire' : 'Activité de votre équipe'
 );
 const description = computed(() =>
   props.mode === 'lab'
@@ -92,7 +93,11 @@ const description = computed(() =>
     : 'Rendez-vous et activité de ce laboratoire.'
 );
 
-const { appointments, loading, fetchAppointments } = useAppointments();
+const { appointments, loading: loadingToday, error: todayError, fetchAppointments } = useAppointments(`${props.mode}.dashboard.today`);
+const { appointments: pendingRows, loading: loadingPending, error: pendingError, fetchAppointments: fetchPending } = useAppointments(`${props.mode}.dashboard.pending`);
+const loading = computed(() => loadingToday.value || loadingPending.value);
+const statsError = ref<string | null>(null);
+const error = computed(() => todayError.value || pendingError.value || statsError.value);
 
 const careCategoriesForCards = ref<CareCategoryRowMinimal[]>([]);
 
@@ -170,7 +175,7 @@ const statsCards = computed(() => [
     icon: 'i-lucide-calendar',
     iconBg: 'bg-primary/10',
     iconColor: 'text-primary',
-    value: loadingStats.value ? '—' : statsForCards.value.total,
+    value: loadingStats.value || statsError.value ? '—' : statsForCards.value.total,
     title: 'Total RDV',
     to: `${basePath.value}/appointments`,
   },
@@ -178,7 +183,7 @@ const statsCards = computed(() => [
     icon: 'i-lucide-clock',
     iconBg: 'bg-amber-500/10',
     iconColor: 'text-amber-600 dark:text-amber-400',
-    value: loadingStats.value ? '—' : statsForCards.value.pending,
+    value: loadingStats.value || statsError.value ? '—' : statsForCards.value.pending,
     title: 'En attente',
     to: `${basePath.value}/appointments`,
   },
@@ -186,7 +191,7 @@ const statsCards = computed(() => [
     icon: 'i-lucide-calendar-days',
     iconBg: 'bg-blue-500/10',
     iconColor: 'text-blue-600 dark:text-blue-400',
-    value: loadingStats.value ? '—' : statsForCards.value.today,
+    value: loadingStats.value || statsError.value ? '—' : statsForCards.value.today,
     title: "Aujourd'hui",
     to: `${basePath.value}/appointments`,
   },
@@ -194,7 +199,7 @@ const statsCards = computed(() => [
     icon: 'i-lucide-circle-check',
     iconBg: 'bg-emerald-500/10',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
-    value: loadingStats.value ? '—' : statsForCards.value.completed,
+    value: loadingStats.value || statsError.value ? '—' : statsForCards.value.completed,
     title: 'Terminés',
     to: null,
   },
@@ -217,21 +222,21 @@ const quickLinks = computed(() => {
 });
 
 const todayAppointments = computed(() => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
   return appointments.value
     .filter((a) => a.scheduled_at?.startsWith(today))
     .sort((a, b) => (a.scheduled_at || '').localeCompare(b.scheduled_at || ''));
 });
 
 const pendingAppointments = computed(() =>
-  appointments.value.filter((a) => a.status === 'pending' && a.assigned_lab_id === null)
+  pendingRows.value.filter((a) => a.status === 'pending' && a.assigned_lab_id == null)
 );
 
 async function fetchLabStats() {
   loadingStats.value = true;
+  statsError.value = null;
   try {
-    const res = await apiFetch<{
-      data: {
+    const res = await apiFetch<{ success: boolean; data?: {
         stats: {
           totalAppointments: number;
           todayCount: number;
@@ -240,8 +245,7 @@ async function fetchLabStats() {
           averageDuration: number;
           byStatus: Record<string, number>;
         };
-      };
-    }>('/lab/stats?stats_only=1', { method: 'GET' });
+    }; error?: string }>('/lab/stats?stats_only=1', { method: 'GET' });
     if (res.success && res.data?.stats) {
       const s = res.data.stats;
       labStats.value = {
@@ -252,27 +256,30 @@ async function fetchLabStats() {
         averageDuration: s.averageDuration ?? 0,
         byStatus: s.byStatus ?? {},
       };
-    }
+    } else { throw new Error('Statistiques indisponibles'); }
   } catch {
-    // ignore
+    statsError.value = 'Les statistiques sont indisponibles. Réessayez.';
   } finally {
     loadingStats.value = false;
   }
 }
 
 onMounted(() => {
-  fetchAppointments({ limit: 200 });
-  fetchLabStats();
+  void refresh();
   void loadCareCategoriesForDashboardCards();
 });
 
 const refresh = async () => {
-  await fetchAppointments({ limit: 200 });
-  await fetchLabStats();
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  await Promise.all([
+    fetchAppointments({ date_from: `${today} 00:00:00`, date_to: `${today} 23:59:59` }, { allPages: true }),
+    fetchPending({ status: 'pending' }, { allPages: true }),
+    fetchLabStats(),
+  ]);
 };
 
 /** Date sans heure (créneau affiché à part : Toute la journée ou 9h-11h) */
-function formatDateOnly(date: string) {
+function formatDateOnly(date?: string) {
   if (!date) return '';
   return new Date(date).toLocaleDateString('fr-FR', {
     weekday: 'long',

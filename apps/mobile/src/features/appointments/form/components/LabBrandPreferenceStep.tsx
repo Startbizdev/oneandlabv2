@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Row } from '@/components/layout/primitives';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import { fetchPublicLabBrands } from '@/features/appointments/api/lab-brands.service';
@@ -65,7 +66,7 @@ export function LabBrandPreferenceStep({
           ) : brandsQ.isError ? (
             <AppText style={[styles.muted, { color: c.error }]}>Impossible de charger les laboratoires.</AppText>
           ) : (
-            <View style={styles.grid}>
+            <Row wrap gap={spacing[2]}>
               {(brandsQ.data ?? []).map((brand) => {
                 const selected = brandId === brand.id;
                 return (
@@ -92,7 +93,7 @@ export function LabBrandPreferenceStep({
                   </Pressable>
                 );
               })}
-            </View>
+            </Row>
           )}
         </View>
       ) : null}
@@ -103,7 +104,7 @@ export function LabBrandPreferenceStep({
 }
 
 function buildStyles(c: ReturnType<typeof useAppColors>) {
-  return StyleSheet.create({
+  return {
     root: { gap: spacing[3], paddingBottom: spacing[6] },
     lead: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
     option: {
@@ -121,7 +122,6 @@ function buildStyles(c: ReturnType<typeof useAppColors>) {
     optionTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.base, color: c.textPrimary },
     optionHint: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
     gridWrap: { marginTop: spacing[2] },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
     brandCard: {
       width: '30%',
       minWidth: 96,
@@ -154,5 +154,5 @@ function buildStyles(c: ReturnType<typeof useAppColors>) {
     },
     muted: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary },
     error: { fontFamily: fontFamily.medium, fontSize: fontSize.sm, marginTop: spacing[2] },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

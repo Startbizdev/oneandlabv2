@@ -1,12 +1,14 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/Input';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
 import { generateNursePublicSlug } from '@/features/profile/utils/generate-public-slug';
 import { queryKeys } from '@/lib/query-keys';
@@ -35,17 +37,15 @@ export function ProfileNursePresentationScreen() {
   const [yearsExperience, setYearsExperience] = useState('');
 
   const q = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    setBiography(d.biography ?? '');
-    setYearsExperience(d.years_experience ?? '');
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data, { biography, yearsExperience },
+    d => ({ biography: d.biography ?? '', yearsExperience: d.years_experience ?? '' }),
+    d => { setBiography(d.biography); setYearsExperience(d.yearsExperience); },
+  );
 
   const savePresentation = useMutation({
     mutationFn: () =>
@@ -79,6 +79,8 @@ export function ProfileNursePresentationScreen() {
   const accepting =
     q.data?.is_accepting_appointments !== false && q.data?.is_accepting_appointments !== 0;
   const busyToggle = saveToggle.isPending ? saveToggle.variables : null;
+
+  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
 
   return (
     <ProfileSubScreenLayout

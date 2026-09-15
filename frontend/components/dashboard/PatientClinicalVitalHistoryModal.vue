@@ -1,5 +1,5 @@
 <template>
-  <UModal v-model:open="openModel" :title="title" :ui="{ width: 'sm:max-w-md' }">
+  <UModal v-model:open="openModel" :title="title" :ui="{ content: 'sm:max-w-md' }">
     <template #body>
       <div v-if="loading" class="space-y-2">
         <div v-for="i in 4" :key="i" class="h-16 animate-pulse rounded-xl bg-elevated" />
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const config = useRuntimeConfig();
-const apiBase = config.public.apiBase || 'http://localhost:8888/api';
+const apiBase = config.public.apiBase || '/api';
 
 const loading = ref(false);
 const error = ref('');

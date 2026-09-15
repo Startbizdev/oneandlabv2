@@ -1,9 +1,10 @@
 import type { AppointmentDetailRole } from './appointment-detail-role-config';
+import type { Href } from 'expo-router';
 
 export function appointmentConversationHref(
   role: AppointmentDetailRole | string,
   appointmentId: string,
-): string {
+): Href {
   const prefix =
     role === 'pro'
       ? '/(pro)'
@@ -11,6 +12,11 @@ export function appointmentConversationHref(
         ? '/(nurse)'
         : role === 'patient'
           ? '/(patient)'
-          : '/(pro)';
-  return `${prefix}/appointment/${encodeURIComponent(appointmentId)}/conversation`;
+          : role === 'preleveur'
+            ? '/(preleveur)'
+            : '/(pro)';
+  return {
+    pathname: `${prefix}/appointment/[id]/conversation`,
+    params: { id: appointmentId },
+  };
 }

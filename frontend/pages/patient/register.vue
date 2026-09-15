@@ -146,7 +146,7 @@ const otpLoading = ref(false);
 const resending = ref(false);
 const userId = ref('');
 const sessionId = ref('');
-const otpDigits = ref<(number | string)[]>([]);
+const otpDigits = ref<number[]>([]);
 const countdown = ref(0);
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
 

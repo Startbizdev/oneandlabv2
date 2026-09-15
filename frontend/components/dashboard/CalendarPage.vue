@@ -7,7 +7,8 @@
           <UInput
             v-if="showSearch"
             v-model="searchQuery"
-            placeholder="Rechercher (patient, adresse...)"
+            placeholder="Patient, adresse…"
+            aria-label="Rechercher dans le calendrier"
             icon="i-lucide-search"
             size="sm"
             class="w-full sm:max-w-[200px] md:max-w-[240px]"
@@ -17,6 +18,7 @@
             :items="statusOptions"
             value-key="value"
             placeholder="Statut"
+            aria-label="Filtrer par statut"
             size="sm"
             class="w-full sm:w-auto sm:min-w-[120px]"
           />
@@ -26,6 +28,7 @@
             :items="typeOptions"
             value-key="value"
             placeholder="Type"
+            aria-label="Filtrer par type de soin"
             size="sm"
             class="w-full sm:w-auto sm:min-w-[140px]"
           />
@@ -49,8 +52,9 @@
       </div>
     </div>
 
+    <p v-if="loading && calendarReady" role="status" class="text-sm text-gray-500">Chargement du calendrier…</p>
     <!-- Loading skeleton : jusqu’au premier chargement pour éviter flash ancien → nouveau -->
-    <div v-if="loading || !calendarReady" class="space-y-3 sm:space-y-4 animate-pulse">
+    <div v-if="!calendarReady" class="space-y-3 sm:space-y-4 animate-pulse">
       <div class="flex justify-between gap-2">
         <div class="h-8 sm:h-9 w-32 sm:w-48 rounded-lg bg-muted shrink-0" />
         <div class="h-8 sm:h-9 flex-1 max-w-[12rem] rounded-lg bg-muted" />
@@ -69,6 +73,10 @@
       </div>
     </div>
 
+    <UAlert v-else-if="error" color="error" variant="soft" title="Impossible de charger le calendrier">
+      <template #actions><UButton color="neutral" variant="outline" @click="refresh">Réessayer</UButton></template>
+    </UAlert>
+
     <!-- Calendrier + panneau jour -->
     <div v-else class="flex flex-col xl:flex-row gap-4 sm:gap-6 min-w-0">
       <Transition
@@ -82,10 +90,13 @@
         <div class="flex-1 min-w-0 w-full overflow-hidden">
           <Calendar
             :items="filteredAppointments"
+            :start-date="calendarDate"
+            @update:date="onCalendarDateChange"
             item-date-key="scheduled_at"
             item-status-key="status"
             :selected-day="selectedDay"
             :disable-add="!showNewAppointmentButton"
+            :can-move-item="canMoveCalendarItem"
             :mobile-list-from-today="basePath === '/nurse'"
             @item-click="viewAppointment"
             @day-click="onDayClick"
@@ -123,7 +134,7 @@
                 size="xs"
                 icon="i-lucide-x"
                 aria-label="Fermer"
-                @click="selectedDay = null"
+                @click="() => { selectedDay = null }"
               />
             </div>
             <div v-if="selectedDayAppointments.length === 0" class="py-8 text-center text-muted text-sm">
@@ -159,7 +170,7 @@
                   <p class="text-sm text-muted mt-0.5">
                     {{ apt.type === 'blood_test' ? 'Prélèvement' : 'Soins infirmiers' }}
                   </p>
-                  <p v-if="displayAddress(apt)" class="text-xs text-muted mt-1 truncate" :title="displayAddress(apt)">
+                  <p v-if="displayAddress(apt)" class="text-xs text-muted mt-1 truncate" :title="displayAddress(apt) || undefined">
                     {{ displayAddress(apt) }}
                   </p>
                   <span class="inline-flex items-center gap-1 mt-2 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
@@ -176,7 +187,7 @@
 
     <!-- État vide global : hors mobile — le Calendar gère déjà le message sous le mini-grille (< md). -->
     <UEmpty
-      v-if="calendarReady && !loading && filteredAppointments.length === 0"
+      v-if="calendarReady && !loading && !error && filteredAppointments.length === 0"
       icon="i-lucide-calendar-x"
       title="Aucun rendez-vous"
       :description="emptyDescription"
@@ -187,6 +198,8 @@
 </template>
 
 <script setup lang="ts">
+import { appointmentDayFrance, appointmentTimeFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
+import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
 
@@ -217,7 +230,16 @@ const props = withDefaults(
   }
 );
 
-const { appointments, loading, fetchAppointments } = useAppointments();
+const { appointments, loading, error, fetchAppointments } = useAppointments(`calendar.${props.basePath}.${useId()}`);
+const { user } = useAuth();
+const scheduleSaving = ref(false);
+const calendarDate = ref(new Date(appointmentDayFrance(new Date()) + 'T12:00:00'));
+const route = useRoute();
+const assignedTo = computed(() => ['/lab', '/subaccount'].includes(props.basePath) && typeof route.query.assigned_to === 'string' ? route.query.assigned_to : '');
+function canMoveCalendarItem(item: Record<string, any>): boolean {
+  if (loading.value || scheduleSaving.value || ['completed', 'canceled', 'expired', 'refused'].includes(item.status)) return false;
+  return user.value?.role === 'super_admin' || (user.value?.role === 'nurse' && item.type === 'nursing' && item.assigned_nurse_id === user.value.id);
+}
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const typeFilter = ref('all');
@@ -244,6 +266,7 @@ const typeOptions = [
 
 const filteredAppointments = computed(() => {
   let filtered = appointments.value;
+  if (assignedTo.value) filtered = filtered.filter(a => a.assigned_to === assignedTo.value);
   if (statusFilter.value !== 'all') {
     filtered = filtered.filter((a) => a.status === statusFilter.value);
   }
@@ -253,8 +276,8 @@ const filteredAppointments = computed(() => {
   if (props.showSearch && searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter((a) =>
-      a.address?.toLowerCase().includes(query) ||
-      a.patient_name?.toLowerCase().includes(query) ||
+      (displayAddress(a) || '').toLowerCase().includes(query) ||
+      getPatientLabel(a).toLowerCase().includes(query) ||
       a.id?.toLowerCase().includes(query)
     );
   }
@@ -262,7 +285,7 @@ const filteredAppointments = computed(() => {
 });
 
 const todayLabel = computed(() => {
-  return new Date().toLocaleDateString('fr-FR', {
+  return new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -272,8 +295,7 @@ const todayLabel = computed(() => {
 const monthCount = computed(() => {
   const now = new Date();
   return filteredAppointments.value.filter((a) => {
-    const d = new Date(a.scheduled_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return appointmentDayFrance(a.scheduled_at).slice(0, 7) === appointmentDayFrance(now).slice(0, 7);
   }).length;
 });
 
@@ -291,14 +313,9 @@ const selectedDayAppointments = computed(() => {
   const d = selectedDay.value;
   return filteredAppointments.value
     .filter((a) => {
-      const ad = new Date(a.scheduled_at);
-      return (
-        ad.getDate() === d.getDate() &&
-        ad.getMonth() === d.getMonth() &&
-        ad.getFullYear() === d.getFullYear()
-      );
+      return appointmentDayFrance(a.scheduled_at) === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })
-    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+    .sort((a, b) => parseAppointmentDateFrance(a.scheduled_at).getTime() - parseAppointmentDateFrance(b.scheduled_at).getTime());
 });
 
 const emptyDescription = computed(() => {
@@ -327,16 +344,22 @@ const emptyActions = computed(() => {
 const NURSE_CALENDAR_STATUSES = 'pending,confirmed,inProgress,completed,canceled,refused';
 
 function fetchCalendarAppointments() {
-  if (props.basePath === '/nurse') {
-    return fetchAppointments({
-      nurse_tab: props.nurseTab,
-      status: NURSE_CALENDAR_STATUSES,
-      page: 1,
-      limit: props.calendarFetchLimit,
-    });
-  }
-  return fetchAppointments({ page: 1, limit: props.calendarFetchLimit });
+  const d = calendarDate.value;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const end = new Date(y, d.getMonth() + 1, 0).getDate();
+  return fetchAppointments({
+    date_from: `${y}-${m}-01 00:00:00`, date_to: `${y}-${m}-${end} 23:59:59`,
+    ...(props.basePath === '/nurse' ? { nurse_tab: props.nurseTab, status: NURSE_CALENDAR_STATUSES } : {}),
+    filter_assigned_to: assignedTo.value || undefined,
+  }, { allPages: true, calendar: true, progressive: true });
 }
+function onCalendarDateChange(date: Date) {
+  calendarDate.value = date;
+  selectedDay.value = null;
+  void fetchCalendarAppointments();
+}
+watch(assignedTo, () => { void fetchCalendarAppointments(); });
 
 const refresh = () => fetchCalendarAppointments();
 const onDayClick = (day: { fullDate: Date | null }) => {
@@ -356,17 +379,24 @@ const onAddEvent = (date?: Date) => {
   navigateTo({ path: `${props.basePath}/appointments/new`, query });
 };
 
-const onItemDrop = (item: any, newDate: Date) => {
-  // Ici vous connecteriez l'API de mise à jour
-  toast.add({
-    title: 'Planification mise à jour',
-    description: `Rendez-vous déplacé au ${newDate.toLocaleDateString('fr-FR')}`,
-    color: 'primary',
-    icon: 'i-lucide-calendar-check'
-  });
-  // Exemple: await updateAppointment(item.id, { scheduled_at: newDate.toISOString() });
-  // refresh();
+const onItemDrop = async (item: any, newDate: Date) => {
+  if (!canMoveCalendarItem(item) || !Number.isFinite(newDate.getTime())) return;
+  const date = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+  const time = (appointmentTimeFrance(item.scheduled_at) || '09:00') + ':00';
+  scheduleSaving.value = true;
+  try {
+    const response = await apiFetch(`/appointments/${encodeURIComponent(item.id)}`, { method: 'PUT', body: { scheduled_at: `${date} ${time}` } });
+    if (!response?.success) throw new Error(response?.error || 'Modification impossible');
+    await refresh();
+    toast.add({ title: 'Date du rendez-vous modifiée', color: 'success' });
+  } catch {
+    toast.add({ title: 'Le rendez-vous n’a pas été déplacé', description: 'Réessayez depuis le détail du rendez-vous.', color: 'error' });
+  } finally {
+    scheduleSaving.value = false;
+  }
 };
+
+watch(appointments, () => { calendarReady.value = true; });
 
 watch(loading, (now, prev) => {
   if (prev === true && now === false) calendarReady.value = true;
@@ -404,33 +434,9 @@ function getPatientLabel(apt: any): string {
 
 // Créneau : TLJ, Xh - Yh, ou HH:MM (aligné AppointmentListPage)
 function getCreneauLabel(apt: any): string {
-  const availability = apt.form_data?.availability;
-  if (availability != null) {
-    try {
-      let avail: any = availability;
-      if (typeof availability === 'string') {
-        const trimmed = availability.trim();
-        if (trimmed) {
-          avail = JSON.parse(trimmed);
-          if (avail?.type === 'all_day') return 'TLJ';
-        }
-      } else if (typeof avail === 'object' && avail.type === 'all_day') {
-        return 'TLJ';
-      }
-      if (avail?.type === 'custom' && Array.isArray(avail.range) && avail.range.length >= 2) {
-        const start = Math.floor(Number(avail.range[0]));
-        const end = Math.floor(Number(avail.range[1]));
-        if (!Number.isNaN(start) && !Number.isNaN(end)) return `${start}h - ${end}h`;
-      }
-    } catch {
-      /* ignore */
-    }
-  }
   if (apt.form_data?.availability_type === 'all_day') return 'TLJ';
-  const d = apt.scheduled_at ? new Date(apt.scheduled_at) : null;
-  return d && !Number.isNaN(d.getTime())
-    ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    : '–';
+  const label = formatAvailabilityDisplayFr(apt.form_data?.availability, apt.scheduled_at, apt.form_data);
+  return label === 'Toute la journée' ? 'TLJ' : label || '–';
 }
 
 const displayAddress = (apt: any) => {

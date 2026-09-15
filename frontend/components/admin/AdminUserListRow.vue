@@ -28,7 +28,7 @@
             <p class="min-w-0 truncate text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">
               {{ displayName || '—' }}
             </p>
-            <UBadge :color="roleColor" variant="soft" size="xs" class="shrink-0 font-medium">
+            <UBadge :color="resolveUiColor(roleColor)" variant="soft" size="xs" class="shrink-0 font-medium">
               {{ roleLabel }}
             </UBadge>
           </div>
@@ -111,6 +111,8 @@
 </template>
 
 <script setup lang="ts">
+import type { DropdownMenuItem } from '@nuxt/ui';
+import { resolveUiColor } from '~/utils/ui-appearance';
 const props = defineProps<{
   user: Record<string, any>
   displayName: string
@@ -123,7 +125,7 @@ const props = defineProps<{
   isBanned: boolean
   isSuspended: boolean
   highlighted?: boolean
-  actionItems: unknown[]
+  actionItems: DropdownMenuItem[] | DropdownMenuItem[][]
 }>()
 
 const emit = defineEmits<{

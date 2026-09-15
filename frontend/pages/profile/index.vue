@@ -36,14 +36,14 @@
             {{ role === 'subaccount' ? 'Retour aux sous-comptes' : 'Retour aux préleveurs' }}
           </UButton>
           <UButton
-            v-if="publicProfileForm.public_slug && !newPreleveurMode && !loading"
+            v-if="publicProfileForm.public_slug && !newPreleveurMode && !newPatientMode && !loading && !profileLoadError"
             :to="publicProfileUrl"
             target="_blank"
             variant="outline"
             size="sm"
             icon="i-lucide-external-link"
           >
-            Voir mon profil public
+            {{ editingUserId ? 'Voir le profil public' : 'Voir mon profil public' }}
           </UButton>
         </div>
       </template>
@@ -64,12 +64,15 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Chargement de votre profil...</p>
       </div>
 
+      <UAlert v-else-if="profileLoadError" title="Profil indisponible" :description="profileLoadError" color="error" :actions="[{ label: 'Réessayer', onClick: loadProfile }]" />
       <!-- Pro : création d'un patient (POST /patients) — colonne gauche formulaire, droite documents + bouton -->
       <div v-else-if="newPatientMode" class="w-full space-y-6">
+        <UAlert v-if="createdPatientId" color="info" title="Patient enregistré" description="Les informations du patient sont enregistrées. Terminez l’envoi des documents pour poursuivre vers le rendez-vous." />
         <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8">
           <!-- Colonne gauche : formulaire (sans bouton) -->
           <UCard>
             <UForm id="pro-create-patient-form" :state="profileFormSafe" @submit.prevent="saveProfile()" class="space-y-6">
+              <fieldset :disabled="saving || !!createdPatientId">
               <ProfilePersonalInfo
                 ref="personalInfoRef"
                 :model-value="profileFormSafe"
@@ -77,10 +80,11 @@
                 role="patient"
                 :no-actions="true"
                 :email-readonly="false"
-                :email-optional="user?.role === 'pro' || user?.role === 'nurse'"
+                :email-optional="true"
                 @save="saveProfile()"
                 @reset="() => {}"
               />
+              </fieldset>
               <div class="flex justify-end gap-2 pt-4">
                 <UButton variant="ghost" :to="patientsListPath">Annuler</UButton>
               </div>
@@ -89,11 +93,14 @@
           <!-- Colonne droite : documents médicaux (ajoutables à la création) + bouton en dessous -->
           <div class="space-y-6 lg:sticky lg:top-6 h-fit min-w-0 overflow-hidden">
             <ProfileDocuments
+              :inert="saving"
               :documents="documents"
               :is-loading="loadingDocuments"
               :uploading-type="uploadingDocument"
               :downloading-document-id="downloadingDocumentId"
               :error="documentError"
+              :load-error="documentsLoadError"
+              @retry="loadDocuments"
               @upload="handleDocumentUpload"
               @download="(id, fileName) => downloadDocument(id, fileName)"
               @update:error="documentError = $event"
@@ -105,6 +112,7 @@
               >
                 <UCheckbox
                   v-model="newPatientBookingConsent"
+                  :disabled="saving || !!createdPatientId"
                   :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
                   :ui="{ label: 'text-sm font-medium leading-snug text-default' }"
                 />
@@ -116,10 +124,10 @@
                 color="primary"
                 icon="i-lucide-user-plus"
                 :loading="saving"
-                :disabled="!proCanSubmitCreatePatient"
+                :disabled="!proCanSubmitCreatePatient || saving"
                 class="font-medium text-base py-4 w-full justify-center"
               >
-                Créer le patient
+                {{ createdPatientId ? 'Terminer le dossier' : 'Créer le patient' }}
               </UButton>
             </div>
           </div>
@@ -385,7 +393,8 @@
               <template v-if="isNurse">
                 <UFormField label="Années d'expérience" name="years_experience" class="mt-4">
                   <USelect
-                    v-model="publicProfileForm.years_experience"
+                    :model-value="publicProfileForm.years_experience ?? undefined"
+                    @update:model-value="publicProfileForm.years_experience = $event ?? null"
                     :items="YEARS_EXPERIENCE_OPTIONS"
                     value-key="value"
                     placeholder="Sélectionnez"
@@ -404,7 +413,7 @@
                       <UCheckbox
                         :model-value="q.code === 'AUTRE' ? hasOtherQualificationChecked : (publicProfileForm.nurse_qualifications || []).includes(q.code)"
                         :disabled="saving"
-                        @update:model-value="toggleNurseQualification(q.code, $event)"
+                        @update:model-value="toggleNurseQualification(q.code, $event === true)"
                       />
                       <span class="text-sm">{{ q.label }}</span>
                     </label>
@@ -640,6 +649,7 @@
                 <div v-if="loadingAppointments" class="flex justify-center py-6">
                   <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-primary" />
                 </div>
+                <UAlert v-else-if="appointmentsLoadError" title="Historique indisponible" :description="appointmentsLoadError" color="error" :actions="[{ label: 'Réessayer', onClick: loadProfileAppointments }]" />
                 <div v-else-if="profileAppointments.length === 0" class="py-5 text-center text-sm text-muted">
                   Aucun rendez-vous
                 </div>
@@ -818,6 +828,8 @@
               :uploading-type="uploadingDocument"
               :downloading-document-id="downloadingDocumentId"
               :error="documentError"
+              :load-error="documentsLoadError"
+              @retry="loadDocuments"
               @upload="handleDocumentUpload"
               @download="(id, fileName) => downloadDocument(id, fileName)"
               @update:error="documentError = $event"
@@ -830,6 +842,8 @@
                 :uploading-type="uploadingDocument"
                 :downloading-document-id="downloadingDocumentId"
                 :error="documentError"
+              :load-error="documentsLoadError"
+              @retry="loadDocuments"
                 @upload="handleDocumentUpload"
                 @download="(id, fileName) => downloadDocument(id, fileName)"
                 @update:error="documentError = $event"
@@ -1007,6 +1021,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ProfilePersonalInfo } from '#components';
 import { nextTick } from 'vue'
 import { splitProfessionalId, validateProfessionalId, isProIpaEmploi } from '@oneandlab/shared-types'
 import { apiFetch } from '~/utils/api'
@@ -1037,6 +1052,7 @@ const labSubaccountsForPreleveur = ref<any[]>([])
 const preleveurLabId = ref('')
 // Pro crée un patient : ?newPatient=1 → formulaire vierge, sauvegarde = POST /patients
 const newPatientMode = ref(false)
+const createdPatientId = ref<string | null>(null)
 const newPatientBookingConsent = ref(false)
 const patientsListPath = computed(() => {
   const r = user.value?.role
@@ -1399,6 +1415,10 @@ const hasAppointmentsSection = computed(
 )
 const profileAppointments = ref<any[]>([])
 const loadingAppointments = ref(false)
+const appointmentsLoadError = ref('')
+let appointmentsRequest = 0
+const documentsLoadError = ref('')
+let documentsRequest = 0
 const appointmentDetailBasePath = computed(() => {
   if (isAdmin.value) return '/admin/appointments'
   if (role.value === 'patient') return '/patient/appointments'
@@ -1513,6 +1533,8 @@ const acceptRdvSunday = ref(true)
 
 // -- État global --
 const loading = ref(true)
+const profileLoadError = ref('')
+let profileRequest = 0
 const saving = ref(false)
 
 // -- Formulaire profil (objet par défaut partagé pour éviter undefined/null avec Nuxt/ClientOnly) --
@@ -1747,6 +1769,8 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  ++profileRouteRequest
+  ++profileRequest
   profileImageForHeader.value = null
 })
 
@@ -1760,44 +1784,40 @@ const loadPlanLimits = async () => {
   }
 }
 
+let profileRouteRequest = 0
 watch(
-  () => [route.query.userId, route.query.relativeId] as const,
-  ([uid]) => {
-    newPatientMode.value = false
-    syncEditingRelativeIdFromRoute()
-    if (
-      (user.value?.role === 'lab' ||
-        user.value?.role === 'super_admin' ||
-        user.value?.role === 'pro' ||
-        user.value?.role === 'nurse' ||
-        user.value?.role === 'subaccount') &&
-      uid
-    ) {
-      editingUserId.value = typeof uid === 'string' ? uid : String(uid)
-      loadProfile().then(() => {
-        if (hasAppointmentsSection.value) loadProfileAppointments()
-        if (shouldLoadPatientDossierDocuments.value) void loadDocuments()
-      })
-    } else {
-      editingUserId.value = null
-      editingRelativeId.value = null
-      editingRelativeRelationship.value = null
-      editedUserRole.value = null
-      newPreleveurMode.value = false
-      loadProfile().then(() => {
-        if (hasAppointmentsSection.value) loadProfileAppointments()
-      })
-    }
-  },
-  { immediate: false }
+  () => [route.query.userId, route.query.relativeId, route.query.newPatient, route.query.newPreleveur] as const,
+  () => { void initializeProfileFromRoute() },
 )
 
-onMounted(async () => {
+onMounted(() => initializeProfileFromRoute())
+
+const initializeProfileFromRoute = async () => {
+  const routeRequest = ++profileRouteRequest
+  ++profileRequest
+  ++documentsRequest
+  ++appointmentsRequest
+  loading.value = true
+  profileLoadError.value = ''
+  documentsLoadError.value = ''
+  documentError.value = null
+  documents.value = {}
+  pendingDocumentFiles.value = {}
+  loadingDocuments.value = false
+  uploadingDocument.value = null
+  isResettingAfterUpload.value = null
+  profileAppointments.value = []
+  appointmentsLoadError.value = ''
+  loadingAppointments.value = false
+  publicProfileForm.value.public_slug = ''
+  editingRelativeRelationship.value = null
+
   const uid = route.query.userId as string | undefined
   syncEditingRelativeIdFromRoute()
   const newPreleveur = route.query.newPreleveur === '1' || route.query.newPreleveur === 'true'
   if (newPreleveur && !user.value?.role) {
     await fetchCurrentUser()
+    if (routeRequest !== profileRouteRequest) return
   }
   if (user.value?.role === 'lab' && newPreleveur) {
     newPatientMode.value = false
@@ -1818,6 +1838,7 @@ onMounted(async () => {
   ) {
     newPreleveurMode.value = false
     newPatientMode.value = true
+    createdPatientId.value = null
     newPatientBookingConsent.value = false
     editingUserId.value = null
     editedUserRole.value = null
@@ -1846,43 +1867,44 @@ onMounted(async () => {
     await loadProfile()
   }
 
+  if (routeRequest !== profileRouteRequest || profileLoadError.value) return
   if (hasCoverageZone.value || isNurse.value) await loadPlanLimits()
+  if (routeRequest !== profileRouteRequest) return
   if (user.value?.role === 'lab' && (newPreleveurMode.value || editingUserId.value)) {
     try {
       const subRes = await apiFetch('/lab/subaccounts', { method: 'GET' })
+      if (routeRequest !== profileRouteRequest) return
       labSubaccountsForPreleveur.value = Array.isArray(subRes?.data) ? subRes.data : []
     } catch {
+      if (routeRequest !== profileRouteRequest) return
       labSubaccountsForPreleveur.value = []
     }
   }
   const promises: Promise<void>[] = []
   if (hasCoverageZone.value && !newPreleveurMode.value && (!editingUserId.value || isAdmin.value)) promises.push(loadCoverage())
   if (isNurse.value || (isDisplayedProfileLab.value && isAdmin.value && editingUserId.value) || ((isDisplayedProfileLab.value || isSubaccount.value) && !editingUserId.value)) promises.push(loadCategoryPreferences())
-  if (shouldLoadPatientDossierDocuments.value) promises.push(loadDocuments())
   if (hasAppointmentsSection.value) promises.push(loadProfileAppointments())
   await Promise.all(promises)
+  if (routeRequest !== profileRouteRequest) return
   if (import.meta.client && route.hash === '#securite') {
     await nextTick()
     document.getElementById('securite')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
-})
+}
 
 const loadRelativeProfileForStaff = async () => {
   if (!editingUserId.value || !editingRelativeId.value) return
+  const request = profileRequest
+  const patientId = editingUserId.value
+  const relativeId = editingRelativeId.value
   try {
     const res = await apiFetch(
       `/patient-relatives/${encodeURIComponent(editingRelativeId.value)}?patient_id=${encodeURIComponent(editingUserId.value)}`,
       { method: 'GET' },
     )
-    if (!res?.success || !res.data) {
-      toast.add({
-        title: 'Proche introuvable',
-        description: res?.error || 'Impossible de charger la fiche du proche.',
-        color: 'red',
-      })
-      editingRelativeId.value = null
-      editingRelativeRelationship.value = null
-      return
+    if (request !== profileRequest || relativeId !== editingRelativeId.value || patientId !== editingUserId.value) return
+    if (!res?.success || !res.data || res.data.id !== relativeId) {
+      throw new Error('Impossible de charger la fiche du proche. Réessayez.')
     }
     const r = res.data as Record<string, unknown>
     editingRelativeRelationship.value =
@@ -1901,16 +1923,16 @@ const loadRelativeProfileForStaff = async () => {
     }
     initialForm.value = { ...profileForm.value }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Impossible de charger la fiche du proche'
-    toast.add({ title: 'Erreur', description: message, color: 'red' })
-    editingRelativeId.value = null
-    editingRelativeRelationship.value = null
+    if (request === profileRequest) throw err
   }
 }
 
 const loadProfile = async () => {
   if (newPreleveurMode.value || newPatientMode.value) return
+  const request = ++profileRequest
+  const targetId = effectiveUserId.value
   loading.value = true
+  profileLoadError.value = ''
   try {
     let userData: any
     if (
@@ -1921,27 +1943,30 @@ const loadProfile = async () => {
         user.value?.role === 'nurse' ||
         user.value?.role === 'subaccount')
     ) {
-      const res = await apiFetch(`/users/${editingUserId.value}`, { method: 'GET' })
+      const res = await apiFetch(`/users/${encodeURIComponent(targetId)}`, { method: 'GET' })
       userData = res?.success ? res.data : null
     } else {
       userData = await fetchCurrentUser()
     }
-    if (!userData) return
+    if (request !== profileRequest) return
+    if (!userData || (targetId && userData.id !== targetId)) throw new Error('Impossible de charger ce profil. Réessayez.')
 
     editedUserRole.value = userData.role ?? null
     if (user.value?.role === 'super_admin' && editingUserId.value) {
       adminEditedUser.value = userData
       try {
         const incRes = await apiFetch(`/users/${editingUserId.value}/incidents`, { method: 'GET' })
+        if (request !== profileRequest) return
         adminIncidents.value = incRes?.success && incRes?.data?.incidents ? incRes.data.incidents : []
       } catch (_e) {
-        adminIncidents.value = []
+        if (request === profileRequest) adminIncidents.value = []
       }
     } else {
       adminEditedUser.value = null
       adminIncidents.value = []
     }
 
+    if (request !== profileRequest) return
     profileForm.value = {
       first_name: userData.first_name || '',
       last_name: userData.last_name || '',
@@ -1964,13 +1989,13 @@ const loadProfile = async () => {
     initialForm.value = { ...profileForm.value }
 
     if (isNurse.value) {
-      isAcceptingAppointments.value = userData.is_accepting_appointments !== false && userData.is_accepting_appointments !== 0
+      isAcceptingAppointments.value = ![false, 0, '0'].includes(userData.is_accepting_appointments)
     }
 
     if (hasPublicProfile.value) {
       const defaultHours = Object.fromEntries(DAYS.map((d) => [d.key, { start: '', end: '' }]))
       publicProfileForm.value = {
-        is_public_profile_enabled: !!userData.is_public_profile_enabled,
+        is_public_profile_enabled: [true, 1, '1'].includes(userData.is_public_profile_enabled),
         public_slug: userData.public_slug || '',
         profile_image_url: userData.profile_image_url || '',
         cover_image_url: userData.cover_image_url || '',
@@ -2015,35 +2040,37 @@ const loadProfile = async () => {
       if (user.value?.role === 'super_admin') {
         adminPreleveurLabId.value = userData.lab_id || ''
         await loadAdminCreateDependencies()
+        if (request !== profileRequest) return
       }
     } else if (user.value?.role === 'super_admin') {
       adminPreleveurLabId.value = ''
     }
     if (shouldLoadPatientDossierDocuments.value) {
       await loadDocuments()
+      if (request !== profileRequest) return
     }
     if (userData.role === 'lab' || userData.role === 'subaccount') {
       const defaultHours = Object.fromEntries(DAYS.map((d) => [d.key, { start: '', end: '' }]))
       publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
       publicProfileForm.value.cover_image_url = userData.cover_image_url || ''
-      publicProfileForm.value.is_public_profile_enabled = !!userData.is_public_profile_enabled
+      publicProfileForm.value.is_public_profile_enabled = [true, 1, '1'].includes(userData.is_public_profile_enabled)
       publicProfileForm.value.public_slug = userData.public_slug || ''
       publicProfileForm.value.website_url = userData.website_url || ''
       publicProfileForm.value.opening_hours = userData.opening_hours && typeof userData.opening_hours === 'object' ? { ...defaultHours, ...userData.opening_hours } : defaultHours
       publicProfileForm.value.social_links = userData.social_links && typeof userData.social_links === 'object' ? { ...userData.social_links } : { facebook: '', linkedin: '', instagram: '' }
-      isAcceptingAppointments.value = userData.is_accepting_appointments !== false && userData.is_accepting_appointments !== 0
+      isAcceptingAppointments.value = ![false, 0, '0'].includes(userData.is_accepting_appointments)
       const hours = userData.min_booking_lead_time_hours
       minBookingLeadTimeHours.value = [0, 24, 48, 72].includes(Number(hours)) ? Number(hours) : 48
-      acceptRdvSaturday.value = userData.accept_rdv_saturday !== false && userData.accept_rdv_saturday !== 0
-      acceptRdvSunday.value = userData.accept_rdv_sunday !== false && userData.accept_rdv_sunday !== 0
+      acceptRdvSaturday.value = ![false, 0, '0'].includes(userData.accept_rdv_saturday)
+      acceptRdvSunday.value = ![false, 0, '0'].includes(userData.accept_rdv_sunday)
     }
     if (isEditingRelativeProfile.value) {
       await loadRelativeProfileForStaff()
     }
   } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err.message || 'Impossible de charger le profil', color: 'red' })
+    if (request === profileRequest) profileLoadError.value = err.message || 'Impossible de charger le profil. Réessayez.'
   } finally {
-    loading.value = false
+    if (request === profileRequest) loading.value = false
   }
 }
 
@@ -2052,6 +2079,8 @@ const loadProfile = async () => {
 // ============================
 
 const saveProfile = async (fromSaveAll = false) => {
+  if (profileLoadError.value || loading.value) return
+  if (!fromSaveAll && saving.value) return
   if (!fromSaveAll) saving.value = true
   try {
     if (newPreleveurMode.value) {
@@ -2116,47 +2145,40 @@ const saveProfile = async (fromSaveAll = false) => {
       }
       if (email?.trim()) bodyPatient.email = email.trim()
       bodyPatient.patient_booking_consent = true
-      const res = await apiFetch('/patients', {
-        method: 'POST',
-        body: bodyPatient,
-      })
-      if (res?.success) {
-        const newPatientId = (res as any).data?.id
-        if (newPatientId && Object.keys(pendingDocumentFiles.value).length > 0) {
-          for (const docType of Object.keys(pendingDocumentFiles.value)) {
-            const file = pendingDocumentFiles.value[docType]
-            if (!file) continue
-            uploadingDocument.value = docType
-            documentError.value = null
-            try {
-              const formData = new FormData()
-              formData.append('file', file)
-              formData.append('document_type', docType)
-              formData.append('user_id', newPatientId)
-              const uploadRes = await apiFetch('/patient-documents/upload', { method: 'POST', body: formData })
-              if (!uploadRes?.success) throw new Error((uploadRes as any)?.error || "Erreur d'upload")
-            } catch (err: any) {
-              documentError.value = err.message || "Erreur lors de l'enregistrement du document"
-              toast.add({ title: 'Document non enregistré', description: err.message || "Impossible d'enregistrer un document.", color: 'red' })
-            } finally {
-              uploadingDocument.value = null
-            }
-          }
-          pendingDocumentFiles.value = {}
-          documents.value = {}
+      if (!createdPatientId.value) {
+        const res = await apiFetch('/patients', { method: 'POST', body: bodyPatient })
+        if (!res?.success || !res.data?.id) {
+          throw new Error(res?.error || 'Impossible de créer le patient. Réessayez.')
         }
-        toast.add({ title: 'Patient créé', color: 'green' })
-        const r = user.value?.role
-        if (newPatientId && (r === 'pro' || r === 'nurse' || r === 'lab' || r === 'subaccount')) {
-          const base =
-            r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : '/subaccount'
-          await navigateTo(`${base}/appointments/new?patient_id=${encodeURIComponent(String(newPatientId))}`)
-        } else {
-          await navigateTo(patientsListPath.value)
-        }
-      } else {
-        toast.add({ title: 'Erreur', description: (res as any)?.error || 'Impossible de créer le patient', color: 'red' })
+        createdPatientId.value = String(res.data.id)
       }
+      const newPatientId = createdPatientId.value
+      documentError.value = null
+      for (const [docType, file] of Object.entries(pendingDocumentFiles.value)) {
+        if (!file) continue
+        uploadingDocument.value = docType
+        try {
+          const formData = new FormData()
+          formData.append('file', file)
+          formData.append('document_type', docType)
+          formData.append('user_id', newPatientId)
+          const uploadRes = await apiFetch('/patient-documents/upload', { method: 'POST', body: formData })
+          if (!uploadRes?.success) throw new Error(uploadRes?.error || 'Le document n’a pas été enregistré.')
+          delete pendingDocumentFiles.value[docType]
+          documents.value[docType] = {
+            file_name: file.name, document_type: docType,
+            medical_document_id: uploadRes.data?.id ?? '',
+            updated_at: new Date().toISOString(),
+          }
+        } catch (err: any) {
+          documentError.value = err.message || 'Impossible d’envoyer ce document. Réessayez.'
+          return
+        } finally { uploadingDocument.value = null }
+      }
+      toast.add({ title: 'Patient créé', color: 'green' })
+      const r = user.value?.role
+      const base = r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : '/subaccount'
+      await navigateTo(`${base}/appointments/new?patient_id=${encodeURIComponent(newPatientId)}`)
       return
     }
 
@@ -2434,7 +2456,7 @@ async function onCoverageEditorSave(payload: {
 }
 
 const saveCoverage = async (fromSaveAll = false) => {
-  if (!hasValidAddress.value) {
+  if (!hasValidAddress.value || !profileForm.value.address) {
     toast.add({ title: 'Adresse requise', description: "Définissez d'abord votre adresse.", color: 'red' })
     return false
   }
@@ -2671,21 +2693,26 @@ const updateCategoryPreference = async (categoryId: string, isEnabled: boolean) 
 // ============================
 
 const loadProfileAppointments = async () => {
+  const request = ++appointmentsRequest
+  const profile = profileRequest
   loadingAppointments.value = true
+  appointmentsLoadError.value = ''
+  profileAppointments.value = []
   try {
     const url = isAdmin.value && editingUserId.value
       ? `/appointments?user_id=${editingUserId.value}&limit=20`
       : '/appointments?limit=20'
     const res = await apiFetch<{ success: boolean; data?: any[] }>(url, { method: 'GET' })
+    if (request !== appointmentsRequest || profile !== profileRequest) return
     if (res?.success && Array.isArray(res.data)) {
       profileAppointments.value = res.data
     } else {
-      profileAppointments.value = []
+      throw new Error('Impossible de charger les rendez-vous. Réessayez.')
     }
-  } catch (_e) {
-    profileAppointments.value = []
+  } catch (err: any) {
+    if (request === appointmentsRequest && profile === profileRequest) appointmentsLoadError.value = err.message || 'Impossible de charger les rendez-vous.'
   } finally {
-    loadingAppointments.value = false
+    if (request === appointmentsRequest && profile === profileRequest) loadingAppointments.value = false
   }
 }
 
@@ -2694,7 +2721,12 @@ const loadProfileAppointments = async () => {
 // ============================
 
 const loadDocuments = async () => {
+  if (newPatientMode.value) return
+  const request = ++documentsRequest
+  const profile = profileRequest
   loadingDocuments.value = true
+  documentsLoadError.value = ''
+  documents.value = {}
   documentError.value = null
   try {
     const url =
@@ -2705,6 +2737,7 @@ const loadDocuments = async () => {
           : `/patient-documents?user_id=${editingUserId.value}`
         : '/patient-documents'
     const response = await apiFetch(url, { method: 'GET' })
+    if (request !== documentsRequest || profile !== profileRequest) return
     if (!response.success) {
       throw new Error(response.error || 'Impossible de charger les documents')
     }
@@ -2716,20 +2749,22 @@ const loadDocuments = async () => {
       })
     }
   } catch (err: any) {
-    documentError.value = err.message || 'Erreur lors du chargement des documents'
+    if (request === documentsRequest && profile === profileRequest) documentsLoadError.value = err.message || 'Erreur lors du chargement des documents'
   } finally {
-    loadingDocuments.value = false
+    if (request === documentsRequest && profile === profileRequest) loadingDocuments.value = false
   }
 }
 
 function handleDocumentUpload(documentType: import('~/types/profile').DocumentType, file: File) {
   if (uploadingDocument.value === documentType) return
-  nextTick(() => handleDocumentChange(documentType, file))
+  void handleDocumentChange(documentType, file)
 }
 
 const handleDocumentChange = async (documentType: string, file: File | null) => {
   if (!file) return
+  if (loading.value || profileLoadError.value || documentsLoadError.value) return
   if (uploadingDocument.value === documentType) return
+  const profile = profileRequest
 
   // Création patient : stocker le fichier localement, upload après création
   if (newPatientMode.value) {
@@ -2754,24 +2789,27 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
     }
 
     const result = await apiFetch('/patient-documents/upload', { method: 'POST', body: formData })
+    if (profile !== profileRequest) return
 
     if (result.success) {
       toast.add({ title: 'Document enregistré', description: 'Votre document a été enregistré avec succès.', color: 'green' })
       isResettingAfterUpload.value = documentType
       documentFiles.value[documentType] = null
       await new Promise(resolve => setTimeout(resolve, 500))
+      if (profile !== profileRequest) return
       await loadDocuments()
-      setTimeout(() => { isResettingAfterUpload.value = null }, 100)
+      setTimeout(() => { if (profile === profileRequest) isResettingAfterUpload.value = null }, 100)
     } else {
       throw new Error(result.error || "Erreur lors de l'enregistrement")
     }
   } catch (err: any) {
+    if (profile !== profileRequest) return
     documentError.value = err.message || "Erreur lors de l'enregistrement du document"
     toast.add({ title: 'Erreur', description: err.message || "Impossible d'enregistrer le document", color: 'red' })
   } finally {
-    uploadingDocument.value = null
-    if (isResettingAfterUpload.value === documentType) {
-      setTimeout(() => { isResettingAfterUpload.value = null }, 100)
+    if (profile === profileRequest) uploadingDocument.value = null
+    if (profile === profileRequest && isResettingAfterUpload.value === documentType) {
+      setTimeout(() => { if (profile === profileRequest) isResettingAfterUpload.value = null }, 100)
     }
   }
 }
@@ -2779,7 +2817,7 @@ const handleDocumentChange = async (documentType: string, file: File | null) => 
 async function downloadDocument(documentId: string, fileName?: string) {
   downloadingDocumentId.value = documentId
   try {
-    const apiBase = useRuntimeConfig().public.apiBase || 'http://localhost:8888/api'
+    const apiBase = useRuntimeConfig().public.apiBase || '/api'
     const token = localStorage.getItem('auth_token')
     const url = `${apiBase}/medical-documents/${documentId}/download?t=${Date.now()}`
     const response = await fetch(url, {

@@ -4,7 +4,7 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Gestion des utilisateurs"
-        description="Gérez les utilisateurs : nom, prénom, email, rôle et types de soins."
+        description="Comptes, rôles et coordonnées."
       >
         <template #actions>
           <UButton
@@ -33,7 +33,7 @@
         size="sm"
         clearable
         class="min-w-0 flex-1"
-        :ui="{ rounded: 'rounded-lg' }"
+        :ui="{ base: 'rounded-lg' }"
       />
       <div class="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
         <USelect
@@ -137,7 +137,7 @@
         :items-per-page="pageSize"
         :sibling-count="paginationSiblings"
         show-edges
-        :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+        :ui="{ list: 'gap-1', item: 'rounded-lg' }"
       />
     </div>
   </div>
@@ -217,11 +217,11 @@ function hasCareTypes(role: string): boolean {
 
 const roleVal = computed(() => {
   const v = roleFilter.value;
-  return (typeof v === 'object' && v?.value != null) ? v.value : v;
+  return v;
 });
 const statusVal = computed(() => {
   const v = statusFilter.value;
-  return (typeof v === 'object' && v?.value != null) ? v.value : v;
+  return v;
 });
 
 
@@ -289,21 +289,22 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  usersController?.abort();
+  usersRequestVersion++;
 });
 
-watch([roleFilter, statusFilter], () => {
-  currentPage.value = 1;
-  fetchUsers();
+watch([roleFilter, statusFilter, debouncedSearch], () => {
+  if (currentPage.value !== 1) currentPage.value = 1;
+  else void fetchUsers();
 });
-watch(debouncedSearch, () => {
-  currentPage.value = 1;
-  fetchUsers();
-});
-watch(currentPage, () => {
-  fetchUsers();
-});
+watch(currentPage, () => { void fetchUsers(); });
 
+let usersController: AbortController | undefined;
+let usersRequestVersion = 0;
 const fetchUsers = async () => {
+  const version = ++usersRequestVersion;
+  usersController?.abort();
+  usersController = new AbortController();
   loading.value = true;
   try {
     const params: Record<string, string> = {
@@ -315,7 +316,8 @@ const fetchUsers = async () => {
     const q = debouncedSearch.value.trim();
     if (q) params.search = q;
     const queryString = new URLSearchParams(params).toString();
-    const response = await apiFetch(`/users?${queryString}`, { method: 'GET' });
+    const response = await apiFetch(`/users?${queryString}`, { method: 'GET', signal: usersController.signal });
+    if (version !== usersRequestVersion) return;
     if (response?.success && Array.isArray(response.data)) {
       users.value = response.data;
       const pag = response.pagination;
@@ -325,12 +327,13 @@ const fetchUsers = async () => {
       totalItems.value = 0;
     }
   } catch (error: any) {
+    if (version !== usersRequestVersion) return;
     console.error('Erreur lors du chargement des utilisateurs:', error);
     toast.add({ title: 'Erreur de chargement', description: error?.message, color: 'red' });
     users.value = [];
     totalItems.value = 0;
   } finally {
-    loading.value = false;
+    if (version === usersRequestVersion) loading.value = false;
   }
 };
 

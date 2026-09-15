@@ -1,15 +1,15 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ProfileCoverageEditor } from '@/features/profile/components/ProfileCoverageEditor';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
+import { Button } from '@/components/ui/Button';
 import {
   fetchCoverageZones,
   fetchUser,
   saveCoverageZone,
-  updateUser,
 } from '@/features/profile/api/profile.service';
 import {
   hasValidGeoAddress,
@@ -35,7 +35,6 @@ export function ProfileNurseCoverageScreen() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const hydratedRef = useRef(false);
 
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [halfSideKm, setHalfSideKm] = useState(DEFAULT_RADIUS);
@@ -43,8 +42,12 @@ export function ProfileNurseCoverageScreen() {
   const [vertices, setVertices] = useState<CoverageVertex[] | null>(null);
 
   const userQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
+    queryFn: async () => {
+      const res = await fetchUser(user!.id, 'full');
+      if (!res.success || !res.data) throw new Error('Profil indisponible');
+      return res.data;
+    },
     enabled: !!user?.id,
   });
 
@@ -69,7 +72,6 @@ export function ProfileNurseCoverageScreen() {
       const r = Number(zone.radius_km);
       if (Number.isFinite(r)) {
         setHalfSideKm(Math.max(MIN_RADIUS, r));
-        hydratedRef.current = true;
       }
     }
     if (zone?.bounds_json) {
@@ -88,14 +90,6 @@ export function ProfileNurseCoverageScreen() {
       if (!hasValidGeoAddress(address)) {
         throw new Error('ADDRESS_REQUIRED');
       }
-      await updateUser(user!.id, {
-        address: {
-          label: address!.label.trim(),
-          lat: address!.lat,
-          lng: address!.lng,
-          complement: address!.complement,
-        },
-      });
       const zoneBounds =
         payload.bounds ??
         toPolygonPayload(payload.vertices ?? []);
@@ -128,23 +122,34 @@ export function ProfileNurseCoverageScreen() {
     },
   });
 
-  const onSaveZone = (
+  const onSaveZone = async (
     half: number,
     b: CoveragePolygonPayload,
     verts: CoverageVertex[],
   ) => {
-    setHalfSideKm(half);
-    setBounds(b);
-    setVertices(verts);
-    if (!hydratedRef.current) return;
-    if (!save.isPending) save.mutate({ halfSide: half, bounds: b, vertices: verts });
+    if (save.isPending || userQ.isError || zoneQ.isError) return false;
+    try {
+      await save.mutateAsync({ halfSide: half, bounds: b, vertices: verts });
+      setHalfSideKm(half);
+      setBounds(b);
+      setVertices(verts);
+      return true;
+    } catch {
+      return false;
+    }
   };
+
+  if (userQ.isError || zoneQ.isError) {
+    return <ProfileSubScreenLayout hideSave>
+      <AppText style={styles.intro}>Votre secteur est indisponible pour le moment.</AppText>
+      <Button title="Réessayer" loading={userQ.isFetching || zoneQ.isFetching} onPress={() => { void userQ.refetch(); void zoneQ.refetch(); }} />
+    </ProfileSubScreenLayout>;
+  }
 
   return (
     <ProfileSubScreenLayout hideSave>
       <AppText style={styles.intro}>
-        Consultez votre zone sur la carte, puis ouvrez l’éditeur plein écran pour l’ajuster au doigt.
-        Appuyez sur Valider pour enregistrer.
+        Ajustez votre secteur sur la carte, puis appuyez sur « Enregistrer mon secteur ».
       </AppText>
       <AppText style={styles.hint}>
         Adresse issue de vos coordonnées — modifiez-la dans Coordonnées si besoin.
@@ -166,7 +171,7 @@ export function ProfileNurseCoverageScreen() {
 }
 
 function buildStyles(c: AppColors) {
-  return StyleSheet.create({
+  return {
     intro: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.sm,
@@ -180,5 +185,5 @@ function buildStyles(c: AppColors) {
       lineHeight: fontSize.xs * 1.45,
       marginTop: -spacing[2],
     },
-  });
+  } satisfies Parameters<typeof StyleSheet.create>[0];
 }

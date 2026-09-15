@@ -5,18 +5,19 @@
       'shadow-sm border-0 ring-1 ring-gray-200 dark:ring-gray-800 hover:shadow-md transition-shadow duration-200',
       highlighted ? 'ring-2 ring-primary-500 dark:ring-primary-400' : '',
     ]"
-    :ui="{ body: { padding: 'p-5 sm:p-6' } }"
+    :ui="{ body: 'p-5 sm:p-6' }"
   >
     <div class="space-y-4">
-      <div class="flex justify-between items-start gap-4">
+      <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start sm:gap-4">
         <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2 mb-2">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
             <div class="flex gap-0.5">
               <UIcon
                 v-for="i in 5"
                 :key="i"
                 :name="i <= review.rating ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
-                class="text-yellow-400 w-5 h-5 flex-shrink-0"
+                class="text-amber-500 w-5 h-5 flex-shrink-0"
+                aria-hidden="true"
               />
             </div>
             <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ review.rating }}/5</span>
@@ -39,14 +40,14 @@
             <NuxtLink
               v-if="review.appointment_id && appointmentDetailBase"
               :to="`${appointmentDetailBase}/${review.appointment_id}`"
-              class="text-xs text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1"
+              class="min-h-11 text-sm text-primary-700 dark:text-primary-400 hover:underline inline-flex items-center gap-1"
             >
               <UIcon name="i-lucide-external-link" class="w-3.5 h-3.5" />
               Voir le rendez-vous
             </NuxtLink>
           </div>
 
-          <p v-if="review.comment" class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+          <p v-if="review.comment" class="break-words text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
             {{ review.comment }}
           </p>
         </div>
@@ -81,15 +82,16 @@
 </template>
 
 <script setup lang="ts">
+import type { ReceivedReview } from '~/types/reviews';
 defineProps<{
-  review: Record<string, any>
+  review: ReceivedReview
   /** Ex. `/nurse/appointments` (sans slash final) */
   appointmentDetailBase: string
   highlighted?: boolean
 }>()
 
 defineEmits<{
-  reply: [review: Record<string, any>]
+  reply: [review: ReceivedReview]
 }>()
 
 function appointmentTypeLabel(type: string | null | undefined) {

@@ -1,9 +1,9 @@
 <template>
   <div v-if="displayAppointments.length > 0" class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
-    <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
+    <div class="px-4 py-4 sm:px-5 border-b border-default/50 flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-lg font-semibold text-default flex items-center gap-2">
         <UIcon name="i-lucide-clock" class="w-5 h-5 text-amber-500" />
-        Rendez-vous en attente d'acceptation
+        Demandes à traiter
       </h2>
       <UButton
         v-if="basePath"
@@ -16,7 +16,7 @@
       </UButton>
     </div>
     <div class="p-3 sm:p-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div class="grid grid-cols-1 gap-3 min-[1400px]:grid-cols-2">
         <DashboardAppointmentCard
           v-for="apt in displayAppointments"
           :key="apt.id"

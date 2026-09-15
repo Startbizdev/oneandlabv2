@@ -3,7 +3,8 @@
     <AppPageHeader title="Nouveau passage" :edge-bleed="false" />
 
     <div v-if="!patientId" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-      Patient requis — repassez par la sélection patient depuis la tournée.
+      <p class="font-medium">Choisissez d’abord un patient pour organiser son passage.</p>
+      <UButton to="/nurse/passage/patient-pick" class="mt-3" variant="outline" color="neutral">Choisir un patient</UButton>
     </div>
 
     <template v-else>
@@ -20,7 +21,7 @@
           size="sm"
           :variant="tab === item.value ? 'solid' : 'ghost'"
           :color="tab === item.value ? 'primary' : 'neutral'"
-          @click="tab = item.value"
+          @click="($event) => { tab = item.value }"
         >
           {{ item.label }}
         </UButton>
@@ -83,7 +84,7 @@
           icon="i-lucide-file-pen-line"
           title="Génération d'ordonnances désactivée"
           description="Contactez l'administration Cary pour activer cette fonctionnalité."
-          variant="outline"
+          variant="default"
           class="py-12"
         />
       </div>
@@ -93,19 +94,22 @@
           :patient-id="patientId"
           editable
           clinical-vitals
-          clinical-vital-context="passage"
+          :clinical-vital-context="{ type: 'general' }"
         />
       </div>
     </template>
 
     <UModal v-model:open="planningOpen" title="Planification">
+      <template #body>
       <div class="space-y-3 p-1">
         <PassagePlanningFormFields v-model="planningState" />
         <UButton block @click="confirmPlanning">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="dailyTimesOpen" title="Créneaux de passage">
+      <template #body>
       <div class="space-y-3 p-1">
         <p class="text-sm text-gray-500">Choisissez les moments à créer chaque jour (ex. matin + midi).</p>
         <div class="flex flex-wrap gap-2">
@@ -119,40 +123,49 @@
             {{ item.label }}
           </UButton>
         </div>
-        <UButton block @click="editModal = null">Valider</UButton>
+        <UButton block @click="($event) => { editModal = null }">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="locationOpen" title="Lieu">
+      <template #body>
       <div class="space-y-3 p-1">
         <div class="flex items-center justify-between gap-3">
           <p class="font-medium">À domicile</p>
           <USwitch v-model="atHome" />
         </div>
         <p v-if="!atHome" class="text-sm text-gray-500">Adresse cabinet (profil pro)</p>
-        <UButton block @click="editModal = null">Valider</UButton>
+        <UButton block @click="($event) => { editModal = null }">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="durationOpen" title="Durée du passage">
+      <template #body>
       <div class="space-y-3 p-1">
         <USelect v-model="duration" :items="durationItems" />
-        <UButton block @click="editModal = null">Valider</UButton>
+        <UButton block @click="($event) => { editModal = null }">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="careOpen" title="Soins" :ui="{ content: 'max-w-lg' }">
+      <template #body>
       <div class="space-y-3 p-1">
         <PassageCarePicker v-model="nursingItems" />
-        <UButton block @click="editModal = null">Valider</UButton>
+        <UButton block @click="($event) => { editModal = null }">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="notesOpen" title="Note">
+      <template #body>
       <div class="space-y-3 p-1">
         <UTextarea v-model="notes" :rows="4" placeholder="Note interne (optionnelle)" />
-        <UButton block @click="editModal = null">Valider</UButton>
+        <UButton block @click="($event) => { editModal = null }">Valider</UButton>
       </div>
+          </template>
     </UModal>
   </AppPageShell>
 </template>
@@ -209,7 +222,7 @@ const tabItems = [
 ];
 
 const patientProfile = ref<Record<string, unknown> | null>(null);
-const careCategories = ref<Array<{ id: string; name?: string; label?: string; options?: unknown[] }>>([]);
+const careCategories = ref<NonNullable<Parameters<typeof formatCareSummary>[1]>>([]);
 const duration = ref(30);
 const atHome = ref(true);
 const notes = ref('');
@@ -312,7 +325,7 @@ onMounted(async () => {
     careCategories.value = [];
   }
   if (!patientId.value) return;
-  const res = await apiFetch<Record<string, unknown>>(`/users/${patientId.value}?detail=full`);
+  const res = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/users/${patientId.value}?detail=full`);
   patientProfile.value = res?.data ?? null;
 });
 
@@ -350,7 +363,7 @@ async function submit() {
     duration_minutes: duration.value,
     at_home: atHome.value,
     nursing_items: nursingItems.value,
-    notes: notes.trim() || null,
+    notes: notes.value.trim() || null,
   };
 
   const result = await createSeries(input);

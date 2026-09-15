@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ResumableAppointmentBatch, createAppointmentRequestId } from '@oneandlab/shared-utils';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,7 +36,7 @@ import {
   fetchAppointment,
   updateAppointment,
 } from '@/features/appointments/api/appointments.service';
-import { createMultipleAppointments } from '@/features/appointments/api/create-multiple-appointments';
+import { createMultipleAppointments, type AppointmentCreatePayload } from '@/features/appointments/api/create-multiple-appointments';
 import { uploadAppointmentDocuments } from '@/features/appointments/api/upload-appointment-documents';
 import { randomUUID } from '@/lib/uuid';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
@@ -55,10 +56,10 @@ import {
 } from '@/features/patients/api/patient-profile.service';
 import { buildAvailabilityPayload, isAvailabilityValid } from '../utils/availability';
 import { appointmentFormSchema, type AppointmentFormSchema } from '../schemas/appointment-form.schema';
-import { fetchUser } from '@/features/profile/api/profile.service';
 import { updatePatient } from '@/features/patients/api/patients.service';
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { useProfileAddressSync } from './useProfileAddressSync';
+import { useSelectedPatient } from './useSelectedPatient';
 
 const defaultValues: AppointmentFormSchema = {
   is_new_patient: false,
@@ -94,6 +95,7 @@ export function useAppointmentForm(opts: {
     (opts.role === 'pro' || opts.role === 'nurse' || opts.role === 'lab' || opts.role === 'subaccount');
   const [patientBookingConsent, setPatientBookingConsent] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [patientMode, setPatientMode] = useState<'existing' | 'new'>('existing');
   const [addressComplement, setAddressComplement] = useState('');
 
   const form = useForm<AppointmentFormSchema>({
@@ -173,6 +175,8 @@ export function useAppointmentForm(opts: {
     [setValue],
   );
 
+  const singleRequestId = useRef(createAppointmentRequestId());
+  const singleCreatedPatientId = useRef<string | null>(null);
   const createMut = useMutation({
     mutationFn: async (data: AppointmentFormSchema) => {
       if (staffRequiresPatientConsent && !patientBookingConsent) {
@@ -193,7 +197,9 @@ export function useAppointmentForm(opts: {
         if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
       }
 
-      if (data.is_new_patient || selectedPatientId === NEW_PATIENT_ID) {
+      if ((data.is_new_patient || selectedPatientId === NEW_PATIENT_ID) && singleCreatedPatientId.current) {
+        patientId = singleCreatedPatientId.current;
+      } else if (data.is_new_patient || selectedPatientId === NEW_PATIENT_ID) {
         const pRes = await createPatient({
           first_name: data.first_name.trim(),
           last_name: data.last_name.trim(),
@@ -206,6 +212,7 @@ export function useAppointmentForm(opts: {
         });
         if (!pRes.success || !pRes.data?.id) throw new Error(pRes.error ?? 'Création patient impossible');
         patientId = pRes.data.id;
+        singleCreatedPatientId.current = patientId;
       }
 
       const merged = { ...data, address } as AppointmentFormValues;
@@ -222,7 +229,7 @@ export function useAppointmentForm(opts: {
       if (opts.role === 'nurse' && user?.id && createStatus === 'confirmed') {
         body.assigned_nurse_id = user.id;
       }
-      const res = await createAppointment(body);
+      const res = await createAppointment({ ...body, client_request_id: singleRequestId.current });
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
       await uploadAppointmentDocuments(res.data.id, body);
       return res.data.id;
@@ -281,8 +288,7 @@ export function useAppointmentForm(opts: {
     setAddressComplement,
   });
 
-  const fillPatientFields = useCallback(
-    async (p: PatientRow) => {
+  const selectedPatientRecord = useSelectedPatient((p, address) => {
       setValue('patient_id', p.id);
       setValue('first_name', p.first_name ?? '');
       setValue('last_name', p.last_name ?? '');
@@ -290,32 +296,28 @@ export function useAppointmentForm(opts: {
       setValue('phone', p.phone ?? '');
       setValue('gender', (p.gender as string) ?? '');
       setValue('birth_date', (p.birth_date as string) ?? '');
-      let full: PatientRow = p;
-      try {
-        const res = await fetchUser(p.id);
-        if (res.success && res.data) full = { ...p, ...(res.data as PatientRow) };
-      } catch {
-        /* données liste */
-      }
-      await addressSync.applyFromRaw(full.address);
-    },
-    [setValue, addressSync],
-  );
+      setValue('address', address ?? undefined);
+      setAddressComplement(address?.complement ?? '');
+  }, () => {
+    reset({ ...form.getValues(), patient_id: undefined, first_name: '', last_name: '', email: '', phone: '', gender: '', birth_date: '', address: undefined, files: {} });
+    setAddressComplement('');
+  });
+  const { load: loadSelectedPatient, reset: resetSelectedPatient } = selectedPatientRecord;
 
   const onSelectPatient = useCallback(
     (id: string) => {
       setSelectedPatientId(id);
       const isNew = id === NEW_PATIENT_ID;
+      setPatientMode(isNew ? 'new' : 'existing');
       setValue('is_new_patient', isNew);
-      if (!isNew) {
-        const p = patientsQ.data?.find((x) => x.id === id);
-        if (p) void fillPatientFields(p);
-      }
+      if (!isNew && id) void loadSelectedPatient(id);
+      else resetSelectedPatient();
     },
-    [patientsQ.data, setValue, fillPatientFields],
+    [setValue, loadSelectedPatient, resetSelectedPatient],
   );
 
   const submit = handleSubmit((data) => {
+    if (patientMode === 'existing' && (selectedPatientRecord.loading || selectedPatientRecord.error)) return;
     if (opts.mode === 'create') createMut.mutate(data);
     else updateMut.mutate(data);
   });
@@ -334,6 +336,13 @@ export function useAppointmentForm(opts: {
     onComplementChange: addressSync.onComplementChange,
     patientOptions,
     categories: categoriesQ.data ?? [],
+    patientMode,
+    patientProfileLoading: selectedPatientRecord.loading,
+    patientProfileError: selectedPatientRecord.error,
+    retryPatientProfile: selectedPatientRecord.retry,
+    patientsLoading: patientsQ.isFetching,
+    patientsError: patientsQ.isError,
+    retryPatients: () => { void patientsQ.refetch(); },
     loading: patientsQ.isLoading || categoriesQ.isLoading || appointmentQ.isLoading,
     saving: createMut.isPending || updateMut.isPending,
     submit,
@@ -360,11 +369,14 @@ export function useMultiAppointmentWizard(opts: {
   initialPatientId?: string;
   /** Parcours patient connecté : sync adresse sur /users/:id */
   syncPatientSelfAddress?: boolean;
+  patientRelativeId?: string | null;
   bookingMode?: 'patient' | 'dashboard';
   getPatientBookingConsent?: () => boolean;
   getProNurseAssignment?: () => ProNurseAssignment | null;
   getLabPreference?: () => { mode: LabPreferenceMode | ''; brandId: string | null };
 }) {
+  const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
+  const createdPatientForAttempt = useRef<string | null>(null);
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
@@ -374,6 +386,9 @@ export function useMultiAppointmentWizard(opts: {
   const [patientMode, setPatientMode] = useState<'existing' | 'new'>(
     opts.initialPatientId ? 'existing' : 'existing',
   );
+  useEffect(() => {
+    if (patientMode === 'existing') createdPatientForAttempt.current = null;
+  }, [patientMode]);
   const [addressComplement, setAddressComplement] = useState('');
   const [pinnedLookupPatient, setPinnedLookupPatient] = useState<PatientRow | null>(null);
 
@@ -390,12 +405,12 @@ export function useMultiAppointmentWizard(opts: {
   });
 
   const getProfileId = useCallback(() => {
-    if (opts.syncPatientSelfAddress && user?.id) return user.id;
+    if (opts.syncPatientSelfAddress && user?.id) return opts.patientRelativeId ? null : user.id;
     if (patientMode === 'existing' && selectedPatientId && selectedPatientId !== NEW_PATIENT_ID) {
       return selectedPatientId;
     }
     return null;
-  }, [opts.syncPatientSelfAddress, user?.id, patientMode, selectedPatientId]);
+  }, [opts.syncPatientSelfAddress, opts.patientRelativeId, user?.id, patientMode, selectedPatientId]);
 
   const addressSync = useProfileAddressSync({
     getProfileId,
@@ -421,34 +436,33 @@ export function useMultiAppointmentWizard(opts: {
     enabled: !isPatientBooking,
   });
 
-  const fillWizardPatient = useCallback(
-    async (p: PatientRow) => {
-      form.setValue('first_name', p.first_name ?? '');
-      form.setValue('last_name', p.last_name ?? '');
-      form.setValue('email', p.email ?? '');
-      form.setValue('phone', p.phone ?? '');
-      form.setValue('gender', normalizePatientGender(p.gender));
-      form.setValue('birth_date', (p.birth_date as string) ?? '');
-      let full: PatientRow = p;
-      try {
-        const res = await fetchUser(p.id);
-        if (res.success && res.data) full = { ...p, ...(res.data as PatientRow) };
-      } catch {
-        /* données liste */
-      }
-      await addressSync.applyFromRaw(full.address);
-    },
-    [form, addressSync],
-  );
-
+  const selectedPatientRecord = useSelectedPatient((p, address) => {
+    form.reset({
+      first_name: p.first_name ?? '', last_name: p.last_name ?? '', email: p.email ?? '',
+      phone: p.phone ?? '', gender: normalizePatientGender(p.gender), birth_date: p.birth_date ?? '',
+      address,
+    });
+    setAddressComplement(address?.complement ?? '');
+  }, () => {
+    form.reset({ first_name: '', last_name: '', email: '', phone: '', gender: '', birth_date: '', address: null });
+    setAddressComplement('');
+    setPersonalFiles({});
+  });
+  const { load: loadSelectedPatient, reset: resetSelectedPatient } = selectedPatientRecord;
+  const fillWizardPatient = useCallback((p: PatientRow) => loadSelectedPatient(p.id), [loadSelectedPatient]);
   useEffect(() => {
-    if (!opts.initialPatientId || !patientsQ.data?.length) return;
-    const p = patientsQ.data.find((x) => x.id === opts.initialPatientId);
-    if (p) {
-      setSelectedPatientId(p.id);
-      void fillWizardPatient(p);
-    }
-  }, [opts.initialPatientId, patientsQ.data, fillWizardPatient]);
+    if (!opts.initialPatientId || isPatientBooking) return;
+    setSelectedPatientId(opts.initialPatientId);
+    void loadSelectedPatient(opts.initialPatientId);
+  }, [opts.initialPatientId, isPatientBooking, loadSelectedPatient]);
+
+  const changePatientMode = useCallback((mode: 'existing' | 'new') => {
+    if (mode === patientMode) return;
+    resetSelectedPatient();
+    setSelectedPatientId('');
+    setPinnedLookupPatient(null);
+    setPatientMode(mode);
+  }, [patientMode, resetSelectedPatient]);
 
   const onSelectPatient = useCallback(
     (id: string, opts?: { keepMode?: boolean }) => {
@@ -470,9 +484,12 @@ export function useMultiAppointmentWizard(opts: {
           patientsQ.data?.find((x) => x.id === id) ??
           (pinnedLookupPatient?.id === id ? pinnedLookupPatient : undefined);
         if (p) void fillWizardPatient(p);
+        else void loadSelectedPatient(id);
+      } else {
+        resetSelectedPatient();
       }
     },
-    [patientsQ.data, fillWizardPatient, pinnedLookupPatient],
+    [patientsQ.data, fillWizardPatient, pinnedLookupPatient, loadSelectedPatient, resetSelectedPatient],
   );
 
   const patientOptions = useMemo(() => {
@@ -589,6 +606,9 @@ export function useMultiAppointmentWizard(opts: {
 
   const submitMut = useMutation({
     mutationFn: async () => {
+      if (!isPatientBooking && patientMode === 'existing' && (selectedPatientRecord.loading || selectedPatientRecord.error)) {
+        throw new Error('Rechargez le dossier patient avant de confirmer le rendez-vous.');
+      }
       if (
         opts.bookingMode === 'dashboard' &&
         opts.getPatientBookingConsent &&
@@ -626,6 +646,8 @@ export function useMultiAppointmentWizard(opts: {
       let patientId =
         selectedPatientId && selectedPatientId !== NEW_PATIENT_ID ? selectedPatientId : undefined;
 
+      if (patientMode === 'new' && !patientId && createdPatientForAttempt.current) patientId = createdPatientForAttempt.current;
+
       if (patientMode === 'new' && !patientId) {
         const lookup = await lookupPatientByContact(patient.email ?? '', patient.phone ?? '');
         if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
@@ -644,12 +666,13 @@ export function useMultiAppointmentWizard(opts: {
         });
         if (!pRes.success || !pRes.data?.id) throw new Error(pRes.error ?? 'Création patient impossible');
         patientId = pRes.data.id;
+        createdPatientForAttempt.current = patientId;
       }
 
       if (!patientId) throw new Error('Patient introuvable ou incomplet');
 
       const genderNorm = normalizePatientGender(patient.gender);
-      if (patientMode === 'existing' && patientId) {
+      if ((patientMode === 'existing' || createdPatientForAttempt.current === patientId) && patientId) {
         const syncBody: Record<string, unknown> = {
           first_name: patient.first_name.trim(),
           last_name: patient.last_name.trim(),
@@ -710,7 +733,7 @@ export function useMultiAppointmentWizard(opts: {
         opts.getProNurseAssignment?.() ?? null,
       );
 
-      const result = await createMultipleAppointments(payloads);
+      const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
       return result.createdIds[0];
     },
@@ -743,10 +766,16 @@ export function useMultiAppointmentWizard(opts: {
     selectedPatientId,
     setSelectedPatientId,
     patientMode,
-    setPatientMode,
+    setPatientMode: changePatientMode,
     onSelectPatient,
     adoptLookupPatient,
     patientOptions,
+    patientProfileLoading: selectedPatientRecord.loading,
+    patientProfileError: selectedPatientRecord.error,
+    retryPatientProfile: selectedPatientRecord.retry,
+    patientsLoading: patientsQ.isFetching,
+    patientsError: patientsQ.isError,
+    retryPatients: () => { void patientsQ.refetch(); },
     addressComplement,
     setAddressComplement,
     onAddressChange: addressSync.onAddressChange,

@@ -56,31 +56,8 @@ if ($role === 'nurse') {
     $appointmentsCountThisMonth = 0;
     if ($maxAppointmentsPerMonth !== null) {
         // Mois courant en Europe/Paris (cohérent avec les utilisateurs français)
-        $tz = new DateTimeZone('Europe/Paris');
-        $now = new DateTime('now', $tz);
-        $monthStart = $now->format('Y-m-01 00:00:00');
-        $monthEnd = $now->format('Y-m-t 23:59:59');
-        // Compter les RDV acceptés ce mois : date de 1ère acceptation par l'infirmier
-        // Fallback sur scheduled_at si pas d'entrée (anciens RDV ou assignation admin)
-        $stmtCount = $db->prepare('
-            SELECT COUNT(*) FROM (
-                SELECT a.id FROM appointments a
-                LEFT JOIN (
-                    SELECT appointment_id, MIN(created_at) as first_accepted_at
-                    FROM appointment_status_updates
-                    WHERE status = \'confirmed\' AND actor_role = \'nurse\' AND actor_id = ?
-                    GROUP BY appointment_id
-                ) u ON u.appointment_id = a.id
-                WHERE a.assigned_nurse_id = ?
-                AND a.status NOT IN (\'canceled\', \'refused\')
-                AND (
-                    (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at <= ?)
-                    OR (u.first_accepted_at IS NULL AND a.scheduled_at >= ? AND a.scheduled_at <= ?)
-                )
-            ) x
-        ');
-        $stmtCount->execute([$userId, $userId, $monthStart, $monthEnd, $monthStart, $monthEnd]);
-        $appointmentsCountThisMonth = (int) $stmtCount->fetchColumn();
+        require_once __DIR__ . '/../../lib/NurseMonthlyAllowance.php';
+        $appointmentsCountThisMonth = NurseMonthlyAllowance::count($db, $userId);
     }
     $data = [
         'plan_slug' => $planSlug,
@@ -98,8 +75,9 @@ if ($role === 'nurse') {
     $labLimits = $limitsConfig['lab'][$planSlug] ?? $limitsConfig['lab']['free'];
     $data = [
         'plan_slug' => $planSlug,
-        'max_preleveurs' => $labLimits['max_preleveurs'] ?? 0,
-        'max_subaccounts' => $labLimits['max_subaccounts'] ?? 0,
+        // Explicit null means unlimited; only a missing key falls back to zero.
+        'max_preleveurs' => array_key_exists('max_preleveurs', $labLimits) ? $labLimits['max_preleveurs'] : 0,
+        'max_subaccounts' => array_key_exists('max_subaccounts', $labLimits) ? $labLimits['max_subaccounts'] : 0,
     ];
 }
 

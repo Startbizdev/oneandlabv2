@@ -127,7 +127,8 @@ const customDates = computed({
   set: (v) => { state.value = { ...state.value, customDates: v }; },
 });
 
-function onOpenEndedToggle(v: boolean) {
+function onOpenEndedToggle(value: boolean | 'indeterminate') {
+  const v = value === true;
   state.value = {
     ...state.value,
     openEnded: v,

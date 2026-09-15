@@ -7,10 +7,14 @@
       ]"
     >
       <!-- En-tête : aligné marges/titre avec RendezVousFormStep -->
-      <header class="mb-4 px-4 text-left sm:mb-6 sm:px-0">
-        <h1 class="text-lg font-semibold tracking-tight text-gray-900 dark:text-white sm:text-xl">
+      <header class="mb-6 px-4 pt-4 text-left sm:mb-8 sm:px-0 sm:pt-6">
+        <p class="mb-3 text-xs font-semibold tracking-wide text-primary-700 dark:text-primary-300">Votre sélection</p>
+        <h1 class="text-3xl font-semibold leading-tight tracking-[-0.04em] text-gray-900 dark:text-white sm:text-4xl">
           {{ selectionTitle || 'Quels soins vous concernent ?' }}
         </h1>
+        <p class="mt-2 max-w-xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+          Sélectionnez vos soins, puis le lieu et les dates.
+        </p>
         <p
           v-if="providerName"
           class="mt-2 text-sm text-gray-500 dark:text-gray-400"
@@ -38,7 +42,7 @@
         </p>
         <!-- Filtre horizontal swipe (Embla) : cartes façon iOS avec aperçu de la carte suivante -->
         <ClientOnly>
-          <IosSwipeSegmentFilter
+          <CareCategoryFilters
             v-if="showFilterTabs"
             v-model="filterPill"
             :tabs="filterTabs"
@@ -68,42 +72,28 @@
           <li v-for="item in filteredMainList" :key="item.id" class="list-none min-w-0" role="presentation">
             <div
               :ref="(el) => setCareCardEl(item.id, el)"
-              class="group flex w-full min-h-[3rem] items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-[box-shadow,transform,background-color] duration-150 sm:gap-3 sm:px-3.5 sm:py-2.5"
+              class="group flex w-full min-h-[5rem] items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors duration-150"
               :class="
                 isRowSelected(item.raw, item.id)
-                  ? 'border border-primary-300/50 bg-primary-50/70 shadow-[0_2px_10px_rgba(28,199,181,0.12)] dark:border-primary-500/35 dark:bg-primary-950/25 dark:shadow-[0_2px_12px_rgba(28,199,181,0.08)]'
-                  : 'border border-gray-100/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_14px_rgba(15,23,42,0.05)] hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_8px_20px_rgba(15,23,42,0.07)] dark:border-gray-800/80 dark:bg-gray-950 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.45)]'
+                  ? 'border border-primary-600 bg-primary-50 dark:border-primary-500 dark:bg-primary-950/25'
+                  : 'border border-gray-200 bg-white hover:border-primary-400 dark:border-gray-800 dark:bg-gray-950'
               "
             >
               <div
                 class="care-add-flight-visual flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-gray-100/90 bg-gray-50/90 dark:border-gray-700/80 dark:bg-gray-900/60"
                 aria-hidden="true"
               >
-                <span
-                  v-if="item.emoji"
-                  class="select-none text-[1.25rem] leading-none"
-                  role="img"
-                >{{ item.emoji }}</span>
-                <CareCategoryVisual
-                  v-else
-                  :emoji="item.emoji"
-                  :image-src="item.imageSrc"
-                  :icon-name="item.iconName"
-                  :icon-color="item.iconColor"
-                  emoji-class="text-[1.25rem] leading-none"
-                  img-class="block max-h-full max-w-full object-contain"
-                  icon-class="h-5 w-5 shrink-0"
-                />
+                <UIcon :name="`i-lucide-${careSymbol({ label: item.label, type: item.raw.type })}`" class="h-5 w-5 text-primary-900 dark:text-primary-300" />
               </div>
               <p
-                class="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight text-gray-900 dark:text-white sm:text-sm"
+                class="min-w-0 flex-1 break-words text-sm font-medium text-gray-900 dark:text-white"
               >
                 {{ item.label }}
               </p>
               <div class="shrink-0 self-center">
                 <button
                   type="button"
-                  class="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/80 focus-visible:ring-offset-2 rounded-full dark:focus-visible:ring-offset-gray-950"
+                  class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
                   :aria-pressed="isRowSelected(item.raw, item.id)"
                   :aria-label="
                     isRowSelected(item.raw, item.id)
@@ -149,29 +139,29 @@
       leave-to-class="translate-y-full opacity-0"
     >
       <RendezVousStickyFooter
-        v-if="selectedServices.length > 0"
         :dashboard-layout="dashboardLayout"
         :show-back="false"
         primary-label="Continuer"
+        :primary-disabled="selectedServices.length === 0"
         :primary-submit="false"
         @primary="emit('continue')"
       >
         <template #leading>
-          <div
-            class="flex min-w-0 max-w-[min(100%,12rem)] items-center gap-2 sm:max-w-xs sm:gap-2"
+          <div v-if="selectedServices.length > 0"
+            class="flex min-w-0 max-w-[min(100%,18rem)] items-center gap-2 sm:max-w-xs sm:gap-2"
             role="status"
             aria-live="polite"
             :aria-label="selectionStatusAria"
           >
             <span
               ref="cartBadgeEl"
-              class="care-cart-count-badge relative flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-base font-bold tabular-nums leading-none tracking-tight text-white shadow-[0_1px_8px_-2px_rgba(16,185,129,0.4)] ring-1 ring-white/20 dark:ring-white/12"
+              class="care-cart-count-badge relative flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-base font-semibold tabular-nums text-primary-800 dark:bg-primary-950 dark:text-primary-200"
             >
               {{ selectedServices.length }}
             </span>
             <div class="min-w-0 flex-1 text-left">
               <SelectedServicesCartSummary
-                :headline="selectionHeadline"
+                headline="Votre panier"
                 :selected-services="selectedServices"
                 :categories="categories"
                 :form-data-by-service="formDataByService"
@@ -179,6 +169,7 @@
               />
             </div>
           </div>
+          <p v-else class="max-w-[18ch] text-sm leading-snug text-gray-500 dark:text-gray-400">Ajoutez un soin pour commencer</p>
         </template>
       </RendezVousStickyFooter>
     </Transition>
@@ -196,6 +187,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import { careSymbol } from '@oneandlab/shared-utils';
 import {
   buildAccentMapForSortedIds,
   getAccentFallback,

@@ -1,5 +1,8 @@
 <template>
   <UForm :state="form" @submit.prevent="handleSubmit" class="space-y-6">
+    <UAlert v-if="profileDocumentsError && bookingWizardSection !== 'slot-datetime'" title="Documents enregistrés indisponibles" description="Rechargez vos documents ou ajoutez les pièces nécessaires à ce rendez-vous." color="error" variant="soft">
+      <template #actions><UButton label="Recharger les documents" color="neutral" variant="outline" :loading="loadingProfileDocuments" @click="loadProfileDocuments" /></template>
+    </UAlert>
     <div class="space-y-6">
           <!-- Champs spécifiques par soin -->
           <UCard
@@ -210,13 +213,13 @@
             <template v-for="opt in getCategoryOptions(ns.category_id)" :key="`${ns.id}-${opt.option_key}`">
               <UFormField v-if="opt.field_type === 'select'" :label="opt.label" :name="`care_${ns.id}_${opt.option_key}`" :required="!!opt.is_required">
                 <USelect
-                  v-model="formDataByService[ns.id].care_options![opt.option_key]"
+                  :model-value="formDataByService[ns.id].care_options![opt.option_key] == null ? undefined : String(formDataByService[ns.id].care_options![opt.option_key])"
                   :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
                   value-key="value"
                   placeholder="Choisissez une option"
                   size="xl"
                   class="w-full"
-                  @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(formDataByService[ns.id].care_options!, opt.option_key, v)"
+                  @update:model-value="(v) => { formDataByService[ns.id].care_options![opt.option_key] = v ?? ''; clearAutreDetailUnlessSelected(formDataByService[ns.id].care_options!, opt.option_key, v); }"
                 />
               </UFormField>
               <UFormField
@@ -253,13 +256,13 @@
         <template v-for="opt in getCategoryOptions(svc.category_id)" :key="`${svc.id}-${opt.option_key}`">
           <UFormField v-if="opt.field_type === 'select'" :label="opt.label" :name="`care_${svc.id}_${opt.option_key}`" :required="!!opt.is_required">
             <USelect
-              v-model="formDataByService[svc.id].care_options![opt.option_key]"
+              :model-value="formDataByService[svc.id].care_options![opt.option_key] == null ? undefined : String(formDataByService[svc.id].care_options![opt.option_key])"
               :items="(opt.options || []).map(o => ({ label: o.label, value: o.value }))"
               value-key="value"
               placeholder="Choisissez une option"
               size="xl"
               class="w-full"
-              @update:model-value="(v: unknown) => clearAutreDetailUnlessSelected(formDataByService[svc.id].care_options!, opt.option_key, v)"
+              @update:model-value="(v) => { formDataByService[svc.id].care_options![opt.option_key] = v ?? ''; clearAutreDetailUnlessSelected(formDataByService[svc.id].care_options!, opt.option_key, v); }"
             />
           </UFormField>
           <UFormField
@@ -615,7 +618,7 @@
               size="xl"
               class="w-full"
               :disabled="user?.id && !relative && !allowPatientEmailEdit"
-              :ui="{ disabled: 'cursor-not-allowed opacity-60', base: user?.id && !relative && !allowPatientEmailEdit ? 'bg-gray-50 dark:bg-gray-900/50' : '' }"
+              :ui="{ base: user?.id && !relative && !allowPatientEmailEdit ? 'disabled:cursor-not-allowed disabled:opacity-60 bg-gray-50 dark:bg-gray-900/50' : '' }"
             >
               <template #leading>
                 <UIcon name="i-lucide-mail" class="size-5 text-gray-400 dark:text-gray-500" aria-hidden="true" />
@@ -678,10 +681,10 @@
             />
           </UFormField>
           <UFormField label="Date de naissance" name="birth_date" required>
-            <div class="flex space-x-2">
-              <USelect v-model="birthDay" :items="dayOptions" placeholder="Jour" size="xl" class="flex-1" />
-              <USelect v-model="birthMonth" :items="monthOptions" placeholder="Mois" size="xl" class="flex-1" />
-              <USelect v-model="birthYear" :items="yearOptions" placeholder="Année" size="xl" class="flex-1" />
+            <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-2 sm:grid-cols-3">
+              <USelect aria-label="Jour de naissance" v-model="birthDay" :items="dayOptions" placeholder="Jour" size="xl" class="min-w-0 w-full" />
+              <USelect aria-label="Mois de naissance" v-model="birthMonth" :items="monthOptions" placeholder="Mois" size="xl" class="min-w-0 w-full" />
+              <USelect aria-label="Année de naissance" v-model="birthYear" :items="yearOptions" placeholder="Année" size="xl" class="col-span-2 min-w-0 w-full sm:col-span-1" />
             </div>
           </UFormField>
         </div>
@@ -805,7 +808,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, onMounted, computed, nextTick } from 'vue';
+import { reactive, ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { MIN_BIRTH_YEAR } from '~/constants/birth-date';
 import { NURSING_DURATION_OPTIONS, NURSING_FREQUENCY_OPTIONS, showNursingFrequency } from '~/constants/nursing-duration';
@@ -1096,6 +1099,7 @@ function isCompactWarningOpen(key: string): boolean {
 }
 
 type ServiceFormData = {
+  patient_urgency?: { enabled: boolean; asap?: boolean; hour?: number; minute?: number };
   blood_test_type?: string;
   duration_days?: string;
   custom_days?: number | null;
@@ -1105,8 +1109,8 @@ type ServiceFormData = {
   care_options?: Record<string, string | number>;
   scheduled_at?: string;
   availability?: string;
-  availability_type?: string;
-  availabilityRange?: [number, number];
+  availability_type: string;
+  availabilityRange: [number, number];
   /** Heure cible 6–19 (onglet Horaire VIP — patient prise de sang). */
   urgentHour?: number;
   /** Minutes 0|15|30|45 — onglet Horaire VIP, mode heure précise. */
@@ -1122,12 +1126,12 @@ const formDataByService = reactive<Record<string, ServiceFormData>>({});
 /** Évite boucle emit → modelValue → assign pendant la synchro depuis le parent (brouillon / restauration). */
 const syncingFromParent = ref(false);
 
-const birthDay = ref<number | null>(null);
-const birthMonth = ref<number | null>(null);
-const birthYear = ref<number | null>(null);
+const birthDay = ref<number | undefined>(undefined);
+const birthMonth = ref<number | undefined>(undefined);
+const birthYear = ref<number | undefined>(undefined);
 
 const currentYear = new Date().getFullYear();
-const dayOptions = Array.from({ length: 31 }, (_, i) => ({ label: i + 1, value: i + 1 }));
+const dayOptions = Array.from({ length: 31 }, (_, i) => ({ label: String(i + 1), value: i + 1 }));
 const monthOptions = [
   { label: 'Janvier', value: 1 }, { label: 'Février', value: 2 }, { label: 'Mars', value: 3 },
   { label: 'Avril', value: 4 }, { label: 'Mai', value: 5 }, { label: 'Juin', value: 6 },
@@ -1175,8 +1179,8 @@ const multipleDaysOptions = [
   { label: 'Personnalisé', value: 'custom' },
 ];
 
-const frequencyOptions = NURSING_FREQUENCY_OPTIONS;
-const durationOptions = NURSING_DURATION_OPTIONS;
+const frequencyOptions: Array<{ label: string; value: string }> = [...NURSING_FREQUENCY_OPTIONS];
+const durationOptions: Array<{ label: string; value: string }> = [...NURSING_DURATION_OPTIONS];
 
 const personalDocTypes: Array<{ key: string; label: string; icon: string; optional?: boolean }> = [
   { key: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', optional: true },
@@ -1224,6 +1228,8 @@ const personalDocHints: Record<string, string> = {
 
 const profileDocuments = ref<Record<string, any>>({});
 const loadingProfileDocuments = ref(false);
+const profileDocumentsError = ref(false);
+let profileDocumentsVersion = 0;
 
 function hasPersonalDocFromProfile(key: string) {
   return !!(form.personalFiles?.[key as keyof typeof form.personalFiles] || profileDocuments.value[key]?.file_name);
@@ -1232,7 +1238,7 @@ function hasPersonalDocFromProfile(key: string) {
 watch(() => props.selectedServices, (svcs) => {
   svcs?.forEach(s => {
     if (!formDataByService[s.id]) {
-      const base: ServiceFormData = isBloodTestAppointment(s.type)
+      const base: Partial<ServiceFormData> = isBloodTestAppointment(s.type)
         ? { blood_test_type: 'single', urgentHour: 9, urgentMinute: 0, urgentTimingMode: 'scheduled' }
         : { duration_days: '1', preferred_nurse_gender: 'any' };
       formDataByService[s.id] = {
@@ -1334,7 +1340,9 @@ watch(
             if (prev.care_options !== undefined) formDataByService[svc.id].care_options = { ...prev.care_options };
             if (prev.scheduled_at !== undefined) formDataByService[svc.id].scheduled_at = prev.scheduled_at;
             if (prev.availability_type !== undefined) formDataByService[svc.id].availability_type = prev.availability_type;
-            if (prev.availabilityRange !== undefined) formDataByService[svc.id].availabilityRange = [...prev.availabilityRange];
+            if (Array.isArray(prev.availabilityRange) && prev.availabilityRange.length === 2 && prev.availabilityRange.every((value: unknown) => typeof value === 'number' && Number.isFinite(value))) {
+              formDataByService[svc.id].availabilityRange = [prev.availabilityRange[0], prev.availabilityRange[1]];
+            }
             if (prev.urgentHour !== undefined) formDataByService[svc.id].urgentHour = prev.urgentHour;
             if (prev.urgentMinute !== undefined) formDataByService[svc.id].urgentMinute = prev.urgentMinute;
             if (prev.urgentTimingMode !== undefined) formDataByService[svc.id].urgentTimingMode = prev.urgentTimingMode;
@@ -1380,7 +1388,19 @@ watch(
   { deep: true, immediate: true },
 );
 
+watch(() => props.modelValue?.birth_date, (date, previous) => {
+  if (!date && previous) {
+    birthYear.value = undefined;
+    birthMonth.value = undefined;
+    birthDay.value = undefined;
+  }
+});
+
 const loadProfileDocuments = async () => {
+  const version = ++profileDocumentsVersion;
+  profileDocuments.value = {};
+  profileDocumentsError.value = false;
+  loadingProfileDocuments.value = false;
   if (!user.value?.id) return;
 
   let url: string | null = null;
@@ -1403,25 +1423,32 @@ const loadProfileDocuments = async () => {
   loadingProfileDocuments.value = true;
   try {
     const res = await apiFetch(url, { method: 'GET' });
+    if (version !== profileDocumentsVersion) return;
+    if (!res.success || !Array.isArray(res.data)) throw new Error('Documents indisponibles');
     if (res.success && Array.isArray(res.data)) {
       res.data.forEach((doc: any) => {
         if (doc.document_type) profileDocuments.value[doc.document_type] = doc;
       });
     }
   } catch {
-    profileDocuments.value = {};
+    if (version === profileDocumentsVersion) profileDocumentsError.value = true;
   } finally {
-    loadingProfileDocuments.value = false;
+    if (version === profileDocumentsVersion) loadingProfileDocuments.value = false;
   }
 };
 
 watch(
   () => [props.patientDocumentUserId, props.relative?.id, user.value?.id] as const,
-  () => {
+  (_subject, previous) => {
+    if (previous) {
+      form.personalFiles = {};
+      for (const data of Object.values(formDataByService)) data.files = {};
+    }
     void loadProfileDocuments();
   },
   { immediate: true },
 );
+onUnmounted(() => { profileDocumentsVersion++; });
 
 const prefillForm = async () => {
   if (props.skipLoggedInPatientPrefill) {
@@ -1960,6 +1987,14 @@ function commitBookingSubmit() {
           blood_test_type: firstData.blood_test_type,
           duration_days: firstData.blood_test_type === 'multiple' ? firstData.duration_days : undefined,
           custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
+        }
+      : {}),
+    ...(isNursingAppointment(firstSvc.type)
+      ? {
+          duration_days: firstData.duration_days,
+          frequency: firstData.frequency,
+          custom_days: firstData.duration_days === 'custom' ? firstData.custom_days : undefined,
+          preferred_nurse_gender: firstData.preferred_nurse_gender ?? 'any',
         }
       : {}),
     ...(firstData.patient_urgency ? { patient_urgency: firstData.patient_urgency } : {}),

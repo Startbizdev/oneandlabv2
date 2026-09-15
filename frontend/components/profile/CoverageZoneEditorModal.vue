@@ -1,6 +1,7 @@
 <template>
   <UModal
     v-model:open="openModel"
+    :dismissible="!saving"
     :ui="{
       content:
         'sm:max-w-4xl w-[calc(100%-1.5rem)] max-h-[min(90dvh,720px)] flex flex-col overflow-hidden p-0 rounded-2xl shadow-xl',
@@ -25,6 +26,7 @@
             icon="i-lucide-x"
             size="sm"
             aria-label="Fermer"
+            :disabled="saving"
             class="shrink-0"
             @click="close"
           />
@@ -65,7 +67,7 @@
             <UIcon name="i-lucide-move" class="w-3.5 h-3.5 shrink-0" />
             Carré par défaut — 4 coins + 2 milieux de côté. Glissez pour ajuster.
           </p>
-          <UButton variant="ghost" color="neutral" size="sm" class="w-full sm:w-auto" @click="close">
+          <UButton variant="ghost" color="neutral" size="sm" class="w-full sm:w-auto" :disabled="saving" @click="close">
             Annuler
           </UButton>
           <UButton
@@ -105,6 +107,7 @@ const props = withDefaults(
     title?: string;
     subtitle?: string;
     saving?: boolean;
+    closeOnSave?: boolean;
   }>(),
   {
     maxHalfSideKm: 100,
@@ -112,6 +115,7 @@ const props = withDefaults(
     title: 'Modifier le secteur',
     subtitle: 'Carré par défaut : 4 poignées aux angles + 2 au milieu des côtés nord et sud',
     saving: false,
+    closeOnSave: true,
   },
 );
 
@@ -135,7 +139,7 @@ const hasCoords = computed(
 );
 
 function resetDraft() {
-  if (!hasCoords.value) return;
+  if (!hasCoords.value || props.saving) return;
   const center = { lat: props.lat!, lng: props.lng! };
   const verts = ensureSixVertices(center, props.vertices ?? null, props.halfSideKm);
   draftVertices.value = verts;
@@ -144,7 +148,7 @@ function resetDraft() {
 }
 
 function onValidate(close: () => void) {
-  if (!hasCoords.value) return;
+  if (!hasCoords.value || props.saving) return;
   const center = { lat: props.lat!, lng: props.lng! };
   const verts = mapRef.value?.getVertices?.() ?? draftVertices.value;
   const vertices = ensureSixVertices(center, verts, draftHalfSide.value);
@@ -154,7 +158,7 @@ function onValidate(close: () => void) {
     bounds,
     halfSideKm: maxVertexDistanceKm(center, vertices),
   });
-  close();
+  if (props.closeOnSave) close();
 }
 
 watch(

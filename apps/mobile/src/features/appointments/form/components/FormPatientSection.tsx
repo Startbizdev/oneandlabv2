@@ -9,6 +9,7 @@ import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
@@ -28,6 +29,12 @@ export interface PatientOption {
 export type PatientMode = 'existing' | 'new';
 
 interface Props {
+  patientsLoading?: boolean;
+  patientsError?: boolean;
+  retryPatients?: () => void;
+  patientProfileLoading?: boolean;
+  patientProfileError?: boolean;
+  retryPatientProfile?: () => void;
   patients: PatientOption[];
   patientMode: PatientMode;
   onPatientModeChange: (mode: PatientMode) => void;
@@ -45,6 +52,8 @@ interface Props {
 }
 
 export function FormPatientSection({
+  patientsLoading = false, patientsError = false, retryPatients,
+  patientProfileLoading = false, patientProfileError = false, retryPatientProfile,
   patients,
   patientMode,
   onPatientModeChange,
@@ -68,6 +77,7 @@ export function FormPatientSection({
   const [duplicateRow, setDuplicateRow] = useState<PatientRow | null>(null);
   const suppressKeyRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lookupVersion = useRef(0);
 
   const selectedLabel =
     patients.find((p) => p.id === selectedPatientId)?.label ?? 'Sélectionner un patient…';
@@ -78,6 +88,7 @@ export function FormPatientSection({
     (!patientGenderIsSet(gender) || !birthDate.trim());
 
   const runLookup = useCallback(async () => {
+    const version = ++lookupVersion.current;
     if (patientMode !== 'new') return;
     const em = email.trim();
     const ph = phone.trim();
@@ -89,6 +100,7 @@ export function FormPatientSection({
 
     try {
       const res = await lookupPatientByContact(em, ph);
+      if (version !== lookupVersion.current) return;
       const row = res.success ? res.data : null;
       if (!row?.id) {
         setDuplicateOpen(false);
@@ -105,6 +117,8 @@ export function FormPatientSection({
   }, [email, patientMode, phone]);
 
   useEffect(() => {
+    const requestVersion = lookupVersion;
+    requestVersion.current++;
     if (patientMode !== 'new') {
       setDuplicateOpen(false);
       return;
@@ -115,6 +129,7 @@ export function FormPatientSection({
       void runLookup();
     }, 450);
     return () => {
+      requestVersion.current++;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [email, phone, patientMode, runLookup]);
@@ -143,17 +158,21 @@ export function FormPatientSection({
 
       <Row gap={spacing[2]} style={styles.modeTabs}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: patientMode === 'existing' }}
           onPress={() => onPatientModeChange('existing')}
           style={[styles.modeTab, patientMode === 'existing' && styles.modeTabActive]}
         >
           <Row gap={spacing[1.5]} align="center" justify="center">
             <Users size={iconSize.sm} color={patientMode === 'existing' ? c.primary : c.textTertiary} />
             <AppText style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
-              Patient dans la liste
+              Patient existant
             </AppText>
           </Row>
         </Pressable>
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: patientMode === 'new' }}
           onPress={() => onPatientModeChange('new')}
           style={[styles.modeTab, patientMode === 'new' && styles.modeTabActive]}
         >
@@ -169,7 +188,12 @@ export function FormPatientSection({
       {patientMode === 'existing' ? (
         <>
           <AppText style={styles.fieldLabel}>Choisir un patient</AppText>
-          <Pressable onPress={() => setSelectOpen(true)} style={styles.selectBtn}>
+          {patientsError ? <View style={styles.errorBox}>
+            <AppText accessibilityRole="alert" style={styles.errorText}>Liste des patients indisponible.</AppText>
+            <Button title="Recharger les patients" variant="outline" loading={patientsLoading} onPress={retryPatients} />
+          </View> : null}
+          {patientsLoading ? <AppText style={styles.existingProfileHint}>Chargement des patients…</AppText> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel={`Choisir un patient : ${selectedLabel}`} accessibilityState={{ disabled: patientsLoading || patientsError }} disabled={patientsLoading || patientsError} onPress={() => setSelectOpen(true)} style={styles.selectBtn}>
             <Cluster
               actions={<ChevronDown size={iconSize.mdSm} color={c.textTertiary} />}
             >
@@ -184,7 +208,12 @@ export function FormPatientSection({
               </AppText>
             </Cluster>
           </Pressable>
-          {selectedPatientId ? (
+          {patientProfileLoading ? <AppText accessibilityLiveRegion="polite" style={styles.existingProfileHint}>Chargement du dossier patient…</AppText> : null}
+          {patientProfileError ? <View style={styles.errorBox}>
+            <AppText accessibilityRole="alert" style={styles.errorText}>Dossier patient indisponible. Rechargez-le pour utiliser les bonnes coordonnées.</AppText>
+            <Button title="Recharger le dossier" variant="outline" onPress={retryPatientProfile} />
+          </View> : null}
+          {selectedPatientId && !patientProfileLoading && !patientProfileError ? (
             <View style={styles.existingProfileCard}>
               <AppText style={styles.existingProfileTitle}>Fiche patient</AppText>
               {existingProfileIncomplete ? (
@@ -283,6 +312,8 @@ export function FormPatientSection({
 
 function buildStyles(c: AppColors) {
   return {
+    errorBox: { padding: spacing[3], gap: spacing[2], borderRadius: radius.lg, backgroundColor: c.errorLight },
+    errorText: { color: c.error, fontSize: fontSize.sm },
   wrapper: { gap: spacing[3] },
   sectionLabel: {
     fontFamily: fontFamily.semiBold,

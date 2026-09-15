@@ -2,8 +2,6 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Star } from 'lucide-react-native';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { ReviewStats } from '@/features/reviews/types';
 import { radius, spacing, iconSize, AppText } from '@/theme';
@@ -20,24 +18,16 @@ export function ReviewStatsBanner({ stats, subtitle }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewStatsBanner_tsx_ReviewStatsBanner_styles');
 
-  const avg = stats.average_rating;
+  const avg = Number(stats.average_rating) || 0;
   const countLabel =
     stats.total_reviews > 1
       ? `${stats.total_reviews} avis reçus`
       : `${stats.total_reviews} avis reçu`;
 
   return (
-    <LinearGradient
-      colors={[c.starFill, c.warningLight, c.surface]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.wrap, { borderColor: c.warningMid }]}
-    >
+    <View style={styles.wrap}>
       <Row align="center" gap={spacing[4]}>
-        <View style={[styles.iconBadge, { backgroundColor: c.surface }]}>
-          <Star size={iconSize.mdLg} color={c.star} fill={c.starFill} strokeWidth={1.5} />
-        </View>
-        <Row align="center" gap={spacing[3]} flex={1}>
+        <Row align="center" gap={spacing[3]} flex={1} wrap>
           <AppText style={[styles.score, { color: c.textPrimary }]}>
             {avg.toFixed(1).replace('.', ',')}
           </AppText>
@@ -49,7 +39,7 @@ export function ReviewStatsBanner({ stats, subtitle }: Props) {
           </View>
         </Row>
       </Row>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -59,19 +49,12 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
     borderRadius: radius.xl,
     borderWidth: 1,
-  },
-  iconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.lg,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    borderColor: c.borderLight,
+    backgroundColor: c.surface,
   },
   score: {
-    fontFamily: fontFamily.extraBold,
-    fontSize: fontSize['4xl'],
-    letterSpacing: -1,
-    lineHeight: 44,
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize['3xl'],
   },
   meta: { flex: 1, minWidth: 0, gap: spacing[1] },
   count: {

@@ -1,0 +1,756 @@
+{
+    "generated_at": "2026-09-15T14:37:14+00:00",
+    "mode": "read-only",
+    "checks": {
+        "schema": [
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "category_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "label",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "care_options",
+                "COLUMN_TYPE": "json",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "source_appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "sort_order",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_blood_test_items",
+                "COLUMN_NAME": "updated_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "category_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "label",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "care_options",
+                "COLUMN_TYPE": "json",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "source_appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "sort_order",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_nursing_items",
+                "COLUMN_NAME": "updated_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "status",
+                "COLUMN_TYPE": "varchar(50)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "actor_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "actor_role",
+                "COLUMN_TYPE": "enum('super_admin','lab','subaccount','preleveur','nurse','pro','patient')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "note",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "metadata",
+                "COLUMN_TYPE": "json",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointment_status_updates",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "creation_batch_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "passage_series_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "passage_source",
+                "COLUMN_TYPE": "enum('nurse_passage','booking','staff_wizard')",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "merged_into_appointment_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "type",
+                "COLUMN_TYPE": "enum('blood_test','nursing')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "status",
+                "COLUMN_TYPE": "enum('pending','confirmed','planned','inProgress','completed','canceled','expired','refused')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "patient_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "relative_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "assigned_to",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "attribution_qr_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "assigned_pro_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "dispatch_mode",
+                "COLUMN_TYPE": "enum('zone','external_invite','direct_assign','manual','patient_brand_choice')",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "lab_preference_mode",
+                "COLUMN_TYPE": "enum('platform_match','brand_choice')",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "preferred_lab_brand_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "assigned_nurse_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "assigned_lab_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "created_by",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "created_by_role",
+                "COLUMN_TYPE": "enum('super_admin','lab','subaccount','preleveur','nurse','pro','patient')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "category_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "form_type",
+                "COLUMN_TYPE": "enum('nursing','blood_test')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "location_lat",
+                "COLUMN_TYPE": "decimal(10,8)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "location_lng",
+                "COLUMN_TYPE": "decimal(11,8)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "address_encrypted",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "address_dek",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "form_data_encrypted",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "form_data_dek",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "guest_token",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "guest_email_encrypted",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "guest_email_dek",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "scheduled_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "started_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "completed_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "duration_minutes",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "updated_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "pending_offer_expires_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "nurse_share_released_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "canceled_by",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "canceled_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "cancellation_reason",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "cancellation_comment",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "cancellation_photo_document_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "notif_preleveur_en_route_sent_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "appointments",
+                "COLUMN_NAME": "notif_preleveur_arrive_sent_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "user_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "payload_json",
+                "COLUMN_TYPE": "longtext",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "files_manifest_json",
+                "COLUMN_TYPE": "longtext",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "storage_subdir",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "stripe_checkout_session_id",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "payment_provider",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "iap_product_id",
+                "COLUMN_TYPE": "varchar(128)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "status",
+                "COLUMN_TYPE": "varchar(32)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "amount_cents",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "created_appointment_ids_json",
+                "COLUMN_TYPE": "longtext",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "error_message",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "expires_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "patient_booking_drafts",
+                "COLUMN_NAME": "completed_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "user_id",
+                "COLUMN_TYPE": "char(36)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "billing_source",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "stripe_customer_id",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "stripe_subscription_id",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "price_id",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "store_product_id",
+                "COLUMN_TYPE": "varchar(128)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "store_original_transaction_id",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "plan_slug",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "status",
+                "COLUMN_TYPE": "varchar(32)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "trial_ends_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "current_period_end",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "TABLE_NAME": "subscriptions",
+                "COLUMN_NAME": "updated_at",
+                "COLUMN_TYPE": "timestamp",
+                "IS_NULLABLE": "YES"
+            }
+        ],
+        "connection_timezone": [
+            {
+                "session_time_zone": "SYSTEM",
+                "system_time_zone": "UTC"
+            }
+        ],
+        "draft_payment_indexes": [
+            {
+                "INDEX_NAME": "idx_patient_booking_drafts_expires",
+                "NON_UNIQUE": 1,
+                "COLUMN_NAME": "expires_at",
+                "SEQ_IN_INDEX": 1
+            },
+            {
+                "INDEX_NAME": "idx_patient_booking_drafts_user_status",
+                "NON_UNIQUE": 1,
+                "COLUMN_NAME": "user_id",
+                "SEQ_IN_INDEX": 1
+            },
+            {
+                "INDEX_NAME": "idx_patient_booking_drafts_user_status",
+                "NON_UNIQUE": 1,
+                "COLUMN_NAME": "status",
+                "SEQ_IN_INDEX": 2
+            },
+            {
+                "INDEX_NAME": "PRIMARY",
+                "NON_UNIQUE": 0,
+                "COLUMN_NAME": "id",
+                "SEQ_IN_INDEX": 1
+            },
+            {
+                "INDEX_NAME": "uq_patient_booking_drafts_stripe_session",
+                "NON_UNIQUE": 0,
+                "COLUMN_NAME": "stripe_checkout_session_id",
+                "SEQ_IN_INDEX": 1
+            }
+        ],
+        "appointments": [
+            {
+                "type": "blood_test",
+                "status": "confirmed",
+                "total": 19
+            },
+            {
+                "type": "blood_test",
+                "status": "completed",
+                "total": 133
+            },
+            {
+                "type": "blood_test",
+                "status": "canceled",
+                "total": 46
+            },
+            {
+                "type": "blood_test",
+                "status": "expired",
+                "total": 13
+            },
+            {
+                "type": "nursing",
+                "status": "pending",
+                "total": 3
+            },
+            {
+                "type": "nursing",
+                "status": "confirmed",
+                "total": 1930
+            },
+            {
+                "type": "nursing",
+                "status": "completed",
+                "total": 800
+            },
+            {
+                "type": "nursing",
+                "status": "canceled",
+                "total": 590
+            },
+            {
+                "type": "nursing",
+                "status": "expired",
+                "total": 169
+            },
+            {
+                "type": "nursing",
+                "status": "refused",
+                "total": 5
+            }
+        ],
+        "batch_count": [
+            {
+                "total": 42
+            }
+        ],
+        "multi_patient_batches": [
+            {
+                "total": 0
+            }
+        ],
+        "orphan_blood_items": [
+            {
+                "total": 0
+            }
+        ],
+        "orphan_nursing_items": [
+            {
+                "total": 0
+            }
+        ],
+        "missing_merged_parent": [
+            {
+                "total": 0
+            }
+        ],
+        "drafts": [
+            {
+                "status": "pending_payment",
+                "total": 14
+            }
+        ],
+        "subscriptions": [
+            {
+                "plan_slug": "nurse_pro",
+                "status": "active",
+                "total": 4
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "canceled",
+                "total": 2
+            },
+            {
+                "plan_slug": "nurse_pro",
+                "status": "trialing",
+                "total": 2
+            }
+        ],
+        "duplicate_active_subscribers": [
+            {
+                "total": 0
+            }
+        ],
+        "paid_drafts_without_ids": [
+            {
+                "total": 0
+            }
+        ]
+    }
+}

@@ -27,6 +27,9 @@ export function isProIpaEmploi(emploi: string | null | undefined): boolean {
 }
 
 /** Inscription pro « Infirmier IPA » → compte infirmier (nurse). */
+export function resolveRegistrationRole(role: 'pro' | 'nurse', emploi?: string | null): 'pro' | 'nurse';
+export function resolveRegistrationRole(role: 'lab', emploi?: string | null): 'lab';
+export function resolveRegistrationRole(role: 'lab' | 'pro' | 'nurse', emploi?: string | null): 'lab' | 'pro' | 'nurse';
 export function resolveRegistrationRole(
   role: 'lab' | 'pro' | 'nurse',
   emploi?: string | null,

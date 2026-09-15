@@ -4,7 +4,7 @@
     <AppPageHeader
       :edge-bleed="false"
       title="Notifications"
-      description="Envoyez des notifications dans les cloches et en push mobile (iOS/Android) des espaces lab, patient, infirmier, pro, etc. Choisissez à qui envoyer pour du marketing ou des tests."
+      description="Préparez un message pour un groupe ou des personnes précises. Il apparaîtra dans leur espace et sur mobile."
     />
     </template>
 
@@ -100,13 +100,18 @@
       <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
         <h2 class="text-lg font-normal flex items-center gap-2">
           <UIcon name="i-lucide-history" class="w-5 h-5" />
-          Audit des notifications envoyées
+          Historique des envois
         </h2>
         <UButton variant="ghost" size="sm" icon="i-lucide-refresh-cw" :loading="loadingAudit" :on-click="fetchSent">
           Actualiser
         </UButton>
       </div>
-      <div class="overflow-x-auto">
+      <div v-if="loadingAudit" role="status" class="p-6 text-muted">Chargement de l’historique…</div>
+      <div v-else-if="auditError" role="alert" class="p-6 space-y-3">
+        <p>Historique indisponible</p>
+        <UButton color="neutral" variant="outline" @click="fetchSent">Réessayer</UButton>
+      </div>
+      <div v-else class="overflow-x-auto">
         <UTable
           v-if="sentList.length > 0"
           :data="sentList"
@@ -156,7 +161,7 @@
       v-model:open="userPickerOpen"
       title="Sélectionner les destinataires"
       description="Choisissez les utilisateurs qui recevront la notification."
-      :ui="{ width: 'max-w-xl', body: 'flex flex-col overflow-hidden', footer: 'justify-end gap-2' }"
+      :ui="{ content: 'max-w-xl', body: 'flex flex-col overflow-hidden', footer: 'justify-end gap-2' }"
     >
       <template #body>
         <div class="flex flex-col flex-1 min-h-0">
@@ -168,6 +173,10 @@
           />
           <div class="flex-1 overflow-y-auto border border-default rounded-lg">
             <div v-if="loadingUsers" class="p-6 text-center text-muted">Chargement...</div>
+            <div v-else-if="usersError" role="alert" class="p-6 space-y-3">
+              <p>Destinataires indisponibles. Votre sélection est conservée.</p>
+              <UButton color="neutral" variant="outline" @click="loadPickerUsers">Réessayer</UButton>
+            </div>
             <div v-else-if="filteredPickerUsers.length === 0" class="p-6 text-center text-muted">
               Aucun utilisateur trouvé.
             </div>
@@ -180,6 +189,7 @@
               >
                 <input
                   type="checkbox"
+                  :aria-label="`Sélectionner ${getUserDisplayName(u)}`"
                   :checked="selectedUserIds.includes(u.id)"
                   class="rounded border-default"
                   @click.stop
@@ -199,10 +209,10 @@
         </div>
       </template>
       <template #footer>
-        <UButton variant="ghost" :on-click="() => userPickerOpen = false">
+        <UButton variant="ghost" :on-click="() => { userPickerOpen = false }">
           Annuler
         </UButton>
-        <UButton color="primary" :on-click="() => userPickerOpen = false">
+        <UButton color="primary" :disabled="loadingUsers || usersError" :on-click="() => { userPickerOpen = false }">
           Valider
         </UButton>
       </template>
@@ -211,6 +221,7 @@
 </template>
 
 <script setup lang="ts">
+import { fetchAllUsers } from '~/utils/fetch-all-users';
 import { apiFetch } from '~/utils/api';
 
 definePageMeta({
@@ -241,17 +252,20 @@ const roleOptions = [
 const sending = ref(false);
 const sentList = ref<any[]>([]);
 const loadingAudit = ref(false);
+const auditError = ref(false);
 const deletingCampaignId = ref<string | null>(null);
 const selectedUserIds = ref<string[]>([]);
 const userPickerOpen = ref(false);
 const pickerUsers = ref<any[]>([]);
 const loadingUsers = ref(false);
+const usersError = ref(false);
 const userSearchQuery = ref('');
 
 const canSend = computed(() => {
   if (!form.title.trim() || !form.message.trim()) return false;
+  if (sending.value) return false;
   if (form.targetType === 'role') return !!form.targetRole;
-  return selectedUserIds.value.length > 0;
+  return selectedUserIds.value.length > 0 && !loadingUsers.value && !usersError.value;
 });
 
 const auditColumns = [
@@ -311,27 +325,33 @@ function toggleUser(id: string) {
 async function openUserPicker() {
   userPickerOpen.value = true;
   if (pickerUsers.value.length === 0) {
-    loadingUsers.value = true;
-    try {
-      const res = await apiFetch('/users?limit=500', { method: 'GET' });
-      if (res?.success && Array.isArray(res.data)) pickerUsers.value = res.data;
-      else pickerUsers.value = [];
-    } catch (_e) {
-      pickerUsers.value = [];
-    } finally {
-      loadingUsers.value = false;
-    }
+    await loadPickerUsers();
+  }
+}
+
+async function loadPickerUsers() {
+  if (loadingUsers.value) return;
+  loadingUsers.value = true;
+  usersError.value = false;
+  try {
+    pickerUsers.value = await fetchAllUsers();
+  } catch {
+    usersError.value = true;
+  } finally {
+    loadingUsers.value = false;
   }
 }
 
 async function fetchSent() {
+  if (loadingAudit.value) return;
   loadingAudit.value = true;
+  auditError.value = false;
   try {
     const res = await apiFetch('/admin/notifications/sent?limit=50', { method: 'GET' });
     if (res?.success && Array.isArray(res.data)) sentList.value = res.data;
-    else sentList.value = [];
+    else throw new Error('Historique indisponible');
   } catch (_e) {
-    sentList.value = [];
+    auditError.value = true;
   } finally {
     loadingAudit.value = false;
   }
@@ -402,7 +422,7 @@ function resetForm() {
   form.title = '';
   form.message = '';
   form.targetType = 'role';
-  form.targetRole = 'admin';
+  form.targetRole = 'super_admin';
   selectedUserIds.value = [];
 }
 

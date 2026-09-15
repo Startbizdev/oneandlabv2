@@ -12,6 +12,8 @@ require_once __DIR__ . '/../../../models/Appointment.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../../lib/AppointmentReportingPeriod.php';
+require_once __DIR__ . '/../../../lib/LabStatsAppointmentRows.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -64,52 +66,30 @@ if ($role === 'lab') {
     }
 }
 
-$placeholders = implode(',', array_fill(0, count($labIds), '?'));
-$params = array_merge($labIds, []);
-
-$sql = "SELECT a.* FROM appointments a
-    WHERE a.assigned_lab_id IN ($placeholders)
-    AND a.type = 'blood_test'
-    ORDER BY a.scheduled_at DESC";
-
-$stmt = $db->prepare($sql);
-$stmt->execute($params);
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Déchiffrer si nécessaire
-$appointmentModel = new Appointment();
-$appointments = [];
-foreach ($rows as $row) {
+$statsOnly = isset($_GET['stats_only']) && $_GET['stats_only'] === '1';
+$appointmentModel = null;
+$appointments = LabStatsAppointmentRows::load($db, $labIds, $statsOnly, static function (string $id) use (&$appointmentModel, $labId, $role): ?array {
+    $appointmentModel ??= new Appointment();
+    return $appointmentModel->getById($id, $labId, $role);
+});
+if ($statsOnly && $role === 'lab' && $appointments !== []) {
+    require_once __DIR__ . '/../../../models/User.php';
     try {
-        $decrypted = $appointmentModel->getById($row['id'], $labId, $role);
-        if ($decrypted) {
-            $appointments[] = $decrypted;
-        }
-    } catch (Exception $e) {
-        $appointments[] = [
-            'id' => $row['id'],
-            'type' => $row['type'],
-            'status' => $row['status'],
-            'scheduled_at' => $row['scheduled_at'],
-            'created_at' => $row['created_at'] ?? null,
-            'duration_minutes' => $row['duration_minutes'] ?? null,
-            'started_at' => $row['started_at'] ?? null,
-            'completed_at' => $row['completed_at'] ?? null,
-            'assigned_lab_id' => $row['assigned_lab_id'] ?? null,
-        ];
+        $displayNames = (new User())->getDisplayNamesByIds(array_column($appointments, 'assigned_lab_id'));
+    } catch (Exception) {
+        $displayNames = [];
     }
+    foreach ($appointments as &$appointment) {
+        $assignedId = $appointment['assigned_lab_id'];
+        $appointment['assigned_lab_display_name'] = $displayNames[$assignedId] ?? 'Inconnu';
+        $appointment['assigned_lab_role'] = $teamMembers[$assignedId] ?? 'lab';
+    }
+    unset($appointment);
 }
 
-$now = new DateTime();
-$todayStart = (clone $now)->setTime(0, 0, 0);
-$todayEnd = (clone $now)->setTime(23, 59, 59);
-$monthStart = (new DateTime())->setDate((int) $now->format('Y'), (int) $now->format('m'), 1)->setTime(0, 0, 0);
-
-$monthApps = array_filter($appointments, fn($a) => (new DateTime($a['scheduled_at'])) >= $monthStart);
-$todayApps = array_filter($appointments, function ($a) use ($todayStart, $todayEnd) {
-    $t = new DateTime($a['scheduled_at']);
-    return $t >= $todayStart && $t <= $todayEnd;
-});
+$period = new AppointmentReportingPeriod();
+$monthApps = array_filter($appointments, fn($a) => $period->containsMonth($a['scheduled_at'] ?? null));
+$todayApps = array_filter($appointments, fn($a) => $period->containsDay($a['scheduled_at'] ?? null));
 $completed = array_filter($appointments, fn($a) => ($a['status'] ?? '') === 'completed');
 $durations = array_filter(array_map(fn($a) => $a['duration_minutes'] ?? null, $completed), fn($d) => $d !== null && $d > 0);
 
@@ -132,7 +112,6 @@ $completionRate = count($appointments) > 0
     ? (int) round((count($completed) / count($appointments)) * 100)
     : 0;
 
-$statsOnly = isset($_GET['stats_only']) && $_GET['stats_only'] === '1';
 $stats = [
     'totalAppointments' => count($appointments),
     'monthAppointments' => count($monthApps),
@@ -176,11 +155,10 @@ if ($role === 'lab') {
             ];
         }
         $byAssignedLab[$id]['total']++;
-        $sched = isset($a['scheduled_at']) ? new DateTime($a['scheduled_at']) : null;
-        if ($sched && $sched >= $monthStart) {
+        if ($period->containsMonth($a['scheduled_at'] ?? null)) {
             $byAssignedLab[$id]['month']++;
         }
-        if ($sched && $sched >= $todayStart && $sched <= $todayEnd) {
+        if ($period->containsDay($a['scheduled_at'] ?? null)) {
             $byAssignedLab[$id]['today']++;
         }
         if (($a['status'] ?? '') === 'completed') {

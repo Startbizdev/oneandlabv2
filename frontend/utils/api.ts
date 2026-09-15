@@ -106,7 +106,12 @@ function requiresCSRF(path: string, method: string): boolean {
 }
 
 function resolveApiBase(): string {
-  let apiBase = 'http://localhost:8888/api';
+  if (import.meta.server) {
+    const config = useRuntimeConfig();
+    const base = String(config.public.apiBase || '/api');
+    return base.startsWith('/') ? String(config.apiInternalBase) : base;
+  }
+  let apiBase = '/api';
   if (import.meta.client) {
     if ((window as any).__NUXT__?.config?.public?.apiBase) {
       apiBase = (window as any).__NUXT__.config.public.apiBase;
@@ -173,7 +178,7 @@ export async function apiFetchBlob(
   }
 }
 
-export async function apiFetch(path: string, options: any = {}) {
+export async function apiFetch<T = any>(path: string, options: any = {}): Promise<T> {
   // Récupérer l'URL de base de la configuration Nuxt
   let apiBase = resolveApiBase();
   
@@ -230,6 +235,10 @@ export async function apiFetch(path: string, options: any = {}) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const callerSignal: AbortSignal | undefined = options.signal;
+    const abortFromCaller = () => controller.abort(callerSignal?.reason);
+    if (callerSignal?.aborted) abortFromCaller();
+    else callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
     try {
     const response = await fetch(url, {
       method,
@@ -339,6 +348,7 @@ export async function apiFetch(path: string, options: any = {}) {
     return data;
     } finally {
       clearTimeout(timeoutId);
+      callerSignal?.removeEventListener('abort', abortFromCaller);
     }
 
   } catch (error: any) {
@@ -385,17 +395,15 @@ export async function apiFetch(path: string, options: any = {}) {
       const fullUrl = `${apiBase}${path}`;
       
       // Message d'erreur plus détaillé selon le type d'erreur
-      let userMessage = `Impossible de se connecter au serveur backend sur ${apiBase}`;
+      let userMessage = 'Connexion au service impossible. Vérifiez votre connexion et réessayez.';
       
       if (errorName === 'AbortError') {
-        userMessage = `La requête a expiré (timeout). Le backend ne répond pas (${apiBase}).`;
+        userMessage = 'Le service met trop de temps à répondre. Réessayez dans un instant.';
       } else if (errorMessageLower.includes('failed to fetch') || errorMessageLower.includes('networkerror')) {
-        userMessage = `Connexion impossible au backend (${apiBase}). Vérifiez que le serveur est démarré.`;
+        userMessage = 'Connexion au service impossible. Vérifiez votre connexion et réessayez.';
       }
       
-      const backendHint = 'Pour démarrer le backend : cd backend && ./start-server.sh';
-      const proxyHint = apiBase.startsWith('http') ? '' : ' En dev, les appels passent par le proxy (Nuxt sur :3000 → backend :8888). Si le timeout persiste, essayez NUXT_PUBLIC_API_BASE=http://localhost:8888/api pour appeler le backend directement.';
-      throw new Error(`${userMessage}\n\n${backendHint}${proxyHint}`);
+      throw new Error(userMessage);
     }
 
     // Pour les autres erreurs, préserver le message original

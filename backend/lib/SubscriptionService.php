@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/iap.php';
+require_once __DIR__ . '/SubscriptionManagement.php';
 
 class SubscriptionService
 {
@@ -33,20 +34,11 @@ class SubscriptionService
     }
 
     /**
-     * Abonnement le plus récent (tous statuts) pour affichage mobile.
+     * Abonnement à gérer : courant en priorité, sinon dernier historique.
      */
-    public function getLatestSubscription(string $userId): ?array
+    public function getSubscriptionForManagement(string $userId): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id, user_id, billing_source, stripe_customer_id, stripe_subscription_id,
-                    price_id, store_product_id, store_original_transaction_id,
-                    plan_slug, status, trial_ends_at, current_period_end, created_at, updated_at
-             FROM subscriptions WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1'
-        );
-        $stmt->execute([$userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        return $row ?: null;
+        return SubscriptionManagement::find($this->pdo, $userId);
     }
 
     public function hasActivePro(string $userId): bool

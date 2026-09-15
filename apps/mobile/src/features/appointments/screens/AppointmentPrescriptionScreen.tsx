@@ -124,6 +124,7 @@ function buildStyles(c: AppColors) {
     },
     blocked: {
       flex: 1,
+      minWidth: 0,
       backgroundColor: c.background,
       justifyContent: 'center' as const,
     },

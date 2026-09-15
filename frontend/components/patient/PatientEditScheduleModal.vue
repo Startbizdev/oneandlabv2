@@ -1,68 +1,20 @@
 <template>
-  <Teleport to="body">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      role="presentation"
-    >
-      <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" @click="emit('close')" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        class="relative flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700/80 dark:bg-slate-900 sm:rounded-2xl"
-      >
-        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
-          <div class="min-w-0">
-            <h2 class="text-base font-semibold text-slate-900 dark:text-white sm:text-lg">Modifier date et créneau</h2>
-            <p class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              Tant que votre rendez-vous est en attente de validation
-            </p>
-          </div>
-          <button
-            type="button"
-            class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Fermer"
-            @click="emit('close')"
-          >
-            <UIcon name="i-lucide-x" class="h-5 w-5" />
-          </button>
-        </div>
-
-        <div v-if="appointment" class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 space-y-4">
-          <div class="space-y-1.5">
-            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</span>
-            <DatePicker
-              v-model="formDate"
-              class="w-full [&_button]:h-11"
-              :appointment-type="appointment.type === 'blood_test' ? 'blood_test' : 'nursing'"
-              popover-content-class="z-[1000]"
-            />
-          </div>
-
-          <BookingAvailabilityTabs
-            v-model:availability-type="availabilityType"
-            v-model:availability-range="availabilityRange"
-            :format-hour="formatHour"
-            :max-hour="maxHour"
-            :range-slider-min-hour="rangeSliderMinHour"
-          />
-        </div>
-
-        <div class="shrink-0 border-t border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
-          <UButton
-            color="primary"
-            block
-            size="lg"
-            :loading="saving"
-            :disabled="!canSubmit"
-            @click="submit"
-          >
-            Enregistrer
-          </UButton>
-        </div>
+  <UModal :open="open" title="Modifier date et créneau" description="La modification est possible tant que le rendez-vous attend sa validation." :dismissible="!saving" @update:open="value => { if (!value && !saving) emit('close') }">
+    <template #body>
+      <div v-if="appointment" class="space-y-5">
+        <UFormField label="Date du rendez-vous" required>
+          <DatePicker v-model="formDate" class="w-full" :appointment-type="appointment.type === 'blood_test' ? 'lab' : 'nurse'" popover-content-class="z-[1000]" />
+        </UFormField>
+        <BookingAvailabilityTabs v-model:availability-type="availabilityType" v-model:availability-range="availabilityRange" :format-hour="formatHour" :max-hour="maxHour" :range-slider-min-hour="rangeSliderMinHour" />
       </div>
-    </div>
-  </Teleport>
+    </template>
+    <template #footer>
+      <div class="flex w-full flex-wrap justify-end gap-3">
+        <UButton color="neutral" variant="outline" :disabled="saving" @click="emit('close')">Annuler</UButton>
+        <UButton :loading="saving" :disabled="!canSubmit" @click="submit">Enregistrer</UButton>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <script setup lang="ts">

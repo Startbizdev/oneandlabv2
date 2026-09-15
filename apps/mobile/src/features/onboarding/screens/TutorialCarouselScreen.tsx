@@ -2,8 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent, Pressable, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FlatList, NativeScrollEvent, NativeSyntheticEvent, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getTutorialConfig, isTutorialRole, type TutorialSlide } from '@oneandlab/onboarding';
@@ -79,18 +78,10 @@ export function TutorialCarouselScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={[c.primaryLight, c.background, c.background]}
-        locations={[0, 0.35, 1]}
-        style={styles.gradient}
-      />
-
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Row align="center" justify="between" style={styles.topBar}>
-          <AppText style={styles.kicker}>{config.welcomeTitle}</AppText>
-          <Pressable onPress={finish} hitSlop={12} accessibilityRole="button" accessibilityLabel="Passer">
-            <AppText style={styles.skip}>Passer</AppText>
-          </Pressable>
+          <AppText numberOfLines={2} style={styles.kicker}>{config.welcomeTitle}</AppText>
+          <Button title="Passer" variant="ghost" onPress={finish} />
         </Row>
 
         <View
@@ -101,7 +92,9 @@ export function TutorialCarouselScreen() {
           }}
         >
           <FlatList
+            key={layout.width}
             ref={listRef}
+            initialScrollIndex={index}
             data={slides}
             keyExtractor={(item) => item.id}
             horizontal
@@ -111,21 +104,30 @@ export function TutorialCarouselScreen() {
             onMomentumScrollEnd={onMomentumScrollEnd}
             getItemLayout={(_, i) => ({ length: layout.width, offset: layout.width * i, index: i })}
             style={styles.carouselList}
-            renderItem={({ item }) => (
-              <View style={[styles.slidePage, { width: layout.width, height: slideHeight }]}>
+            renderItem={({ item, index: slideIndex }) => (
+              <ScrollView
+                style={{ width: layout.width, height: slideHeight }}
+                contentContainerStyle={styles.slidePage}
+                accessibilityElementsHidden={slideIndex !== index}
+                importantForAccessibility={slideIndex === index ? 'auto' : 'no-hide-descendants'}
+              >
                 <View style={[styles.slideCenter, { maxWidth: layout.contentMaxWidth }]}>
-                  <TutorialIllustration illustration={item.illustration} />
+                  <View style={styles.illustration} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <TutorialIllustration illustration={item.illustration} />
+                  </View>
                   <View style={styles.copy}>
-                    <AppText style={styles.title}>{item.title}</AppText>
+                    <AppText accessibilityRole="header" style={styles.title}>{item.title}</AppText>
                     <AppText style={styles.body}>{item.body}</AppText>
                   </View>
                 </View>
-              </View>
+              </ScrollView>
             )}
           />
         </View>
 
         <View style={styles.footer}>
+          <AppText accessibilityLiveRegion="polite" style={styles.progress}>Étape {index + 1} sur {slides.length}</AppText>
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Row justify="center" gap={spacing[1.5]} style={styles.dots}>
             {slides.map((slide, dotIndex) => (
               <View
@@ -140,6 +142,7 @@ export function TutorialCarouselScreen() {
               />
             ))}
           </Row>
+          </View>
 
           <Row gap={spacing[3]} style={styles.actions}>
             {index > 0 ? (
@@ -166,7 +169,6 @@ function buildStyles(c: AppColors) {
   return {
     root: {
     minWidth: 0, flex: 1, backgroundColor: c.background },
-    gradient: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0 },
     safe: {
     minWidth: 0, flex: 1 },
     topBar: {
@@ -175,16 +177,15 @@ function buildStyles(c: AppColors) {
       paddingBottom: spacing[1],
     },
     kicker: {
+      flex: 1,
+      minWidth: 0,
       fontFamily: fontFamily.bold,
       fontSize: fontSize.sm,
       color: c.primaryDark,
       letterSpacing: 0.2,
     },
-    skip: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
+    progress: { fontSize: fontSize.sm, color: c.textSecondary, textAlign: 'center' as const },
+    illustration: { width: '100%' as const, minWidth: 0 },
     carouselHost: {
       minWidth: 0,
       flex: 1,
@@ -195,6 +196,9 @@ function buildStyles(c: AppColors) {
       flex: 1,
     },
     slidePage: {
+      minWidth: 0,
+      flexGrow: 1,
+      paddingVertical: spacing[4],
       justifyContent: 'center' as const,
       alignItems: 'center' as const,
       paddingHorizontal: spacing[4],

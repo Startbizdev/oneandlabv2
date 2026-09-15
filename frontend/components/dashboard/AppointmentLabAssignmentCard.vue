@@ -31,7 +31,7 @@
           :search-input="{ placeholder: 'Rechercher...' }"
           :filter-fields="['label']"
         >
-          <template #label>
+          <template #default>
             <span>{{ selectedLabLabel || 'Laboratoire (moi)' }}</span>
           </template>
           <template #empty>
@@ -41,7 +41,7 @@
                 title="Aucun autre laboratoire"
                 description="Vous êtes le seul laboratoire. Ajoutez des sous-comptes dans Paramètres."
                 variant="naked"
-                size="sm"
+                size="md"
               />
             </div>
           </template>
@@ -62,7 +62,7 @@
           :search-input="{ placeholder: 'Rechercher...' }"
           :filter-fields="['label']"
         >
-          <template #label>
+          <template #default>
             <span>{{ selectedPreleveurLabel }}</span>
           </template>
           <template #empty>
@@ -72,7 +72,7 @@
                 title="Aucun préleveur"
                 description="Ajoutez des préleveurs dans Paramètres pour les assigner aux RDV."
                 variant="naked"
-                size="sm"
+                size="md"
               />
             </div>
           </template>

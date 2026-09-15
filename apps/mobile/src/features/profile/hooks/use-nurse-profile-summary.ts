@@ -21,7 +21,7 @@ export function useNurseProfileSummary() {
   const user = useAuthStore((s) => s.user);
 
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
     queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });

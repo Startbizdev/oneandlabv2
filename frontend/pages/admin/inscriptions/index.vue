@@ -18,7 +18,7 @@
         icon="i-lucide-search"
         size="sm"
         clearable
-        :ui="{ rounded: 'rounded-lg' }"
+        :ui="{ base: 'rounded-lg' }"
       />
       <div class="flex w-full shrink-0 flex-wrap gap-2 sm:w-auto sm:justify-end">
         <USelect
@@ -48,6 +48,11 @@
       />
     </div>
 
+    <div v-else-if="loadError" role="alert" class="rounded-xl border border-default bg-default p-5 space-y-3">
+      <h2 class="font-semibold">Inscriptions indisponibles</h2>
+      <p class="text-sm text-muted">Impossible de charger les demandes. Vos filtres sont conservés.</p>
+      <UButton variant="outline" color="neutral" @click="fetchRequests">Réessayer</UButton>
+    </div>
     <div
       v-else-if="filteredRequests.length === 0"
       class="rounded-xl border border-gray-200/90 bg-white px-6 py-14 dark:border-gray-800 dark:bg-gray-950"
@@ -182,7 +187,7 @@
           :items-per-page="pageSize"
           :sibling-count="1"
           show-edges
-          :ui="{ wrapper: 'gap-1', rounded: 'rounded-lg' }"
+          :ui="{ list: 'gap-1', item: 'rounded-lg' }"
         />
       </div>
     </template>
@@ -220,6 +225,8 @@ type RegistrationRow = {
 const toast = useAppToast();
 const requests = ref<RegistrationRow[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
+let requestVersion = 0;
 const searchQuery = ref('');
 const debouncedSearch = ref('');
 const statusFilter = ref('all');
@@ -311,7 +318,7 @@ function getRoleLabel(role: string) {
 }
 
 function getRoleColor(role: string) {
-  const c: Record<string, string> = { lab: 'primary', pro: 'warning', nurse: 'success' };
+  const c: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'> = { lab: 'primary', pro: 'warning', nurse: 'success' };
   return c[role] || 'neutral';
 }
 
@@ -321,7 +328,7 @@ function getStatusLabel(status: string) {
 }
 
 function getStatusColor(status: string) {
-  const c: Record<string, string> = { pending: 'warning', accepted: 'success', rejected: 'error' };
+  const c: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'> = { pending: 'warning', accepted: 'success', rejected: 'error' };
   return c[status] || 'neutral';
 }
 
@@ -346,7 +353,9 @@ function resetFilters() {
 }
 
 async function fetchRequests() {
+  const version = ++requestVersion;
   loading.value = true;
+  loadError.value = false;
   try {
     const params = new URLSearchParams();
     if (statusFilter.value && statusFilter.value !== 'all') params.set('status', statusFilter.value);
@@ -356,16 +365,13 @@ async function fetchRequests() {
       `/registration-requests${qs ? `?${qs}` : ''}`,
       { method: 'GET' },
     );
-    requests.value = response?.success && Array.isArray(response.data) ? response.data : [];
+    if (version !== requestVersion) return;
+    if (!response?.success || !Array.isArray(response.data)) throw new Error('Chargement impossible');
+    requests.value = response.data;
   } catch (e) {
-    toast.add({
-      title: 'Erreur',
-      description: e instanceof Error ? e.message : 'Chargement impossible',
-      color: 'error',
-    });
-    requests.value = [];
+    if (version === requestVersion) loadError.value = true;
   } finally {
-    loading.value = false;
+    if (version === requestVersion) loading.value = false;
   }
 }
 

@@ -24,7 +24,7 @@
           :color="typeFilter === opt.value ? 'primary' : 'neutral'"
           size="sm"
           class="rounded-lg"
-          :on-click="() => typeFilter = opt.value"
+          :on-click="() => { typeFilter = opt.value }"
         >
           {{ opt.label }}
         </UButton>
@@ -42,6 +42,11 @@
       </div>
     </div>
 
+    <div v-else-if="loadError" role="alert" class="rounded-xl border border-default bg-default p-5 space-y-3">
+      <h2 class="font-semibold">Catégories indisponibles</h2>
+      <p class="text-sm text-muted">Impossible de charger les catégories de soins.</p>
+      <UButton variant="outline" color="neutral" @click="fetchCategories">Réessayer</UButton>
+    </div>
     <UEmpty
       v-else-if="filteredCategories.length === 0"
       icon="i-lucide-tags"
@@ -94,6 +99,7 @@
             <span class="text-[11px] text-muted whitespace-nowrap">Actif</span>
             <USwitch
               :model-value="!!cat.is_active"
+              :aria-label="`Activer ${cat.name}`"
               :disabled="togglingId === cat.id"
               size="xs"
               @update:model-value="toggleCategory(cat)"
@@ -196,7 +202,7 @@
                           :color="categoryForm.type === t.value ? 'primary' : 'neutral'"
                           size="sm"
                           class="rounded-lg px-3"
-                          :on-click="() => (categoryForm.type = t.value)"
+                          :on-click="() => { categoryForm.type = t.value }"
                         >
                           {{ t.label }}
                         </UButton>
@@ -221,7 +227,7 @@
                         :search-input="{ placeholder: 'Rechercher une icône…' }"
                         :filter-fields="['label']"
                         placeholder="Icône Lucide ou Medical…"
-                        size="sm"
+                        size="md"
                         class="w-full"
                       >
                         <template #leading>
@@ -449,7 +455,7 @@
           </p>
           <template #footer>
             <div class="flex justify-end gap-2">
-              <UButton variant="ghost" color="neutral" :on-click="() => showDeleteModal = false">
+              <UButton variant="ghost" color="neutral" :on-click="() => { showDeleteModal = false }">
                 Annuler
               </UButton>
               <UButton color="error" :loading="deletingId !== null" :on-click="doDelete">
@@ -477,6 +483,7 @@ const toast = useAppToast();
 
 const categories = ref<any[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
 const saving = ref(false);
 const togglingId = ref<string | null>(null);
 const deletingId = ref<string | null>(null);
@@ -758,14 +765,13 @@ const openCreateModal = () => {
 
 async function fetchCategories() {
   loading.value = true;
+  loadError.value = false;
   try {
     const response = await apiFetch('/categories?include_inactive=true', { method: 'GET' });
-    if (response.success && response.data) {
-      categories.value = response.data;
-    }
+    if (!response.success || !Array.isArray(response.data)) throw new Error('Chargement impossible');
+    categories.value = response.data.map((category: any) => ({ ...category, is_active: Number(category.is_active) === 1 }));
   } catch (error) {
-    console.error('Erreur lors du chargement des catégories:', error);
-    toast.add({ title: 'Erreur de chargement', color: 'red' });
+    loadError.value = true;
   } finally {
     loading.value = false;
   }

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AddressPayload } from '../types';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
@@ -46,12 +46,26 @@ export function useProfileAddressSync({
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const hydratingRef = useRef(false);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeProfileId = getProfileId();
+  const activeProfileRef = useRef(activeProfileId);
+  activeProfileRef.current = activeProfileId;
+  const addressVersion = useRef(0);
+  useEffect(() => {
+    hydratingRef.current = false;
+    const version = addressVersion;
+    return () => {
+      version.current++;
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, [activeProfileId]);
 
   const applyFromRaw = useCallback(
-    async (raw: unknown) => {
+    async (raw: unknown, expectedProfileId = activeProfileRef.current) => {
+      const version = ++addressVersion.current;
       hydratingRef.current = true;
       try {
         const resolved = await resolvePatientAddressForRdvForm(raw);
+        if (version !== addressVersion.current || expectedProfileId !== activeProfileRef.current) return;
         const parsed = parseRawPatientAddress(raw);
         if (resolved) {
           const nextAddr: AddressPayload = {
@@ -79,7 +93,7 @@ export function useProfileAddressSync({
           if (addressComplement !== '') setAddressComplement('');
         }
       } finally {
-        hydratingRef.current = false;
+        if (version === addressVersion.current) hydratingRef.current = false;
       }
     },
     [setFormAddress, setAddressComplement, getFormAddress, addressComplement],
@@ -91,13 +105,13 @@ export function useProfileAddressSync({
         const cached = qc.getQueryData<{ address?: unknown }>(queryKeys.profile.user(profileId));
         const cachedLabel = parseRawPatientAddress(cached?.address)?.label?.trim();
         if (cached && cachedLabel) {
-          await applyFromRaw(cached.address);
+          await applyFromRaw(cached.address, profileId);
           return;
         }
         const res = await fetchUser(profileId, 'mobile');
         if (res.success && res.data) {
           qc.setQueryData(queryKeys.profile.user(profileId), res.data);
-          await applyFromRaw((res.data as { address?: unknown }).address);
+          await applyFromRaw((res.data as { address?: unknown }).address, profileId);
         }
       } catch {
         /* silencieux */
@@ -107,10 +121,10 @@ export function useProfileAddressSync({
   );
 
   const persistToProfile = useCallback(
-    async (addr: AddressPayload | null, complement: string) => {
+    async (addr: AddressPayload | null, complement: string, expectedProfileId: string | null) => {
       if (hydratingRef.current) return;
       const profileId = getProfileId();
-      if (!profileId) return;
+      if (!profileId || profileId !== expectedProfileId || profileId !== activeProfileRef.current) return;
       const body = addressBodyForApi(addr, complement);
       if (!body) return;
       try {
@@ -131,9 +145,10 @@ export function useProfileAddressSync({
   const schedulePersist = useCallback(
     (addr: AddressPayload | null, complement: string) => {
       if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      const expectedProfileId = activeProfileRef.current;
       persistTimerRef.current = setTimeout(() => {
         persistTimerRef.current = null;
-        void persistToProfile(addr, complement);
+        void persistToProfile(addr, complement, expectedProfileId);
       }, 550);
     },
     [persistToProfile],

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <LandingMaquetteHero
+    <LandingMaquetteHero audience="contact"
       eyebrow="Assistance Cary"
       :title-lines="['Une question ?']"
       highlight="Écrivez-nous"
@@ -30,7 +30,7 @@
           <p class="mb-8 text-sm leading-relaxed text-[#3D3D52] dark:text-gray-300">
             Nous vous répondons à l’adresse indiquée, sous 24 heures ouvrées.
           </p>
-          <UButton color="primary" variant="soft" class="font-medium" @click="sent = false">
+          <UButton color="primary" variant="soft" class="font-medium" @click="($event) => { sent = false }">
             Envoyer un autre message
           </UButton>
         </div>
@@ -250,7 +250,7 @@ async function onSubmit() {
   } catch (e: any) {
     const msg = e?.message ?? 'Une erreur est survenue. Vous pouvez nous écrire à contact@cary.bio.';
     const toast = useToast();
-    toast.add({ title: 'Erreur', description: msg, color: 'red' });
+    toast.add({ title: 'Erreur', description: msg, color: 'error' });
   } finally {
     loading.value = false;
   }

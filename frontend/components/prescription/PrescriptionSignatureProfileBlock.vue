@@ -14,7 +14,7 @@
     </div>
     <p v-else class="text-sm text-muted mb-4">Aucune signature enregistrée.</p>
     <div class="flex flex-wrap gap-2">
-      <UButton size="sm" color="primary" variant="soft" @click="sheetOpen = true">
+      <UButton size="sm" color="primary" variant="soft" @click="($event) => { sheetOpen = true }">
         {{ previewUri ? 'Modifier' : 'Créer ma signature' }}
       </UButton>
       <UButton
@@ -35,7 +35,7 @@
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton color="neutral" variant="ghost" @click="sheetOpen = false">Annuler</UButton>
+          <UButton color="neutral" variant="ghost" @click="($event) => { sheetOpen = false }">Annuler</UButton>
           <UButton color="primary" :loading="saving" @click="saveSignature">Enregistrer</UButton>
         </div>
       </template>

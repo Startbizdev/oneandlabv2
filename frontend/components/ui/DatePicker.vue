@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDate, DateFormatter, parseDate } from '@internationalized/date'
+import { CalendarDate, DateFormatter, parseDate, toCalendarDate, type DateValue } from '@internationalized/date'
 import {
   PARIS_TZ,
   bookingMinCalendarDate,
@@ -43,7 +43,7 @@ const minDate = computed(() => bookingMinCalendarDate(props.minLeadTimeHours))
 // -----------------------------------------------------
 // Internal Date pour UCalendar
 // -----------------------------------------------------
-const internalDate = ref<CalendarDate | null>(null)
+const internalDate = shallowRef<CalendarDate | null>(null)
 
 watch(
   () => props.modelValue,
@@ -75,8 +75,10 @@ const isOpen = ref(false)
 // -----------------------------------------------------
 // Sélection date
 // -----------------------------------------------------
-const handleSelect = (value: CalendarDate | null) => {
-  if (!value) return
+const handleSelect = (value: unknown) => {
+  if (!value || typeof value !== 'object' || !('year' in value) || !('month' in value) || !('day' in value)) return
+  if (typeof value.year !== 'number' || typeof value.month !== 'number' || typeof value.day !== 'number') return
+  internalDate.value = new CalendarDate(value.year, value.month, value.day)
 
   const y = value.year
   const m = String(value.month).padStart(2, '0')
@@ -110,8 +112,8 @@ const maxDate = computed(() => {
 })
 
 // Désactiver samedi (6) et/ou dimanche (0) selon les paramètres du lab
-const isDateDisabled = (date: CalendarDate) =>
-  isBookingDateUnavailable(date, {
+const isDateDisabled = (date: DateValue) =>
+  isBookingDateUnavailable(toCalendarDate(date), {
     acceptSaturday: props.acceptSaturday,
     acceptSunday: props.acceptSunday,
   })
@@ -131,17 +133,17 @@ const isDateDisabled = (date: CalendarDate) =>
       :disabled="disabled"
       size="xl"
       class="w-full justify-start bg-white"
-      @click="isOpen = true"
+      @click="() => { isOpen = true }"
     >
       {{ displayValue }}
     </UButton>
 
     <template #content>
       <UCalendar
-        v-model="internalDate"
+        :model-value="internalDate"
         @update:modelValue="handleSelect"
         locale="fr-FR"
-        class="p-2"
+        class="booking-date-picker p-2"
         :min-value="minDate ?? undefined"
         :max-value="maxDate"
         :is-date-disabled="isDateDisabled"
@@ -151,7 +153,7 @@ const isDateDisabled = (date: CalendarDate) =>
 </template>
 
 <style>
-[data-disabled] {
+.booking-date-picker [data-disabled] {
   opacity: 0.4 !important;
   color: rgb(156 163 175) !important;
   pointer-events: none !important;

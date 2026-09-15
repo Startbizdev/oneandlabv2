@@ -10,7 +10,7 @@
           color="primary"
           icon="i-lucide-plus"
           size="sm"
-          @click="showCreateModal = true"
+          @click="($event) => { showCreateModal = true }"
         >
           Ajouter un proche
         </UButton>
@@ -18,13 +18,16 @@
     </AppPageHeader>
   </template>
 
-    <div class="container mx-auto px-4 max-w-7xl">
+    <div>
     <!-- Liste des proches -->
     <div v-if="loading" class="text-center py-8">
       <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin mx-auto text-primary mb-2" />
       <p class="text-gray-500">Chargement des proches...</p>
     </div>
 
+    <UAlert v-else-if="loadError" title="Impossible de charger vos proches" color="error" variant="soft">
+      <template #actions><UButton label="Réessayer" color="neutral" variant="outline" @click="fetchRelatives" /></template>
+    </UAlert>
     <div v-else-if="relatives.length === 0" class="text-center py-12">
       <UIcon name="i-lucide-users" class="w-16 h-16 mx-auto text-gray-300 mb-4" />
       <h3 class="text-lg font-medium text-gray-900 mb-2">Aucun proche enregistré</h3>
@@ -33,7 +36,7 @@
         color="primary"
         icon="i-lucide-plus"
         size="xl"
-        @click="showCreateModal = true"
+        @click="($event) => { showCreateModal = true }"
       >
         Ajouter mon premier proche
       </UButton>
@@ -45,9 +48,8 @@
         :key="relative.id"
         class="hover:shadow-md transition-all duration-200 group"
         :ui="{ 
-          body: { padding: 'p-4' },
-          ring: 'ring-1 ring-gray-200 dark:ring-gray-800',
-          shadow: 'shadow-sm'
+          body: 'p-4',
+          root: 'ring-1 ring-gray-200 dark:ring-gray-800 shadow-sm'
         }"
       >
         <div class="space-y-4">
@@ -55,7 +57,7 @@
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-start gap-3 flex-1 min-w-0">
               <div class="flex-shrink-0">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 dark:from-primary-600 dark:to-primary-700 flex items-center justify-center text-white font-normal text-lg shadow-sm">
+                <div class="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-900 font-semibold text-lg">
                   {{ getInitials(relative.first_name, relative.last_name) }}
                 </div>
               </div>
@@ -64,7 +66,7 @@
                   {{ relative.first_name }} {{ relative.last_name }}
                 </h3>
                 <UBadge
-                  :color="getRelationshipColor(relative.relationship_type)"
+                  :color="resolveUiColor(getRelationshipColor(relative.relationship_type))"
                   variant="subtle"
                   size="sm"
                   class="mt-1.5"
@@ -74,36 +76,12 @@
                 </UBadge>
               </div>
             </div>
-            <div class="relative">
-              <button
-                @click.stop="toggleMenu(relative.id)"
-                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <UIcon name="i-lucide-more-vertical" class="w-4 h-4 text-gray-500" />
-              </button>
-              
-              <!-- Menu dropdown -->
-              <div
-                v-if="openMenuId === relative.id"
-                @click.stop
-                class="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
-              >
-                <button
-                  @click="editRelative(relative); closeMenu()"
-                  class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 first:rounded-t-lg transition-colors"
-                >
-                  <UIcon name="i-lucide-edit" class="w-4 h-4" />
-                  Modifier
-                </button>
-                <button
-                  @click="deleteRelative(relative); closeMenu()"
-                  class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 last:rounded-b-lg transition-colors"
-                >
-                  <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
-                  Supprimer
-                </button>
-              </div>
-            </div>
+            <UDropdownMenu :items="[
+              { label: 'Modifier', icon: 'i-lucide-pencil', onSelect: () => editRelative(relative) },
+              { label: 'Supprimer', icon: 'i-lucide-trash-2', color: 'error', onSelect: () => deleteRelative(relative) },
+            ]">
+              <UButton icon="i-lucide-ellipsis" color="neutral" variant="ghost" :aria-label="`Actions pour ${relative.first_name} ${relative.last_name}`" class="min-h-11 min-w-11" />
+            </UDropdownMenu>
           </div>
 
           <!-- Informations -->
@@ -166,6 +144,7 @@
       v-model:open="showCreateModal"
       :title="editingRelative ? 'Modifier le proche' : 'Ajouter un proche'"
       direction="right"
+      :dismissible="!saving"
       :ui="{ 
         container: 'max-w-md',
         content: 'w-full sm:max-w-md'
@@ -181,7 +160,7 @@
         </div>
         
         <UForm
-          v-else
+          v-else-if="!relativeLoadError"
           :state="relativeForm"
           @submit="saveRelative"
           class="space-y-4"
@@ -273,6 +252,9 @@
             </div>
           </div>
         </UForm>
+        <UAlert v-else title="Dossier du proche indisponible" color="error" variant="soft">
+          <template #actions><UButton label="Recharger le proche" color="neutral" variant="outline" @click="editRelative(editingRelative)" /></template>
+        </UAlert>
       </template>
 
       <template #footer>
@@ -291,6 +273,7 @@
             color="primary"
             size="xl"
             :loading="saving"
+            :disabled="saving || loadingRelative || relativeLoadError"
             icon="i-lucide-save"
             @click="saveRelative"
             class="justify-center"
@@ -318,6 +301,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolveUiColor } from '~/utils/ui-appearance';
 import { apiFetch } from '~/utils/api';
 
 definePageMeta({
@@ -332,6 +316,9 @@ const toast = useAppToast();
 // État
 const relatives = ref<any[]>([]);
 const loading = ref(false);
+const loadError = ref(false);
+const relativeLoadError = ref(false);
+let relativeLoadVersion = 0;
 const saving = ref(false);
 const deleting = ref(false);
 const loadingRelative = ref(false);
@@ -339,7 +326,6 @@ const showCreateModal = ref(false);
 const showDeleteModal = ref(false);
 const editingRelative = ref<any>(null);
 const deletingRelative = ref<any>(null);
-const openMenuId = ref<string | null>(null);
 
 // Formulaire
 const relativeForm = ref({
@@ -378,14 +364,16 @@ onMounted(() => {
 // Fonctions
 const fetchRelatives = async () => {
   loading.value = true;
+  loadError.value = false;
   try {
     const response = await apiFetch('/patient-relatives', {
       method: 'GET',
     });
-    if (response.success && response.data) {
+    if (response.success && Array.isArray(response.data)) {
       relatives.value = response.data;
-    }
+    } else throw new Error('Proches indisponibles');
   } catch (error: any) {
+    loadError.value = true;
     toast.add({
       title: 'Erreur',
       description: error.message || 'Impossible de charger les proches',
@@ -397,6 +385,7 @@ const fetchRelatives = async () => {
 };
 
 const saveRelative = async () => {
+  if (saving.value || loadingRelative.value || relativeLoadError.value) return;
   // Validation basique
   if (!relativeForm.value.first_name || !relativeForm.value.last_name || !relativeForm.value.relationship_type) {
     toast.add({
@@ -414,11 +403,11 @@ const saveRelative = async () => {
       first_name: relativeForm.value.first_name,
       last_name: relativeForm.value.last_name,
       relationship_type: relativeForm.value.relationship_type,
-      gender: relativeForm.value.gender || undefined,
-      birth_date: relativeForm.value.birth_date || undefined,
-      email: relativeForm.value.email || undefined,
-      phone: relativeForm.value.phone || undefined,
-      address: relativeForm.value.address || undefined,
+      gender: relativeForm.value.gender || null,
+      birth_date: relativeForm.value.birth_date || null,
+      email: relativeForm.value.email || null,
+      phone: relativeForm.value.phone || null,
+      address: relativeForm.value.address || null,
     };
     let response;
     if (editingRelative.value) {
@@ -460,6 +449,8 @@ const saveRelative = async () => {
 };
 
 const editRelative = async (relative: any) => {
+  const version = ++relativeLoadVersion;
+  relativeLoadError.value = false;
   editingRelative.value = relative;
   
   // Ouvrir le drawer immédiatement
@@ -472,7 +463,8 @@ const editRelative = async (relative: any) => {
       method: 'GET',
     });
     
-    if (response.success && response.data) {
+    if (version !== relativeLoadVersion) return;
+    if (response.success && response.data && String(response.data.id) === String(relative.id)) {
       const relativeData = response.data;
       relativeForm.value = {
         first_name: relativeData.first_name || '',
@@ -491,18 +483,19 @@ const editRelative = async (relative: any) => {
         color: 'red',
       });
       // Fermer le drawer en cas d'erreur
-      showCreateModal.value = false;
+      relativeLoadError.value = true;
     }
   } catch (error: any) {
+    if (version !== relativeLoadVersion) return;
     toast.add({
       title: 'Erreur',
       description: error.message || 'Impossible de charger les données du proche',
       color: 'red',
     });
     // Fermer le drawer en cas d'erreur
-    showCreateModal.value = false;
+    relativeLoadError.value = true;
   } finally {
-    loadingRelative.value = false;
+    if (version === relativeLoadVersion) loadingRelative.value = false;
   }
 };
 
@@ -512,7 +505,7 @@ const deleteRelative = (relative: any) => {
 };
 
 const confirmDelete = async () => {
-  if (!deletingRelative.value) return;
+  if (!deletingRelative.value || deleting.value) return;
 
   deleting.value = true;
   try {
@@ -547,6 +540,8 @@ const confirmDelete = async () => {
 };
 
 const closeModal = () => {
+  relativeLoadVersion++;
+  relativeLoadError.value = false;
   showCreateModal.value = false;
   editingRelative.value = null;
   loadingRelative.value = false;
@@ -562,29 +557,12 @@ const closeModal = () => {
   };
 };
 
-// Gestion du menu dropdown
-const toggleMenu = (relativeId: string) => {
-  openMenuId.value = openMenuId.value === relativeId ? null : relativeId;
-};
-
-const closeMenu = () => {
-  openMenuId.value = null;
-};
-
-// Fermer le menu si on clique ailleurs
-if (typeof window !== 'undefined') {
-  onMounted(() => {
-    document.addEventListener('click', closeMenu);
-  });
-  
-  onUnmounted(() => {
-    document.removeEventListener('click', closeMenu);
-  });
-}
+watch(showCreateModal, open => { if (!open) closeModal(); });
+onUnmounted(() => { relativeLoadVersion++; });
 
 const createAppointmentFor = (relative: any) => {
   // Rediriger vers le formulaire de RDV avec le proche sélectionné
-  navigateTo(`/rendez-vous/nouveau?relative_id=${relative.id}`);
+  navigateTo(`/rendez-vous/nouveau?relative_id=${encodeURIComponent(relative.id)}`);
 };
 
 const getRelationshipColor = (type: string) => {

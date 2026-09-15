@@ -15,7 +15,7 @@
       :use-date-filter="false"
     />
 
-    <DashboardAppointmentListAccessModals list-path="/preleveur/appointments" />
+    <AppointmentListAccessModals list-path="/preleveur/appointments" />
   </AppPageShell>
 </template>
 

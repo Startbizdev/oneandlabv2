@@ -16,12 +16,8 @@ definePageMeta({
   layout: 'default',
 });
 
-const route = useRoute();
-const config = useRuntimeConfig();
 
-const profile = ref<any>(null);
-const loading = ref(true);
-const error = ref<string | null>(null);
+const { profile, loading, error, fetchProfile, locationLabel: metaLocation } = await usePublicProfile('lab');
 
 // FAQ par défaut pour les laboratoires (généraliste, SEO, sans horaires ni infos non disponibles)
 const defaultLabFaq = [
@@ -43,7 +39,7 @@ const defaultLabFaq = [
   },
   {
     question: 'Prélèvement à domicile : remboursement ?',
-    answer: 'Les analyses prescrites par un médecin sont prises en charge par l\'Assurance maladie. Le déplacement à domicile peut être facturé selon les conditions du laboratoire et votre mutuelle.',
+    answer: 'La prise en charge dépend des analyses prescrites, de votre situation et des conditions de déplacement à domicile. Le laboratoire peut vous préciser les modalités avant le prélèvement.',
   },
 ];
 
@@ -51,11 +47,6 @@ const defaultLabFaq = [
 const faqToDisplay = computed(() => defaultLabFaq);
 
 // Lieu pour meta (ville + code postal)
-const metaLocation = computed(() => {
-  const p = profile.value;
-  if (!p) return '';
-  return (p.address || p.city_plain || '').toString().trim() || '';
-});
 
 // Meta tags dynamiques (SEO : Nom laboratoire - Prélèvement à domicile - Ville CODE)
 useHead({
@@ -118,44 +109,4 @@ useHead({
 });
 
 // Fetch du profil en SSR
-const fetchProfile = async () => {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const slug = route.params.slug as string;
-    const base = config.public.apiBase || '/api';
-    const apiBase = import.meta.server && (base.startsWith('/') || !base.startsWith('http'))
-      ? 'http://127.0.0.1:8888/api'
-      : base;
-    const url = `${apiBase}/public/lab/${slug}`;
-
-    const response = await $fetch<{ success: boolean; data?: any; error?: string; redirect?: boolean; new_slug?: string }>(url, {
-      method: 'GET',
-    });
-
-    if (response.success && response.redirect && response.new_slug) {
-      await navigateTo(`/Laboratoire/${response.new_slug}`, { redirectCode: 301 });
-      return;
-    }
-    if (response.success && response.data) {
-      const data = response.data;
-      profile.value = {
-        ...data,
-        role: 'subaccount',
-        name: data.name || (data.first_name && data.last_name ? `${data.first_name} ${data.last_name}` : 'Laboratoire'),
-        faq: data.faq ? (typeof data.faq === 'string' ? JSON.parse(data.faq) : data.faq) : [],
-      };
-    } else {
-      error.value = response.error || 'Profil introuvable';
-    }
-  } catch (err: any) {
-    console.error('Erreur lors du chargement du profil:', err);
-    error.value = err.data?.error || err.message || 'Erreur lors du chargement du profil';
-  } finally {
-    loading.value = false;
-  }
-};
-
-await fetchProfile();
 </script>

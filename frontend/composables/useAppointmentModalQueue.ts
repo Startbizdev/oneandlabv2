@@ -156,7 +156,7 @@ export function useAppointmentModalQueue(options?: {
         await processNext()
         return
       }
-      if (role === 'nurse' && isBloodTestAppointment(data.type)) {
+      if (role === 'nurse' && isBloodTestAppointment(typeof data.type === 'string' ? data.type : undefined)) {
         queue.value = queue.value.slice(1)
         await processNext()
         return

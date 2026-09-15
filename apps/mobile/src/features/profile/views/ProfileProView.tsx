@@ -8,7 +8,7 @@ import {
 } from '@oneandlab/shared-types';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
@@ -24,6 +24,8 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
@@ -75,23 +77,14 @@ export function ProfileProView() {
     enabled: !!user?.id,
   });
 
-  useEffect(() => {
-    const d = q.data;
-    if (!d) return;
-    setFirstName(d.first_name ?? '');
-    setLastName(d.last_name ?? '');
-    setPhone(d.phone ?? '');
-    setRpps(getProfessionalIdDisplay(d.rpps, d.adeli));
-    setEmploi(d.emploi ?? '');
-    setBiography(d.biography ?? '');
-    setWebsiteUrl(d.website_url ?? '');
-    const social = parseProfileSocialLinks(d.social_links);
-    setSocialFacebook(social.facebook);
-    setSocialLinkedin(social.linkedin);
-    setSocialInstagram(social.instagram);
-    setProfileUrl(d.profile_image_url ?? null);
-    setCoverUrl(d.cover_image_url ?? null);
-  }, [q.data]);
+  useProfileDraft(user?.id, q.data,
+    { firstName, lastName, phone, rpps, emploi, biography, websiteUrl, socialFacebook, socialLinkedin, socialInstagram, profileUrl, coverUrl },
+    d => {
+      const social = parseProfileSocialLinks(d.social_links);
+      return { firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', rpps: getProfessionalIdDisplay(d.rpps, d.adeli), emploi: d.emploi ?? '', biography: d.biography ?? '', websiteUrl: d.website_url ?? '', socialFacebook: social.facebook, socialLinkedin: social.linkedin, socialInstagram: social.instagram, profileUrl: d.profile_image_url ?? null, coverUrl: d.cover_image_url ?? null };
+    },
+    d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setRpps(d.rpps); setEmploi(d.emploi); setBiography(d.biography); setWebsiteUrl(d.websiteUrl); setSocialFacebook(d.socialFacebook); setSocialLinkedin(d.socialLinkedin); setSocialInstagram(d.socialInstagram); setProfileUrl(d.profileUrl); setCoverUrl(d.coverUrl); },
+  );
 
   const savePhotos = useMutation({
     mutationFn: (body: { profile_image_url: string | null; cover_image_url: string | null }) =>
@@ -171,9 +164,10 @@ export function ProfileProView() {
   const publicEnabled = !!q.data?.is_public_profile_enabled;
   const publicSlug = q.data?.public_slug?.trim() ?? '';
 
-  if (q.isLoading) {
+  if (q.isLoading || !user?.id) {
     return <SkeletonProfileScreen cards={2} />;
   }
+  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
 
   return (
     <StackChromeScreen>

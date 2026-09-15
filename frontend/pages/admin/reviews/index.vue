@@ -28,9 +28,10 @@
       />
     </div>
 
-    <div class="rounded-xl border border-default/50 bg-default shadow-sm overflow-hidden">
+    <UAlert v-if="loadError" title="Impossible de charger les avis" color="error" variant="soft"><template #actions><UButton color="neutral" variant="outline" @click="fetchReviews">Réessayer</UButton></template></UAlert>
+    <div v-else class="rounded-xl border border-default/50 bg-default shadow-sm overflow-hidden">
       <UTable :data="filteredReviews" :columns="columns" :loading="loading">
-        <template #rating-data="{ row }">
+        <template #rating-cell="{ row: { original: row } }">
           <div class="flex items-center gap-2">
             <div class="flex items-center gap-0.5">
               <UIcon
@@ -46,26 +47,28 @@
             </UBadge>
           </div>
         </template>
-        <template #comment-data="{ row }">
+        <template #comment-cell="{ row: { original: row } }">
           <p class="text-sm text-muted max-w-[280px] truncate" :title="row.comment">
             {{ row.comment || '—' }}
           </p>
         </template>
-        <template #is_visible-data="{ row }">
-          <UBadge :color="row.is_visible ? 'green' : 'gray'" variant="subtle" size="sm">
+        <template #is_visible-cell="{ row: { original: row } }">
+          <UBadge :color="row.is_visible ? 'success' : 'neutral'" variant="subtle" size="sm">
             {{ row.is_visible ? 'Visible' : 'Masqué' }}
           </UBadge>
         </template>
-        <template #actions-data="{ row }">
+        <template #actions-cell="{ row: { original: row } }">
           <div class="flex items-center gap-2">
             <UButton size="sm" variant="outline" :on-click="() => viewReview(row)">
               Détails
             </UButton>
             <UButton
               size="sm"
-              :color="row.is_visible ? 'orange' : 'green'"
+              :color="row.is_visible ? 'warning' : 'success'"
               variant="outline"
               @click="toggleVisibility(row)"
+              :loading="moderatingId === row.id"
+              :disabled="!!moderatingId"
             >
               {{ row.is_visible ? 'Masquer' : 'Afficher' }}
             </UButton>
@@ -87,7 +90,8 @@
 
     <ClientOnly>
       <Teleport to="body">
-        <UModal v-model:open="showDetailsModal">
+        <UModal v-model:open="showDetailsModal" title="Détails de l’avis" :dismissible="!moderatingId">
+          <template #body>
           <UCard v-if="selectedReview">
             <template #header>
               <h2 class="text-xl font-normal">Détails de l'avis</h2>
@@ -127,15 +131,18 @@
               </div>
               <div class="flex gap-2 pt-4">
                 <UButton
-                  :color="selectedReview.is_visible ? 'orange' : 'green'"
-                  @click="toggleVisibility(selectedReview); showDetailsModal = false"
+                  :color="selectedReview.is_visible ? 'warning' : 'success'"
+                  @click="toggleVisibility(selectedReview)"
+                  :loading="moderatingId === selectedReview.id"
+                  :disabled="!!moderatingId"
                 >
                   {{ selectedReview.is_visible ? 'Masquer' : 'Afficher' }}
                 </UButton>
-                <UButton variant="ghost" :on-click="() => showDetailsModal = false">Fermer</UButton>
+                <UButton variant="ghost" :disabled="!!moderatingId" @click="() => { showDetailsModal = false }">Fermer</UButton>
               </div>
             </div>
           </UCard>
+          </template>
         </UModal>
       </Teleport>
     </ClientOnly>
@@ -154,6 +161,7 @@ const toast = useAppToast();
 
 const reviews = ref<any[]>([]);
 const loading = ref(true);
+const loadError = ref(false);
 const searchQuery = ref('');
 const statusFilter = ref('all');
 const ratingFilter = ref('all');
@@ -209,12 +217,13 @@ onMounted(async () => {
 
 const fetchReviews = async () => {
   loading.value = true;
+  loadError.value = false;
   try {
     const response = await apiFetch('/reviews', { method: 'GET' });
-    if (response.success && response.data) {
-      reviews.value = response.data;
-    }
+    if (!response.success || !Array.isArray(response.data)) throw new Error('Chargement impossible');
+    reviews.value = response.data;
   } catch (error) {
+    loadError.value = true;
     console.error('Erreur chargement avis:', error);
     toast.add({ title: 'Erreur de chargement', color: 'red' });
   } finally {
@@ -227,12 +236,17 @@ const viewReview = (review: any) => {
   showDetailsModal.value = true;
 };
 
+const moderatingId = ref<string | null>(null);
 const toggleVisibility = async (review: any) => {
+  if (moderatingId.value) return;
+  moderatingId.value = review.id;
   try {
-    await apiFetch(`/reviews/${review.id}/moderate`, {
+    const response = await apiFetch(`/reviews/${review.id}/moderate`, {
       method: 'PUT',
       body: { is_visible: !review.is_visible },
     });
+    if (!response?.success) throw new Error(response?.error || 'Modification impossible');
+    showDetailsModal.value = false;
     toast.add({
       title: review.is_visible ? 'Avis masqué' : 'Avis affiché',
       color: 'green',
@@ -240,15 +254,16 @@ const toggleVisibility = async (review: any) => {
     await fetchReviews();
   } catch (error: any) {
     toast.add({ title: 'Erreur', description: error.message, color: 'red' });
+  } finally {
+    moderatingId.value = null;
   }
 };
 
 const getRatingBadgeColor = (rating: number) => {
-  if (rating >= 5) return 'green';
-  if (rating >= 4) return 'blue';
-  if (rating >= 3) return 'yellow';
-  if (rating >= 2) return 'orange';
-  return 'red';
+  if (rating >= 5) return 'success';
+  if (rating >= 4) return 'info';
+  if (rating >= 2) return 'warning';
+  return 'error';
 };
 
 const getRatingLabel = (rating: number) => {

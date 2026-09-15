@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const router = useRouter()
+useSeoMeta({ title: 'Bienvenue · Cary', robots: 'noindex, nofollow' })
 
 const isReplay = computed(() => route.query.replay === '1' || route.query.replay === 'true')
 const config = computed(() => getTutorialConfig(props.role, { showPrescriptions: true }))
@@ -25,7 +26,7 @@ function finish() {
   if (!isReplay.value) {
     setOnboardingCompleted(props.role, true)
   }
-  const pendingShare = pendingNurseShareDemandesPath()
+  const pendingShare = props.role === 'nurse' ? pendingNurseShareDemandesPath() : null
   if (pendingShare) {
     clearPendingNurseShareLink()
     router.replace(pendingShare)
@@ -53,38 +54,36 @@ const currentSlide = computed(() => slides.value[index.value])
 <template>
   <div
     v-if="config && slides.length"
-    class="relative flex min-h-screen flex-col bg-gradient-to-b from-primary-50 via-app-canvas to-app-canvas"
+    class="relative flex min-h-dvh flex-col bg-app-canvas"
   >
     <div class="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
       <header class="flex shrink-0 items-center justify-between py-3">
-        <span class="text-sm font-bold tracking-wide text-primary-800">{{ config.welcomeTitle }}</span>
+        <img src="/images/logo-cary.png" alt="Cary" class="h-9 w-auto max-w-28 object-contain" />
         <button
           type="button"
-          class="text-sm font-semibold text-slate-500 transition-colors hover:text-slate-800"
+          class="min-h-11 rounded-xl px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-white hover:text-slate-900"
           @click="finish"
         >
           Passer
         </button>
       </header>
 
-      <div class="flex min-h-0 flex-1 flex-col items-center justify-center py-4">
-        <Transition name="fade-slide" mode="out-in">
+      <main aria-label="Découvrir votre espace" class="flex min-h-0 flex-1 flex-col items-center justify-center py-4">
           <div
             v-if="currentSlide"
-            :key="currentSlide.id"
             class="flex w-full max-w-md flex-col items-center justify-center gap-5"
           >
-            <TutorialIllustration :illustration="currentSlide.illustration" />
-            <div class="w-full space-y-2 px-1 text-center">
-              <h2 class="text-xl font-bold tracking-tight text-slate-900">{{ currentSlide.title }}</h2>
+            <TutorialIllustration aria-hidden="true" :illustration="currentSlide.illustration" />
+            <div aria-live="polite" aria-atomic="true" class="w-full space-y-2 px-1 text-center">
+              <h1 class="text-2xl font-bold tracking-tight text-slate-900">{{ currentSlide.title }}</h1>
               <p class="text-base leading-relaxed text-slate-500">{{ currentSlide.body }}</p>
             </div>
           </div>
-        </Transition>
-      </div>
+      </main>
 
       <footer class="shrink-0 space-y-4 pb-2">
-        <div class="flex items-center justify-center gap-1.5">
+        <p class="text-center text-sm text-slate-500" role="status">Étape {{ index + 1 }} sur {{ slides.length }}</p>
+        <div aria-hidden="true" class="flex items-center justify-center gap-1.5">
           <span
             v-for="(slide, dotIndex) in slides"
             :key="slide.id"
@@ -123,18 +122,3 @@ const currentSlide = computed(() => slides.value[index.value])
     <UButton label="Continuer" color="primary" @click="finish" />
   </div>
 </template>
-
-<style scoped>
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity 0.22s ease, transform 0.22s ease;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateX(12px);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-12px);
-}
-</style>

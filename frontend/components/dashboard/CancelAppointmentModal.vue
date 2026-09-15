@@ -60,7 +60,7 @@
                   variant="ghost"
                   size="xs"
                   color="error"
-                  :on-click="() => (photoFile = null)"
+                  :on-click="() => { photoFile = null }"
                 >
                   Retirer
                 </UButton>

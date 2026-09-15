@@ -1,7 +1,7 @@
 <template>
   <div class="rounded-xl border border-default/50 bg-default overflow-hidden shadow-sm">
-    <div class="px-6 py-4 border-b border-default/50 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-default">Rendez-vous d'aujourd'hui</h2>
+    <div class="px-4 py-4 sm:px-5 border-b border-default/50 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="text-lg font-semibold text-default">Aujourd'hui</h2>
       <UButton
         v-if="basePath"
         variant="ghost"
@@ -23,7 +23,7 @@
           <p class="text-sm text-muted mt-1">Les rendez-vous du jour apparaîtront ici.</p>
         </div>
       </template>
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      <div v-else class="grid grid-cols-1 gap-3 min-[1400px]:grid-cols-2">
         <DashboardAppointmentCard
           v-for="apt in displayAppointments"
           :key="apt.id"

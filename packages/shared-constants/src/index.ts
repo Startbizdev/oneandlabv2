@@ -46,6 +46,7 @@ export * from './nursing-duration';
 export * from './care-category-autre-detail';
 export * from './cancellation-reasons';
 export * from './nurse-subscription-plans';
+export * from './lab-subscription-plans';
 export * from './patient-vip-iap';
 export * from './staff-patient-booking-consent';
 export * from './pending-offer-expiry';

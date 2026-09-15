@@ -2,10 +2,14 @@
   <AppPageShell class="mx-auto max-w-2xl space-y-4">
     <AppPageHeader title="Détail passage" :edge-bleed="false" />
 
-    <div v-if="loading" class="flex justify-center py-16">
+    <div v-if="loading" class="flex justify-center py-16" role="status" aria-label="Chargement du passage">
       <UIcon name="i-lucide-loader-2" class="h-8 w-8 animate-spin text-primary-500" />
     </div>
 
+    <div v-else-if="loadError" class="space-y-3">
+      <UAlert color="error" title="Passage indisponible" :description="loadError" />
+      <UButton color="neutral" variant="outline" @click="loadContext">Réessayer</UButton>
+    </div>
     <template v-else-if="series || (isAppointmentOnly && appointment)">
       <div class="flex gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900/50">
         <UButton
@@ -15,7 +19,7 @@
           size="sm"
           :variant="tab === item.value ? 'solid' : 'ghost'"
           :color="tab === item.value ? 'primary' : 'neutral'"
-          @click="tab = item.value"
+          @click="($event) => { tab = item.value }"
         >
           {{ item.label }}
         </UButton>
@@ -80,12 +84,17 @@
         >
           Lancer la navigation
         </UButton>
-        <UButton block color="primary" @click="actionsOpen = true">Actions</UButton>
+        <UButton block color="primary" @click="($event) => { actionsOpen = true }">Actions</UButton>
       </div>
 
       <div v-else-if="tab === 'documents'" class="space-y-4">
         <template v-if="appointmentId && appointment">
+          <div v-if="documentsError" class="space-y-3">
+            <UAlert color="error" title="Documents indisponibles" :description="documentsError" />
+            <UButton color="neutral" variant="outline" @click="loadDocuments">Réessayer</UButton>
+          </div>
           <AppointmentDocumentsSection
+            v-else
             :documents="documents"
             :loading="docsLoading"
             empty-description="Aucun document médical pour ce passage."
@@ -100,8 +109,8 @@
           />
           <PrescriptionSection
             v-if="canGeneratePrescription && !['canceled', 'cancelled'].includes(String(appointment.status ?? ''))"
-            :patient-id="appointment.patient_id"
-            :appointment="{ id: appointment.id }"
+            :patient-id="String(appointment.patient_id ?? '')"
+            :appointment="{ id: String(appointment.id ?? '') }"
             :documents="documents"
             :load-documents="loadDocuments"
             kind="nursing"
@@ -122,7 +131,7 @@
           :patient-id="effectivePatientId"
           editable
           clinical-vitals
-          clinical-vital-context="passage"
+          :clinical-vital-context="{ type: 'passage', id: seriesId || undefined }"
         />
         <UAlert
           v-else
@@ -136,21 +145,26 @@
 
     <!-- Modales édition -->
     <UModal v-model:open="planningOpen" title="Planification">
+      <template #body>
       <div class="space-y-3 p-1">
         <PassagePlanningFormFields v-model="planningState" />
         <UButton block :loading="saving" @click="savePlanning">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="timeOpen" title="Heure de passage">
+      <template #body>
       <div class="space-y-3 p-1">
         <USelect v-model="timeSlot" :items="slotItems" />
         <UInput v-if="timeSlot === 'custom'" v-model="customTime" type="time" label="Heure" />
         <UButton block :loading="saving" @click="saveTime">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="locationOpen" title="Lieu">
+      <template #body>
       <div class="space-y-3 p-1">
         <div class="flex items-center justify-between gap-3">
           <p class="font-medium">À domicile</p>
@@ -158,30 +172,38 @@
         </div>
         <UButton block :loading="saving" @click="saveLocation">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="durationOpen" title="Durée du passage">
+      <template #body>
       <div class="space-y-3 p-1">
         <USelect v-model="duration" :items="durationItems" />
         <UButton block :loading="saving" @click="saveDuration">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="careOpen" title="Soins" :ui="{ content: 'max-w-lg' }">
+      <template #body>
       <div class="space-y-3 p-1">
         <PassageCarePicker v-model="nursingItems" />
         <UButton block :loading="saving" @click="saveCare">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="notesOpen" title="Note">
+      <template #body>
       <div class="space-y-3 p-1">
         <UTextarea v-model="notes" :rows="4" placeholder="Note interne (optionnelle)" />
         <UButton block :loading="saving" @click="saveNotes">Valider</UButton>
       </div>
+          </template>
     </UModal>
 
     <UModal v-model:open="actionsOpen" title="Actions">
+      <template #body>
       <div class="divide-y divide-gray-100 dark:divide-gray-800">
         <button
           v-if="stopId"
@@ -237,11 +259,13 @@
           <span class="text-sm font-semibold">Supprimer toute la série</span>
         </button>
       </div>
+          </template>
     </UModal>
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
+const toast = useAppToast();
 import type {
   NursePassageNursingItem,
   NursePassageSeriesInput,
@@ -305,6 +329,8 @@ const appointmentId = computed(() => String(route.query.appointment_id ?? ''));
 const stopId = computed(() => String(route.query.stop_id ?? ''));
 
 const loading = ref(true);
+const loadError = ref('');
+const documentsError = ref('');
 const tab = ref('information');
 const tabItems = [
   { label: 'Informations', value: 'information' },
@@ -320,7 +346,13 @@ const documents = ref<any[]>([]);
 const docsLoading = ref(false);
 const downloadingDocIds = ref<string[]>([]);
 const uploadingTypes = ref<string[]>([]);
-const uploadTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'other'];
+const uploadTypes = [
+  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card' },
+  { value: 'carte_mutuelle', label: 'Carte mutuelle', icon: 'i-lucide-shield' },
+  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text' },
+  { value: 'autres_assurances', label: 'Autre assurance', icon: 'i-lucide-file-text' },
+  { value: 'other', label: 'Autre document', icon: 'i-lucide-file' },
+];
 
 const timeSlot = ref<PassageTimeSlot>('morning');
 const customTime = ref('09:00');
@@ -427,11 +459,15 @@ async function launchNavigation() {
 async function loadDocuments() {
   if (!appointmentId.value) return;
   docsLoading.value = true;
+  documentsError.value = '';
   try {
-    const res = await apiFetch<any[]>(
+    const res = await apiFetch<{ success: boolean; data?: any[]; error?: string }>(
       `/medical-documents?appointment_id=${encodeURIComponent(appointmentId.value)}`,
     );
-    documents.value = res?.data ?? [];
+    if (!res?.success || !Array.isArray(res.data)) throw new Error(res?.error || 'Impossible de charger les documents.');
+    documents.value = res.data;
+  } catch (error) {
+    documentsError.value = error instanceof Error ? error.message : 'Réessayez dans un instant.';
   } finally {
     docsLoading.value = false;
   }
@@ -439,9 +475,12 @@ async function loadDocuments() {
 
 async function loadContext() {
   loading.value = true;
+  loadError.value = '';
+  try {
   let s = null as Awaited<ReturnType<typeof fetchSeries>> | null;
   if (seriesId.value) {
     s = await fetchSeries(seriesId.value);
+    if (!s) throw new Error('Cette série ne peut pas être chargée. Réessayez dans un instant.');
     series.value = s;
     if (s) {
       timeSlot.value = s.time_slot;
@@ -462,7 +501,8 @@ async function loadContext() {
   }
 
   if (appointmentId.value) {
-    const aptRes = await apiFetch<Record<string, unknown>>(`/appointments/${appointmentId.value}`);
+    const aptRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/appointments/${appointmentId.value}`);
+    if (!aptRes?.success || !aptRes.data) throw new Error(aptRes?.error || 'Impossible de charger ce rendez-vous.');
     appointment.value = aptRes?.data ?? null;
     if (isAppointmentOnly.value && appointment.value) {
       const fields = initPassageFormFromAppointment(appointment.value);
@@ -475,18 +515,22 @@ async function loadContext() {
     }
     const pid = String(appointment.value?.patient_id ?? s?.patient_id ?? '');
     if (pid) {
-      const pRes = await apiFetch<Record<string, unknown>>(`/users/${pid}?detail=full`);
+      const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/users/${pid}?detail=full`);
       patientProfile.value = pRes?.data ?? null;
     }
     await loadDocuments();
   } else if (s?.patient_id) {
-    const pRes = await apiFetch<Record<string, unknown>>(`/users/${s.patient_id}?detail=full`);
+    const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/users/${s.patient_id}?detail=full`);
     patientProfile.value = pRes?.data ?? null;
   }
 
-  const me = await apiFetch<Record<string, unknown>>('/users/me?detail=full');
+  const me = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>('/users/me?detail=full');
   nurseProfile.value = me?.data ?? null;
-  loading.value = false;
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : 'Impossible de charger ce passage.';
+  } finally {
+    loading.value = false;
+  }
 }
 
 onMounted(() => {
@@ -510,31 +554,41 @@ function buildPayload(extra: Partial<NursePassageSeriesInput> = {}): Partial<Nur
     duration_minutes: duration.value,
     at_home: atHome.value,
     nursing_items: nursingItems.value,
-    notes: notes.trim() || null,
+    notes: notes.value.trim() || null,
     ...extra,
   };
 }
 
 async function persist(extra: Partial<NursePassageSeriesInput> = {}) {
+  if (saving.value) return;
   if (isAppointmentOnly.value) {
     if (!appointment.value) return;
+    saving.value = true;
+    try {
     const snapshot = {
       time_slot: timeSlot.value,
       custom_time: timeSlot.value === 'custom' ? customTime.value : null,
       duration_minutes: duration.value,
       at_home: atHome.value,
       nursing_items: nursingItems.value,
-      notes: notes.trim() || null,
+      notes: notes.value.trim() || null,
     };
     const body = buildAppointmentPassageUpdateBody(appointment.value, extra, snapshot);
-    await apiFetch(`/appointments/${appointmentId.value}`, { method: 'PUT', body });
-    const aptRes = await apiFetch<Record<string, unknown>>(`/appointments/${appointmentId.value}`);
-    appointment.value = aptRes?.data ?? null;
+    const result = await apiFetch(`/appointments/${appointmentId.value}`, { method: 'PUT', body });
+    if (!result?.success) throw new Error(result?.error || 'Enregistrement impossible. Réessayez.');
+    const aptRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/appointments/${appointmentId.value}`);
+    if (!aptRes?.success || !aptRes.data) throw new Error('Passage enregistré, mais actualisation impossible. Réessayez.');
+    appointment.value = aptRes.data;
     editModal.value = null;
+    } catch (error) {
+      toast.add({ title: 'Modification non confirmée', description: error instanceof Error ? error.message : 'Réessayez.', color: 'error' });
+    } finally {
+      saving.value = false;
+    }
     return;
   }
-  await updateSeries(seriesId.value, buildPayload(extra));
-  editModal.value = null;
+  const result = await updateSeries(seriesId.value, buildPayload(extra));
+  if (result) editModal.value = null;
 }
 
 async function savePlanning() {
@@ -627,8 +681,11 @@ async function onUploadDocument(docType: string, file: File) {
     fd.append('document_type', docType);
     fd.append('patient_id', String(appointment.value.patient_id));
     fd.append('appointment_id', appointmentId.value);
-    await apiFetch('/medical-documents', { method: 'POST', body: fd });
+    const result = await apiFetch('/medical-documents', { method: 'POST', body: fd });
+    if (!result?.success) throw new Error(result?.error || 'Envoi impossible. Réessayez.');
     await loadDocuments();
+  } catch (error) {
+    toast.add({ title: 'Document non envoyé', description: error instanceof Error ? error.message : 'Réessayez.', color: 'error' });
   } finally {
     uploadingTypes.value = uploadingTypes.value.filter((t) => t !== docType);
   }

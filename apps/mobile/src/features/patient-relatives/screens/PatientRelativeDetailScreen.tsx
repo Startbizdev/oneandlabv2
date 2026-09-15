@@ -55,6 +55,7 @@ export function PatientRelativeDetailScreen() {
     queryKey: queryKeys.documents.relative(id ?? ''),
     queryFn: async () => {
       const res = await fetchProfileDocuments({ relativeId: id! });
+      if (!res.success) throw new Error(res.error ?? 'Documents indisponibles');
       return res.data ?? [];
     },
     enabled: Boolean(id),
@@ -116,6 +117,14 @@ export function PatientRelativeDetailScreen() {
     router.push(`/(patient)/relatives/${id}/documents` as never);
   };
 
+  if (q.isError || (!q.isLoading && !q.data)) {
+    return <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
+      <View style={styles.scroll}>
+        <AppText accessibilityRole="alert">Impossible de charger ce proche.</AppText>
+        <Button title="Réessayer" variant="outline" loading={q.isFetching} onPress={() => { void q.refetch(); }} />
+      </View>
+    </StackChromeScreen>;
+  }
   if (q.isLoading || !q.data) {
     return (
       <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
@@ -131,9 +140,7 @@ export function PatientRelativeDetailScreen() {
     <StackChromeScreen
       title={<HeaderTitleText title={name || 'Proche'} />}
       headerRight={
-        <AppText onPress={() => setEditOpen(true)} style={styles.headerEdit}>
-          Modifier
-        </AppText>
+        <Button title="Modifier" variant="ghost" onPress={() => setEditOpen(true)} />
       }
     >
       <ScrollView
@@ -164,7 +171,10 @@ export function PatientRelativeDetailScreen() {
 
         <Button title="Réserver pour ce proche" onPress={book} fullWidth size="lg" />
 
-        <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />
+        {docsQ.isError ? <View style={styles.hero}>
+          <AppText accessibilityRole="alert">Documents indisponibles.</AppText>
+          <Button title="Recharger les documents" variant="outline" loading={docsQ.isFetching} onPress={() => { void docsQ.refetch(); }} />
+        </View> : <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />}
 
         <DetailActionList actions={deleteActions} edgeToEdge={false} />
       </ScrollView>

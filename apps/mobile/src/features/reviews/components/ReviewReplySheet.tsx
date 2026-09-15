@@ -40,7 +40,9 @@ export function ReviewReplySheet({
   return (
     <BottomSheet
       visible={visible}
-      onClose={onClose}
+      onClose={() => { if (!submitting) onClose(); }}
+      enableSwipeToDismiss={!submitting}
+      dismissOnBackdropPress={!submitting}
       title="Répondre à l'avis"
       subtitle={reviewerDisplayName(review)}
       headerIcon={<MessageSquare size={iconSize.md} color={c.primary} strokeWidth={2} />}
@@ -56,6 +58,7 @@ export function ReviewReplySheet({
         value={draft}
         onChangeText={onChangeDraft}
         multiline
+        editable={!submitting}
         numberOfLines={5}
         placeholder="Remerciez le patient ou apportez des précisions…"
         style={styles.input}
@@ -63,13 +66,13 @@ export function ReviewReplySheet({
       <AppText style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</AppText>
       <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
+          <Button title="Annuler" variant="outline" onPress={onClose} disabled={submitting} fullWidth size="lg" />
         </View>
         <View style={styles.actionBtn}>
           <Button
-            title="Publier"
+            title="Envoyer"
             loading={submitting}
-            disabled={!draft.trim()}
+            disabled={submitting || !draft.trim()}
             onPress={onSubmit}
             fullWidth
           />
