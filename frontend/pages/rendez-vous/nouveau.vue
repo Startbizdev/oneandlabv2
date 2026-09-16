@@ -1318,12 +1318,14 @@ async function submitPatientUrgentDraftAndRedirectStripe(patientId: string): Pro
   }
 }
 
-async function navigateAfterPatientBooking() {
-  bookingDbg('navigation patient', { to: '/patient' });
+async function navigateAfterPatientBooking(createdIds: string[] = []) {
+  const firstId = createdIds.map(String).find((id) => id.trim());
+  const destination = firstId ? `/patient/appointments/${encodeURIComponent(firstId)}` : '/patient';
+  bookingDbg('navigation patient', { to: destination, createdIds: createdIds.length });
   try {
-    await router.push('/patient');
+    await router.push(destination);
   } catch {
-    if (typeof window !== 'undefined') window.location.assign('/patient');
+    if (typeof window !== 'undefined') window.location.assign(destination);
   }
 }
 
@@ -1392,7 +1394,7 @@ const createAppointmentDirectly = async () => {
 
     bookingDraftDisabled.value = true;
     clearBookingDraft();
-    await navigateAfterPatientBooking();
+    await navigateAfterPatientBooking(result?.createdIds ?? []);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors de la création du rendez-vous';
   } finally {
@@ -1503,7 +1505,7 @@ const verifyOTPAndCreate = async () => {
 
     bookingDraftDisabled.value = true;
     clearBookingDraft();
-    await navigateAfterPatientBooking();
+    await navigateAfterPatientBooking(apiResult?.createdIds ?? []);
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erreur lors de la vérification';
     otpCode.value = [];
