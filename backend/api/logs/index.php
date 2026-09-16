@@ -51,8 +51,10 @@ foreach (['start_date' => 'created_at >= :start_date', 'end_date' => 'created_at
 }
 $search = trim((string) ($_GET['search'] ?? ''));
 if ($search !== '') {
-    $where[] = '(resource_id LIKE :search OR user_id LIKE :search OR action LIKE :search OR resource_type LIKE :search OR ip_address LIKE :search)';
-    $params[':search'] = '%' . $search . '%';
+    $where[] = '(resource_id LIKE :search_resource OR user_id LIKE :search_user OR action LIKE :search_action OR resource_type LIKE :search_type OR ip_address LIKE :search_ip)';
+    $needle = '%' . $search . '%';
+    $params[':search_resource'] = $needle; $params[':search_user'] = $needle;
+    $params[':search_action'] = $needle; $params[':search_type'] = $needle; $params[':search_ip'] = $needle;
 }
 $condition = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 $count = $db->prepare("SELECT COUNT(*) FROM access_logs $condition");
