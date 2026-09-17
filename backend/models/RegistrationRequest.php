@@ -263,7 +263,26 @@ class RegistrationRequest
             'created_at' => $r['created_at'],
             'reviewed_at' => $r['reviewed_at'],
             'reviewed_by' => $r['reviewed_by'],
+            'user_id' => $this->resolveAcceptedUserId($r),
         ];
+    }
+
+    /** Profil créé ou lié lors de l’acceptation (liste admin). */
+    private function resolveAcceptedUserId(array $r): ?string
+    {
+        if (($r['status'] ?? '') !== 'accepted') {
+            return null;
+        }
+        $emailHash = $r['email_hash'] ?? '';
+        $role = $r['role'] ?? '';
+        if ($emailHash === '' || $role === '') {
+            return null;
+        }
+        $stmt = $this->db->prepare('SELECT id FROM profiles WHERE email_hash = ? AND role = ? LIMIT 1');
+        $stmt->execute([$emailHash, $role]);
+        $userId = $stmt->fetchColumn();
+
+        return $userId ? (string) $userId : null;
     }
 
     /**

@@ -10,6 +10,13 @@ require_once __DIR__ . '/../../lib/ai/AiVoiceDraftReconciler.php';
 
 final class AiVoiceMessageSignalsTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (!extension_loaded('pdo_mysql')) {
+            $this->markTestSkipped('Extension pdo_mysql requise');
+        }
+    }
+
     public function testParseCareHintFromPansement(): void
     {
         $patch = AiVoiceMessageSignals::buildDraftPatch('Un pansement pour Alessandro', ['role' => 'nurse'], null);

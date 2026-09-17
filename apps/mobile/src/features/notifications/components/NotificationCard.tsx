@@ -8,7 +8,9 @@ import { Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
+import { useAuthStore } from '@/store/auth-store';
 import { resolveNotificationDisplayLines } from '@/features/notifications/utils/notification-display-lines';
+import { notificationIsNavigable } from '@/features/notifications/utils/notification-navigation';
 import {
   formatNotificationTime,
   notificationVisual,
@@ -24,24 +26,29 @@ interface Props {
 export const NotificationCard = React.memo(function NotificationCard({ item, onPress }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'NotificationCard');
+  const role = useAuthStore((s) => s.user?.role);
 
   const { label, message } = resolveNotificationDisplayLines(item);
   const isUnread = !item.read_at;
+  const hasLink = notificationIsNavigable(item, role);
   const time = formatNotificationTime(item.created_at);
   const { Icon, color, bg } = notificationVisual(item.type);
 
   return (
     <Pressable
       onPress={() => {
+        if (!hasLink) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
+      disabled={!hasLink}
       style={({ pressed }) => [
         styles.card,
         isUnread && styles.cardUnread,
-        pressed && styles.cardPressed,
+        !hasLink && styles.cardStatic,
+        hasLink && pressed && styles.cardPressed,
       ]}
-      accessibilityRole="button"
+      accessibilityRole={hasLink ? 'button' : 'text'}
     >
       {isUnread ? <View style={styles.unreadStripe} /> : null}
 
@@ -64,7 +71,11 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
             {message ? <AppText style={styles.body}>{message}</AppText> : null}
           </>
         }
-        trailing={<ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+        trailing={
+          hasLink ? (
+            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
+          ) : null
+        }
       />
     </Pressable>
   );
@@ -85,6 +96,9 @@ function buildStyles(c: AppColors) {
     },
     cardPressed: {
       opacity: 0.88,
+    },
+    cardStatic: {
+      opacity: 1,
     },
     unreadStripe: {
       position: 'absolute' as const,

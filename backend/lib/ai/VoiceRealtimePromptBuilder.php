@@ -28,23 +28,59 @@ final class VoiceRealtimePromptBuilder
     /**
      * @return array{instructions: string, context: array<string, mixed>, draft: ?array<string, mixed>}
      */
-    public function build(array $user, string $conversationId, string $locale = 'fr'): array
+    public function build(array $user, string $conversationId, string $locale = 'fr', ?string $userMessage = null): array
     {
         $convPatientId = $this->resolveConversationPatientId($conversationId, (string) $user['user_id']);
         $draftPreview = $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
-        $contextFocus = CaryContextFocus::resolve('', false, $draftPreview, false);
+        $contextFocus = CaryContextFocus::resolve(
+            (string) ($userMessage ?? ''),
+            false,
+            $draftPreview,
+            $this->conversationHasDocuments($conversationId),
+        );
 
-        $context = $this->memory->compose($user, $convPatientId, 'voice', true, null, $conversationId);
+        $context = $this->memory->compose($user, $convPatientId, 'voice', true, $userMessage, $conversationId);
         $context['disclaimer'] = $this->gateway->getDisclaimerPublic();
         $context['locale'] = $locale;
         $context['active_intent'] = $contextFocus;
+        $context['active_intent_label_fr'] = CaryContextFocus::labelFr($contextFocus);
         $context['conversation_mode'] = 'voice_chat';
         $context['tools_enabled'] = true;
         if ($draftPreview !== null) {
             $context['active_booking_draft'] = AiBookingDraftSummary::forPrompt($draftPreview);
         }
 
-        $role = (string) ($user['role'] ?? 'patient');
+        return [
+            'instructions' => $this->renderInstructions($context, $locale),
+            'context' => $context,
+            'draft' => $draftPreview,
+        ];
+    }
+
+    /**
+     * Payload session.update après mutation brouillon ou nouveau transcript.
+     *
+     * @return array{session_update: array{instructions: string, active_intent: string, draft: ?array<string, mixed>}}
+     */
+    public function buildSessionUpdate(array $user, string $conversationId, string $locale, string $userMessage): array
+    {
+        $pack = $this->build($user, $conversationId, $locale, $userMessage);
+
+        return [
+            'session_update' => [
+                'instructions' => $pack['instructions'],
+                'active_intent' => (string) ($pack['context']['active_intent'] ?? CaryContextFocus::GENERAL),
+                'draft' => $pack['draft'],
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    private function renderInstructions(array $context, string $locale): string
+    {
+        $role = (string) ($context['role'] ?? 'patient');
         $voiceRules = CaryBookingPromptRules::voiceModeBlock();
         $workflow = CaryBookingPromptRules::workflowBlock($role);
         $roleIntro = CaryBookingPromptRules::isStaffRole($role)
@@ -56,7 +92,7 @@ final class VoiceRealtimePromptBuilder
             $contextJson = '{}';
         }
 
-        $instructions = <<<PROMPT
+        return <<<PROMPT
 Tu es Cary, assistant santé informatif en conversation vocale temps réel.
 {$roleIntro}
 {$voiceRules}
@@ -69,16 +105,11 @@ Règles vocales strictes :
 - Jamais confirmer un RDV automatiquement : l'utilisateur doit appuyer sur Valider sur la carte récap.
 - Quand tu collectes une info RDV, appelle l'outil update_booking_draft en silence.
 - Ne mentionne jamais les noms d'outils ni d'étapes techniques.
+- active_booking_draft dans le contexte = état actuel — ne redemande jamais un champ déjà rempli.
 
 Contexte Cary :
 {$contextJson}
 PROMPT;
-
-        return [
-            'instructions' => $instructions,
-            'context' => $context,
-            'draft' => $draftPreview,
-        ];
     }
 
     private function resolveConversationPatientId(string $conversationId, string $userId): ?string
@@ -92,5 +123,15 @@ PROMPT;
         $pid = $row['patient_id'] ?? null;
 
         return $pid !== null && $pid !== '' ? (string) $pid : null;
+    }
+
+    private function conversationHasDocuments(string $conversationId): bool
+    {
+        $stmt = ai_db()->prepare('
+            SELECT 1 FROM ai_conversation_attachments WHERE conversation_id = ? LIMIT 1
+        ');
+        $stmt->execute([$conversationId]);
+
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }

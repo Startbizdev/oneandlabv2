@@ -10,7 +10,16 @@
       <UAlert color="error" title="Passage indisponible" :description="loadError" />
       <UButton color="neutral" variant="outline" @click="loadContext">Réessayer</UButton>
     </div>
-    <template v-else-if="series || (isAppointmentOnly && appointment)">
+    <div v-else-if="!hasPassageContent" class="space-y-3">
+      <UAlert
+        color="neutral"
+        variant="subtle"
+        title="Passage introuvable"
+        description="Ouvrez ce passage depuis la tournée ou vérifiez le lien."
+      />
+      <UButton color="neutral" variant="outline" to="/nurse/tournee">Retour à la tournée</UButton>
+    </div>
+    <template v-else>
       <div class="flex gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900/50">
         <UButton
           v-for="item in tabItems"
@@ -318,7 +327,7 @@ const router = useRouter();
 const { user } = useAuth();
 const canGeneratePrescription = computed(() => prescriptionGenerationEnabled(user.value));
 const { saving, fetchSeries, updateSeries, materializeSeries, deleteSeries } = useNursePassageWeb();
-const { markEnRoute, markDone } = useNurseTourWeb();
+const { markEnRoute, markDone } = useNurseTourWeb({ autoLoad: false });
 
 const APPOINTMENT_ONLY_SERIES_IDS = new Set(['rdv', '_', 'appointment']);
 
@@ -330,6 +339,11 @@ const stopId = computed(() => String(route.query.stop_id ?? ''));
 
 const loading = ref(true);
 const loadError = ref('');
+let loadVersion = 0;
+
+const hasPassageContent = computed(
+  () => Boolean(series.value || (isAppointmentOnly.value && appointment.value)),
+);
 const documentsError = ref('');
 const tab = ref('information');
 const tabItems = [
@@ -473,64 +487,110 @@ async function loadDocuments() {
   }
 }
 
+function applySeriesToForm(s: NonNullable<Awaited<ReturnType<typeof fetchSeries>>>) {
+  series.value = s;
+  timeSlot.value = s.time_slot;
+  customTime.value = s.custom_time ?? '09:00';
+  duration.value = s.duration_minutes;
+  atHome.value = s.at_home;
+  notes.value = s.notes ?? '';
+  nursingItems.value = [...(s.nursing_items ?? [])];
+  planningState.value = planningStateFromSeries(
+    s.planning_type,
+    s.planning_config as PassagePlanningConfig,
+    s.first_date ?? new Date().toISOString().slice(0, 10),
+  );
+  materializeDate.value = s.first_date ?? new Date().toISOString().slice(0, 10);
+}
+
+function applyAppointmentToForm(apt: Record<string, unknown>) {
+  appointment.value = apt;
+  if (!isAppointmentOnly.value) return;
+  const fields = initPassageFormFromAppointment(apt);
+  timeSlot.value = fields.time_slot;
+  customTime.value = fields.custom_time ?? '09:00';
+  duration.value = fields.duration_minutes;
+  atHome.value = fields.at_home;
+  notes.value = fields.notes ?? '';
+  nursingItems.value = [...fields.nursing_items];
+}
+
 async function loadContext() {
+  const version = ++loadVersion;
   loading.value = true;
   loadError.value = '';
-  try {
-  let s = null as Awaited<ReturnType<typeof fetchSeries>> | null;
-  if (seriesId.value) {
-    s = await fetchSeries(seriesId.value);
-    if (!s) throw new Error('Cette série ne peut pas être chargée. Réessayez dans un instant.');
-    series.value = s;
-    if (s) {
-      timeSlot.value = s.time_slot;
-      customTime.value = s.custom_time ?? '09:00';
-      duration.value = s.duration_minutes;
-      atHome.value = s.at_home;
-      notes.value = s.notes ?? '';
-      nursingItems.value = [...(s.nursing_items ?? [])];
-      planningState.value = planningStateFromSeries(
-        s.planning_type,
-        s.planning_config as PassagePlanningConfig,
-        s.first_date ?? new Date().toISOString().slice(0, 10),
-      );
-      materializeDate.value = s.first_date ?? new Date().toISOString().slice(0, 10);
-    }
-  } else {
-    series.value = null;
+  documentsError.value = '';
+  series.value = null;
+  appointment.value = null;
+  patientProfile.value = null;
+  documents.value = [];
+
+  if (isAppointmentOnly.value && !appointmentId.value) {
+    loadError.value = 'Rendez-vous manquant — ouvrez ce passage depuis la tournée.';
+    loading.value = false;
+    return;
   }
 
-  if (appointmentId.value) {
-    const aptRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/appointments/${appointmentId.value}`);
-    if (!aptRes?.success || !aptRes.data) throw new Error(aptRes?.error || 'Impossible de charger ce rendez-vous.');
-    appointment.value = aptRes?.data ?? null;
-    if (isAppointmentOnly.value && appointment.value) {
-      const fields = initPassageFormFromAppointment(appointment.value);
-      timeSlot.value = fields.time_slot;
-      customTime.value = fields.custom_time ?? '09:00';
-      duration.value = fields.duration_minutes;
-      atHome.value = fields.at_home;
-      notes.value = fields.notes ?? '';
-      nursingItems.value = [...fields.nursing_items];
+  try {
+    const [s, aptRes, meRes] = await Promise.all([
+      seriesId.value ? fetchSeries(seriesId.value) : Promise.resolve(null),
+      appointmentId.value
+        ? apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(
+            `/appointments/${appointmentId.value}`,
+          )
+        : Promise.resolve(null),
+      apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(
+        '/users/me?detail=full',
+      ),
+    ]);
+
+    if (version !== loadVersion) return;
+
+    if (seriesId.value && !s) {
+      throw new Error('Cette série ne peut pas être chargée. Réessayez dans un instant.');
     }
-    const pid = String(appointment.value?.patient_id ?? s?.patient_id ?? '');
+    if (s) applySeriesToForm(s);
+
+    if (appointmentId.value) {
+      if (!aptRes?.success || !aptRes.data) {
+        throw new Error(aptRes?.error || 'Impossible de charger ce rendez-vous.');
+      }
+      applyAppointmentToForm(aptRes.data);
+    }
+
+    nurseProfile.value = meRes?.data ?? null;
+
+    const pid = String(
+      appointment.value?.patient_id ?? s?.patient_id ?? '',
+    );
     if (pid) {
-      const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/users/${pid}?detail=full`);
+      const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(
+        `/users/${pid}?detail=full`,
+      );
+      if (version !== loadVersion) return;
       patientProfile.value = pRes?.data ?? null;
     }
-    await loadDocuments();
-  } else if (s?.patient_id) {
-    const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(`/users/${s.patient_id}?detail=full`);
-    patientProfile.value = pRes?.data ?? null;
-  }
 
-  const me = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>('/users/me?detail=full');
-  nurseProfile.value = me?.data ?? null;
+    if (appointmentId.value) {
+      await loadDocuments();
+      if (version !== loadVersion) return;
+    }
   } catch (error) {
+    if (version !== loadVersion) return;
     loadError.value = error instanceof Error ? error.message : 'Impossible de charger ce passage.';
   } finally {
-    loading.value = false;
+    if (version === loadVersion) loading.value = false;
   }
+}
+
+if (import.meta.client) {
+  watch(
+    () => [seriesId.value, appointmentId.value, stopId.value] as const,
+    () => {
+      void loadContext();
+    },
+    { immediate: true },
+  );
 }
 
 onMounted(() => {
@@ -543,7 +603,6 @@ onMounted(() => {
     } catch {
       careCategories.value = [];
     }
-    await loadContext();
   })();
 });
 

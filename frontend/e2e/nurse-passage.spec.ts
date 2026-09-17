@@ -24,11 +24,46 @@ async function fixture(page: Page) {
     if (path === '/api/categories') return route.fulfill({ json: { success: !(state.rejectOptions && url.searchParams.has('category_options_for')), data: url.searchParams.has('category_options_for') ? [] : [category] } });
     if (path === '/api/nurse/passages/series/fixture-series') return route.fulfill({ json: { success: !state.rejectLoad, data: series } });
     if (path === '/api/appointments/fixture-appointment') return route.fulfill({ json: { success: !state.rejectLoad, data: appointment } });
-    if (path.startsWith('/api/users/')) return route.fulfill({ json: { success: true, data: { id: 'fixture-patient', first_name: 'Louise', last_name: 'Exemple' } } });
+    if (path.startsWith('/api/users/')) {
+      const pid = path.replace('/api/users/', '').split('?')[0];
+      if (pid === 'me') return route.fulfill({ json: { success: true, data: user } });
+      return route.fulfill({ json: { success: true, data: { id: 'fixture-patient', first_name: 'Louise', last_name: 'Exemple' } } });
+    }
+    if (path.startsWith('/api/medical-documents')) {
+      return route.fulfill({ json: { success: true, data: [] } });
+    }
     return route.fulfill({ json: { success: true, data: [] } });
   });
   return state;
 }
+
+test('nurse rdv detail reloads when appointment_id query changes', async ({ page }) => {
+  await fixture(page);
+  await page.route('**/api/appointments/fixture-appointment-2', route =>
+    route.fulfill({
+      json: {
+        success: true,
+        data: {
+          id: 'fixture-appointment-2',
+          patient_id: 'fixture-patient-2',
+          type: 'nursing',
+          status: 'confirmed',
+          scheduled_at: '2027-10-15 10:00:00',
+          category_id: '11111111-1111-4111-8111-111111111111',
+          form_data: { notes: 'Autre patient', nursing_items: [], availability: JSON.stringify({ type: 'custom', range: [10, 14] }) },
+        },
+      },
+    }),
+  );
+  await page.route('**/api/users/fixture-patient-2*', route =>
+    route.fulfill({ json: { success: true, data: { id: 'fixture-patient-2', first_name: 'Paul', last_name: 'Autre' } } }),
+  );
+  await page.goto('/nurse/passage/rdv?appointment_id=fixture-appointment');
+  await expect(page.getByRole('status', { name: 'Chargement du passage' })).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText('Louise Exemple', { exact: true })).toBeVisible();
+  await page.goto('/nurse/passage/rdv?appointment_id=fixture-appointment-2');
+  await expect(page.getByText('Paul Autre', { exact: true })).toBeVisible();
+});
 
 for (const kind of ['series', 'appointment']) {
   test(`nurse ${kind} load failure offers a working retry`, async ({ page }) => {

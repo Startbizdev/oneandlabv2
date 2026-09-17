@@ -1,5 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
+import { notificationShouldRefreshAppointmentsList } from '@oneandlab/shared-utils';
+import { queryClient } from '@/lib/query-client';
+import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import type { AppNotification } from '../api/notifications.service';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
@@ -37,9 +40,17 @@ function navigateFromNotificationData(data: Record<string, unknown>) {
   } as never);
 }
 
+function maybeRefreshAppointmentsFromPush(data: Record<string, unknown>) {
+  const type = typeof data.type === 'string' ? data.type : undefined;
+  if (!notificationShouldRefreshAppointmentsList(type, data)) return;
+  void queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+}
+
 export function registerNotificationHandlers() {
-  Notifications.addNotificationReceivedListener(() => {
-    // Foreground: TanStack polling also refreshes list
+  Notifications.addNotificationReceivedListener((notification) => {
+    const data = notification.request.content.data as Record<string, unknown>;
+    maybeRefreshAppointmentsFromPush(data);
   });
 
   Notifications.addNotificationResponseReceivedListener((response) => {

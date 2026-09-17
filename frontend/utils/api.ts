@@ -211,9 +211,15 @@ export async function apiFetch<T = any>(path: string, options: any = {}): Promis
   }
 
   // Récupérer et ajouter le token CSRF si nécessaire
-  // Pour FormData, le CSRF doit aussi être envoyé dans les headers
+  // FormData : token frais (pas de retry possible si 403 — corps non rejouable)
   if (requiresCSRF(path, method) && import.meta.client) {
     try {
+      if (isFormData) {
+        csrfTokenCache = null;
+        if (typeof window !== 'undefined') {
+          (window as any).__csrfTokenCache = null;
+        }
+      }
       const csrfToken = await getCSRFToken(apiBase);
       if (csrfToken) {
         headers['X-CSRF-Token'] = csrfToken;

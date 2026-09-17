@@ -63,6 +63,24 @@
             </div>
           </div>
           <div
+            v-if="appointment && !['canceled', 'cancelled'].includes(String(appointment.status || ''))"
+            :class="kvRow"
+          >
+            <div :class="kvLabel">Messages</div>
+            <div class="min-w-0">
+              <UButton
+                color="primary"
+                variant="soft"
+                size="sm"
+                class="w-full sm:w-auto justify-center"
+                icon="i-lucide-message-circle"
+                @click="openConversation"
+              >
+                Discuter avec votre soignant
+              </UButton>
+            </div>
+          </div>
+          <div
             v-if="canPatientEditSchedule(appointment)"
             :class="kvRow"
           >
@@ -402,7 +420,15 @@ definePageMeta({
 });
 
 const route = useRoute();
+const router = useRouter();
 const toast = useAppToast();
+
+function openConversation() {
+  void router.push({
+    path: route.path,
+    query: { ...route.query, conversation: '1' },
+  });
+}
 
 function relationshipLabelFr(r: string) {
   const map: Record<string, string> = {

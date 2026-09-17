@@ -108,6 +108,7 @@ class MedicalDocumentAccess
             ($document['apt_patient_id'] ?? '') === $user['user_id']
             || ($document['assigned_nurse_id'] ?? '') === $user['user_id']
             || ($document['assigned_lab_id'] ?? '') === $user['user_id']
+            || ($document['assigned_pro_id'] ?? '') === $user['user_id']
             || (!empty($document['assigned_to']) && $document['assigned_to'] === $user['user_id'])
             || ($document['apt_created_by'] ?? '') === $user['user_id']
         );

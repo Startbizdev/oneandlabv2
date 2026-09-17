@@ -7,8 +7,17 @@ require_once __DIR__ . '/../../../../lib/rag/AiDocumentJobService.php';
 require_once __DIR__ . '/../../../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../../../models/User.php';
 
+require_once __DIR__ . '/../../../../lib/ai/AiChatRateLimit.php';
+require_once __DIR__ . '/../../../../lib/ai/AiUserFacingError.php';
+
 ai_handle_options(['POST', 'OPTIONS']);
 $user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
+
+try {
+    AiChatRateLimit::assertAllowed($user, 'analyze');
+} catch (RuntimeException $e) {
+    ai_json_error(AiUserFacingError::fromThrowable($e), (int) ($e->getCode() ?: 429));
+}
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     ai_json_error('Méthode non autorisée', 405);

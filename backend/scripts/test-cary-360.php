@@ -22,6 +22,7 @@ require_once __DIR__ . '/../lib/ai/Cary360ScenarioCatalog.php';
 require_once __DIR__ . '/../lib/ai/CaryContextFocus.php';
 require_once __DIR__ . '/../lib/ai/AiDocumentIntent.php';
 require_once __DIR__ . '/../lib/ai/AiChatHelper.php';
+require_once __DIR__ . '/../lib/ai/CaryComprehensionScorer.php';
 
 $backendDir = dirname(__DIR__);
 $args = array_slice($argv, 1);

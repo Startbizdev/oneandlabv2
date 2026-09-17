@@ -14,7 +14,7 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../Logger.php';
 require_once __DIR__ . '/../MedicalDocumentsInternal.php';
 
-final class AiBookingService
+class AiBookingService
 {
     private PDO $db;
     private User $userModel;

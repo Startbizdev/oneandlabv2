@@ -17,6 +17,11 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickCarePhoto } from '@/lib/uploads/pick-care-photo';
+import {
+  buildTabSceneScrollConfig,
+  spreadTabSceneScrollProps,
+  useTabSceneInsets,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import {
   fetchAppointmentConversation,
@@ -40,6 +45,8 @@ export function AppointmentConversationScreen() {
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const headerHeight = useHeaderHeight();
+  const sceneInsets = useTabSceneInsets();
+  const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const navigation = useNavigation();
   const router = useRouter();
 
@@ -149,7 +156,11 @@ export function AppointmentConversationScreen() {
       ) : (
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[styles.list, !messages.length && styles.listEmpty]}
+          contentContainerStyle={[
+            listScrollConfig.contentContainerStyle,
+            !messages.length && styles.listEmpty,
+          ]}
+          {...spreadTabSceneScrollProps(listScrollConfig)}
           keyboardShouldPersistTaps="handled"
         >
           {!messages.length ? <EmptyState Icon={MessageCircle} title="Vos échanges, au même endroit" description="Les messages et pièces jointes de ce rendez-vous apparaîtront ici." /> : null}
@@ -163,7 +174,9 @@ export function AppointmentConversationScreen() {
               ]}
             >
               <AppText style={[styles.author, { color: c.textSecondary }]}>{msg.author_name || 'Utilisateur'}</AppText>
-              <AppText style={{ color: c.textPrimary }}>{msg.body}</AppText>
+              {msg.body && msg.body !== '[Pièce jointe]' ? (
+                <AppText style={{ color: c.textPrimary }}>{msg.body}</AppText>
+              ) : null}
               {(() => {
                 const documentId = msg.attachment?.id ?? msg.medical_document_id;
                 if (!documentId) return null;

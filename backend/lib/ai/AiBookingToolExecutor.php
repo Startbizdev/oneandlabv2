@@ -13,9 +13,9 @@ require_once __DIR__ . '/../../models/User.php';
  */
 final class AiBookingToolExecutor
 {
-    private AiBookingService $booking;
-    private ContextComposer $contextComposer;
-    private User $userModel;
+    private ?AiBookingService $booking;
+    private ?ContextComposer $contextComposer;
+    private ?User $userModel;
     private AiAddressFromMessageResolver $addressResolver;
 
     /** @var array<string, mixed>|null */
@@ -25,6 +25,9 @@ final class AiBookingToolExecutor
 
     /** @var array<string, mixed> */
     private array $user;
+
+    /** @var array<string, true> */
+    private array $recentToolCalls = [];
 
     /**
      * @param array<string, mixed> $user
@@ -39,10 +42,28 @@ final class AiBookingToolExecutor
         $this->user = $user;
         $this->conversationId = $conversationId;
         $this->draft = $currentDraft;
-        $this->booking = $booking ?? new AiBookingService();
-        $this->contextComposer = new ContextComposer();
-        $this->userModel = new User();
+        $this->booking = $booking;
+        $this->contextComposer = null;
+        $this->userModel = null;
         $this->addressResolver = new AiAddressFromMessageResolver();
+    }
+
+    private function userModel(): User
+    {
+        if ($this->userModel === null) {
+            $this->userModel = new User();
+        }
+
+        return $this->userModel;
+    }
+
+    private function contextComposer(): ContextComposer
+    {
+        if ($this->contextComposer === null) {
+            $this->contextComposer = new ContextComposer();
+        }
+
+        return $this->contextComposer;
     }
 
     /**
@@ -50,14 +71,62 @@ final class AiBookingToolExecutor
      */
     public function execute(string $name, array $arguments): array
     {
+        $validation = $this->validateToolArguments($name, $arguments);
+        if ($validation !== null) {
+            return ['draft' => $this->draft, 'result' => $validation];
+        }
+
+        $dedupeKey = $name . ':' . hash('sha256', json_encode($arguments));
+        if (isset($this->recentToolCalls[$dedupeKey])) {
+            return [
+                'draft' => $this->draft,
+                'result' => [
+                    'ok' => true,
+                    'deduplicated' => true,
+                    'user_hint_fr' => 'Information déjà prise en compte.',
+                ],
+            ];
+        }
+        $this->recentToolCalls[$dedupeKey] = true;
+
         return match ($name) {
             'update_booking_draft' => $this->updateDraft($arguments),
             'geocode_address' => $this->geocodeAddress($arguments),
             'list_care_categories' => ['draft' => $this->draft, 'result' => $this->listCareCategories($arguments)],
             'list_staff_patients' => ['draft' => $this->draft, 'result' => $this->listStaffPatients()],
             'resolve_staff_patient' => $this->resolveStaffPatient($arguments),
-            default => ['draft' => $this->draft, 'result' => ['error' => 'Tool inconnu: ' . $name]],
+            default => ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => 'Tool inconnu: ' . $name,
+                'user_hint_fr' => 'Action non disponible.',
+            ]],
         };
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     * @return array<string, mixed>|null
+     */
+    private function validateToolArguments(string $name, array $arguments): ?array
+    {
+        if ($name === 'geocode_address') {
+            $query = trim((string) ($arguments['query'] ?? ''));
+            if ($query === '') {
+                return ['ok' => false, 'error' => 'query vide', 'user_hint_fr' => 'Indiquez une adresse complète.'];
+            }
+            if (mb_strlen($query) > 500) {
+                return ['ok' => false, 'error' => 'query trop longue', 'user_hint_fr' => 'Adresse trop longue — raccourcissez.'];
+            }
+        }
+
+        if ($name === 'resolve_staff_patient') {
+            $search = trim((string) ($arguments['search_name'] ?? ''));
+            if ($search !== '' && mb_strlen($search) < 2) {
+                return ['ok' => false, 'error' => 'nom trop court', 'user_hint_fr' => 'Précisez le nom du patient.'];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -66,6 +135,15 @@ final class AiBookingToolExecutor
     public function getDraft(): ?array
     {
         return $this->draft;
+    }
+
+    private function bookingService(): AiBookingService
+    {
+        if ($this->booking === null) {
+            $this->booking = new AiBookingService();
+        }
+
+        return $this->booking;
     }
 
     /**
@@ -81,9 +159,9 @@ final class AiBookingToolExecutor
 
         $draftId = is_array($this->draft) ? (string) ($this->draft['id'] ?? '') : '';
         if ($draftId !== '') {
-            $updated = $this->booking->patchDraft($draftId, $this->user, $patch, null);
+            $updated = $this->bookingService()->patchDraft($draftId, $this->user, $patch, null);
         } else {
-            $updated = $this->booking->createDraft($this->user, [
+            $updated = $this->bookingService()->createDraft($this->user, [
                 'conversation_id' => $this->conversationId,
                 'payload' => $patch,
                 'user_message' => null,
@@ -121,7 +199,11 @@ final class AiBookingToolExecutor
             $rows = $search->search($query, 1);
             $row = $rows[0] ?? null;
             if ($row === null) {
-                return ['draft' => $this->draft, 'result' => ['ok' => false, 'error' => 'Adresse introuvable']];
+                return ['draft' => $this->draft, 'result' => [
+                    'ok' => false,
+                    'error' => 'Adresse introuvable',
+                    'user_hint_fr' => 'Je n\'ai pas trouvé cette adresse — reformulez avec ville et code postal.',
+                ]];
             }
 
             $patch = [
@@ -149,7 +231,7 @@ final class AiBookingToolExecutor
      */
     private function listCareCategories(array $arguments): array
     {
-        $ctx = $this->contextComposer->compose($this->user, null, 'utility', true);
+        $ctx = $this->contextComposer()->compose($this->user, null, 'utility', true);
         $cats = is_array($ctx['care_categories'] ?? null) ? $ctx['care_categories'] : [];
         $filter = (string) ($arguments['type'] ?? 'all');
         if ($filter !== 'all') {
@@ -164,7 +246,7 @@ final class AiBookingToolExecutor
      */
     private function listStaffPatients(): array
     {
-        $ctx = $this->contextComposer->compose($this->user, null, 'utility', true);
+        $ctx = $this->contextComposer()->compose($this->user, null, 'utility', true);
         $patients = is_array($ctx['staff_patients'] ?? null) ? $ctx['staff_patients'] : [];
 
         return ['patients' => array_slice($patients, 0, 25)];
@@ -188,7 +270,7 @@ final class AiBookingToolExecutor
         }
 
         $search = mb_strtolower(trim((string) ($arguments['search_name'] ?? '')));
-        $ctx = $this->contextComposer->compose($this->user, null, 'utility', true);
+        $ctx = $this->contextComposer()->compose($this->user, null, 'utility', true);
         foreach (is_array($ctx['staff_patients'] ?? null) ? $ctx['staff_patients'] : [] as $patient) {
             if (!is_array($patient)) {
                 continue;
@@ -205,6 +287,10 @@ final class AiBookingToolExecutor
             }
         }
 
-        return ['draft' => $this->draft, 'result' => ['ok' => false, 'error' => 'Patient non trouvé']];
+        return ['draft' => $this->draft, 'result' => [
+            'ok' => false,
+            'error' => 'Patient non trouvé',
+            'user_hint_fr' => 'Patient introuvable — vérifiez le nom ou choisissez dans la liste.',
+        ]];
     }
 }

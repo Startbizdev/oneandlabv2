@@ -1,5 +1,5 @@
 <template>
-  <UCard v-if="appointmentId" id="appointment-conversation" class="scroll-mt-24">
+  <UCard v-if="appointmentId" id="appointment-conversation" class="scroll-mt-28">
     <template #header>
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h3>
@@ -34,15 +34,18 @@
         ]"
       >
         <p class="text-[11px] font-medium text-gray-500">{{ msg.author_name || 'Utilisateur' }}</p>
-        <p class="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ msg.body }}</p>
-        <button
-          v-if="msg.attachment?.id || msg.medical_document_id"
-          type="button"
-          class="mt-2 text-xs font-medium text-primary-600 underline"
-          @click="downloadAttachment(String(msg.attachment?.id || msg.medical_document_id), msg.attachment?.file_name || undefined)"
+        <p
+          v-if="msg.body && msg.body !== '[Pièce jointe]'"
+          class="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100"
         >
-          {{ attachmentLabel(msg) }}
-        </button>
+          {{ msg.body }}
+        </p>
+        <ConversationMessageAttachment
+          v-if="msg.attachment?.id || msg.medical_document_id"
+          :document-id="String(msg.attachment?.id || msg.medical_document_id)"
+          :file-name="msg.attachment?.file_name"
+          :mime-type="msg.attachment?.mime_type"
+        />
         <p class="mt-1 text-[10px] text-gray-400">{{ formatDate(msg.created_at) }}</p>
       </div>
     </div>
@@ -62,7 +65,7 @@
 <script setup lang="ts">
 import type { AppointmentConversationMessage } from '@oneandlab/shared-types';
 import { apiFetch } from '~/utils/api';
-import { downloadMedicalDocument } from '~/utils/download-medical-document';
+import ConversationMessageAttachment from '~/components/dashboard/ConversationMessageAttachment.vue';
 
 const props = withDefaults(defineProps<{ appointmentId: string; title?: string }>(), {
   title: 'Messages',
@@ -159,42 +162,39 @@ async function sendMessage() {
   }
 }
 
-function attachmentLabel(msg: AppointmentConversationMessage): string {
-  const name = msg.attachment?.file_name?.trim();
-  if (name) return name;
-  const mime = msg.attachment?.mime_type?.toLowerCase() || '';
-  if (mime === 'application/pdf') return 'Afficher le PDF';
-  if (mime.startsWith('image/')) return 'Afficher l’image';
-  return 'Afficher la pièce jointe';
-}
-
 function onFileChange(ev: Event) {
   const file = (ev.target as HTMLInputElement).files?.[0] ?? null;
   pendingFile.value = file;
 }
 
-async function downloadAttachment(docId: string, fileName?: string) {
-  actionError.value = '';
-  try {
-    await downloadMedicalDocument(docId, fileName);
-  } catch (error: unknown) {
-    actionError.value = error instanceof Error
-      ? error.message
-      : 'Impossible d’ouvrir la pièce jointe.';
-  }
-}
-
 onMounted(() => void loadMessages());
 watch(() => props.appointmentId, () => void loadMessages());
+function scrollConversationIntoView() {
+  const el = document.getElementById('appointment-conversation');
+  if (!el) return;
+  const scroller =
+    el.closest('.dashboard-main-scroll') ??
+    el.closest('.patient-layout-root') ??
+    document.getElementById('workspace-content');
+  if (!(scroller instanceof HTMLElement)) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  const headerOffset = 88;
+  const top =
+    el.getBoundingClientRect().top -
+    scroller.getBoundingClientRect().top +
+    scroller.scrollTop -
+    headerOffset;
+  scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+}
+
 watch(
   () => [route.query.conversation, route.query.message] as const,
   async ([conversation]) => {
     if (conversation !== '1') return;
     await nextTick();
-    document.getElementById('appointment-conversation')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
+    scrollConversationIntoView();
   },
   { immediate: true },
 );

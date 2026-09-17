@@ -25,6 +25,7 @@ import { useOnboardingGate } from '@/features/onboarding/hooks/use-onboarding-ga
 import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
 import { AppUpdateGate } from '@/features/app-update/components/AppUpdateGate';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
+import { useAppointmentsRefreshOnNotifications } from '@/features/appointments/hooks/use-appointments-refresh-on-notifications';
 import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
 import { NetworkProvider } from '@/providers/NetworkProvider';
 import { usePushTokenRegistration } from '@/features/notifications/hooks/use-push-token-registration';
@@ -47,6 +48,7 @@ function RootLayoutInner() {
   useOnboardingGate();
   useDeepLinks();
   usePushTokenRegistration();
+  useAppointmentsRefreshOnNotifications();
 
   return (
     <View style={styles.root}>

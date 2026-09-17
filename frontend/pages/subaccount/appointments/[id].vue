@@ -122,6 +122,11 @@ import { apiFetch } from '~/utils/api';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import {
+  isAllowedMedicalDocumentFile,
+  isMedicalDocumentTooLarge,
+  medicalDocumentFormatError,
+} from '~/utils/medical-document-upload';
+import {
   canUploadLabResultatsForAppointmentStatus,
   canUploadMedicalDocumentsForAppointmentStatus,
 } from '~/utils/appointment-documents-upload';
@@ -183,17 +188,12 @@ async function uploadDocumentFile(file: File, docType: string) {
     toast.add({ title: 'Erreur', description: 'Rendez-vous introuvable. Rechargez la page si le problème persiste.', color: 'error' });
     return;
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
+  if (isMedicalDocumentTooLarge(file)) {
     toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse 25 Mo.', color: 'error' });
     return;
   }
-  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  if (docType === 'resultats' && file.type !== 'application/pdf') {
-    toast.add({ title: 'Format non accepté', description: 'Les résultats doivent être en PDF.', color: 'error' });
-    return;
-  }
-  if (!allowed.includes(file.type)) {
-    toast.add({ title: 'Format non accepté', description: 'Formats acceptés : JPG, PNG, PDF.', color: 'error' });
+  if (!isAllowedMedicalDocumentFile(file, docType)) {
+    toast.add({ title: 'Format non accepté', description: medicalDocumentFormatError(docType), color: 'error' });
     return;
   }
   uploadingTypes.value.add(docType);

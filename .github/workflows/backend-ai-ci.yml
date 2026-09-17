@@ -1,0 +1,39 @@
+name: Backend AI CI
+
+on:
+  push:
+    paths:
+      - 'backend/lib/ai/**'
+      - 'backend/lib/rag/**'
+      - 'backend/tests/ai/**'
+      - 'backend/tests/rag/**'
+      - 'backend/tests/fixtures/**'
+      - 'backend/scripts/test-cary-360.php'
+      - '.github/workflows/backend-ai-ci.yml'
+  pull_request:
+    paths:
+      - 'backend/lib/ai/**'
+      - 'backend/lib/rag/**'
+      - 'backend/tests/ai/**'
+      - 'backend/tests/rag/**'
+      - 'backend/tests/fixtures/**'
+      - 'backend/scripts/test-cary-360.php'
+      - '.github/workflows/backend-ai-ci.yml'
+
+jobs:
+  phpunit-ai:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer test:ai
+      - run: composer test:rag
+      - name: Cary-360 local-only
+        run: php scripts/test-cary-360.php --local-only

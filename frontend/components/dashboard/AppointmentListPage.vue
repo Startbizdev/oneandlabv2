@@ -992,9 +992,9 @@ const fetchAppointments = async (silent = false) => {
   }
 };
 
-/** Polling pour nurse, lab, subaccount : rafraîchir la liste en arrière-plan (ex. après acceptation dans la modal) */
+/** Polling pour nurse, lab, subaccount, pro : rafraîchir la liste en arrière-plan */
 const shouldPollList = computed(() =>
-  ['/nurse', '/lab', '/subaccount'].some((p) => props.basePath.startsWith(p))
+  ['/nurse', '/lab', '/subaccount', '/pro'].some((p) => props.basePath.startsWith(p))
 );
 const { holdCount } = useBookingApiHold();
 const { start: startListPolling } = usePolling(

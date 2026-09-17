@@ -26,6 +26,9 @@ import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { PrescriptionNavRow } from '../detail/components/PrescriptionNavRow';
+import { appointmentConversationHref } from '../detail/utils/conversation-navigation';
+import { MessageCircle } from 'lucide-react-native';
 
 type SegmentId = 'infos' | 'documents';
 
@@ -134,6 +137,14 @@ export function PatientAppointmentDetailScreen() {
 
           {activeSegment === 'infos' ? (
             <View style={styles.tabBody}>
+              {!canceled ? (
+                <PrescriptionNavRow
+                  title="Messages"
+                  subtitle="Discuter avec votre soignant"
+                  Icon={MessageCircle}
+                  onPress={() => router.push(appointmentConversationHref('patient', String(id)))}
+                />
+              ) : null}
               <View style={styles.edgeBleed}>
                 <RdvAppointmentInfoSection
                   apt={primary}

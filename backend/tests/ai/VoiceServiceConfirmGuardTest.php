@@ -8,6 +8,13 @@ require_once __DIR__ . '/../../lib/ai/VoiceService.php';
 
 final class VoiceServiceConfirmGuardTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        if (!extension_loaded('pdo_mysql')) {
+            $this->markTestSkipped('Extension pdo_mysql requise');
+        }
+    }
+
     public function testBookingConfirmIntentMatchesFrenchPhrases(): void
     {
         $service = new VoiceService();

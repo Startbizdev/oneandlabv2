@@ -64,6 +64,7 @@ try {
             a.assigned_to,
             a.assigned_nurse_id,
             a.assigned_lab_id,
+            a.assigned_pro_id,
             a.created_by AS apt_created_by
         FROM medical_documents md
         LEFT JOIN appointments a ON md.appointment_id = a.id

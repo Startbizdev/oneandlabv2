@@ -133,6 +133,11 @@ import { apiFetch } from '~/utils/api';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import {
+  isAllowedMedicalDocumentFile,
+  isMedicalDocumentTooLarge,
+  medicalDocumentFormatError,
+} from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
@@ -283,13 +288,12 @@ function setAppointmentForUpload(apt: any) {
 async function uploadDocumentFile(file: File, docType: string) {
   const appointment = currentAppointmentForUpload.value ?? getAppointmentFromDetailRef(detailRef);
   if (!appointment) return;
-  if (file.size > MAX_UPLOAD_BYTES) {
+  if (isMedicalDocumentTooLarge(file)) {
     toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse 25 Mo.', color: 'error' });
     return;
   }
-  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  if (!allowed.includes(file.type)) {
-    toast.add({ title: 'Format non accepté', description: 'Formats acceptés : JPG, PNG, PDF.', color: 'error' });
+  if (!isAllowedMedicalDocumentFile(file, docType)) {
+    toast.add({ title: 'Format non accepté', description: medicalDocumentFormatError(docType), color: 'error' });
     return;
   }
   uploadingTypes.value.add(docType);
