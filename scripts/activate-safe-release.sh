@@ -19,7 +19,7 @@ fi
 find "$STAGE/backend" -type f -name '*.php' -print0 | xargs -0 -n1 php -l > "$STAGE/php-lint.log"
 php "$STAGE/scripts/deploy-database-safety.php" migrate "$BACKUP"
 PERSIST="$BASE/persistent"
-mkdir -p "$PERSIST"/{uploads,logs,storage,keys,tmp}
+sudo mkdir -p "$PERSIST"/{uploads,logs,storage,keys,tmp,vendor} 2>/dev/null || true
 # Clinical/runtime data live outside release folders (see scripts/migrate-persistent-runtime.sh).
 for name in uploads storage keys logs tmp vendor; do
   if [[ -e "$BASE/backend/$name" ]]; then
