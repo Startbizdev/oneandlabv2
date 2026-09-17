@@ -243,17 +243,19 @@
                   Aucune notification
                 </div>
                 <template v-else>
-                  <button
+                  <component
+                    :is="item.disabled ? 'div' : 'button'"
                     v-for="(item, index) in notificationItems"
                     :key="index"
+                    :type="item.disabled ? undefined : 'button'"
                     @click="handleNotificationClick(item)"
-                    :disabled="item.disabled"
-                    class="w-full flex gap-3 px-4 py-3 text-sm transition-colors text-left"
-                    :class="{
-                      'opacity-50 cursor-not-allowed': item.disabled,
-                      'text-gray-500 hover:bg-gray-50': item.isRead,
-                      'text-gray-700 hover:bg-gray-50 active:bg-gray-100 font-medium': !item.isRead
-                    }"
+                    class="w-full flex gap-3 px-4 py-3 text-sm text-left"
+                    :class="[
+                      item.disabled
+                        ? 'cursor-default opacity-90'
+                        : 'transition-colors hover:bg-gray-50 active:bg-gray-100',
+                      item.isRead ? 'text-gray-500' : 'text-gray-700 font-medium',
+                    ]"
                   >
                     <span class="shrink-0 mt-0.5 text-primary">
                       <UIcon :name="item.icon || 'i-lucide-bell'" class="w-4 h-4" />
@@ -263,7 +265,7 @@
                       <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
                       <span v-if="item.message" class="text-xs text-gray-500 whitespace-normal break-words">{{ item.message }}</span>
                     </span>
-                  </button>
+                  </component>
                 </template>
               </div>
             </div>
@@ -344,7 +346,9 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 import { apiFetch } from "~/utils/api";
 import { isPendingIncomingOffer, isOfferModalSnoozed } from "~/utils/appointment-offer";
 import { isBloodTestAppointment } from "~/utils/appointment-type-rules";
+import { notificationIsNavigable, notificationShouldRefreshAppointmentsList } from "@oneandlab/shared-utils";
 import { formatBellNotificationLines, sanitizeNotificationText } from "~/utils/notification-display";
+import { webNotificationNeedsPendingModal, webNotificationRoute } from "~/utils/notification-navigation-web";
 
 const { user, logout, fetchCurrentUser } = useAuth();
 const route = useRoute();
@@ -1258,7 +1262,6 @@ const notificationItems = computed(() => {
     return [{ label: "Aucune notification", disabled: true }];
   }
 
-  const reviewsPath = role === 'nurse' ? '/nurse/reviews' : role === 'lab' ? '/lab/reviews' : role === 'subaccount' ? '/subaccount/reviews' : null;
   const pendingIds = new Set((pendingAppointments.value || []).map((a: any) => a.id));
   // Dédupliquer les notifs new_appointment_available du même lot (1 seule par creation_batch_id)
   const seenBatchNotifIds = new Set<string>();
@@ -1281,8 +1284,7 @@ const notificationItems = computed(() => {
       notif.type === "new_review" ||
       notif.type === "new_review_on_pro_patient" ||
       !!data.review_id;
-    const isShareLinkInfo =
-      notif.type === 'share_link_appointment_taken' || data?.no_navigate === true;
+    const navigable = notificationIsNavigable(notif, role ?? undefined);
     const { label: notifLabel, message: notifMessage } = formatBellNotificationLines(
       notif.title,
       notif.message,
@@ -1315,99 +1317,17 @@ const notificationItems = computed(() => {
                 ? "i-lucide-flask-conical"
                 : "i-lucide-bell",
       isRead: !!notif.read_at,
-      disabled: isShareLinkInfo,
-      click: () => {
-        if (isShareLinkInfo) return;
-        const aptId = notif.appointment_id || data?.appointment_id;
-        if (notif.type === "results_available" && (role === "nurse" || role === "pro")) {
-          notificationsMenuOpen.value = false;
-          const base = role === "pro" ? "/pro" : "/nurse";
-          void navigateTo(`${base}/resultats`);
+      disabled: !navigable,
+      click: async () => {
+        if (!navigable) return;
+        notificationsMenuOpen.value = false;
+        if (webNotificationNeedsPendingModal(notif, role ?? undefined)) {
+          const aptId = notif.appointment_id || data?.appointment_id;
+          if (aptId) await openAppointmentModalByIdIfEligible(String(aptId));
           return;
         }
-        if (
-          aptId &&
-          (notif.type === "care_gallery_photo" || notif.type === "care_gallery_comment") &&
-          (role === "pro" || role === "nurse")
-        ) {
-          notificationsMenuOpen.value = false;
-          const base = role === "pro" ? "/pro" : "/nurse";
-          const pid = data?.photo_id != null && String(data.photo_id).trim() !== "" ? String(data.photo_id) : null;
-          void navigateTo({
-            path: `${base}/appointments/${aptId}`,
-            query: {
-              careGallery: "1",
-              ...(pid ? { carePhoto: pid } : {}),
-            },
-          });
-          return;
-        }
-        if (aptId && notif.type === 'conversation_message') {
-          notificationsMenuOpen.value = false;
-          const base =
-            role === 'pro'
-              ? '/pro'
-              : role === 'nurse'
-                ? '/nurse'
-                : role === 'lab' || role === 'subaccount'
-                  ? '/lab'
-                : role === 'preleveur'
-                  ? '/preleveur'
-                  : null;
-          if (base) {
-            const messageId = data?.message_id != null ? String(data.message_id).trim() : '';
-            void navigateTo({
-              path: `${base}/appointments/${aptId}`,
-              query: { conversation: '1', ...(messageId ? { message: messageId } : {}) },
-            });
-            return;
-          }
-        }
-        if (isNewReview && role === "pro" && aptId) {
-          notificationsMenuOpen.value = false;
-          void navigateTo({ path: `/pro/appointments/${aptId}`, query: { review: "1" } });
-        } else if (isNewReview && reviewsPath) {
-          notificationsMenuOpen.value = false;
-          const reviewId = data?.review_id;
-          const q =
-            reviewId != null && String(reviewId).trim() !== ""
-              ? `?review=${encodeURIComponent(String(reviewId))}`
-              : aptId
-                ? `?appointment=${encodeURIComponent(String(aptId))}`
-                : "";
-          void navigateTo(`${reviewsPath}${q}`);
-        }
-        else if (aptId && notif.type === 'appointment_request_sent') {
-          notificationsMenuOpen.value = false;
-          const base =
-            role === 'pro'
-              ? '/pro'
-              : role === 'nurse'
-                ? '/nurse'
-                : role === 'subaccount'
-                  ? '/subaccount'
-                  : role === 'lab'
-                    ? '/lab'
-                    : null;
-          if (base) void navigateTo(`${base}/appointments/${aptId}`);
-        } else if (aptId && role === 'pro') {
-          notificationsMenuOpen.value = false;
-          void navigateTo(`/pro/appointments/${aptId}`);
-        } else if (aptId && notif.type === 'appointment_redispatched' && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
-          notificationsMenuOpen.value = false;
-          const base =
-            role === 'nurse' ? '/nurse' : role === 'subaccount' ? '/subaccount' : '/lab';
-          void navigateTo(`${base}/appointments`);
-        } else if (aptId && ['nurse', 'lab', 'subaccount'].includes(role ?? '')) {
-          notificationsMenuOpen.value = false;
-          void openAppointmentModalByIdIfEligible(aptId);
-        } else if (aptId && role === 'preleveur') {
-          notificationsMenuOpen.value = false;
-          void navigateTo(`/preleveur/appointments/${aptId}`);
-        } else if (aptId && role === 'super_admin') {
-          notificationsMenuOpen.value = false;
-          void navigateTo(`/admin/appointments/${aptId}`);
-        } else if (aptId) void navigateTo(`/patient/appointments/${aptId}`);
+        const target = webNotificationRoute(notif, role ?? undefined);
+        if (target) void navigateTo(target);
       },
     });
   });
@@ -1433,9 +1353,18 @@ const { start: startPolling, stop: stopPolling } = usePolling(
       if (res && res.success) {
         const oldCount = notifications.value.filter(n => !n.read_at).length;
         const newCount = res.data.filter((n: any) => !n.read_at).length;
+        const previousIds = new Set(notifications.value.map((n) => String(n.id)));
+        const shouldRefreshList = (res.data as Array<{ id?: string; type?: string; data?: unknown }>).some((n) => {
+          const isNew = n.id != null && !previousIds.has(String(n.id));
+          return isNew && notificationShouldRefreshAppointmentsList(n.type, n.data);
+        });
 
         // Forcer la réactivité en créant un nouveau tableau
         notifications.value = [...res.data];
+
+        if (shouldRefreshList) {
+          appointmentListRefreshTrigger.value += 1;
+        }
 
         console.log('[NotificationPolling] Updated notifications', {
           total: res.data.length,

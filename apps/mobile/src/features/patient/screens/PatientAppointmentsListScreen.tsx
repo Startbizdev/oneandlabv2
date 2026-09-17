@@ -30,6 +30,7 @@ import {
 } from '@/constants/empty-state-images';
 import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
 import { useHealthRecordCompletionSyncOnFocus } from '@/features/health-record/hooks/use-health-record-completion-sync-on-focus';
+import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { HealthRecordPromptCard } from '@/features/health-record/components/HealthRecordPromptCard';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
@@ -72,6 +73,7 @@ export function PatientAppointmentsListScreen() {
     ((healthRecordQ.isPending && !completion) || completionPercent < 100);
 
   useHealthRecordCompletionSyncOnFocus(tab === 'upcoming');
+  useAppointmentsCacheSyncOnFocus();
 
   const appointments = useMemo(
     () => flattenInfiniteAppointments(query.data?.pages),

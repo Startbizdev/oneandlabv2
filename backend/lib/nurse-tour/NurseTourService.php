@@ -251,6 +251,12 @@ final class NurseTourService
             $byApt[(string) $row['appointment_id']] = (string) $row['id'];
         }
 
+        $insertStop = $this->db->prepare('
+            INSERT INTO nurse_tour_stops (id, tour_plan_id, appointment_id, visit_status)
+            VALUES (?, ?, ?, \'todo\')
+        ');
+        $deleteStop = $this->db->prepare('DELETE FROM nurse_tour_stops WHERE id = ?');
+
         $seen = [];
         foreach ($appointments as $apt) {
             $aptId = (string) ($apt['id'] ?? '');
@@ -259,17 +265,13 @@ final class NurseTourService
             }
             $seen[$aptId] = true;
             if (!isset($byApt[$aptId])) {
-                $stopId = nurse_tour_uuid();
-                $this->db->prepare('
-                    INSERT INTO nurse_tour_stops (id, tour_plan_id, appointment_id, visit_status)
-                    VALUES (?, ?, ?, \'todo\')
-                ')->execute([$stopId, $planId, $aptId]);
+                $insertStop->execute([nurse_tour_uuid(), $planId, $aptId]);
             }
         }
 
         foreach ($byApt as $aptId => $stopId) {
             if (!isset($seen[$aptId])) {
-                $this->db->prepare('DELETE FROM nurse_tour_stops WHERE id = ?')->execute([$stopId]);
+                $deleteStop->execute([$stopId]);
             }
         }
     }

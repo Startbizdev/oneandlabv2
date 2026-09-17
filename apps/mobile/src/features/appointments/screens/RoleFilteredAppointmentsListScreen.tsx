@@ -19,6 +19,7 @@ import {
 } from '@/features/appointments/hooks/use-infinite-appointments-list';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { useAuthStore } from '@/store/auth-store';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
@@ -142,6 +143,7 @@ export function RoleFilteredAppointmentsListScreen({
   useAppForegroundRefetch(() => {
     void refetch();
   });
+  useAppointmentsCacheSyncOnFocus();
 
   const onStatusChange = useCallback((v: ProStatusFilter | PreleveurStatusFilter) => {
     setStatus(v);

@@ -16,10 +16,10 @@ final class CaryContextFocusTest extends TestCase
         );
     }
 
-    public function testCarnetMessageUsesGeneralFocus(): void
+    public function testCarnetMessageUsesHealthRecordFocus(): void
     {
         $this->assertSame(
-            CaryContextFocus::GENERAL,
+            CaryContextFocus::HEALTH_RECORD,
             CaryContextFocus::resolve('Aide-moi à compléter mon carnet de santé', false, null),
         );
     }
@@ -36,10 +36,10 @@ final class CaryContextFocusTest extends TestCase
         $this->assertTrue(CaryContextFocus::matchesDocumentFollowUp('explique moi mieux l alat'));
     }
 
-    public function testPansementUsesGeneralFocusGrokToolsHandleBooking(): void
+    public function testPansementUsesBookingFocus(): void
     {
         $this->assertSame(
-            CaryContextFocus::GENERAL,
+            CaryContextFocus::BOOKING,
             CaryContextFocus::resolve('Je voudrais un pansement demain', false, null),
         );
     }

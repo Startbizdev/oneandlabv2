@@ -34,5 +34,5 @@ export function resolveAssistantMessageText(
   const fromServer = (serverContent ?? '').trim();
   const fromStream = aerateStreamText(stripBookingArtifacts(assembledStream));
   const text = fromServer || fromStream;
-  return text || '…';
+  return text || 'Je n\'ai pas bien compris. Pouvez-vous reformuler ?';
 }

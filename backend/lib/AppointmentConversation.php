@@ -53,6 +53,9 @@ final class AppointmentConversation
             if ((string) ($appointment['created_by'] ?? '') === $uid) {
                 return true;
             }
+            if ((string) ($appointment['assigned_pro_id'] ?? '') === $uid) {
+                return true;
+            }
             $userModel = new User();
 
             return $userModel->hasProfessionalAccessToPatient($uid, (string) ($appointment['patient_id'] ?? ''));

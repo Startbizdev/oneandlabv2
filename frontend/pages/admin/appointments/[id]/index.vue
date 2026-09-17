@@ -156,6 +156,11 @@ import { apiFetch } from '~/utils/api';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
+import {
+  isAllowedMedicalDocumentFile,
+  isMedicalDocumentTooLarge,
+  medicalDocumentFormatError,
+} from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 
 const route = useRoute();
@@ -238,13 +243,12 @@ function openCancelModal(apt: any, loadAppointment: () => Promise<void>) {
 async function uploadDocumentFile(file: File, docType: string) {
   const appointment = currentAppointmentForUpload.value ?? getAppointmentFromDetailRef(detailRef);
   if (!appointment) return;
-  if (file.size > MAX_UPLOAD_BYTES) {
+  if (isMedicalDocumentTooLarge(file)) {
     toast.add({ title: 'Fichier trop volumineux', description: 'Le fichier dépasse la limite de 25 Mo autorisée.', color: 'error' });
     return;
   }
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  if (!allowedTypes.includes(file.type)) {
-    toast.add({ title: 'Format non accepté', description: 'Formats acceptés : JPG, PNG, PDF uniquement.', color: 'error' });
+  if (!isAllowedMedicalDocumentFile(file, docType)) {
+    toast.add({ title: 'Format non accepté', description: medicalDocumentFormatError(docType), color: 'error' });
     return;
   }
   uploadingTypes.value = new Set([...uploadingTypes.value, docType]);

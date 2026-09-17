@@ -4,6 +4,8 @@ export * from './post-login-redirect';
 export * from './appointment-offer';
 export * from './appointment-type-rules';
 export * from './notification-display';
+export * from './notification-navigation';
+export * from './notification-list-refresh';
 export * from './colors';
 export * from './dashboard-unified-rdv';
 export * from './appointment-cancellation';

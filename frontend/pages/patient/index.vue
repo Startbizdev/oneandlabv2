@@ -464,10 +464,22 @@ function careTeamLines(apt: any): { icon: string; label: string; name: string }[
   return lines;
 }
 
+const patientListRefreshTrigger = useState<number>('patientAppointmentsRefreshTrigger', () => 0);
+watch(patientListRefreshTrigger, () => {
+  void refreshPatientAppointments({ silent: true });
+});
+
+const { start: startPatientListPolling } = usePolling(
+  () => refreshPatientAppointments({ silent: true }),
+  45000,
+  { shouldSkip: () => route.path !== '/patient' },
+);
+
 onMounted(() => {
   showPersonalizedPatientWelcome.value = true;
   void refreshPatientAppointments();
   loadPatientCareCategories();
+  startPatientListPolling();
 });
 
 onActivated(() => {

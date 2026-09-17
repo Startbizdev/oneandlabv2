@@ -139,7 +139,23 @@
           </div>
 
           <div
-            v-if="req.status === 'pending'"
+            v-if="req.status === 'accepted' && req.user_id"
+            class="border-t border-gray-100 p-4 dark:border-gray-800"
+          >
+            <UButton
+              class="w-full justify-center"
+              color="primary"
+              variant="soft"
+              size="sm"
+              icon="i-lucide-user-cog"
+              :to="userProfileHref(req.user_id)"
+            >
+              Configurer le compte
+            </UButton>
+          </div>
+
+          <div
+            v-else-if="req.status === 'pending'"
             class="flex gap-2 border-t border-gray-100 p-4 dark:border-gray-800"
           >
             <UButton
@@ -220,9 +236,11 @@ type RegistrationRow = {
   gender?: string;
   address?: unknown;
   created_at?: string;
+  user_id?: string | null;
 };
 
 const toast = useAppToast();
+const router = useRouter();
 const requests = ref<RegistrationRow[]>([]);
 const loading = ref(true);
 const loadError = ref(false);
@@ -292,6 +310,14 @@ const paginatedRequests = computed(() => {
 
 function fullName(req: RegistrationRow) {
   return [req.first_name, req.last_name].filter(Boolean).join(' ') || '—';
+}
+
+function userProfileHref(userId: string) {
+  return `/profile?userId=${encodeURIComponent(userId)}`;
+}
+
+function openUserProfile(userId: string) {
+  void router.push(userProfileHref(userId));
 }
 
 function formatRegistrationAddress(raw: unknown) {
@@ -378,13 +404,41 @@ async function fetchRequests() {
 async function acceptRequest(id: string) {
   acceptingId.value = id;
   try {
-    const response = await apiFetch<{ success: boolean; error?: string }>(
+    const response = await apiFetch<{
+      success: boolean;
+      data?: { user_id?: string; linked_existing?: boolean };
+      error?: string;
+    }>(
       `/registration-requests/${id}/accept`,
       { method: 'PUT' },
     );
     if (response?.success) {
-      toast.add({ title: 'Demande acceptée', color: 'success' });
-      await fetchRequests();
+      const userId = response.data?.user_id;
+      if (userId) {
+        const idx = requests.value.findIndex((r) => r.id === id);
+        if (idx >= 0) {
+          requests.value[idx] = {
+            ...requests.value[idx],
+            status: 'accepted',
+            user_id: userId,
+          };
+        }
+        toast.add({
+          title: 'Demande acceptée',
+          description: response.data?.linked_existing
+            ? 'Compte existant mis à jour — ouvrez le profil pour finaliser la configuration.'
+            : 'Compte créé — ouvrez le profil pour finaliser la configuration.',
+          color: 'success',
+          duration: 7000,
+          actions: [{
+            label: 'Voir le profil',
+            onClick: () => openUserProfile(userId),
+          }],
+        });
+      } else {
+        toast.add({ title: 'Demande acceptée', color: 'success' });
+        await fetchRequests();
+      }
     } else {
       toast.add({ title: 'Erreur', description: response?.error ?? 'Échec', color: 'error' });
     }

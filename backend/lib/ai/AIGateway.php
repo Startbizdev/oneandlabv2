@@ -10,15 +10,32 @@ require_once __DIR__ . '/GrokProvider.php';
 require_once __DIR__ . '/AiGrokToolCatalog.php';
 require_once __DIR__ . '/AiBookingToolExecutor.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
-require_once __DIR__ . '/GrokProvider.php';
+require_once __DIR__ . '/ProviderRetryPolicy.php';
 
 final class AIGateway
 {
-    private PDO $db;
+    private ?PDO $db;
 
-    public function __construct(?PDO $db = null)
+    private ?AIProviderInterface $providerOverride = null;
+
+    public function __construct(?PDO $db = null, ?AIProviderInterface $providerOverride = null)
     {
-        $this->db = $db ?? ai_db();
+        $this->db = $db;
+        $this->providerOverride = $providerOverride;
+    }
+
+    private function db(): PDO
+    {
+        if ($this->db === null) {
+            $this->db = ai_db();
+        }
+
+        return $this->db;
+    }
+
+    public function setProviderOverride(?AIProviderInterface $provider): void
+    {
+        $this->providerOverride = $provider;
     }
 
     /**
@@ -42,10 +59,10 @@ final class AIGateway
         $promptHash = hash('sha256', json_encode($fullMessages));
 
         try {
-            $result = $provider->chat($fullMessages, [
+            $result = ProviderRetryPolicy::run(fn () => $provider->chat($fullMessages, [
                 'model' => $this->resolveModel($taskType),
                 'temperature' => $temperature,
-            ]);
+            ]));
             $this->writeAudit($auditId, $user, $conversationId, $patientId, $taskType, $provider->getName(), $result, $promptHash, $started, null);
 
             return array_merge($result, ['audit_id' => $auditId]);
@@ -118,10 +135,7 @@ final class AIGateway
     ): array {
         $started = microtime(true);
         $auditId = Uuid::v4();
-        $provider = $this->resolveProvider($taskType);
-        if (!$provider instanceof GrokProvider) {
-            $provider = new GrokProvider();
-        }
+        $provider = $this->resolveToolsProvider($taskType);
 
         $context['tools_enabled'] = true;
         if ($draftPreview !== null) {
@@ -141,13 +155,19 @@ final class AIGateway
         $tokensOut = 0;
         $resultModel = $model;
 
+        $loopStarted = microtime(true);
+        $maxLoopSeconds = 60.0;
+
         for ($i = 0; $i < 8; $i++) {
-            $result = $provider->chat($fullMessages, [
+            if ((microtime(true) - $loopStarted) > $maxLoopSeconds) {
+                break;
+            }
+            $result = ProviderRetryPolicy::run(fn () => $provider->chat($fullMessages, [
                 'model' => $model,
                 'temperature' => $temperature,
                 'tools' => $tools,
                 'tool_choice' => 'auto',
-            ]);
+            ]), 2);
             $tokensIn += (int) ($result['tokens_input'] ?? 0);
             $tokensOut += (int) ($result['tokens_output'] ?? 0);
             $resultModel = (string) ($result['model'] ?? $model);
@@ -169,6 +189,7 @@ final class AIGateway
                     'model' => $resultModel,
                     'tokens_input' => $tokensIn,
                     'tokens_output' => $tokensOut,
+                    'tool_loop_exhausted' => false,
                 ];
             }
 
@@ -202,7 +223,38 @@ final class AIGateway
             }
         }
 
-        throw new RuntimeException('Boucle tools Grok interrompue (max itérations)');
+        $fallbackContent = 'Je n\'ai pas pu finaliser cette action. Pouvez-vous préciser une information à la fois ?';
+        $this->writeAudit($auditId, $user, $conversationId, $patientId, $taskType, $provider->getName(), [
+            'model' => $resultModel,
+            'tokens_input' => $tokensIn,
+            'tokens_output' => $tokensOut,
+            'tool_calls_count' => $toolCallsCount,
+        ], hash('sha256', json_encode($fullMessages)), $started, 'tool_loop_exhausted');
+
+        return [
+            'content' => $fallbackContent,
+            'draft' => $executor->getDraft(),
+            'audit_id' => $auditId,
+            'tool_calls_count' => $toolCallsCount,
+            'model' => $resultModel,
+            'tokens_input' => $tokensIn,
+            'tokens_output' => $tokensOut,
+            'tool_loop_exhausted' => true,
+        ];
+    }
+
+    private function resolveToolsProvider(string $taskType): AIProviderInterface
+    {
+        if ($this->providerOverride !== null) {
+            return $this->providerOverride;
+        }
+
+        $provider = $this->resolveProvider($taskType);
+        if ($provider instanceof GrokProvider) {
+            return $provider;
+        }
+
+        return new GrokProvider();
     }
 
     /**
@@ -480,24 +532,36 @@ PROMPT;
 
     private function resolveProvider(string $taskType): AIProviderInterface
     {
+        if ($this->providerOverride !== null) {
+            return $this->providerOverride;
+        }
+
         $providerName = ai_env('ACTIVE_AI_PROVIDER', 'grok') ?? 'grok';
-        $stmt = $this->db->prepare('SELECT provider FROM ai_task_routing WHERE task_type = ? AND enabled = 1 LIMIT 1');
+        if ($this->db === null && $this->providerOverride !== null) {
+            return $this->providerOverride;
+        }
+
+        $stmt = $this->db()->prepare('SELECT provider FROM ai_task_routing WHERE task_type = ? AND enabled = 1 LIMIT 1');
         $stmt->execute([$taskType]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row && !empty($row['provider'])) {
             $providerName = (string) $row['provider'];
         }
 
-        return match ($providerName) {
-            'deepseek' => new DeepSeekProvider(),
-            'openai' => new OpenAIProvider(),
-            default => new GrokProvider(),
-        };
+        if (in_array($providerName, ['deepseek', 'openai'], true)) {
+            throw new RuntimeException('Provider IA « ' . $providerName . ' » non disponible — utilisez grok');
+        }
+
+        return new GrokProvider();
     }
 
     private function resolveModel(string $taskType): ?string
     {
-        $stmt = $this->db->prepare('SELECT model FROM ai_task_routing WHERE task_type = ? AND enabled = 1 LIMIT 1');
+        if ($this->db === null) {
+            return ai_env('XAI_MODEL', 'grok-3');
+        }
+
+        $stmt = $this->db()->prepare('SELECT model FROM ai_task_routing WHERE task_type = ? AND enabled = 1 LIMIT 1');
         $stmt->execute([$taskType]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row && !empty($row['model'])) {
@@ -509,7 +573,11 @@ PROMPT;
 
     private function getDisclaimer(): string
     {
-        $stmt = $this->db->prepare('SELECT setting_value FROM platform_settings WHERE setting_key = ? LIMIT 1');
+        if ($this->db === null) {
+            return 'Cary est un assistant informatif. Il ne remplace pas un avis médical.';
+        }
+
+        $stmt = $this->db()->prepare('SELECT setting_value FROM platform_settings WHERE setting_key = ? LIMIT 1');
         $stmt->execute(['ai_disclaimer_fr']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row && !empty($row['setting_value'])) {
@@ -521,7 +589,11 @@ PROMPT;
 
     private function getTemperature(): float
     {
-        $stmt = $this->db->prepare('SELECT setting_value FROM platform_settings WHERE setting_key = ? LIMIT 1');
+        if ($this->db === null) {
+            return 0.55;
+        }
+
+        $stmt = $this->db()->prepare('SELECT setting_value FROM platform_settings WHERE setting_key = ? LIMIT 1');
         $stmt->execute(['ai_temperature']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row && is_numeric($row['setting_value'])) {
@@ -546,26 +618,58 @@ PROMPT;
         float $started,
         ?string $error
     ): void {
+        if ($this->db === null) {
+            return;
+        }
+
         $latency = (int) round((microtime(true) - $started) * 1000);
-        $stmt = $this->db->prepare('
-            INSERT INTO ai_audits
-                (id, user_id, patient_id, conversation_id, task_type, provider, model, prompt_hash, latency_ms, tokens_input, tokens_output, error_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        $stmt->execute([
-            $auditId,
-            $user['user_id'] ?? null,
-            $patientId,
-            $conversationId,
-            $taskType,
-            $provider,
-            $result['model'] ?? null,
-            $promptHash,
-            $latency,
-            $result['tokens_input'] ?? null,
-            $result['tokens_output'] ?? null,
-            $error,
-        ]);
+        $toolCallsCount = isset($result['tool_calls_count']) ? (int) $result['tool_calls_count'] : null;
+        $requestId = (string) ($user['request_id'] ?? Uuid::v4());
+
+        try {
+            $stmt = $this->db()->prepare('
+                INSERT INTO ai_audits
+                    (id, user_id, patient_id, conversation_id, task_type, provider, model, prompt_hash,
+                     latency_ms, tokens_input, tokens_output, error_message, tool_calls_count, request_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $auditId,
+                $user['user_id'] ?? null,
+                $patientId,
+                $conversationId,
+                $taskType,
+                $provider,
+                $result['model'] ?? null,
+                $promptHash,
+                $latency,
+                $result['tokens_input'] ?? null,
+                $result['tokens_output'] ?? null,
+                $error,
+                $toolCallsCount,
+                $requestId,
+            ]);
+        } catch (Throwable) {
+            $stmt = $this->db()->prepare('
+                INSERT INTO ai_audits
+                    (id, user_id, patient_id, conversation_id, task_type, provider, model, prompt_hash, latency_ms, tokens_input, tokens_output, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ');
+            $stmt->execute([
+                $auditId,
+                $user['user_id'] ?? null,
+                $patientId,
+                $conversationId,
+                $taskType,
+                $provider,
+                $result['model'] ?? null,
+                $promptHash,
+                $latency,
+                $result['tokens_input'] ?? null,
+                $result['tokens_output'] ?? null,
+                $error,
+            ]);
+        }
     }
 
     public function getDisclaimerPublic(): string

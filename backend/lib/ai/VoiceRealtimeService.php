@@ -13,6 +13,7 @@ require_once __DIR__ . '/AiBookingService.php';
 require_once __DIR__ . '/AiConversationService.php';
 require_once __DIR__ . '/../rag/RagSearchService.php';
 require_once __DIR__ . '/AiVoiceMessageSignals.php';
+require_once __DIR__ . '/AiAssistantResponseGuard.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
 require_once __DIR__ . '/../Uuid.php';
 
@@ -140,12 +141,15 @@ final class VoiceRealtimeService
 
         $executor = new AiBookingToolExecutor($user, $conversationId, $draftPreview);
         $exec = $executor->execute($toolName, $arguments);
+        $locale = (string) ($session['locale'] ?? 'fr');
+        $sessionUpdate = $this->prompts->buildSessionUpdate($user, $conversationId, $locale, '');
 
         return [
             'tool' => $toolName,
             'result' => $exec['result'],
             'draft' => $exec['draft'],
             'conversation_id' => $conversationId,
+            ...$sessionUpdate,
         ];
     }
 
@@ -174,6 +178,7 @@ final class VoiceRealtimeService
         $conversationId = (string) ($session['ai_conversation_id'] ?? '');
         $payload = is_array($input['payload'] ?? null) ? $input['payload'] : [];
         $latencyMs = isset($input['latency_ms']) ? (int) $input['latency_ms'] : null;
+        $lastUserTranscript = '';
 
         if ($eventType === 'xai_conversation.created') {
             $xaiConvId = trim((string) ($payload['xai_conversation_id'] ?? ''));
@@ -186,6 +191,7 @@ final class VoiceRealtimeService
         if ($eventType === 'user.transcript.final') {
             $transcript = trim((string) ($payload['transcript'] ?? ''));
             if ($transcript !== '') {
+                $lastUserTranscript = $transcript;
                 $locale = (string) ($session['locale'] ?? 'fr');
                 $this->persistUserTurn($sessionId, $conversationId, $user, $transcript, $locale);
             }
@@ -194,11 +200,23 @@ final class VoiceRealtimeService
         if ($eventType === 'assistant.transcript.final') {
             $assistantText = trim((string) ($payload['transcript'] ?? ''));
             if ($assistantText !== '') {
-                $metadata = [];
+                $draftForGuard = isset($payload['draft']) && is_array($payload['draft'])
+                    ? $payload['draft']
+                    : (new AiBookingService($this->db))->getLatestDraftForConversation(
+                        $conversationId,
+                        (string) $user['user_id'],
+                    );
+                $userForGuard = trim((string) ($payload['user_transcript'] ?? $lastUserTranscript));
+                $guarded = AiAssistantResponseGuard::normalize($userForGuard, $assistantText, $draftForGuard);
+                $assistantText = $guarded['text'];
+                $metadata = ['guard_repaired' => $guarded['repaired']];
+                if ($guarded['reason'] !== null) {
+                    $metadata['guard_reason'] = $guarded['reason'];
+                }
                 if (isset($payload['draft']) && is_array($payload['draft'])) {
                     $metadata['draft'] = $payload['draft'];
                 }
-                $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata ?: null);
+                $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata);
             }
         }
 
@@ -226,11 +244,22 @@ final class VoiceRealtimeService
             );
         }
 
+        $sessionUpdate = [];
+        if ($eventType === 'user.transcript.final' && $lastUserTranscript !== '') {
+            $sessionUpdate = $this->prompts->buildSessionUpdate(
+                $user,
+                $conversationId,
+                (string) ($session['locale'] ?? 'fr'),
+                $lastUserTranscript,
+            );
+        }
+
         return [
             'duplicate' => false,
             'event_id' => $eventId,
             'conversation_id' => $conversationId,
             'draft' => $draft,
+            ...$sessionUpdate,
         ];
     }
 

@@ -81,9 +81,15 @@ function withDerivedTourSummary(data: NurseTourPayload): NurseTourPayload {
   };
 }
 
-export function useNurseTourWeb() {
+export type UseNurseTourWebOptions = {
+  /** false sur le détail passage — évite GET /nurse/tour inutile au montage. */
+  autoLoad?: boolean;
+};
+
+export function useNurseTourWeb(options: UseNurseTourWebOptions = {}) {
+  const autoLoad = options.autoLoad !== false;
   const selectedDate = ref(formatDateYmd(new Date()));
-  const loading = ref(true);
+  const loading = ref(autoLoad);
   const error = ref<string | null>(null);
   let requestVersion = 0;
   const saving = ref(false);
@@ -143,7 +149,8 @@ export function useNurseTourWeb() {
   }
 
   async function refresh() {
-    await Promise.all([loadTour(), loadSummary()]);
+    void loadSummary();
+    await loadTour();
   }
 
   function shiftDay(delta: number) {
@@ -378,21 +385,24 @@ export function useNurseTourWeb() {
       })),
   );
 
-  if (import.meta.client) {
+  if (import.meta.client && autoLoad) {
     watch(selectedDate, () => void refresh(), { immediate: true });
   }
   onScopeDispose(() => { requestVersion++; });
 
-  // Prefetch jour adjacent pour navigation rapide du strip
-  watch(selectedDate, (d) => {
-    const base = new Date(d + 'T12:00:00');
-    for (const delta of [-1, 1]) {
-      const adj = new Date(base);
-      adj.setDate(adj.getDate() + delta);
-      const adjDate = formatDateYmd(adj);
-      void apiFetch(`/nurse/tour?date=${adjDate}`).catch(() => {});
-    }
-  });
+  // Prefetch jour adjacent (après le premier chargement, pas au montage)
+  if (import.meta.client && autoLoad) {
+    watch(selectedDate, (d, prev) => {
+      if (prev == null || prev === d) return;
+      const base = new Date(d + 'T12:00:00');
+      for (const delta of [-1, 1]) {
+        const adj = new Date(base);
+        adj.setDate(adj.getDate() + delta);
+        const adjDate = formatDateYmd(adj);
+        void apiFetch(`/nurse/tour?date=${adjDate}`).catch(() => {});
+      }
+    });
+  }
 
   return {
     selectedDate,

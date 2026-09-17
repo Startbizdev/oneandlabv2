@@ -344,6 +344,14 @@ function onPassagePlanningSelect(mode: 'single_day' | 'recurring') {
 }
 
 function openPassageDetail(stop: NurseTourStop) {
+  if (!stop.appointment_id?.trim()) {
+    useToast().add({
+      title: 'Passage indisponible',
+      description: 'Ce rendez-vous ne peut pas être ouvert. Actualisez la tournée.',
+      color: 'error',
+    });
+    return;
+  }
   if (stop.passage_series_id) {
     navigateTo({
       path: `/nurse/passage/${stop.passage_series_id}`,

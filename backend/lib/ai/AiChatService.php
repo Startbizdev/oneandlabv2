@@ -13,6 +13,8 @@ require_once __DIR__ . '/AiDocumentIntent.php';
 require_once __DIR__ . '/../rag/AiDocumentJobService.php';
 require_once __DIR__ . '/AiTurnOrchestrator.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
+require_once __DIR__ . '/AiMemoryService.php';
+require_once __DIR__ . '/AiFeatureFlags.php';
 require_once __DIR__ . '/bootstrap.php';
 
 final class AiChatService
@@ -22,21 +24,23 @@ final class AiChatService
     private MemoryComposer $composer;
     private AiBookingService $booking;
     private AiTurnOrchestrator $orchestrator;
+    private AiMemoryService $memory;
 
-    public function __construct()
+    public function __construct(?AIGateway $gateway = null, ?AiTurnOrchestrator $orchestrator = null)
     {
         $this->conversations = new AiConversationService();
-        $this->gateway = new AIGateway();
+        $this->gateway = $gateway ?? new AIGateway();
         $this->composer = new MemoryComposer();
         $this->booking = new AiBookingService();
-        $this->orchestrator = new AiTurnOrchestrator($this->gateway, $this->booking);
+        $this->memory = new AiMemoryService();
+        $this->orchestrator = $orchestrator ?? new AiTurnOrchestrator($this->gateway, $this->booking);
     }
 
     /**
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */
-    public function handleMessage(array $user, array $input, ?callable $onStreamDelta = null): array
+    public function handleMessage(array $user, array $input, ?callable $onStreamDelta = null, ?callable $onToolProgress = null): array
     {
         $conversationId = trim((string) ($input['conversation_id'] ?? ''));
         $message = trim((string) ($input['message'] ?? ''));
@@ -202,6 +206,7 @@ final class AiChatService
             $taskType,
             $draftId,
             $onStreamDelta,
+            $onToolProgress,
         );
 
         $assistantContent = $turn['content'];
@@ -223,6 +228,19 @@ final class AiChatService
         }
 
         $assistantMsg = $this->conversations->addMessage($conversationId, 'assistant', $assistantContent, $metadata);
+
+        $allMessages = $this->conversations->getMessages(
+            $conversationId,
+            (string) $user['user_id'],
+            200,
+        );
+        if (AiFeatureFlags::isEnabled('memory_summary')) {
+            $this->memory->refreshConversationSummaryIfNeeded(
+                $conversationId,
+                $allMessages,
+                AiTurnOrchestrator::HISTORY_LIMIT,
+            );
+        }
 
         $updatedConv = $this->conversations->maybeAutoTitle(
             $conversationId,

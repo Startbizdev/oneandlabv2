@@ -10,7 +10,7 @@ SSH_KEY="${SSH_KEY:-$HOME/Desktop/oneandlab-key.pem}"
 if [[ ! -f "$SSH_KEY" && -f "$HOME/.ssh/oneandlab-key.pem" ]]; then
   SSH_KEY="$HOME/.ssh/oneandlab-key.pem"
 fi
-SSH_HOST="${SSH_HOST:-ubuntu@ec2-15-188-11-249.eu-west-3.compute.amazonaws.com}"
+SSH_HOST="${SSH_HOST:-ubuntu@15.236.73.7}"
 REMOTE_BASE="/var/www/oneandlab"
 
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -i "$SSH_KEY")
@@ -37,7 +37,13 @@ deploy_sync_dir \
   --exclude=scripts/test-*.php \
   --exclude=scripts/run-test-*.sh
 
+echo "==> Liens runtime backend (uploads persistent)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "bash -s" < "$SCRIPT_DIR/ensure-backend-runtime-links.sh"
+
 echo "==> Verification generation PDF..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/check-prescription-pdf.php"
 
-echo "✅ Backend deploye et PDF OK."
+echo "==> Smoke upload (permissions + chiffrement)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php test-upload.php"
+
+echo "✅ Backend deploye, liens uploads et PDF OK."

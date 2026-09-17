@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Routage léger : brouillon actif / documents. Le reste → Grok + tools.
+ * Routage léger : brouillon actif / documents / carnet / booking explicite.
  */
 final class CaryContextFocus
 {
@@ -28,19 +28,58 @@ final class CaryContextFocus
 
         $msg = mb_strtolower(trim($message));
 
+        if ($draft !== null && in_array($draft['status'] ?? '', ['collecting', 'ready'], true)) {
+            return self::BOOKING;
+        }
+
+        if (self::matchesHealthRecord($msg)) {
+            return self::HEALTH_RECORD;
+        }
+
         if ($conversationHasDocuments && self::matchesDocumentFollowUp($msg)) {
             return self::DOCUMENT_FOLLOWUP;
         }
 
-        if ($draft !== null && in_array($draft['status'] ?? '', ['collecting', 'ready'], true)) {
+        if (self::matchesBookingRequest($msg)) {
             return self::BOOKING;
         }
 
         return self::GENERAL;
     }
 
+    public static function matchesHealthRecord(string $msg): bool
+    {
+        return (bool) preg_match(
+            '/\b(?:carnet de sant[ée]|compl[ée]ter mon carnet|mon carnet|questionnaire carnet|'
+            . 'apple sant[ée]|health connect|mes donn[ée]es sant[ée]|%.*carnet|pourcentage carnet)\b/iu',
+            $msg,
+        );
+    }
+
+    public static function matchesBookingRequest(string $msg): bool
+    {
+        if ($msg === '' || preg_match('/^(?:oui|ok|d\'accord|merci)\.?$/iu', $msg)) {
+            return false;
+        }
+
+        if (preg_match('/\b(?:quand|prochain|dernier|r[ée]sum[ée])\b/iu', $msg)
+            && !preg_match('/\b(?:je veux|je voudrais|jveux|planifier|prendre (?:un )?rdv|besoin d[\x27’]?un)\b/iu', $msg)) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/\b(?:rdv|rendez[- ]vous|prendre (?:un )?rdv|planifier|pansement|prise de sang|'
+            . 'infirmier|passage|soin|injection|perfusion|pr[ée]l[èe]vement)\b/iu',
+            $msg,
+        );
+    }
+
     public static function matchesDocumentFollowUp(string $msg): bool
     {
+        if (self::matchesBookingRequest($msg) || self::matchesHealthRecord($msg)) {
+            return false;
+        }
+
         if (preg_match(
             '/mon (bilan|analyse|pdf|r[ée]sultat|document|fichier)|'
             . 'ce (bilan|pdf|document|fichier|r[ée]sultat)|'

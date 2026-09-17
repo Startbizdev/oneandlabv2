@@ -1,36 +1,15 @@
 import type { AppNotification } from '../api/notifications.service';
+import {
+  notificationIsNavigable,
+  parseNotificationData,
+  resolveNotificationNavIntent,
+} from '@oneandlab/shared-utils';
 
 export type NotificationNavTarget =
   | { kind: 'none' }
   | { kind: 'route'; pathname: string; params?: Record<string, string> };
 
-function parseNotificationData(
-  raw: AppNotification['data'],
-): Record<string, unknown> {
-  if (!raw) return {};
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-  return typeof raw === 'object' ? raw : {};
-}
-
-function appointmentId(
-  notif: AppNotification,
-  data: Record<string, unknown>,
-): string | null {
-  const id = notif.appointment_id ?? data.appointment_id ?? data.appointmentId;
-  return id != null && String(id).trim() !== '' ? String(id) : null;
-}
-
-function messageId(data: Record<string, unknown>): string | null {
-  const id = data.message_id ?? data.messageId;
-  return id != null && String(id).trim() !== '' ? String(id) : null;
-}
+export { notificationIsNavigable, parseNotificationData, resolveNotificationNavIntent };
 
 function rolePrefix(role: string): string | null {
   switch (role) {
@@ -51,134 +30,58 @@ function rolePrefix(role: string): string | null {
 }
 
 /**
- * Routage cloche — aligné `dashboard.vue` / `patient.vue` (types les plus fréquents).
+ * Routage cloche mobile — intent partagé + chemins Expo Router.
  */
 export function resolveNotificationNavigation(
   notif: AppNotification,
   role: string | undefined,
 ): NotificationNavTarget {
-  const type = String(notif.type ?? '').trim();
-  const data = parseNotificationData(notif.data);
-  const aptId = appointmentId(notif, data);
-  const conversationMessageId = messageId(data);
+  const intent = resolveNotificationNavIntent(notif, role);
   const prefix = role ? rolePrefix(role) : null;
 
-  if (
-    type === 'share_link_appointment_taken' ||
-    data.no_navigate === true ||
-    data.no_navigate === 'true'
-  ) {
+  if (intent.kind === 'none' || !prefix) {
     return { kind: 'none' };
   }
 
-  if (!prefix) return { kind: 'none' };
-
-  const isNewReview =
-    type === 'new_review' ||
-    type === 'new_review_on_pro_patient' ||
-    Boolean(data.review_id);
-
-  if (type === 'results_available' && (role === 'nurse' || role === 'pro')) {
-    return {
-      kind: 'route',
-      pathname: `${prefix}/resultats`,
-    };
-  }
-
-  if (
-    aptId &&
-    (type === 'care_gallery_photo' || type === 'care_gallery_comment') &&
-    (role === 'pro' || role === 'nurse')
-  ) {
-    const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
-    if (photoId) {
+  switch (intent.kind) {
+    case 'results':
+      return { kind: 'route', pathname: `${prefix}/resultats` };
+    case 'reviews': {
+      const params: Record<string, string> = {};
+      if (intent.reviewId) params.review = intent.reviewId;
+      else if (intent.appointmentId) params.appointment = intent.appointmentId;
       return {
         kind: 'route',
-        pathname: `${prefix}/appointment/${aptId}/care-photo/${photoId}`,
+        pathname: `${prefix}/reviews`,
+        params: Object.keys(params).length ? params : undefined,
       };
     }
-    return {
-      kind: 'route',
-      pathname: `${prefix}/appointment/${aptId}`,
-      params: { careGallery: '1' },
-    };
-  }
-
-  if (
-    type === 'care_gallery_photo' ||
-    type === 'care_gallery_comment'
-  ) {
-    return { kind: 'none' };
-  }
-
-  if (isNewReview && role === 'pro' && aptId) {
-    return {
-      kind: 'route',
-      pathname: `${prefix}/appointment/${aptId}`,
-      params: { review: '1' },
-    };
-  }
-
-  if (isNewReview && role === 'nurse') {
-    const reviewId = data.review_id != null ? String(data.review_id) : '';
-    return {
-      kind: 'route',
-      pathname: `${prefix}/reviews`,
-      params: reviewId ? { review: reviewId } : aptId ? { appointment: aptId } : undefined,
-    };
-  }
-
-  if (isNewReview && (role === 'lab' || role === 'subaccount')) {
-    return { kind: 'route', pathname: `${prefix}/reviews` };
-  }
-
-  if (aptId && type === 'conversation_message') {
-    return {
-      kind: 'route',
-      pathname: `${prefix}/appointment/${aptId}/conversation`,
-      params: conversationMessageId ? { messageId: conversationMessageId } : undefined,
-    };
-  }
-
-  if (aptId && type === 'appointment_request_sent') {
-    return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
-  }
-
-  if (role === 'patient') {
-    if (type === 'results_ready' || type === 'results_available') {
+    case 'appointments_list':
+      return { kind: 'route', pathname: `${prefix}/(tabs)/appointments` };
+    case 'appointment': {
+      if (intent.conversation) {
+        return {
+          kind: 'route',
+          pathname: `${prefix}/appointment/${intent.appointmentId}/conversation`,
+          params: intent.messageId ? { messageId: intent.messageId } : undefined,
+        };
+      }
+      if (intent.careGallery && intent.carePhotoId) {
+        return {
+          kind: 'route',
+          pathname: `${prefix}/appointment/${intent.appointmentId}/care-photo/${intent.carePhotoId}`,
+        };
+      }
+      const params: Record<string, string> = {};
+      if (intent.review) params.review = '1';
+      if (intent.careGallery) params.careGallery = '1';
       return {
         kind: 'route',
-        pathname: `${prefix}/resultats`,
+        pathname: `${prefix}/appointment/${intent.appointmentId}`,
+        params: Object.keys(params).length ? params : undefined,
       };
     }
-    if (aptId && (type === 'care_gallery_photo' || type === 'care_gallery_comment')) {
-      const photoId = data.photo_id != null ? String(data.photo_id).trim() : '';
-      return {
-        kind: 'route',
-        pathname: `${prefix}/appointment/${aptId}`,
-        params: {
-          careGallery: '1',
-          ...(photoId ? { carePhoto: photoId } : {}),
-        },
-      };
-    }
-    if (aptId) {
-      return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
-    }
+    default:
+      return { kind: 'none' };
   }
-
-  if (
-    aptId &&
-    type === 'appointment_redispatched' &&
-    role &&
-    ['nurse', 'lab', 'subaccount'].includes(role)
-  ) {
-    return { kind: 'route', pathname: `${prefix}/(tabs)/appointments` };
-  }
-
-  if (aptId) {
-    return { kind: 'route', pathname: `${prefix}/appointment/${aptId}` };
-  }
-
-  return { kind: 'none' };
 }

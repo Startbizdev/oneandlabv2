@@ -14,6 +14,7 @@ require_once __DIR__ . '/AiBookingDraftSummary.php';
 require_once __DIR__ . '/VoiceGrokAudioService.php';
 require_once __DIR__ . '/AiVoiceMessageSignals.php';
 require_once __DIR__ . '/AiVoiceAssistantGuard.php';
+require_once __DIR__ . '/AiAssistantResponseGuard.php';
 require_once __DIR__ . '/AiVoiceDraftReconciler.php';
 
 final class VoiceService
@@ -179,7 +180,12 @@ final class VoiceService
             $draft = $this->reconcileVoiceDraft($user, (string) $draft['id'], $transcript, $draft) ?? $draft;
         }
 
-        $assistantText = AiVoiceAssistantGuard::normalize($transcript, trim($turn['content']), is_array($draft) ? $draft : null);
+        $guarded = AiAssistantResponseGuard::normalize(
+            $transcript,
+            trim($turn['content']),
+            is_array($draft) ? $draft : null,
+        );
+        $assistantText = $guarded['text'];
         $appointmentId = null;
 
         // RDV : jamais de confirmation automatique en vocal — l'utilisateur doit appuyer sur Valider.

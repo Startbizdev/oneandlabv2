@@ -135,22 +135,26 @@
                     Aucune notification
                   </div>
                   <template v-else>
-                    <button
+                    <component
+                      :is="item.disabled ? 'div' : 'button'"
                       v-for="(item, index) in notificationItems"
                       :key="index"
+                      :type="item.disabled ? undefined : 'button'"
                       @click="handleNotificationClick(item)"
-                      :disabled="item.disabled"
-                      class="w-full flex flex-col gap-1 px-4 py-3 text-sm transition-colors text-left"
-                      :class="{
-                        'opacity-50 cursor-not-allowed': item.disabled,
-                        'text-gray-500 hover:bg-gray-50': item.isRead,
-                        'text-gray-700 hover:bg-gray-50 active:bg-gray-100 font-medium': !item.isRead
-                      }"
+                      class="w-full flex gap-3 px-4 py-3 text-sm text-left"
+                      :class="[
+                        item.disabled
+                          ? 'cursor-default opacity-90'
+                          : 'transition-colors hover:bg-gray-50 active:bg-gray-100 dark:hover:bg-gray-800',
+                        item.isRead ? 'text-gray-500' : 'text-gray-700 font-medium',
+                      ]"
                     >
-                      <span :class="{ 'font-medium': !item.isRead }">{{ item.label }}</span>
-                      <span v-if="item.message" class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ item.message }}</span>
-                      <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
-                    </button>
+                      <span class="flex min-w-0 flex-1 flex-col gap-1">
+                        <span :class="{ 'font-medium': !item.isRead }" class="whitespace-normal break-words">{{ item.label }}</span>
+                        <span v-if="item.message" class="text-xs leading-relaxed text-gray-500 whitespace-normal break-words dark:text-gray-400">{{ item.message }}</span>
+                        <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
+                      </span>
+                    </component>
                   </template>
                 </div>
               </div>
@@ -418,7 +422,9 @@
 <script setup lang="ts">
 useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] });
 import { apiFetch } from '~/utils/api'
+import { notificationIsNavigable, notificationShouldRefreshAppointmentsList } from '@oneandlab/shared-utils'
 import { formatBellNotificationLines } from '~/utils/notification-display'
+import { webNotificationRoute } from '~/utils/notification-navigation-web'
 
 const { holdCount } = useBookingApiHold()
 const route = useRoute()
@@ -659,78 +665,43 @@ const notificationItems = computed<Array<{ label: string; message?: string; desc
     ]
   }
 
+  const role = user.value?.role
   return notifications.value.slice(0, 10).map((notif) => {
+    const navigable = notificationIsNavigable(notif, role ?? undefined)
     const { label, message } = formatBellNotificationLines(notif.title, notif.message, { type: notif.type })
     return {
       label,
       message,
       description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
       isRead: !!notif.read_at,
+      disabled: !navigable,
       click: () => {
-      const data = typeof notif.data === 'string'
-        ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })()
-        : (notif.data || {});
-      const aptId = notif.appointment_id || data?.appointment_id;
-      if (!aptId) return;
-      const role = user.value?.role;
-      if (
-        aptId &&
-        (notif.type === 'care_gallery_photo' || notif.type === 'care_gallery_comment')
-      ) {
-        if (role === 'pro' || role === 'nurse') {
-          const base = role === 'pro' ? '/pro' : '/nurse';
-          const pid = data?.photo_id != null && String(data.photo_id).trim() !== '' ? String(data.photo_id) : null;
-          void navigateTo({
-            path: `${base}/appointments/${aptId}`,
-            query: { careGallery: '1', ...(pid ? { carePhoto: pid } : {}) },
-          });
-          return;
-        }
-        return;
-      }
-      if (role === 'patient') {
-        if (notif.type === 'results_ready' || notif.type === 'results_available') {
-          navigateTo('/patient/resultats');
-          return;
-        }
-        if (notif.type === 'conversation_message') {
-          const messageId = data?.message_id != null ? String(data.message_id).trim() : '';
-          void navigateTo({
-            path: `/patient/appointments/${aptId}`,
-            query: { conversation: '1', ...(messageId ? { message: messageId } : {}) },
-          });
-          return;
-        }
-        void navigateTo(`/patient/appointments/${aptId}`);
-      } else if (role === 'nurse') {
-        if (notif.type === 'results_available') {
-          navigateTo('/nurse/resultats');
-          return;
-        }
-        navigateTo(`/nurse/appointments/${aptId}`);
-      } else if (role === 'lab' || role === 'subaccount') {
-        navigateTo(`/lab/appointments/${aptId}`);
-      } else if (role === 'pro') {
-        if (notif.type === 'results_available') {
-          navigateTo('/pro/resultats');
-          return;
-        }
-        navigateTo(`/pro/appointments/${aptId}`);
-      } else if (role === 'preleveur') {
-        navigateTo(`/preleveur/appointments/${aptId}`);
-      } else if (role === 'super_admin') {
-        navigateTo(`/admin/appointments/${aptId}`);
-      }
-    },
+        if (!navigable) return
+        const target = webNotificationRoute(notif, role ?? undefined)
+        if (target) void navigateTo(target)
+      },
     }
   })
 })
+
+const patientListRefreshTrigger = useState<number>('patientAppointmentsRefreshTrigger', () => 0)
 
 const { start: startPolling } = usePolling(
   async () => {
     if (isAuthenticated.value) {
       const res = await apiFetch('/notifications?limit=10', { method: 'GET' })
-      if (res && res.success) notifications.value = [...res.data]
+      if (res && res.success) {
+        const incoming = res.data as Array<{ id?: string; type?: string; data?: unknown; read_at?: string | null }>
+        const previousIds = new Set(notifications.value.map((n) => String(n.id)))
+        const shouldRefreshList = incoming.some((n) => {
+          const isNew = n.id != null && !previousIds.has(String(n.id))
+          return isNew && notificationShouldRefreshAppointmentsList(n.type, n.data)
+        })
+        notifications.value = [...incoming]
+        if (shouldRefreshList) {
+          patientListRefreshTrigger.value += 1
+        }
+      }
     }
   },
   30000,

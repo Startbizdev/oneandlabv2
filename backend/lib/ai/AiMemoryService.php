@@ -113,4 +113,83 @@ final class AiMemoryService
 
         return $row ? (string) $row['summary_text'] : null;
     }
+
+    public function setConversationSummary(
+        string $conversationId,
+        string $summaryText,
+        ?string $coversMessageIdUntil = null,
+    ): void {
+        $summaryText = trim($summaryText);
+        if ($summaryText === '') {
+            return;
+        }
+
+        $stmt = $this->db->prepare('
+            INSERT INTO ai_conversation_summaries
+                (id, conversation_id, summary_text, covers_message_id_until, token_count_estimate)
+            VALUES (?, ?, ?, ?, ?)
+        ');
+        $stmt->execute([
+            Uuid::v4(),
+            $conversationId,
+            $summaryText,
+            $coversMessageIdUntil,
+            (int) ceil(mb_strlen($summaryText) / 4),
+        ]);
+    }
+
+    /**
+     * @param list<array{role: string, content: string, id?: string}> $messages
+     */
+    public function refreshConversationSummaryIfNeeded(
+        string $conversationId,
+        array $messages,
+        int $historyLimit = 12,
+    ): ?string {
+        $nonSystem = array_values(array_filter(
+            $messages,
+            static fn (array $m): bool => ($m['role'] ?? '') !== 'system',
+        ));
+        if (count($nonSystem) <= $historyLimit) {
+            return null;
+        }
+
+        $summary = self::buildSummaryTextFromMessages($nonSystem, $historyLimit);
+        if ($summary === null) {
+            return null;
+        }
+        $lastId = null;
+        $cutoff = count($nonSystem) - $historyLimit;
+        if ($cutoff > 0 && isset($nonSystem[$cutoff - 1]['id'])) {
+            $lastId = (string) $nonSystem[$cutoff - 1]['id'];
+        }
+        $this->setConversationSummary($conversationId, $summary, $lastId);
+
+        return $summary;
+    }
+
+    /**
+     * @param list<array{role: string, content: string}> $messages
+     */
+    public static function buildSummaryTextFromMessages(array $messages, int $historyLimit): ?string
+    {
+        if (count($messages) <= $historyLimit) {
+            return null;
+        }
+
+        $lines = [];
+        foreach (array_slice($messages, 0, -$historyLimit) as $msg) {
+            $role = ($msg['role'] ?? '') === 'user' ? 'Patient' : 'Cary';
+            $content = trim((string) ($msg['content'] ?? ''));
+            if ($content === '') {
+                continue;
+            }
+            $lines[] = $role . ' : ' . mb_substr($content, 0, 280);
+        }
+        if ($lines === []) {
+            return null;
+        }
+
+        return 'Résumé conversation : ' . implode(' | ', array_slice($lines, -8));
+    }
 }
