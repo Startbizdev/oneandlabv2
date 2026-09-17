@@ -148,6 +148,7 @@
                       }"
                     >
                       <span :class="{ 'font-medium': !item.isRead }">{{ item.label }}</span>
+                      <span v-if="item.message" class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">{{ item.message }}</span>
                       <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
                     </button>
                   </template>
@@ -417,6 +418,7 @@
 <script setup lang="ts">
 useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] });
 import { apiFetch } from '~/utils/api'
+import { formatBellNotificationLines } from '~/utils/notification-display'
 
 const { holdCount } = useBookingApiHold()
 const route = useRoute()
@@ -647,7 +649,7 @@ const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 )
 
-const notificationItems = computed<Array<{ label: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
+const notificationItems = computed<Array<{ label: string; message?: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
   if (!notifications.value.length) {
     return [
       {
@@ -657,11 +659,14 @@ const notificationItems = computed<Array<{ label: string; description?: string; 
     ]
   }
 
-  return notifications.value.slice(0, 10).map((notif) => ({
-    label: notif.title ? `${notif.title}${notif.message ? ` · ${notif.message}` : ''}` : (notif.message || 'Notification'),
-    description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
-    isRead: !!notif.read_at,
-    click: () => {
+  return notifications.value.slice(0, 10).map((notif) => {
+    const { label, message } = formatBellNotificationLines(notif.title, notif.message, { type: notif.type })
+    return {
+      label,
+      message,
+      description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
+      isRead: !!notif.read_at,
+      click: () => {
       const data = typeof notif.data === 'string'
         ? (() => { try { return JSON.parse(notif.data); } catch { return {}; } })()
         : (notif.data || {});
@@ -681,21 +686,22 @@ const notificationItems = computed<Array<{ label: string; description?: string; 
           });
           return;
         }
-        if (role === 'patient') {
-          const pid = data?.photo_id != null && String(data.photo_id).trim() !== '' ? String(data.photo_id) : null;
-          void navigateTo({
-            path: `/patient/appointments/${aptId}`,
-            query: { careGallery: '1', ...(pid ? { carePhoto: pid } : {}) },
-          });
-          return;
-        }
+        return;
       }
       if (role === 'patient') {
         if (notif.type === 'results_ready' || notif.type === 'results_available') {
           navigateTo('/patient/resultats');
           return;
         }
-        navigateTo(`/patient/appointments/${aptId}`);
+        if (notif.type === 'conversation_message') {
+          const messageId = data?.message_id != null ? String(data.message_id).trim() : '';
+          void navigateTo({
+            path: `/patient/appointments/${aptId}`,
+            query: { conversation: '1', ...(messageId ? { message: messageId } : {}) },
+          });
+          return;
+        }
+        void navigateTo(`/patient/appointments/${aptId}`);
       } else if (role === 'nurse') {
         if (notif.type === 'results_available') {
           navigateTo('/nurse/resultats');
@@ -716,7 +722,8 @@ const notificationItems = computed<Array<{ label: string; description?: string; 
         navigateTo(`/admin/appointments/${aptId}`);
       }
     },
-  }))
+    }
+  })
 })
 
 const { start: startPolling } = usePolling(

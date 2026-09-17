@@ -1,6 +1,9 @@
 import type { StaffHubSearchItem } from '@oneandlab/shared-types';
 
 export function staffHubItemHref(item: StaffHubSearchItem, basePath: string): string {
+  if (item.kind === 'relative') {
+    return `/profile?userId=${encodeURIComponent(item.patient_id)}&relativeId=${encodeURIComponent(item.relative_id)}`;
+  }
   if (item.kind === 'patient') {
     return `/profile?userId=${encodeURIComponent(item.patient_id)}`;
   }

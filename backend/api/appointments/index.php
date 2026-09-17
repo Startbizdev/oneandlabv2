@@ -1087,6 +1087,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     StaffPatientConsent::validateOrFail($input, $user);
 
+    if (!empty($input['relative_id'])) {
+        $patientId = trim((string) ($input['patient_id'] ?? ''));
+        $relativeId = trim((string) $input['relative_id']);
+        $relativeOwner = $db->prepare(
+            'SELECT 1 FROM patient_relatives WHERE id = ? AND patient_id = ? LIMIT 1'
+        );
+        $relativeOwner->execute([$relativeId, $patientId]);
+        if ($patientId === '' || !$relativeOwner->fetchColumn()) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Le proche sélectionné ne correspond pas au titulaire du dossier.',
+                'code' => 'RELATIVE_PATIENT_MISMATCH',
+            ]);
+            exit;
+        }
+    }
+
     if ($user['role'] === 'preleveur') {
         $t = isset($input['type']) ? (string) $input['type'] : '';
         $ft = isset($input['form_type']) ? (string) $input['form_type'] : '';

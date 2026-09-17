@@ -1,5 +1,5 @@
 #!/bin/bash
-# Migrations prod idempotentes après déploiement (093–106).
+# Migrations prod idempotentes après déploiement (093–109).
 # Usage: ./scripts/run-migration-pending-prod.sh
 set -euo pipefail
 
@@ -18,7 +18,7 @@ if [[ ! -f "$SSH_KEY" ]]; then
   exit 1
 fi
 
-echo "==> Migrations prod (093–106) sur $SSH_HOST..."
+echo "==> Migrations prod (093–109) sur $SSH_HOST..."
 
 echo "==> Vérification état actuel..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php" || true
@@ -64,6 +64,9 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 
 echo "==> Migration 106 (conversation patient-staff)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-106.php"
+
+echo "==> Migration 109 (type de plaie Lourd)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-109.php"
 
 echo "==> Vérification finale..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php"

@@ -235,7 +235,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, directedProviderBookingHasLaboratory, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   type BookingServiceFormSlice,
@@ -291,7 +291,9 @@ const step = ref(0);
 const labPreferenceMode = ref<LabPreferenceMode | ''>('platform_match');
 const preferredLabBrandId = ref<string | null>(null);
 const patientNeedsLabPreferenceStep = computed(() =>
-  bloodTestNeedsLabPreferenceStep(selectedServices.value, { skipForProviderBooking: isProviderBooking.value }),
+  bloodTestNeedsLabPreferenceStep(selectedServices.value, {
+    skipForProviderBooking: directedProviderBookingHasLaboratory(providerId.value, providerType.value),
+  }),
 );
 function firstStepAfterCareSelection(): number {
   return patientNeedsLabPreferenceStep.value ? 1 : 2;

@@ -23,7 +23,12 @@ function appointmentId(
   notif: AppNotification,
   data: Record<string, unknown>,
 ): string | null {
-  const id = notif.appointment_id ?? data.appointment_id;
+  const id = notif.appointment_id ?? data.appointment_id ?? data.appointmentId;
+  return id != null && String(id).trim() !== '' ? String(id) : null;
+}
+
+function messageId(data: Record<string, unknown>): string | null {
+  const id = data.message_id ?? data.messageId;
   return id != null && String(id).trim() !== '' ? String(id) : null;
 }
 
@@ -55,11 +60,13 @@ export function resolveNotificationNavigation(
   const type = String(notif.type ?? '').trim();
   const data = parseNotificationData(notif.data);
   const aptId = appointmentId(notif, data);
+  const conversationMessageId = messageId(data);
   const prefix = role ? rolePrefix(role) : null;
 
   if (
     type === 'share_link_appointment_taken' ||
-    data.no_navigate === true
+    data.no_navigate === true ||
+    data.no_navigate === 'true'
   ) {
     return { kind: 'none' };
   }
@@ -97,6 +104,13 @@ export function resolveNotificationNavigation(
     };
   }
 
+  if (
+    type === 'care_gallery_photo' ||
+    type === 'care_gallery_comment'
+  ) {
+    return { kind: 'none' };
+  }
+
   if (isNewReview && role === 'pro' && aptId) {
     return {
       kind: 'route',
@@ -122,6 +136,7 @@ export function resolveNotificationNavigation(
     return {
       kind: 'route',
       pathname: `${prefix}/appointment/${aptId}/conversation`,
+      params: conversationMessageId ? { messageId: conversationMessageId } : undefined,
     };
   }
 

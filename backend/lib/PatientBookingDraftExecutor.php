@@ -54,6 +54,15 @@ final class PatientBookingDraftExecutor
             if (($sanitized['patient_id'] ?? '') !== $userId) {
                 throw new RuntimeException('patient_id incohérent avec le brouillon');
             }
+            if (!empty($sanitized['relative_id'])) {
+                $relativeOwner = $db->prepare(
+                    'SELECT 1 FROM patient_relatives WHERE id = ? AND patient_id = ? LIMIT 1'
+                );
+                $relativeOwner->execute([(string) $sanitized['relative_id'], $userId]);
+                if (!$relativeOwner->fetchColumn()) {
+                    throw new RuntimeException('relative_id incohérent avec le titulaire');
+                }
+            }
             $fd = $sanitized['form_data'] ?? [];
             if (!is_array($fd)) {
                 $fd = [];

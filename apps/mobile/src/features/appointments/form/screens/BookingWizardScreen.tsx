@@ -425,6 +425,51 @@ export function BookingWizardScreen({
                   onChange={(field, value) => w.form.setValue(field as 'first_name', value)}
                   emailOptional={role === 'nurse' || role === 'pro'}
                 />
+                {w.patientMode === 'existing' && w.selectedPatientId ? (
+                  <>
+                    <AppText style={styles.sectionLabel}>Bénéficiaire du rendez-vous</AppText>
+                    <Row wrap gap={spacing[2]} align="center">
+                      <Pressable
+                        onPress={() => bw.setSelectedRelativeId(null)}
+                        style={[styles.relativePill, !bw.selectedRelativeId && styles.relativePillActive]}
+                      >
+                        <AppText style={[styles.relativePillText, !bw.selectedRelativeId && styles.relativePillTextActive]}>
+                          Titulaire
+                        </AppText>
+                      </Pressable>
+                      {bw.relatives.map((r: PatientRelative) => {
+                        const active = bw.selectedRelativeId === r.id;
+                        const label = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || 'Proche';
+                        return (
+                          <Pressable
+                            key={r.id}
+                            onPress={() => bw.setSelectedRelativeId(r.id)}
+                            style={[styles.relativePill, active && styles.relativePillActive]}
+                          >
+                            <AppText style={[styles.relativePillText, active && styles.relativePillTextActive]}>
+                              {label}
+                            </AppText>
+                          </Pressable>
+                        );
+                      })}
+                      <Pressable
+                        onPress={() => {
+                          if (!bw.consent) {
+                            onConsentMissing();
+                            return;
+                          }
+                          setRelativeSheetOpen(true);
+                        }}
+                        style={styles.addRelativeBtn}
+                      >
+                        <Row gap={4} align="center">
+                          <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+                          <AppText style={styles.addRelativeText}>Nouveau proche</AppText>
+                        </Row>
+                      </Pressable>
+                    </Row>
+                  </>
+                ) : null}
                 {bw.staffPatientUserId && (role === 'nurse' || role === 'pro') ? (
                   <WizardPatientDocumentsPanel
                     patientUserId={bw.staffPatientUserId}
@@ -514,6 +559,8 @@ export function BookingWizardScreen({
       <RelativeQuickAddSheet
         visible={relativeSheetOpen}
         onClose={() => setRelativeSheetOpen(false)}
+        patientId={mode === 'dashboard' ? w.selectedPatientId : undefined}
+        staffConsent={mode === 'dashboard' ? bw.consent : undefined}
         onCreated={(id, created) => {
           bw.setSelectedRelativeId(id);
           if (created) void bw.applyRelativeToForm(id, created);

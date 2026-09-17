@@ -1342,6 +1342,27 @@ const notificationItems = computed(() => {
           });
           return;
         }
+        if (aptId && notif.type === 'conversation_message') {
+          notificationsMenuOpen.value = false;
+          const base =
+            role === 'pro'
+              ? '/pro'
+              : role === 'nurse'
+                ? '/nurse'
+                : role === 'lab' || role === 'subaccount'
+                  ? '/lab'
+                : role === 'preleveur'
+                  ? '/preleveur'
+                  : null;
+          if (base) {
+            const messageId = data?.message_id != null ? String(data.message_id).trim() : '';
+            void navigateTo({
+              path: `${base}/appointments/${aptId}`,
+              query: { conversation: '1', ...(messageId ? { message: messageId } : {}) },
+            });
+            return;
+          }
+        }
         if (isNewReview && role === "pro" && aptId) {
           notificationsMenuOpen.value = false;
           void navigateTo({ path: `/pro/appointments/${aptId}`, query: { review: "1" } });

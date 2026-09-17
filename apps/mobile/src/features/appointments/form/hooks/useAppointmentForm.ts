@@ -18,7 +18,6 @@ import { handleApiError } from '@/lib/errors/handle-api-error';
 import { fetchAllPatients } from '@/features/patients/api/fetch-all-patients';
 import { patientPickerOptionFromRow } from '@/features/patients/utils/patient-contact-display';
 import { createPatient } from '@/features/patients/api/patients.service';
-import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
 import {
   fetchCareCategories,
   fetchCareCategoryOptions,
@@ -191,11 +190,6 @@ export function useAppointmentForm(opts: {
       if (!address) throw new Error('Adresse incomplète');
 
       let patientId = selectedPatientId && selectedPatientId !== NEW_PATIENT_ID ? selectedPatientId : undefined;
-
-      if (!patientId) {
-        const lookup = await lookupPatientByContact(data.email ?? '', data.phone ?? '');
-        if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
-      }
 
       if ((data.is_new_patient || selectedPatientId === NEW_PATIENT_ID) && singleCreatedPatientId.current) {
         patientId = singleCreatedPatientId.current;
@@ -648,11 +642,6 @@ export function useMultiAppointmentWizard(opts: {
 
       if (patientMode === 'new' && !patientId && createdPatientForAttempt.current) patientId = createdPatientForAttempt.current;
 
-      if (patientMode === 'new' && !patientId) {
-        const lookup = await lookupPatientByContact(patient.email ?? '', patient.phone ?? '');
-        if (lookup.success && lookup.data?.id) patientId = lookup.data.id;
-      }
-
       if (!patientId && (patientMode === 'new' || !selectedPatientId)) {
         const pRes = await createPatient({
           first_name: patient.first_name.trim(),
@@ -672,7 +661,7 @@ export function useMultiAppointmentWizard(opts: {
       if (!patientId) throw new Error('Patient introuvable ou incomplet');
 
       const genderNorm = normalizePatientGender(patient.gender);
-      if ((patientMode === 'existing' || createdPatientForAttempt.current === patientId) && patientId) {
+      if (patientMode === 'existing' && patientId && !opts.patientRelativeId) {
         const syncBody: Record<string, unknown> = {
           first_name: patient.first_name.trim(),
           last_name: patient.last_name.trim(),
@@ -686,7 +675,7 @@ export function useMultiAppointmentWizard(opts: {
         if (!upd.success) throw new Error(upd.error ?? 'Mise à jour patient impossible');
       }
 
-      for (const [key, file] of Object.entries(personalFiles)) {
+      for (const [key, file] of Object.entries(opts.patientRelativeId ? {} : personalFiles)) {
         if (!file || !('uri' in file)) continue;
         try {
           await uploadPatientProfileDocument(
@@ -722,6 +711,7 @@ export function useMultiAppointmentWizard(opts: {
         const type = typeof p.type === 'string' ? p.type : selectedServices[0]?.type;
         return {
           ...p,
+          ...(opts.patientRelativeId ? { relative_id: opts.patientRelativeId } : {}),
           patient_booking_consent: true,
           type,
           form_type: typeof p.form_type === 'string' ? p.form_type : type,

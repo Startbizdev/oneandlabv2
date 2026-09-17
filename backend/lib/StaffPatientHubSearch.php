@@ -77,8 +77,11 @@ final class StaffPatientHubSearch
         $exchangeItems = $recentOnly
             ? []
             : $this->loadExchangeItems($user, $patientIds, $patientMap, $q, $matchedPatientIds, false);
+        $relativeItems = $recentOnly
+            ? []
+            : $this->loadRelativeItems($patientIds, $patientMap, $q);
 
-        $items = array_merge($items, $docItems, $exchangeItems);
+        $items = array_merge($items, $relativeItems, $docItems, $exchangeItems);
 
         return ['items' => $this->dedupeAndSort($items, $limit)];
     }
@@ -243,6 +246,62 @@ final class StaffPatientHubSearch
             usort($items, static fn ($a, $b) => strcmp((string) ($b['sort_at'] ?? ''), (string) ($a['sort_at'] ?? '')));
 
             return array_slice($items, 0, 15);
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param list<string> $patientIds
+     * @param array<string, array<string, mixed>> $patientMap
+     * @return list<array<string, mixed>>
+     */
+    private function loadRelativeItems(array $patientIds, array $patientMap, string $q): array
+    {
+        if ($patientIds === [] || $q === '') {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($patientIds), '?'));
+        $stmt = $this->db->prepare("
+            SELECT id, patient_id, relationship_type, updated_at,
+                   first_name_encrypted, first_name_dek,
+                   last_name_encrypted, last_name_dek
+            FROM patient_relatives
+            WHERE patient_id IN ($placeholders)
+        ");
+        $stmt->execute($patientIds);
+
+        $items = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $patientId = (string) ($row['patient_id'] ?? '');
+            $holder = $patientMap[$patientId] ?? null;
+            if (!$holder) {
+                continue;
+            }
+            $relativeName = $this->decryptRelativeName($row);
+            if (!$relativeName) {
+                continue;
+            }
+            $holderName = $this->patientDisplayName($holder);
+            $haystack = $this->normalizeText(
+                $relativeName . ' ' . $holderName . ' ' . (string) ($row['relationship_type'] ?? '')
+            );
+            if (!str_contains($haystack, $q)) {
+                continue;
+            }
+            $items[] = [
+                'kind' => 'relative',
+                'id' => 'relative:' . (string) $row['id'],
+                'relative_id' => (string) $row['id'],
+                'patient_id' => $patientId,
+                'relative_name' => $relativeName,
+                'patient_name' => $holderName,
+                'relationship_type' => (string) ($row['relationship_type'] ?? ''),
+                'patient_profile_image_url' => $holder['profile_image_url'] ?? null,
+                'sort_at' => (string) ($row['updated_at'] ?? ''),
+                'subtitle' => 'Proche de ' . $holderName,
+            ];
         }
 
         return $items;

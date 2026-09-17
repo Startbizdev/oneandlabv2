@@ -51,7 +51,7 @@ class PatientRelative
     /**
      * Crée un nouveau proche
      */
-    public function create(array $data, string $patientId): string
+    public function create(array $data, string $patientId, ?array $actor = null): string
     {
         $id = $this->generateUUID();
 
@@ -147,12 +147,15 @@ class PatientRelative
 
         // Logger la création
         $this->logger->log(
-            $patientId,
-            'patient',
+            $actor['user_id'] ?? $patientId,
+            $actor['role'] ?? 'patient',
             'create',
             'patient_relative',
             $id,
-            ['relationship_type' => $data['relationship_type']]
+            [
+                'patient_id' => $patientId,
+                'relationship_type' => $data['relationship_type'],
+            ]
         );
 
         return $id;

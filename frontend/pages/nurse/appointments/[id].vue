@@ -106,7 +106,11 @@
     </template>
 
     <template #conversationCard="{ appointment }">
-      <AppointmentConversationPanel v-if="appointment?.id" :appointment-id="String(appointment.id)" />
+      <AppointmentConversationPanel
+        v-if="appointment?.id"
+        :appointment-id="String(appointment.id)"
+        title="Messages patient"
+      />
     </template>
     <template #carePhotosCard="{ appointment, documents, documentsLoading, loadDocuments }">
       <RdvCarePhotosSection

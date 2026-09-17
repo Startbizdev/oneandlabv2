@@ -23,9 +23,11 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onCreated: (id: string, relative?: PatientRelative) => void;
+  patientId?: string;
+  staffConsent?: boolean;
 }
 
-export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
+export function RelativeQuickAddSheet({ visible, onClose, onCreated, patientId, staffConsent }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_RelativeQuickAddSheet_tsx_styles');
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -57,6 +59,8 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated }: Props) {
         relationship_type: relationshipType,
         birth_date: birthDate || undefined,
         gender: gender || undefined,
+        ...(patientId ? { patient_id: patientId } : {}),
+        ...(staffConsent ? { patient_booking_consent: true } : {}),
       });
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
       return res.data;

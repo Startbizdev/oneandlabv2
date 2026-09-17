@@ -76,6 +76,12 @@
         </UModal>
       </Teleport>
     </ClientOnly>
+    <RelativeDrawer
+      v-model:open="relativeDrawerOpen"
+      :patient-id="selectedPatientId ? String(selectedPatientId) : undefined"
+      :patient-booking-consent="rgpdConsent"
+      @saved="onStaffRelativeSaved"
+    />
 
     <UAlert v-if="step === 0 && categoriesError" title="Catalogue de soins indisponible" color="error" variant="soft" class="m-4">
       <template #description><UButton label="Réessayer" variant="outline" color="neutral" :loading="categoriesLoading" @click="loadCareCategories" /></template>
@@ -218,6 +224,7 @@
             :categories="careCategoriesList"
             patient-section-id="wizard-rdv-patient-card"
             :patient-document-user-id="patientDocumentUserIdForForm"
+            :relative="selectedPatientRelative"
             :allow-patient-email-edit="true"
             :skip-logged-in-patient-prefill="true"
             :hide-preferred-nurse-gender="isNurseDashboard"
@@ -336,6 +343,42 @@
                     </p>
                   </div>
                 </UFormField>
+                <div
+                  v-if="patientMode === 'existing' && selectedPatientId"
+                  class="space-y-2"
+                >
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">Bénéficiaire du rendez-vous</p>
+                  <div class="flex flex-wrap gap-2">
+                    <UButton
+                      size="sm"
+                      :variant="selectedRelativeId ? 'outline' : 'solid'"
+                      @click="selectStaffRelative(null)"
+                    >
+                      Titulaire
+                    </UButton>
+                    <UButton
+                      v-for="relative in patientRelatives"
+                      :key="relative.id"
+                      size="sm"
+                      :variant="selectedRelativeId === relative.id ? 'solid' : 'outline'"
+                      @click="selectStaffRelative(relative)"
+                    >
+                      {{ [relative.first_name, relative.last_name].filter(Boolean).join(' ') || 'Proche' }}
+                    </UButton>
+                    <UButton
+                      size="sm"
+                      variant="soft"
+                      icon="i-lucide-user-plus"
+                      :loading="patientRelativesLoading"
+                      @click="openStaffRelativeDrawer"
+                    >
+                      Nouveau proche
+                    </UButton>
+                  </div>
+                  <p v-if="selectedRelativeId" class="text-xs text-gray-500 dark:text-gray-400">
+                    Le rendez-vous sera rattaché au titulaire sélectionné et identifié pour ce proche.
+                  </p>
+                </div>
               </div>
             </template>
 
@@ -892,10 +935,68 @@ const patientProfileError = ref(false);
 let patientProfileVersion = 0;
 const patientProfileLoading = ref(false);
 const selectedPatientId = ref<string | undefined>(undefined);
+const selectedRelativeId = ref<string | null>(null);
+const patientRelatives = ref<any[]>([]);
+const patientRelativesLoading = ref(false);
+const relativeDrawerOpen = ref(false);
+const selectedPatientRelative = computed(
+  () => patientRelatives.value.find((relative) => String(relative.id) === selectedRelativeId.value) ?? null,
+);
 /** Snapshot fiche patient chargée — évite PUT inutile avant création RDV. */
 const loadedPatientSnapshot = ref<Record<string, string> | null>(null);
 /** Patient existant (liste) ou création inline. */
 const patientMode = ref<'existing' | 'new'>('existing');
+
+async function loadPatientRelatives(patientId: string) {
+  patientRelativesLoading.value = true;
+  try {
+    const response = await apiFetch(
+      `/patient-relatives?patient_id=${encodeURIComponent(patientId)}`,
+      { method: 'GET' },
+    );
+    patientRelatives.value = response?.success && Array.isArray(response.data) ? response.data : [];
+  } catch {
+    patientRelatives.value = [];
+  } finally {
+    patientRelativesLoading.value = false;
+  }
+}
+
+async function selectStaffRelative(relative: any | null) {
+  selectedRelativeId.value = relative?.id ? String(relative.id) : null;
+  if (!relative) {
+    if (selectedPatientId.value) await fetchAndApplyPatientDetail(String(selectedPatientId.value));
+    return;
+  }
+  const address = await resolvePatientAddressForRdvForm(relative.address);
+  formData.value = {
+    ...formData.value,
+    first_name: relative.first_name || '',
+    last_name: relative.last_name || '',
+    email: relative.email || formData.value.email || '',
+    phone: relative.phone || formData.value.phone || '',
+    birth_date: relative.birth_date || '',
+    gender: relative.gender || '',
+    address: address ?? formData.value.address ?? null,
+    address_complement: address?.complement || '',
+  };
+}
+
+function openStaffRelativeDrawer() {
+  if (!rgpdConsent.value) {
+    validationError.value = STAFF_PATIENT_BOOKING_CONSENT_ERROR;
+    scrollToValidationError('wizard-rgpd-consent');
+    return;
+  }
+  relativeDrawerOpen.value = true;
+}
+
+async function onStaffRelativeSaved() {
+  if (!selectedPatientId.value) return;
+  await loadPatientRelatives(String(selectedPatientId.value));
+  const newest = patientRelatives.value[0];
+  if (newest) await selectStaffRelative(newest);
+}
 
 /** Nouveau patient (wizard) : email patient facultatif pour pro, infirmier, lab, sous-compte, admin. */
 const patientEmailOptional = computed(() => {
@@ -1149,6 +1250,9 @@ async function syncExistingPatientFromPayload(
   patientId: string,
   payload: Record<string, any>,
 ): Promise<void> {
+  if (selectedRelativeId.value) {
+    return;
+  }
   if (!patientPayloadDiffersFromSnapshot(payload)) {
     return;
   }
@@ -1191,7 +1295,6 @@ const patientCreatedForAttempt = ref<string | null>(null);
 
 async function createPatientRecord(payload: Record<string, any>): Promise<string> {
   if (patientCreatedForAttempt.value) {
-    await syncExistingPatientFromPayload(patientCreatedForAttempt.value, payload);
     return patientCreatedForAttempt.value;
   }
   const body: Record<string, unknown> = {
@@ -1323,6 +1426,8 @@ async function fetchAndApplyPatientDetail(id: string) {
 }
 
 watch(selectedPatientId, (id) => {
+  selectedRelativeId.value = null;
+  patientRelatives.value = [];
   if (patientMode.value !== 'existing' || !id) {
     patientProfileVersion++;
     linkedNursesVersion++;
@@ -1335,6 +1440,7 @@ watch(selectedPatientId, (id) => {
     proLinkedNurses.value = [];
     return;
   }
+  void loadPatientRelatives(String(id));
   void fetchAndApplyPatientDetail(id);
   if (isProDashboard.value) {
     void loadLinkedNursesForPatient(String(id));
@@ -1351,6 +1457,8 @@ watch(patientMode, (m, prev) => {
     duplicatePatientSuppressKey.value = '';
   }
   if (m === 'new') {
+    selectedRelativeId.value = null;
+    patientRelatives.value = [];
     selectedPatientId.value = undefined;
     if (prev === 'existing') {
       void nextTick(() => clearPatientFieldsInForm());
@@ -1752,6 +1860,7 @@ async function onUnifiedSubmit(payload: any) {
       creatorUserId: uid,
     }).map((raw) => ({
       ...raw,
+      ...(selectedRelativeId.value ? { relative_id: selectedRelativeId.value } : {}),
       patient_booking_consent: true,
     }));
 

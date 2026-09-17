@@ -14,14 +14,9 @@ import { AppointmentDetailBlockedEmptyState } from '../detail/components/Appoint
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { DetailSidebarActions } from '../detail/components/DetailSidebarActions';
-import { CareExchangeHintBanner } from '../detail/components/blocks/CareExchangeHintBanner';
-import { DetailCarePhotosPanel } from '../detail/components/blocks/DetailCarePhotosPanel';
 import { fetchCarePhotos } from '../detail/api/appointment-detail.service';
 import { useCarePhotoUnread } from '../detail/hooks/use-care-photo-unread';
-import {
-  appointmentDetailTabLabels,
-  careExchangeInformativeHint,
-} from '../detail/utils/care-photo-copy';
+import { appointmentDetailTabLabels } from '../detail/utils/care-photo-copy';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import { OfferActions } from '../detail/components/OfferActions';
 import { PrescriptionNavRow } from '../detail/components/PrescriptionNavRow';
@@ -52,12 +47,13 @@ import { beneficiaryDisplayName } from '@/utils/beneficiary-display-name';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { spacing } from '@/theme';
+import { HeartPulse, MessageCircle } from 'lucide-react-native';
 
 interface Props {
   role: string;
 }
 
-type SegmentId = 'infos' | 'documents' | 'exchange';
+type SegmentId = 'infos' | 'documents';
 
 function isStaffExchangeRole(role: string): boolean {
   return role === 'pro' || role === 'nurse';
@@ -93,11 +89,11 @@ export function AppointmentDetailScreen({ role }: Props) {
       router.replace('/(nurse)/(tabs)/demandes' as never);
     })();
   }, [id, openIncomingOffer, primary, role, router, s.detailFetching, user?.id]);
-  const showExchangeTab = Boolean(
+  const showCareFollowUp = Boolean(
     config.showCarePhotosBlock && primary && isStaffExchangeRole(role),
   );
   const hasCareGallery = Boolean(
-    showExchangeTab && primary && isCarePhotoGalleryContext(primary),
+    showCareFollowUp && primary && isCarePhotoGalleryContext(primary),
   );
 
   const carePhotosQ = useQuery({
@@ -119,30 +115,25 @@ export function AppointmentDetailScreen({ role }: Props) {
     carePhotosQ.data?.thread,
   );
 
-  const careExchangeHint = useMemo(() => {
-    if (!showExchangeTab) return null;
-    return careExchangeInformativeHint(role, careExchangeUnread);
-  }, [showExchangeTab, role, careExchangeUnread]);
-
   useEffect(() => {
     const parsed = parseCarePhotoDeepLinkParams({ careGallery, carePhoto });
     if (!parsed || !id) return;
     router.setParams({ careGallery: undefined, carePhoto: undefined } as never);
-    if (parsed.photoId) {
-      router.push(carePhotoDiscussionHref(role, id, parsed.photoId) as never);
-      return;
-    }
-    setSegment('exchange');
+    router.push(carePhotoDiscussionHref(role, id, parsed.photoId) as never);
   }, [careGallery, carePhoto, id, role, router]);
 
   useEffect(() => {
     const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
-    const normalized =
-      raw === 'photos' || raw === 'exchange' ? 'exchange' : raw === 'documents' ? 'documents' : null;
+    if ((raw === 'photos' || raw === 'exchange') && id && hasCareGallery) {
+      router.setParams({ segment: undefined } as never);
+      router.push(carePhotoDiscussionHref(role, id) as never);
+      return;
+    }
+    const normalized = raw === 'documents' ? 'documents' : null;
     if (!normalized) return;
     setSegment(normalized);
     router.setParams({ segment: undefined } as never);
-  }, [segmentParam, id, router]);
+  }, [segmentParam, id, router, role, hasCareGallery]);
   const terminal = primary
     ? getAppointmentSidebarTerminalEmpty(primary.status)
     : null;
@@ -170,15 +161,8 @@ export function AppointmentDetailScreen({ role }: Props) {
         badge: docList.length || undefined,
       });
     }
-    if (showExchangeTab) {
-      items.push({
-        id: 'exchange',
-        label: appointmentDetailTabLabels.exchange,
-        badge: careExchangeUnread > 0 ? careExchangeUnread : undefined,
-      });
-    }
     return items;
-  }, [config.showDocumentsBlock, docList.length, showExchangeTab, careExchangeUnread]);
+  }, [config.showDocumentsBlock, docList.length]);
 
   const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
 
@@ -297,17 +281,21 @@ export function AppointmentDetailScreen({ role }: Props) {
 
           {activeSegment === 'infos' ? (
             <View style={styles.tabBody}>
-              {careExchangeHint ? (
-                <CareExchangeHintBanner
-                  hint={careExchangeHint}
-                  onPress={() => setSegment('exchange')}
-                />
-              ) : null}
               {id ? (
                 <PrescriptionNavRow
-                  title="Messages"
-                  subtitle="Discuter avec le patient ou l'équipe soignante"
+                  title={isStaffExchangeRole(role) ? 'Messages patient' : 'Messages'}
+                  subtitle={isStaffExchangeRole(role) ? 'Discuter avec le patient' : 'Discuter avec votre soignant'}
+                  Icon={MessageCircle}
                   onPress={() => router.push(appointmentConversationHref(role, String(id)))}
+                />
+              ) : null}
+              {id && hasCareGallery ? (
+                <PrescriptionNavRow
+                  title="Suivi des soins pro ↔ infirmier"
+                  subtitle="Échanger des messages, photos et PDF entre professionnels"
+                  Icon={HeartPulse}
+                  badge={careExchangeUnread || undefined}
+                  onPress={() => router.push(carePhotoDiscussionHref(role, String(id)) as never)}
                 />
               ) : null}
               <View style={styles.edgeBleed}>
@@ -365,13 +353,6 @@ export function AppointmentDetailScreen({ role }: Props) {
             />
           ) : null}
 
-          {activeSegment === 'exchange' && showExchangeTab ? (
-            <DetailCarePhotosPanel
-              apt={primary}
-              userId={user?.id}
-              viewerRole={role}
-            />
-          ) : null}
         </StackScrollView>
       </StackChromeScreen>
 

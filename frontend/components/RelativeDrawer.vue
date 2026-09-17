@@ -143,6 +143,8 @@ import { apiFetch } from '~/utils/api';
 const props = defineProps<{
   open: boolean;
   relative?: any;
+  patientId?: string;
+  patientBookingConsent?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -193,7 +195,8 @@ watch([() => props.relative, () => props.open], async ([newRelative, newOpen]) =
     if (newRelative) {
       loading.value = true;
       try {
-        const response = await apiFetch(`/patient-relatives/${newRelative.id}`, {
+        const query = props.patientId ? `?patient_id=${encodeURIComponent(props.patientId)}` : '';
+        const response = await apiFetch(`/patient-relatives/${newRelative.id}${query}`, {
           method: 'GET',
         });
         
@@ -268,6 +271,8 @@ const handleSave = async () => {
       email: form.value.email || undefined,
       phone: form.value.phone || undefined,
       address: form.value.address || undefined,
+      ...(props.patientId ? { patient_id: props.patientId } : {}),
+      ...(props.patientBookingConsent ? { patient_booking_consent: true } : {}),
     };
     
     const response = await apiFetch(url, {

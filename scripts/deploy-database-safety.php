@@ -76,6 +76,27 @@ if ($mode === 'backup') {
         CONSTRAINT fk_voice_rt_session FOREIGN KEY (session_id) REFERENCES voice_sessions(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     echo "Migration 108 verified: voice_realtime_events table.\n";
+
+    $woundUpdate = $db->exec("
+        UPDATE care_category_options AS cco
+        INNER JOIN care_categories AS cc ON cc.id = cco.care_category_id
+        SET cco.options = JSON_ARRAY_APPEND(
+            COALESCE(cco.options, JSON_ARRAY()),
+            '$',
+            JSON_OBJECT('value', 'lourd', 'label', 'Lourd')
+        )
+        WHERE cc.name = 'Pansement-plaie'
+          AND cc.type = 'nursing'
+          AND cco.option_key = 'wound_type'
+          AND JSON_SEARCH(
+              COALESCE(cco.options, JSON_ARRAY()),
+              'one',
+              'lourd',
+              NULL,
+              '$[*].value'
+          ) IS NULL
+    ");
+    echo 'Migration 109 verified: wound_type lourd present; rows updated=' . (int) $woundUpdate . ".\n";
 } elseif ($mode === 'verify') {
     $before=json_decode(file_get_contents($dir.'/counts-before.json'),true,512,JSON_THROW_ON_ERROR);
     $missing=array_diff_key($before,$counts);

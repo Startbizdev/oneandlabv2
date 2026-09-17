@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../../lib/AppointmentConversation.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
+require_once __DIR__ . '/../../../lib/BusinessNotificationPolicy.php';
 require_once __DIR__ . '/../../../lib/UploadMimeTypes.php';
 require_once __DIR__ . '/../../../models/User.php';
 
@@ -50,7 +51,8 @@ if (!$appointmentId) {
 }
 
 $stmt = $db->prepare('
-    SELECT id, type, status, patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, created_by_role
+    SELECT id, type, status, patient_id, assigned_nurse_id, assigned_lab_id, assigned_to,
+           assigned_pro_id, created_by, created_by_role
     FROM appointments WHERE id = ?
 ');
 $stmt->execute([$appointmentId]);
@@ -76,33 +78,11 @@ function notifyConversationParticipants(
     string $messageId,
     string $preview
 ): void {
-    $recipients = [];
-    $patientId = (string) ($appointment['patient_id'] ?? '');
-    $creatorId = (string) ($appointment['created_by'] ?? '');
-    $nurseId = (string) ($appointment['assigned_nurse_id'] ?? '');
-    $labId = (string) ($appointment['assigned_lab_id'] ?? '');
-    $preleveurId = (string) ($appointment['assigned_to'] ?? '');
     $authorId = (string) ($user['user_id'] ?? '');
-
-    if ($patientId !== '' && $patientId !== $authorId) {
-        $recipients[] = $patientId;
-    }
-    if ($creatorId !== '' && $creatorId !== $authorId && ($user['role'] ?? '') !== 'patient') {
-        $recipients[] = $creatorId;
-    }
-    if ($nurseId !== '' && $nurseId !== $authorId) {
-        $recipients[] = $nurseId;
-    }
-    if ($labId !== '' && $labId !== $authorId) {
-        $recipients[] = $labId;
-    }
-    if ($preleveurId !== '' && $preleveurId !== $authorId) {
-        $recipients[] = $preleveurId;
-    }
 
     $names = $userModel->getDisplayNamesByIds([$authorId]);
     $authorName = $names[$authorId] ?? 'Interlocuteur';
-    $recipients = array_values(array_unique(array_filter($recipients)));
+    $recipients = BusinessNotificationPolicy::conversationRecipientIds($appointment, $authorId);
 
     foreach ($recipients as $recipientId) {
         $notificationService->createNotification(

@@ -822,6 +822,30 @@ CREATE TABLE IF NOT EXISTS ai_booking_audits (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
+-- Migration 109 : type de plaie « Lourd » (Pansement-plaie)
+-- ============================================================================
+UPDATE care_category_options AS cco
+INNER JOIN care_categories AS cc ON cc.id = cco.care_category_id
+SET cco.options = CASE
+    WHEN JSON_SEARCH(
+        COALESCE(cco.options, JSON_ARRAY()),
+        'one',
+        'lourd',
+        NULL,
+        '$[*].value'
+    ) IS NULL
+    THEN JSON_ARRAY_APPEND(
+        COALESCE(cco.options, JSON_ARRAY()),
+        '$',
+        JSON_OBJECT('value', 'lourd', 'label', 'Lourd')
+    )
+    ELSE cco.options
+END
+WHERE cc.name = 'Pansement-plaie'
+  AND cc.type = 'nursing'
+  AND cco.option_key = 'wound_type';
+
+-- ============================================================================
 -- FIN DES MIGRATIONS
 -- ============================================================================
 -- Pour créer les utilisateurs de test avec chiffrement, exécutez :

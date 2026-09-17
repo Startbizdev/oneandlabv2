@@ -1,7 +1,7 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickCarePhoto } from '@/lib/uploads/pick-care-photo';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import {
   fetchAppointmentConversation,
   postAppointmentConversationAttachment,
@@ -26,7 +27,7 @@ import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 export function AppointmentConversationScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
   const appointmentId = String(id ?? '');
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'AppointmentConversationScreen_styles');
@@ -36,6 +37,7 @@ export function AppointmentConversationScreen() {
   const { show: toast } = useToast();
   const [draft, setDraft] = useState('');
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation();
 
@@ -78,7 +80,7 @@ export function AppointmentConversationScreen() {
     }
   }
 
-  const messages = data?.messages ?? [];
+  const messages = useMemo(() => data?.messages ?? [], [data?.messages]);
   const canPost = Boolean(data?.can_post);
 
   useEffect(() => {
@@ -91,6 +93,12 @@ export function AppointmentConversationScreen() {
         : 'Discuter avec votre soignant';
     navigation.setOptions({ title });
   }, [messages, navigation, userId, userRole]);
+
+  useEffect(() => {
+    if (!messageId || !messages.some((message) => message.id === messageId)) return;
+    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    return () => clearTimeout(timer);
+  }, [messageId, messages]);
 
   async function openAttachment(documentId: string, name?: string | null) {
     setOpeningDocumentId(documentId);
@@ -105,6 +113,7 @@ export function AppointmentConversationScreen() {
   }
 
   return (
+    <StackChromeScreen>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight} style={[styles.root, { backgroundColor: c.background }]}>
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing[8] }} color={c.primary} />
@@ -112,6 +121,7 @@ export function AppointmentConversationScreen() {
         <EmptyState Icon={WifiOff} title="Les échanges n’ont pas pu être chargés" description="Votre message en cours reste disponible." actionLabel="Réessayer" onAction={() => void refetch()} />
       ) : (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[styles.list, !messages.length && styles.listEmpty]}
           keyboardShouldPersistTaps="handled"
         >
@@ -127,12 +137,29 @@ export function AppointmentConversationScreen() {
             >
               <AppText style={[styles.author, { color: c.textSecondary }]}>{msg.author_name || 'Utilisateur'}</AppText>
               <AppText style={{ color: c.textPrimary }}>{msg.body}</AppText>
-              {msg.attachment?.file_name ? (
-                <Button title={msg.attachment.file_name} variant="outline" size="sm"
-                  loading={openingDocumentId === msg.attachment.id}
+              {(() => {
+                const documentId = msg.attachment?.id ?? msg.medical_document_id;
+                if (!documentId) return null;
+                const fileName = msg.attachment?.file_name?.trim() || null;
+                const mimeType = msg.attachment?.mime_type?.toLowerCase() ?? '';
+                const fallbackLabel = mimeType === 'application/pdf'
+                  ? 'Afficher le PDF'
+                  : mimeType.startsWith('image/')
+                    ? 'Afficher l’image'
+                    : 'Afficher la pièce jointe';
+                const openFileName = fileName
+                  ?? (mimeType === 'application/pdf'
+                    ? 'piece-jointe.pdf'
+                    : mimeType.startsWith('image/')
+                      ? `piece-jointe.${mimeType === 'image/jpeg' ? 'jpg' : mimeType.slice('image/'.length)}`
+                      : undefined);
+                return (
+                <Button title={fileName || fallbackLabel} variant="outline" size="sm"
+                  loading={openingDocumentId === documentId}
                   disabled={openingDocumentId !== null}
-                  onPress={() => void openAttachment(msg.attachment!.id, msg.attachment!.file_name)} />
-              ) : null}
+                  onPress={() => void openAttachment(documentId, openFileName)} />
+                );
+              })()}
             </View>
           ))}
         </ScrollView>
@@ -158,6 +185,7 @@ export function AppointmentConversationScreen() {
         </View>
       ) : null}
     </KeyboardAvoidingView>
+    </StackChromeScreen>
   );
 }
 

@@ -53,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 function iconFor(item: StaffHubSearchItem): string {
+  if (item.kind === 'relative') return 'i-lucide-users';
   if (item.kind === 'document') return 'i-lucide-file-text';
   if (item.kind === 'exchange') return 'i-lucide-message-circle';
   return 'i-lucide-user';
@@ -63,12 +64,14 @@ function titleFor(item: StaffHubSearchItem): string {
     const name = [item.first_name, item.last_name].filter(Boolean).join(' ').trim();
     return name || 'Patient';
   }
+  if (item.kind === 'relative') return item.relative_name || 'Proche';
   if (item.kind === 'document') return item.title;
   return item.patient_name;
 }
 
 function subtitleFor(item: StaffHubSearchItem): string {
   if (item.kind === 'patient') return item.subtitle?.trim() || 'Patient';
+  if (item.kind === 'relative') return item.subtitle?.trim() || `Proche de ${item.patient_name}`;
   if (item.kind === 'document') return item.subtitle?.trim() || item.patient_name;
   const msg = item.last_message?.trim();
   return msg ? `${item.counterpart_name} · ${msg}` : item.counterpart_name;

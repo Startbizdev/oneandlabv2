@@ -15,12 +15,14 @@ function titleForItem(item: StaffHubSearchItem): string {
   if (item.kind === 'patient') {
     return `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim() || 'Patient';
   }
+  if (item.kind === 'relative') return item.relative_name || 'Proche';
   if (item.kind === 'document') return item.title;
   return item.patient_name;
 }
 
 function subtitleForItem(item: StaffHubSearchItem): string {
   if (item.kind === 'patient') return item.subtitle?.trim() || 'Patient';
+  if (item.kind === 'relative') return item.subtitle?.trim() || `Proche de ${item.patient_name}`;
   if (item.kind === 'document') return item.subtitle?.trim() || item.patient_name;
   const msg = item.last_message?.trim();
   return msg ? `${item.counterpart_name} · ${msg}` : item.counterpart_name;
@@ -64,6 +66,16 @@ export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
         icon={visual.Icon}
         iconColor={visual.iconColor}
         iconBg={visual.iconBg}
+        title={title}
+        subtitle={subtitle}
+        onPress={onPress}
+      />
+    );
+  }
+
+  if (item.kind === 'relative') {
+    return (
+      <ProfileNavRow
         title={title}
         subtitle={subtitle}
         onPress={onPress}

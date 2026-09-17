@@ -63,6 +63,16 @@ class PendingOfferExpiry
         return $morningExpire->modify('+1 day');
     }
 
+    /**
+     * Nouvelle fenêtre d'offre lors d'une republication.
+     *
+     * Elle repart de maintenant à Paris, jamais du created_at historique du RDV.
+     */
+    public static function computeRepublishedExpiresAt(?DateTimeInterface $now = null): DateTimeImmutable
+    {
+        return self::computeExpiresAt($now ?? AppTimezone::now());
+    }
+
     public static function formatSqlDateTime(DateTimeInterface $instant): string
     {
         return self::toParis($instant)->format('Y-m-d H:i:s');
