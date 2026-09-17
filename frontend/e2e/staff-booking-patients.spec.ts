@@ -223,9 +223,139 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
   const confirm = page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true });
   await confirm.click();
   await expect(confirm).toBeDisabled();
-  await expect(page.getByText('Rendez-vous créé avec avertissement', { exact: true })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByLabel('Notifications (F8)')).toContainText(/Le rendez-vous est créé, mais certains documents|Accès refusé au document/);
-  await expect(page).toHaveURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 15000 });
+  await expect(page).toHaveURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 5000 });
+  await expect(page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true })).toHaveCount(0);
+  await expect.poll(() => copyPosts).toBe(1);
   expect(appointmentPosts).toBe(1);
-  expect(copyPosts).toBe(1);
 });
+
+async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').Page, hooks: {
+  abortFirstAppointmentPost?: boolean;
+  onCopy?: () => Promise<void> | void;
+} = {}) {
+  const user = { id: 'fixture-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple' };
+  const patient = {
+    id: 'patient-b',
+    first_name: 'Béatrice',
+    last_name: 'Exemple',
+    gender: 'female',
+    birth_date: '1990-03-15',
+    phone: '0600000000',
+    email: 'beatrice@example.invalid',
+    address: { label: '10 rue Exemple, 75001 Paris', lat: 48.86, lng: 2.34 },
+  };
+  await page.addInitScript(user => {
+    localStorage.setItem('auth_token', 'local-ui-fixture');
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
+  }, user);
+  const created = {
+    id: 'created-apt-1',
+    patient_id: patient.id,
+    type: 'blood_test',
+    form_type: 'blood_test',
+    status: 'pending',
+    created_by: user.id,
+    assigned_nurse_id: user.id,
+    assigned_lab_id: 'fixture-lab',
+    form_data: {
+      first_name: patient.first_name,
+      last_name: patient.last_name,
+      phone: patient.phone,
+      birth_date: patient.birth_date,
+      gender: patient.gender,
+      address: patient.address,
+    },
+  };
+  const stats = { appointmentPosts: 0, copyPosts: 0, requestIds: [] as string[] };
+  await page.route('**/api/**', async route => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+    if (url.pathname === '/api/auth/csrf-token') {
+      return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
+    }
+    if (url.pathname === '/api/patients') {
+      return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
+    }
+    if (url.pathname === '/api/patient-documents') {
+      return route.fulfill({
+        json: {
+          success: true,
+          data: [{ document_type: 'carte_vitale', file_name: 'patient-b-vitale.pdf', medical_document_id: 'patient-b-document' }],
+        },
+      });
+    }
+    if (url.pathname === `/api/users/${patient.id}`) {
+      return route.fulfill({ json: { success: true, data: patient } });
+    }
+    if (url.pathname === '/api/appointments' && method === 'POST') {
+      stats.appointmentPosts++;
+      const body = route.request().postDataJSON() as { client_request_id?: string };
+      if (body?.client_request_id) stats.requestIds.push(body.client_request_id);
+      if (hooks.abortFirstAppointmentPost && stats.appointmentPosts === 1) {
+        return route.abort('internetdisconnected');
+      }
+      return route.fulfill({ json: { success: true, data: created } });
+    }
+    if (url.pathname === '/api/medical-documents/copy' && method === 'POST') {
+      stats.copyPosts++;
+      await hooks.onCopy?.();
+      return route.fulfill({
+        status: 403,
+        json: { success: false, error: 'Accès refusé au document source ou au rendez-vous' },
+      });
+    }
+    if (url.pathname === `/api/appointments/${created.id}`) {
+      return route.fulfill({ json: { success: true, data: created } });
+    }
+    if (url.pathname === `/api/appointments/${created.id}/conversation`) {
+      return route.fulfill({ json: { success: true, data: { messages: [], can_post: true } } });
+    }
+    return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
+  });
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.goto('/nurse/appointments/new');
+  await page.getByRole('button', { name: 'Configurer et ajouter Prélèvement', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  const dates = page.locator('.booking-date-carousel [data-booking-date-scroller] > div:not([inert]) button:not([disabled])');
+  await dates.nth(1).click();
+  await page.getByRole('radio', { name: 'Toute la journée', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  if (!(await page.getByRole('button', { name: 'Choisir un patient', exact: true }).count())) {
+    await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  }
+  await page.getByRole('button', { name: 'Choisir un patient', exact: true }).click();
+  await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
+  await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
+  await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();
+  const confirm = page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true });
+  await confirm.click();
+  return { confirm, stats };
+}
+
+test('nurse: copy hang does not keep the wizard after POST 200', async ({ page }) => {
+  let releaseCopy: () => void = () => undefined;
+  const copyHeld = new Promise<void>(resolve => {
+    releaseCopy = resolve;
+  });
+  await nurseBloodBookingThroughConfirm(page, {
+    onCopy: () => copyHeld,
+  });
+  const afterClick = Date.now();
+  await expect(page).toHaveURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 8000 });
+  expect(Date.now() - afterClick).toBeLessThan(8000);
+  await expect(page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true })).toHaveCount(0);
+  releaseCopy();
+});
+
+test('nurse: network error then same client_request_id does not duplicate the appointment', async ({ page }) => {
+  const { stats } = await nurseBloodBookingThroughConfirm(page, {
+    abortFirstAppointmentPost: true,
+  });
+  await expect(page).toHaveURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 15000 });
+  expect(stats.appointmentPosts).toBe(2);
+  expect(new Set(stats.requestIds).size).toBe(1);
+});
+

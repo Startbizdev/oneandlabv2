@@ -28,6 +28,7 @@ export * from './coverage-zone-geo';
 export * from './care-symbol';
 
 export * from './resumable-appointment-batch';
+export * from './booking-submit-navigation';
 export * from './care-duration';
 export * from './appointment-date-france';
 

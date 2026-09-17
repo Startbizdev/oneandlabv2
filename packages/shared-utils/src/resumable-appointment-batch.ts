@@ -6,6 +6,11 @@ export function createAppointmentRequestId(): string {
   });
 }
 
+export type ResumableAppointmentBatchRunOptions = {
+  /** false : renvoyer les ids dès la création, documents en arrière-plan. */
+  waitForAttach?: boolean;
+};
+
 /** Keep request keys across network retries; the server persists their resulting IDs. */
 export class ResumableAppointmentBatch<T> {
   private key: string | null = null;
@@ -15,6 +20,15 @@ export class ResumableAppointmentBatch<T> {
   private completedArtifacts = new Set<string>();
   private busy = false;
   private requestIds: string[] = [];
+  private backgroundAttach: Promise<void> | null = null;
+
+  isBusy(): boolean {
+    return this.busy;
+  }
+
+  peekCreatedIds(): string[] {
+    return [...this.ids];
+  }
 
   async completeOnce(key: string, operation: () => Promise<void>): Promise<void> {
     if (this.completedArtifacts.has(key)) return;
@@ -27,10 +41,18 @@ export class ResumableAppointmentBatch<T> {
     payloads: T[],
     create: (payload: T, requestId: string) => Promise<string>,
     attach: (payload: T, id: string) => Promise<void>,
+    options?: ResumableAppointmentBatchRunOptions,
   ): Promise<{ success: boolean; createdIds: string[]; error?: string; creationComplete?: boolean }> {
-    if (this.busy) return { success: false, createdIds: [...this.ids], error: 'Création déjà en cours.' };
+    const waitForAttach = options?.waitForAttach !== false;
+    if (this.busy) {
+      return { success: false, createdIds: [...this.ids], error: 'Création déjà en cours.' };
+    }
     if (this.key !== key && this.ids.length) {
-      return { success: false, createdIds: [...this.ids], error: 'Une partie des rendez-vous est déjà créée. Consultez votre liste avant de modifier cette demande.' };
+      return {
+        success: false,
+        createdIds: [...this.ids],
+        error: 'Une partie des rendez-vous est déjà créée. Consultez votre liste avant de modifier cette demande.',
+      };
     }
     if (this.key !== key) {
       this.key = key;
@@ -46,37 +68,86 @@ export class ResumableAppointmentBatch<T> {
     } catch (error) {
       failure = error;
     }
+
+    if (!waitForAttach) {
+      return this.finishWithoutWaitingForAttach(attach, failure);
+    }
+
     try {
-      // Even after partial creation, attach documents to the appointments that exist.
-      for (let i = 0; i < this.ids.length; i++) {
-        if (this.attached.has(this.ids[i])) continue;
-        await attach(this.payloads[i], this.ids[i]);
-        this.attached.add(this.ids[i]);
-      }
+      await this.attachRemaining(attach);
       if (failure) throw failure;
       const createdIds = [...this.ids];
-      this.key = null;
-      this.payloads = [];
-      this.requestIds = [];
-      this.ids = [];
-      this.attached.clear();
-      this.completedArtifacts.clear();
+      this.resetBatch();
       return { success: true, createdIds };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Création impossible.';
-      const creationComplete = this.payloads.length > 0 && this.ids.length === this.payloads.length;
-      return {
-        success: false,
-        createdIds: [...this.ids],
-        creationComplete,
-        error: this.ids.length
-          ? creationComplete
-            ? `${message} Le rendez-vous est créé, mais certains documents n’ont pas pu être rattachés.`
-            : `${message} ${this.ids.length}/${this.payloads.length} rendez-vous créés. Réessayez sans modifier le formulaire pour reprendre la demande.`
-          : message,
-      };
+      return this.failureResult(error);
     } finally {
       this.busy = false;
     }
+  }
+
+  private finishWithoutWaitingForAttach(
+    attach: (payload: T, id: string) => Promise<void>,
+    failure: unknown,
+  ): { success: boolean; createdIds: string[]; error?: string; creationComplete?: boolean } {
+    const createdIds = [...this.ids];
+    const creationComplete = this.payloads.length > 0 && this.ids.length === this.payloads.length;
+    this.backgroundAttach = this.attachRemaining(attach).catch(() => undefined);
+    this.busy = false;
+
+    if (createdIds.length > 0 && !failure) {
+      return { success: true, createdIds };
+    }
+    if (createdIds.length > 0) {
+      const message = failure instanceof Error ? failure.message : 'Création impossible.';
+      return {
+        success: false,
+        createdIds,
+        creationComplete,
+        error: creationComplete
+          ? `${message} Le rendez-vous est créé, mais certains documents n’ont pas pu être rattachés.`
+          : `${message} ${this.ids.length}/${this.payloads.length} rendez-vous créés. Réessayez sans modifier le formulaire pour reprendre la demande.`,
+      };
+    }
+    const message = failure instanceof Error ? failure.message : 'Création impossible.';
+    return { success: false, createdIds: [], error: message };
+  }
+
+  private async attachRemaining(attach: (payload: T, id: string) => Promise<void>): Promise<void> {
+    for (let i = 0; i < this.ids.length; i++) {
+      if (this.attached.has(this.ids[i])) continue;
+      await attach(this.payloads[i], this.ids[i]);
+      this.attached.add(this.ids[i]);
+    }
+  }
+
+  private failureResult(error: unknown): {
+    success: boolean;
+    createdIds: string[];
+    error?: string;
+    creationComplete?: boolean;
+  } {
+    const message = error instanceof Error ? error.message : 'Création impossible.';
+    const creationComplete = this.payloads.length > 0 && this.ids.length === this.payloads.length;
+    return {
+      success: false,
+      createdIds: [...this.ids],
+      creationComplete,
+      error: this.ids.length
+        ? creationComplete
+          ? `${message} Le rendez-vous est créé, mais certains documents n’ont pas pu être rattachés.`
+          : `${message} ${this.ids.length}/${this.payloads.length} rendez-vous créés. Réessayez sans modifier le formulaire pour reprendre la demande.`
+        : message,
+    };
+  }
+
+  private resetBatch(): void {
+    this.key = null;
+    this.payloads = [];
+    this.requestIds = [];
+    this.ids = [];
+    this.attached.clear();
+    this.completedArtifacts.clear();
+    this.backgroundAttach = null;
   }
 }

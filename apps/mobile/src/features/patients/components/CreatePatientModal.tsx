@@ -14,7 +14,9 @@ import { WizardDocumentFields } from '@/features/appointments/form/components/Wi
 import { PERSONAL_DOC_FIELDS } from '@/features/appointments/form/constants/appointment-document-fields';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import type { DocumentFileRef } from '@/features/appointments/form/types/document-file-ref';
-import { createPatient } from '../api/patients.service';
+import { adoptStaffPatient, createPatient } from '../api/patients.service';
+import { queryKeys } from '@/lib/query-keys';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   uploadPatientProfileDocument,
   type PatientProfileUploadType,
@@ -60,6 +62,7 @@ export function CreatePatientModal({
   stackBehavior,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_patients_components_CreatePatientModal_tsx_styles');
+  const qc = useQueryClient();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -169,9 +172,25 @@ export function CreatePatientModal({
           onDismiss={dismissDuplicate}
           onUseExisting={() => {
             if (!duplicateRow) return;
-            dismissDuplicate();
-            onExistingPatient?.(duplicateRow);
-            onClose();
+            void (async () => {
+              try {
+                const res = await adoptStaffPatient(duplicateRow.id);
+                if (!res.success) {
+                  setError(res.error ?? 'Impossible d’utiliser ce dossier.');
+                  return;
+                }
+                await Promise.all([
+                  qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
+                  qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
+                  qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] }),
+                ]);
+                dismissDuplicate();
+                onExistingPatient?.(duplicateRow);
+                onClose();
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'Impossible d’utiliser ce dossier.');
+              }
+            })();
           }}
         />
       ) : null}

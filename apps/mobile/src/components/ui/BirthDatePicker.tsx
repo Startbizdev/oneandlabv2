@@ -1,6 +1,6 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import {
   buildBirthDateIso,
@@ -8,6 +8,7 @@ import {
   parseBirthDateParts,
 } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
+import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { Input } from '@/components/ui/Input';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -32,6 +33,8 @@ export function BirthDatePicker({
   disabled,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'components_ui_BirthDatePicker_tsx_styles');
+  const wrapRef = useRef<View>(null);
+  const scrollFocusedIntoView = useScrollFocusedFieldIntoView();
   const [dayText, setDayText] = useState('');
   const [monthText, setMonthText] = useState('');
   const [yearText, setYearText] = useState('');
@@ -101,11 +104,15 @@ export function BirthDatePicker({
     emitFromParts(dayText, monthText, next);
   };
 
+  const onFieldFocus = useCallback(() => {
+    scrollFocusedIntoView(wrapRef);
+  }, [scrollFocusedIntoView]);
+
   const summary = value ? formatBirthDateFr(value) : null;
   const displayError = error ?? localError ?? undefined;
 
   return (
-    <View style={styles.wrap}>
+    <View ref={wrapRef} collapsable={false} style={styles.wrap}>
       <AppText style={styles.label}>{label}</AppText>
       <Row gap={spacing[2]} style={styles.row}>
         <View style={styles.field}>
@@ -113,6 +120,7 @@ export function BirthDatePicker({
             label="Jour"
             value={dayText}
             onChangeText={onDayChange}
+            onFocus={onFieldFocus}
             keyboardType="number-pad"
             placeholder="JJ"
             maxLength={2}
@@ -125,6 +133,7 @@ export function BirthDatePicker({
             label="Mois"
             value={monthText}
             onChangeText={onMonthChange}
+            onFocus={onFieldFocus}
             keyboardType="number-pad"
             placeholder="MM"
             maxLength={2}
@@ -137,6 +146,7 @@ export function BirthDatePicker({
             label="Année"
             value={yearText}
             onChangeText={onYearChange}
+            onFocus={onFieldFocus}
             keyboardType="number-pad"
             placeholder="AAAA"
             maxLength={4}

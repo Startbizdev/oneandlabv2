@@ -3,6 +3,7 @@
 require_once __DIR__ . '/PrescriptionPdf.php';
 require_once __DIR__ . '/AppTimezone.php';
 require_once __DIR__ . '/PrescriptionSignature.php';
+require_once __DIR__ . '/PrescriptionGenerationPolicy.php';
 
 class PrescriptionService
 {
@@ -378,6 +379,9 @@ class PrescriptionService
 
         $role = $user['role'] ?? '';
         $userId = $user['user_id'] ?? '';
+        if ($userId === '' || $patientId === '') {
+            return false;
+        }
 
         if (!in_array($role, ['pro', 'nurse'], true)) {
             return false;
@@ -385,18 +389,17 @@ class PrescriptionService
 
         require_once __DIR__ . '/../models/User.php';
         $userModel = new User();
-        if ($userModel->hasProfessionalAccessToPatient($userId, $patientId)) {
-            return true;
-        }
+        $hasPpa = $userModel->hasProfessionalAccessToPatient($userId, $patientId);
 
         $createdStmt = $db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
         $createdStmt->execute([$patientId, 'patient']);
         $createdBy = $createdStmt->fetchColumn();
-        if ($createdBy && (string) $createdBy === $userId) {
-            return true;
-        }
+        $isCreator = $createdBy && (string) $createdBy === $userId;
 
         if ($role === 'pro') {
+            if ($hasPpa || $isCreator) {
+                return true;
+            }
             $aptStmt = $db->prepare('
                 SELECT 1 FROM appointments
                 WHERE patient_id = ? AND (created_by = ? OR assigned_to = ?)
@@ -407,14 +410,17 @@ class PrescriptionService
             return (bool) $aptStmt->fetchColumn();
         }
 
-        $nurseStmt = $db->prepare('
-            SELECT 1 FROM appointments
-            WHERE patient_id = ? AND assigned_nurse_id = ? AND type = ?
-            LIMIT 1
-        ');
-        $nurseStmt->execute([$patientId, $userId, 'nursing']);
+        require_once __DIR__ . '/MedicalDocumentAccess.php';
+        require_once __DIR__ . '/PrescriptionGenerationPolicy.php';
+        $visible = $userModel->isPatientVisibleInStaffList($userId, $role, $patientId);
+        $hasNurseAppointment = MedicalDocumentAccess::userHasNurseAppointmentWithPatient($db, $userId, $patientId);
 
-        return (bool) $nurseStmt->fetchColumn();
+        return PrescriptionGenerationPolicy::nurseCanGenerateStandalone(
+            $hasPpa,
+            (bool) $isCreator,
+            $visible,
+            $hasNurseAppointment
+        );
     }
 
     /**
@@ -820,8 +826,8 @@ class PrescriptionService
         }
 
         if (!$hasAccess && ($user['role'] ?? '') === 'nurse') {
-            $hasAccess = ($appointment['assigned_nurse_id'] ?? '') === ($user['user_id'] ?? '')
-                && ($appointment['type'] ?? '') === 'nursing';
+            require_once __DIR__ . '/PrescriptionGenerationPolicy.php';
+            $hasAccess = PrescriptionGenerationPolicy::nurseCanGenerateForAppointment($user, $appointment);
         }
 
         return $hasAccess;

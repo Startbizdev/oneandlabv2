@@ -2,7 +2,7 @@ import type { AppColors } from '@/theme/colors';
 import { getAppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useRef } from 'react';
-import { Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheetModalContainer } from './BottomSheetModalContainer';
 import {
@@ -17,7 +17,8 @@ import { ChevronLeft } from 'lucide-react-native';
 import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
-import { SheetKeyboardAccessory } from './sheet-keyboard-accessory';
+import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from './sheet-keyboard-accessory';
+import { FormScrollContext, useFormScrollProviderValue } from '@/components/layout/form-scroll-context';
 
 const MAX_HEIGHT_RATIO = 0.86;
 /** Ouverture haute pour fiches profil (intervenant RDV). */
@@ -73,6 +74,7 @@ export function SheetModal({
   const styles = useThemedStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
+  const formScroll = useFormScrollProviderValue();
   const { height: windowHeight } = useWindowDimensions();
   const maxDynamicContentSize = windowHeight * MAX_HEIGHT_RATIO;
   const useFixedSnap = snapPoints != null && snapPoints.length > 0;
@@ -93,6 +95,7 @@ export function SheetModal({
       return () => cancelAnimationFrame(frame);
     }
 
+    Keyboard.dismiss();
     if (!hasPresentedRef.current) return;
     dismissFromParentRef.current = true;
     hasPresentedRef.current = false;
@@ -100,6 +103,7 @@ export function SheetModal({
   }, [visible, presentKey]);
 
   const handleDismiss = useCallback(() => {
+    Keyboard.dismiss();
     hasPresentedRef.current = false;
     if (dismissFromParentRef.current) {
       dismissFromParentRef.current = false;
@@ -143,11 +147,13 @@ export function SheetModal({
   );
 
   const bottomPad = Math.max(insets.bottom, spacing[3]);
-  const keyboardBottomOffset = footer ? 72 + bottomPad : Math.max(bottomPad, spacing[2]);
+  const accessoryLift = Platform.OS === 'ios' ? SHEET_KEYBOARD_ACCESSORY_HEIGHT : 0;
+  const keyboardBottomOffset =
+    (footer ? 72 + bottomPad : Math.max(bottomPad, spacing[2])) + accessoryLift + spacing[4];
   const contentStyleBase = [
     styles.body,
     contentStyle,
-    { paddingBottom: bottomPad },
+    { paddingBottom: bottomPad + accessoryLift },
     !useFixedSnap && styles.bodyFitContent,
   ];
 
@@ -164,12 +170,18 @@ export function SheetModal({
     </BottomSheetView>
   ) : (
     <BottomSheetKeyboardAwareScrollView
+      ref={formScroll.scrollRef as never}
       bottomOffset={keyboardBottomOffset}
+      extraKeyboardSpace={accessoryLift + spacing[4]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       showsVerticalScrollIndicator={false}
       style={styles.scrollHost}
       contentContainerStyle={contentStyleBase}
+      scrollEventThrottle={16}
+      onScroll={(event) => {
+        formScroll.scrollYRef.current = event.nativeEvent.contentOffset.y;
+      }}
     >
       {content}
     </BottomSheetKeyboardAwareScrollView>
@@ -198,8 +210,7 @@ export function SheetModal({
       onDismiss={handleDismiss}
     >
       <SheetKeyboardProvider>
-        <SheetKeyboardAccessory />
-        {body}
+        <FormScrollContext.Provider value={formScroll}>{body}</FormScrollContext.Provider>
       </SheetKeyboardProvider>
     </BottomSheetModal>
   );

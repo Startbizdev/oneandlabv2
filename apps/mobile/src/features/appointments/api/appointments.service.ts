@@ -1,6 +1,6 @@
 import { appointmentsPendingOffersQuery } from '@oneandlab/shared-api';
 import type { Appointment, AppointmentListFilters } from '@oneandlab/shared-types';
-import { api } from '@/api/client';
+import { api, apiRequest } from '@/api/client';
 
 export function buildAppointmentsQuery(filters: AppointmentListFilters): string {
   const qs = new URLSearchParams();
@@ -95,7 +95,7 @@ export async function snoozeOfferAppointment(appointmentId: string, minutes?: nu
 }
 
 export async function createAppointment(body: Record<string, unknown>) {
-  return api.post<Appointment>('/appointments', body);
+  return apiRequest<Appointment>('/appointments', { method: 'POST', body, timeout: 90_000 });
 }
 
 export async function fetchCategories(type?: string) {

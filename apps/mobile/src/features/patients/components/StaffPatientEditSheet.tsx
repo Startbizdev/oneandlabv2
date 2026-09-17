@@ -100,6 +100,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
       subtitle="Modifier les informations du patient"
       stackBehavior="push"
       snapPoints={['92%']}
+      keyboardBehavior="extend"
       footer={
         <Button title="Enregistrer" loading={saveMut.isPending} onPress={() => saveMut.mutate()} />
       }
@@ -143,7 +144,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
 
 function buildStyles(c: AppColors) {
   return {
-    form: { gap: spacing[3] },
+    form: { gap: spacing[3], paddingBottom: spacing[24] },
     hint: {
       fontFamily: fontFamily.regular,
       fontSize: fontSize.xs,

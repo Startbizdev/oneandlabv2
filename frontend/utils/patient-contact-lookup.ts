@@ -7,8 +7,8 @@ export function isFrenchPhoneLookupFormat(phone: string): boolean {
 
 type LookupApiFetch = (
   url: string,
-  opts?: { method?: string },
-) => Promise<{ success?: boolean; data?: Record<string, unknown> | null }>;
+  opts?: { method?: string; body?: unknown },
+) => Promise<{ success?: boolean; error?: string; data?: Record<string, unknown> | null }>;
 
 /** Email d’abord, puis téléphone si aucun dossier trouvé par email. */
 export async function lookupPatientByContact(
@@ -35,4 +35,14 @@ export async function lookupPatientByContact(
     }
   }
   return null;
+}
+
+export async function adoptStaffPatient(
+  apiFetch: LookupApiFetch,
+  patientId: string,
+): Promise<boolean> {
+  const id = patientId.trim();
+  if (!id) return false;
+  const res = await apiFetch('/patients/adopt', { method: 'POST', body: { patient_id: id } });
+  return Boolean(res?.success);
 }

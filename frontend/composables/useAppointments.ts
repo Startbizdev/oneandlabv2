@@ -3,7 +3,7 @@
  */
 
 import { apiFetch } from '~/utils/api';
-import { ResumableAppointmentBatch } from '@oneandlab/shared-utils';
+import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
 
@@ -244,7 +244,7 @@ export const useAppointments = (scope = 'appointments') => {
   /** Retry only appointments not already acknowledged by the server in this mounted form. */
   const createMultipleAppointments = async (
     payloads: AppointmentCreatePayload[],
-  ): Promise<{ success: boolean; createdIds: string[]; error?: string; warning?: string }> => {
+  ): Promise<{ success: boolean; createdIds: string[]; error?: string; warning?: string; fallbackList?: boolean }> => {
     loading.value = true;
     error.value = null;
     try {
@@ -269,20 +269,18 @@ export const useAppointments = (scope = 'appointments') => {
           patient_email: payload.patient_email || patientEmail,
         } : {}),
       }));
-      const result = await batchAttempt.run(fingerprint, prepared, async (payload, requestId) => {
-        const created = await createAppointment({ ...payload, client_request_id: requestId }, { skipLoading: true, skipPostCreateArtifacts: true });
-        if (!created.success || !created.data?.id) throw new Error(created.error || 'Création impossible');
-        return created.data.id;
-      }, runAppointmentPostCreateArtifacts);
-      if (!result.success && result.creationComplete) {
-        error.value = null;
-        return {
-          success: true,
-          createdIds: result.createdIds,
-          warning: result.error || 'Certains documents n’ont pas pu être rattachés.',
-        };
-      }
-      if (!result.success) error.value = result.error || 'Création impossible';
+      const result = await runStaffBookingBatch(
+        batchAttempt,
+        fingerprint,
+        prepared,
+        async (payload, requestId) => {
+          const created = await createAppointment({ ...payload, client_request_id: requestId }, { skipLoading: true, skipPostCreateArtifacts: true });
+          if (!created.success || !created.data?.id) throw new Error(created.error || 'Création impossible');
+          return created.data.id;
+        },
+        runAppointmentPostCreateArtifacts,
+      );
+      error.value = null;
       return result;
     } finally {
       loading.value = false;

@@ -6,7 +6,7 @@ import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { radius, spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
-import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
+import { useSheetTextInputComponent } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
 const NUMERIC_KEYBOARDS = new Set([
@@ -16,14 +16,13 @@ const NUMERIC_KEYBOARDS = new Set([
   'ascii-capable-number-pad',
 ]);
 
-/** Pavé numérique : « Valider » natif Android ; barre iOS française dans les sheets. */
+/** Pavé numérique : « Valider » natif Android ; barre iOS française (InputAccessoryView). */
 function resolveReturnKeyType(
   keyboardType: TextInputProps['keyboardType'],
   returnKeyType: TextInputProps['returnKeyType'],
-  inSheet: boolean,
 ): TextInputProps['returnKeyType'] {
   if (keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType))) {
-    if (Platform.OS === 'ios' && inSheet) {
+    if (Platform.OS === 'ios') {
       return undefined;
     }
     return returnKeyType ?? 'done';
@@ -61,7 +60,6 @@ function InputComponent(
   const styles = useThemedStyles(buildStyles, 'Input');
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
-  const inSheet = useInBottomSheet();
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
   const isMultiline = Boolean(multiline);
 
@@ -89,9 +87,9 @@ function InputComponent(
 
   const resolvedReturnKeyType = isMultiline
     ? (returnKeyType ?? 'default')
-    : resolveReturnKeyType(keyboardType, returnKeyType, inSheet);
-  const iosNumericAccessory =
-    Platform.OS === 'ios' && inSheet && isNumeric ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
+    : resolveReturnKeyType(keyboardType, returnKeyType);
+  const iosAccessory =
+    Platform.OS === 'ios' && (isNumeric || isMultiline) ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
 
   const fieldStyle = [
     styles.input,
@@ -113,7 +111,7 @@ function InputComponent(
     keyboardType,
     returnKeyType: resolvedReturnKeyType,
     returnKeyLabel: Platform.OS === 'android' && isNumeric ? 'Valider' : undefined,
-    inputAccessoryViewID: iosNumericAccessory,
+    inputAccessoryViewID: iosAccessory,
     blurOnSubmit: isMultiline ? false : (blurOnSubmitProp ?? true),
     submitBehavior: (isMultiline ? 'newline' : 'blurAndSubmit') as TextInputProps['submitBehavior'],
     accessibilityLabel: props.accessibilityLabel ?? label,

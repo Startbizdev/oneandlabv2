@@ -542,7 +542,7 @@ import {
   STAFF_PATIENT_BOOKING_CONSENT_LABEL,
   STAFF_PATIENT_BOOKING_CONSENT_ERROR,
 } from '~/constants/staff-patient-booking-consent';
-import { lookupPatientByContact } from '~/utils/patient-contact-lookup';
+import { lookupPatientByContact, adoptStaffPatient } from '~/utils/patient-contact-lookup';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 
 function patientContactSuppressKey(email: string, phone: string, patientId: string): string {
@@ -1153,6 +1153,12 @@ async function confirmAdoptExistingPatientFromLookup() {
   duplicatePatientRow.value = null;
   duplicatePatientModalOpen.value = false;
   duplicatePatientSuppressKey.value = '';
+
+  try {
+    await adoptStaffPatient(apiFetch, id);
+  } catch {
+    /* le RDV créera le lien PPA ; l'ordonnance standalone a besoin du lien */
+  }
 
   if (!patients.value.some((x) => String(x.id) === id)) {
     patients.value = [...patients.value, row];
@@ -1819,6 +1825,7 @@ async function onUnifiedSubmit(payload: any) {
 
   bookingSubmissionLocked.value = true;
   saving.value = true;
+  let leftWizard = false;
   try {
     let patientId: string;
     if (patientMode.value === 'existing') {
@@ -1927,32 +1934,34 @@ async function onUnifiedSubmit(payload: any) {
       return { success, result };
     });
 
-    const appointmentResult = (wrapped as { success: boolean; result?: { success?: boolean; error?: string; warning?: string; createdIds?: string[] } })
+    const appointmentResult = (wrapped as { success: boolean; result?: { success?: boolean; error?: string; warning?: string; createdIds?: string[]; fallbackList?: boolean } })
       .result;
 
-    if (wrapped.success !== true) {
-      validationError.value = appointmentResult?.error || 'Création impossible';
-      scrollToValidationError();
+    const ids = appointmentResult?.createdIds ?? [];
+    const createdId = ids[0];
+    const fallbackList = appointmentResult?.fallbackList === true || !createdId;
+
+    if (wrapped.success !== true && fallbackList) {
+      validationError.value = appointmentResult?.error || appointmentResult?.warning || 'Création impossible';
       toast.add({
-        title: 'Erreur',
-        description: appointmentResult?.error || 'Création impossible',
-        color: 'error',
-        icon: 'i-lucide-alert-circle',
+        title: 'Vérifiez vos rendez-vous',
+        description: appointmentResult?.error || appointmentResult?.warning || 'Ne recréez pas : ouvrez vos rendez-vous.',
+        color: 'warning',
+        icon: 'i-lucide-alert-triangle',
       });
-      return;
     }
 
-    const ids = appointmentResult?.createdIds ?? [];
     const n = ids.length || payloads.length;
-    const createdId = ids[0];
     if (appointmentResult?.warning) {
       toast.add({
-        title: n > 1 ? 'Rendez-vous créés avec avertissement' : 'Rendez-vous créé avec avertissement',
+        title: fallbackList
+          ? 'Vérifiez vos rendez-vous'
+          : n > 1 ? 'Rendez-vous créés avec avertissement' : 'Rendez-vous créé avec avertissement',
         description: appointmentResult.warning,
         color: 'warning',
         icon: 'i-lucide-alert-triangle',
       });
-    } else {
+    } else if (!fallbackList) {
       toast.add({
         title: n > 1 ? 'Rendez-vous créés' : 'Rendez-vous créé',
         description: n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
@@ -1962,9 +1971,10 @@ async function onUnifiedSubmit(payload: any) {
     }
     const t = useState<number>('appointments.listRefreshTrigger', () => 0);
     t.value += 1;
-    const href = createdId
+    const href = createdId && !fallbackList
       ? `${props.basePath}/appointments/${createdId}`
       : `${props.basePath}/appointments`;
+    leftWizard = true;
     try {
       await router.push(href);
     } catch {
@@ -1978,7 +1988,9 @@ async function onUnifiedSubmit(payload: any) {
     });
   } finally {
     saving.value = false;
-    bookingSubmissionLocked.value = false;
+    if (!leftWizard) {
+      bookingSubmissionLocked.value = false;
+    }
   }
 }
 

@@ -83,7 +83,7 @@ function TextareaComponent(
           }
           returnKeyLabel={Platform.OS === 'android' && inSheet ? 'Valider' : undefined}
           inputAccessoryViewID={
-            Platform.OS === 'ios' && inSheet ? SHEET_KEYBOARD_ACCESSORY_ID : undefined
+            Platform.OS === 'ios' ? SHEET_KEYBOARD_ACCESSORY_ID : undefined
           }
           blurOnSubmit={blurOnSubmit ?? (Platform.OS === 'android' && inSheet)}
           accessibilityLabel={props.accessibilityLabel ?? label}
