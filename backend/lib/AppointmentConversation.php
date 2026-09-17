@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/User.php';
-
-use PDO;
 require_once __DIR__ . '/LabTeamAccess.php';
 
 /**
@@ -60,8 +58,15 @@ final class AppointmentConversation
             return $userModel->hasProfessionalAccessToPatient($uid, (string) ($appointment['patient_id'] ?? ''));
         }
 
-        if ($role === 'nurse' && (string) ($appointment['assigned_nurse_id'] ?? '') === $uid) {
-            return true;
+        if ($role === 'nurse') {
+            if ((string) ($appointment['assigned_nurse_id'] ?? '') === $uid) {
+                return true;
+            }
+            // Un infirmier qui crée un RDV reste l'interlocuteur du patient,
+            // y compris lorsqu'une prise de sang est ensuite attribuée à un labo.
+            if ((string) ($appointment['created_by'] ?? '') === $uid) {
+                return true;
+            }
         }
 
         if (in_array($role, ['lab', 'subaccount', 'preleveur'], true)) {

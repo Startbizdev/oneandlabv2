@@ -87,7 +87,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Rendez-vous cible (inclure relative_id)
-        $stmt = $db->prepare('SELECT patient_id, relative_id FROM appointments WHERE id = ?');
+        $stmt = $db->prepare('
+            SELECT patient_id, relative_id, created_by, assigned_nurse_id
+            FROM appointments
+            WHERE id = ?
+        ');
         $stmt->execute([$appointmentId]);
         $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -129,12 +133,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user['role'] === 'super_admin') {
             $allowed = true;
         } elseif ($user['role'] === 'patient') {
-            $allowed = ($sourceDocumentPatientId === $user['user_id'] && $appointmentPatientId === $user['user_id']);
-            if ($allowed && $sourceDocumentRelativeId !== null && $appointmentRelativeId !== null) {
-                $allowed = ($sourceDocumentRelativeId === $appointmentRelativeId);
-            } elseif ($allowed && ($sourceDocumentRelativeId !== null || $appointmentRelativeId !== null)) {
-                $allowed = ($sourceDocumentRelativeId === $appointmentRelativeId);
-            }
+            $allowed = MedicalDocumentSubject::matches(
+                $sourceDocumentPatientId,
+                $sourceDocumentRelativeId,
+                $user['user_id'],
+                $appointmentRelativeId
+            ) && $appointmentPatientId === $user['user_id'];
         } elseif (in_array($user['role'], ['pro', 'subaccount'], true)) {
             if ($sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
                 $allowed = MedicalDocumentAccess::userHasProfessionalPatientAccess(
@@ -143,6 +147,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (string) $appointmentPatientId,
                 );
             }
+        } elseif ($user['role'] === 'nurse') {
+            $allowed = MedicalDocumentAccess::nurseCanCopyDocumentToAppointment(
+                $db,
+                $user,
+                $appointment,
+                $sourceDocumentPatientId,
+                $sourceDocumentRelativeId,
+                $appointmentPatientId,
+                $appointmentRelativeId
+            );
         } elseif ($user['role'] === 'preleveur') {
             $aptStmt = $db->prepare('SELECT id FROM appointments WHERE id = ? AND type = ? AND assigned_to = ? AND patient_id = ? LIMIT 1');
             $aptStmt->execute([$appointmentId, 'blood_test', $user['user_id'], $appointmentPatientId]);

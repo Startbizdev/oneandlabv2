@@ -22,13 +22,11 @@ PERSIST="$BASE/persistent"
 sudo mkdir -p "$PERSIST"/{uploads,logs,storage,keys,tmp,vendor} 2>/dev/null || true
 # Clinical/runtime data live outside release folders (see scripts/migrate-persistent-runtime.sh).
 for name in uploads storage keys logs tmp vendor; do
-  if [[ -e "$BASE/backend/$name" ]]; then
-    [[ ! -e "$STAGE/backend/$name" ]] || { echo "Unexpected tracked runtime directory: $name"; exit 1; }
-    if [[ -e "$PERSIST/$name" ]]; then
-      ln -s "$PERSIST/$name" "$STAGE/backend/$name"
-    else
-      ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
-    fi
+  [[ ! -e "$STAGE/backend/$name" ]] || { echo "Unexpected tracked runtime directory: $name"; exit 1; }
+  if [[ -e "$PERSIST/$name" ]]; then
+    ln -s "$PERSIST/$name" "$STAGE/backend/$name"
+  elif [[ -e "$BASE/backend/$name" ]]; then
+    ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
   fi
 done
 shopt -s nullglob

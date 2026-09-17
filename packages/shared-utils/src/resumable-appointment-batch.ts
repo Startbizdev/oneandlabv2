@@ -27,7 +27,7 @@ export class ResumableAppointmentBatch<T> {
     payloads: T[],
     create: (payload: T, requestId: string) => Promise<string>,
     attach: (payload: T, id: string) => Promise<void>,
-  ): Promise<{ success: boolean; createdIds: string[]; error?: string }> {
+  ): Promise<{ success: boolean; createdIds: string[]; error?: string; creationComplete?: boolean }> {
     if (this.busy) return { success: false, createdIds: [...this.ids], error: 'Création déjà en cours.' };
     if (this.key !== key && this.ids.length) {
       return { success: false, createdIds: [...this.ids], error: 'Une partie des rendez-vous est déjà créée. Consultez votre liste avant de modifier cette demande.' };
@@ -64,9 +64,17 @@ export class ResumableAppointmentBatch<T> {
       return { success: true, createdIds };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Création impossible.';
-      return { success: false, createdIds: [...this.ids], error: this.ids.length
-        ? `${message} ${this.ids.length}/${this.payloads.length} rendez-vous créés. Réessayez sans modifier le formulaire pour reprendre la demande.`
-        : message };
+      const creationComplete = this.payloads.length > 0 && this.ids.length === this.payloads.length;
+      return {
+        success: false,
+        createdIds: [...this.ids],
+        creationComplete,
+        error: this.ids.length
+          ? creationComplete
+            ? `${message} Le rendez-vous est créé, mais certains documents n’ont pas pu être rattachés.`
+            : `${message} ${this.ids.length}/${this.payloads.length} rendez-vous créés. Réessayez sans modifier le formulaire pour reprendre la demande.`
+          : message,
+      };
     } finally {
       this.busy = false;
     }

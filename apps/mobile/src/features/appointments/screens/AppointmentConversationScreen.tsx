@@ -6,7 +6,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useNavigation } from '@react-navigation/native';
 import { Row } from '@/components/layout/primitives';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, Paperclip, Send, WifiOff } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +25,7 @@ import {
 } from '../detail/api/conversation.service';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 
 export function AppointmentConversationScreen() {
   const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
@@ -40,8 +41,9 @@ export function AppointmentConversationScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const headerHeight = useHeaderHeight();
   const navigation = useNavigation();
+  const router = useRouter();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, error, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.appointments.conversation(appointmentId),
     queryFn: async () => {
       const res = await fetchAppointmentConversation(appointmentId);
@@ -112,13 +114,38 @@ export function AppointmentConversationScreen() {
     }
   }
 
+  function leaveConversation() {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (appointmentId) {
+      router.replace(`${roleRoutePrefix(userRole)}/appointment/${appointmentId}` as never);
+      return;
+    }
+    router.replace(`${roleRoutePrefix(userRole)}/(tabs)` as never);
+  }
+
   return (
     <StackChromeScreen>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight} style={[styles.root, { backgroundColor: c.background }]}>
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing[8] }} color={c.primary} />
       ) : isError ? (
-        <EmptyState Icon={WifiOff} title="Les échanges n’ont pas pu être chargés" description="Votre message en cours reste disponible." actionLabel="Réessayer" onAction={() => void refetch()} />
+        <View style={styles.errorState}>
+          <EmptyState
+            Icon={WifiOff}
+            title="Les échanges n’ont pas pu être chargés"
+            description={error instanceof Error ? error.message : 'Votre message en cours reste disponible.'}
+            actionLabel="Réessayer"
+            onAction={() => void refetch()}
+          />
+          <Button title="Retour au rendez-vous" variant="outline" onPress={leaveConversation} />
+        </View>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -192,6 +219,7 @@ export function AppointmentConversationScreen() {
 function buildStyles(_c: AppColors) {
   return {
     root: { flex: 1, minWidth: 0 },
+    errorState: { paddingHorizontal: spacing[4], gap: spacing[2] },
     list: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[24] },
     listEmpty: { flexGrow: 1, minWidth: 0, justifyContent: 'center' as const },
     bubble: { borderWidth: 1, borderRadius: 12, padding: spacing[3], maxWidth: '88%' },

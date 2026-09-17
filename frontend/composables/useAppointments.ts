@@ -244,7 +244,7 @@ export const useAppointments = (scope = 'appointments') => {
   /** Retry only appointments not already acknowledged by the server in this mounted form. */
   const createMultipleAppointments = async (
     payloads: AppointmentCreatePayload[],
-  ): Promise<{ success: boolean; createdIds: string[]; error?: string }> => {
+  ): Promise<{ success: boolean; createdIds: string[]; error?: string; warning?: string }> => {
     loading.value = true;
     error.value = null;
     try {
@@ -274,6 +274,14 @@ export const useAppointments = (scope = 'appointments') => {
         if (!created.success || !created.data?.id) throw new Error(created.error || 'Création impossible');
         return created.data.id;
       }, runAppointmentPostCreateArtifacts);
+      if (!result.success && result.creationComplete) {
+        error.value = null;
+        return {
+          success: true,
+          createdIds: result.createdIds,
+          warning: result.error || 'Certains documents n’ont pas pu être rattachés.',
+        };
+      }
       if (!result.success) error.value = result.error || 'Création impossible';
       return result;
     } finally {
