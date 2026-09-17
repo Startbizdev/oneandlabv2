@@ -724,23 +724,28 @@ export function useMultiAppointmentWizard(opts: {
       );
 
       const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
-      if (!result.success) throw new Error(result.error ?? 'Création impossible');
-      return { id: result.createdIds[0], warning: result.warning };
+      return {
+        id: result.createdIds[0],
+        warning: result.warning,
+        fallbackList: result.fallbackList === true,
+      };
     },
-    onSuccess: ({ id, warning }) => {
-      if (warning) {
-        toast(warning, { type: 'warning' });
-      } else if (!id) {
-        toast('Rendez-vous créés', { type: 'success' });
+    onSuccess: ({ id, warning, fallbackList }) => {
+      if (fallbackList || !id) {
+        toast(warning ?? 'Si le rendez-vous apparaît dans la liste, ne le recréez pas.', {
+          type: 'warning',
+        });
+        qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
         router.replace(`${opts.basePath}/appointments` as never);
         return;
+      }
+      if (warning) {
+        toast(warning, { type: 'warning' });
       } else {
         toast('Rendez-vous créé', { type: 'success' });
       }
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      router.replace(id
-        ? `${opts.basePath}/appointment/${id}` as never
-        : `${opts.basePath}/appointments` as never);
+      router.replace(`${opts.basePath}/appointment/${id}` as never);
     },
     onError: (e) => handleApiError(e, toast, 'wizardSubmit'),
   });
@@ -789,7 +794,7 @@ export function useMultiAppointmentWizard(opts: {
       if (submissionLocked || submitMut.isPending) return;
       setSubmissionLocked(true);
       submitMut.mutate(undefined, {
-        onSettled: () => setSubmissionLocked(false),
+        onError: () => setSubmissionLocked(false),
       });
     }, [submitMut, submissionLocked]),
     isNewPatient: patientMode === 'new',

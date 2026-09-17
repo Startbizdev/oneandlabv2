@@ -592,25 +592,34 @@ export function useBookingWizard(opts: {
       }
 
       const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
-      if (!result.success) throw new Error(result.error ?? 'Création impossible');
-      return { id: result.createdIds[0], warning: result.warning };
+      return {
+        id: result.createdIds[0],
+        warning: result.warning,
+        fallbackList: result.fallbackList === true,
+      };
     },
     onError: (e) => {
       if (e instanceof Error && e.message === 'USER_CANCELLED') return;
       handleApiError(e, toast, 'bookingWizard');
     },
-    onSuccess: ({ id, warning }) => {
+    onSuccess: ({ id, warning, fallbackList }) => {
       toast(
         warning ?? 'Rendez-vous créé',
-        { type: warning ? 'warning' : 'success' },
+        { type: warning || fallbackList ? 'warning' : 'success' },
       );
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      if (fallbackList || !id) {
+        if (opts.mode === 'patient') {
+          router.replace('/(patient)/(tabs)/appointments' as never);
+        } else {
+          router.replace(`${opts.basePath}/appointments` as never);
+        }
+        return;
+      }
       if (opts.mode === 'patient') {
-        router.replace(id ? `/(patient)/appointment/${id}` as never : '/(patient)/(tabs)/appointments' as never);
-      } else if (id) {
-        router.replace(`${opts.basePath}/appointment/${id}` as never);
+        router.replace(`/(patient)/appointment/${id}` as never);
       } else {
-        router.replace(`${opts.basePath}/appointments` as never);
+        router.replace(`${opts.basePath}/appointment/${id}` as never);
       }
     },
   });
@@ -697,7 +706,7 @@ export function useBookingWizard(opts: {
           if (submissionLockedRef.current || submitMut.isPending) return;
           submissionLockedRef.current = true;
           submitMut.mutate(undefined, {
-            onSettled: () => {
+            onError: () => {
               submissionLockedRef.current = false;
             },
           });

@@ -1,7 +1,8 @@
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from '@/components/ui/sheet-keyboard-accessory';
 import { FormScrollContext, useFormScrollProviderValue } from './form-scroll-context';
 
 interface Props extends ScrollViewProps {
@@ -19,6 +20,7 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     bottomOffset,
     enabled = true,
     keyboardShouldPersistTaps = 'handled',
+    keyboardDismissMode = 'interactive',
     showsVerticalScrollIndicator = false,
     contentInsetAdjustmentBehavior = 'automatic',
     onScroll,
@@ -40,15 +42,20 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     [formScroll.scrollYRef, onScroll],
   );
 
+  const resolvedBottomOffset =
+    (bottomOffset ?? Math.max(bottom, 8)) + SHEET_KEYBOARD_ACCESSORY_HEIGHT;
+
   return (
     <FormScrollContext.Provider value={formScroll}>
       <KeyboardAwareScrollView
         ref={innerRef}
         enabled={enabled}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+        keyboardDismissMode={keyboardDismissMode}
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
-        bottomOffset={bottomOffset ?? Math.max(bottom, 8)}
+        bottomOffset={resolvedBottomOffset}
+        extraKeyboardSpace={SHEET_KEYBOARD_ACCESSORY_HEIGHT}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         {...props}

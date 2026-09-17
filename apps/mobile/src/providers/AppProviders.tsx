@@ -8,6 +8,7 @@ import { persistQueryOptions } from '@/lib/query-persist';
 import { ToastProvider } from './ToastProvider';
 import { AppThemeProvider } from './AppThemeProvider';
 import { ExpoRouterThemeProvider } from './ExpoRouterThemeProvider';
+import { SheetKeyboardAccessory } from '@/components/ui/sheet-keyboard-accessory';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +20,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
               <ToastProvider>
                 {/* Hôte unique pour tous les bottom sheets (gorhom) : un seul portail,
                     plus de <Modal> natifs empilés → fini les flashs / réouvertures. */}
-                <BottomSheetModalProvider>{children}</BottomSheetModalProvider>
+                <BottomSheetModalProvider>
+                  <SheetKeyboardAccessory />
+                  {children}
+                </BottomSheetModalProvider>
               </ToastProvider>
             </ExpoRouterThemeProvider>
           </AppThemeProvider>

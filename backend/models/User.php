@@ -1363,6 +1363,31 @@ class User
         }
     }
 
+    /**
+     * Adoption d’un dossier trouvé par lookup : lien PPA durable (liste + ordonnance).
+     *
+     * @return array{ok: bool, http?: int, error?: string}
+     */
+    public function adoptPatientForStaff(string $requesterId, string $requesterRole, string $patientId): array
+    {
+        if ($requesterId === '' || $patientId === '') {
+            return ['ok' => false, 'http' => 400, 'error' => 'Identifiants requis'];
+        }
+        $allowed = array_merge(self::patientListStaffRoles(), ['super_admin']);
+        if (!in_array($requesterRole, $allowed, true)) {
+            return ['ok' => false, 'http' => 403, 'error' => 'Accès refusé'];
+        }
+        if ($this->getRoleById($patientId) !== 'patient') {
+            return ['ok' => false, 'http' => 403, 'error' => 'Dossier patient introuvable'];
+        }
+        if ($requesterRole === 'super_admin') {
+            return ['ok' => true];
+        }
+        $this->linkPatientProfessional($patientId, $requesterId, null, 'manual_link');
+
+        return ['ok' => true];
+    }
+
     public function findNurseIdByPhone(string $phoneRaw): ?string
     {
         if (!$this->hasPhoneDigitsHashColumn()) {

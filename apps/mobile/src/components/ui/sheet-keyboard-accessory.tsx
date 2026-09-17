@@ -4,8 +4,10 @@ import { Keyboard, Platform, Pressable, StyleSheet, View, InputAccessoryView } f
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-/** Barre clavier iOS (pavé numérique) — « Valider » en français, pas le « Done » anglais de RN. */
+/** Barre clavier iOS (pavé numérique / champs longs) — « Valider » en français, pas le « Done » anglais de RN. */
 export const SHEET_KEYBOARD_ACCESSORY_ID = 'one-sheet-keyboard-valider';
+/** Hauteur approximative de la barre (padding + label) — à compter dans le bottomOffset. */
+export const SHEET_KEYBOARD_ACCESSORY_HEIGHT = 48;
 
 export function SheetKeyboardAccessory() {
   const c = useAppColors();

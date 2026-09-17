@@ -14,7 +14,9 @@ import {
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PrescriptionPatientSelectSheet } from './PrescriptionPatientSelectSheet';
 import { patientDisplayName } from '@/features/patients/utils/patient-contact-display';
+import { adoptStaffPatient } from '@/features/patients/api/patients.service';
 import { queryKeys } from '@/lib/query-keys';
+import { useToast } from '@/providers/ToastProvider';
 import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -58,6 +60,7 @@ export function PrescriptionPatientSelectField({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectField');
   const qc = useQueryClient();
+  const { show: toast } = useToast();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [pinnedPatient, setPinnedPatient] = useState<PatientRow | null>(null);
@@ -106,9 +109,21 @@ export function PrescriptionPatientSelectField({
 
   const handleExistingPatient = useCallback(
     (row: PatientRow) => {
-      void adoptPatient(row);
+      void (async () => {
+        try {
+          const res = await adoptStaffPatient(row.id);
+          if (!res.success) {
+            toast(res.error ?? 'Impossible d’utiliser ce dossier.', { type: 'error' });
+            return;
+          }
+        } catch (e) {
+          toast(e instanceof Error ? e.message : 'Impossible d’utiliser ce dossier.', { type: 'error' });
+          return;
+        }
+        await adoptPatient(row);
+      })();
     },
-    [adoptPatient],
+    [adoptPatient, toast],
   );
 
   return (

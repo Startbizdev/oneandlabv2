@@ -462,7 +462,7 @@ function buildStyles(c: AppColors) {
     content: {
       padding: spacing[4],
       gap: spacing[4],
-      paddingBottom: spacing[10],
+      paddingBottom: spacing[24],
     },
     embeddedContent: {
       gap: spacing[3],
