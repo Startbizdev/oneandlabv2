@@ -205,9 +205,17 @@ const nurseSidebarActionsCardVisible = computed(() =>
 );
 
 function nurseCanManageAppointmentActions(appointment: unknown) {
-  const apt = appointment as { status?: string } | null | undefined;
-  if (!apt) return false;
-  if (['pending', 'confirmed', 'inProgress'].includes(String(apt.status ?? ''))) return true;
+  const apt = appointment as {
+    status?: string;
+    created_by?: string | null;
+    assigned_nurse_id?: string | null;
+  } | null | undefined;
+  const viewerId = String(user.value?.id ?? '');
+  if (!apt || !viewerId) return false;
+  const related =
+    String(apt.created_by ?? '') === viewerId
+    || String(apt.assigned_nurse_id ?? '') === viewerId;
+  if (related && ['pending', 'confirmed', 'inProgress', 'in_progress'].includes(String(apt.status ?? ''))) return true;
   return staffCanManageOwnPendingBloodTest(appointment as Parameters<typeof staffCanManageOwnPendingBloodTest>[0], user.value?.id);
 }
 

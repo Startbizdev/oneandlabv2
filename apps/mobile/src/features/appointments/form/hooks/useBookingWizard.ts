@@ -588,19 +588,22 @@ export function useBookingWizard(opts: {
           throw new Error(draftRes.error ?? 'Échec enregistrement du brouillon');
         }
         const appointmentIds = await patientVipIap.purchaseVipForDraft(draftRes.data.draft_id);
-        return appointmentIds[0];
+        return { id: appointmentIds[0], warning: undefined };
       }
 
       const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
-      return result.createdIds[0];
+      return { id: result.createdIds[0], warning: result.warning };
     },
     onError: (e) => {
       if (e instanceof Error && e.message === 'USER_CANCELLED') return;
       handleApiError(e, toast, 'bookingWizard');
     },
-    onSuccess: (id) => {
-      toast('Rendez-vous créé', { type: 'success' });
+    onSuccess: ({ id, warning }) => {
+      toast(
+        warning ?? 'Rendez-vous créé',
+        { type: warning ? 'warning' : 'success' },
+      );
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       if (opts.mode === 'patient') {
         router.replace(id ? `/(patient)/appointment/${id}` as never : '/(patient)/(tabs)/appointments' as never);

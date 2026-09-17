@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/LabTeamAccess.php';
+require_once __DIR__ . '/MedicalDocumentSubject.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -8,6 +9,49 @@ require_once __DIR__ . '/../models/User.php';
  */
 class MedicalDocumentAccess
 {
+    /**
+     * Une copie vers un RDV ne doit être possible que pour l'infirmier qui
+     * l'a créé ou auquel il est effectivement assigné.
+     */
+    public static function nurseCanManageAppointment(array $user, array $appointment): bool
+    {
+        if (($user['role'] ?? '') !== 'nurse' || empty($user['user_id'])) {
+            return false;
+        }
+        $userId = (string) $user['user_id'];
+
+        return (string) ($appointment['created_by'] ?? '') === $userId
+            || (string) ($appointment['assigned_nurse_id'] ?? '') === $userId;
+    }
+
+    /**
+     * Copie d'un document vers un RDV : même patient, même proche, et
+     * infirmier créateur ou assigné avec accès au dossier.
+     */
+    public static function nurseCanCopyDocumentToAppointment(
+        PDO $db,
+        array $user,
+        array $appointment,
+        ?string $sourcePatientId,
+        ?string $sourceRelativeId,
+        ?string $appointmentPatientId,
+        ?string $appointmentRelativeId,
+    ): bool {
+        if (!self::nurseCanManageAppointment($user, $appointment)) {
+            return false;
+        }
+        if (!MedicalDocumentSubject::matches(
+            $sourcePatientId,
+            $sourceRelativeId,
+            $appointmentPatientId,
+            $appointmentRelativeId
+        )) {
+            return false;
+        }
+
+        return self::userHasProfileDocumentAccess($db, $user, (string) $appointmentPatientId);
+    }
+
     /**
      * @return array{patient_id: string, relative_id: string|null}|null
      */

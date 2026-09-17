@@ -1927,7 +1927,7 @@ async function onUnifiedSubmit(payload: any) {
       return { success, result };
     });
 
-    const appointmentResult = (wrapped as { success: boolean; result?: { success?: boolean; error?: string; createdIds?: string[] } })
+    const appointmentResult = (wrapped as { success: boolean; result?: { success?: boolean; error?: string; warning?: string; createdIds?: string[] } })
       .result;
 
     if (wrapped.success !== true) {
@@ -1944,15 +1944,27 @@ async function onUnifiedSubmit(payload: any) {
 
     const ids = appointmentResult?.createdIds ?? [];
     const n = ids.length || payloads.length;
-    toast.add({
-      title: n > 1 ? 'Rendez-vous créés' : 'Rendez-vous créé',
-      description: n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
-      color: 'success',
-      icon: 'i-lucide-check-circle',
-    });
+    const createdId = ids[0];
+    if (appointmentResult?.warning) {
+      toast.add({
+        title: n > 1 ? 'Rendez-vous créés avec avertissement' : 'Rendez-vous créé avec avertissement',
+        description: appointmentResult.warning,
+        color: 'warning',
+        icon: 'i-lucide-alert-triangle',
+      });
+    } else {
+      toast.add({
+        title: n > 1 ? 'Rendez-vous créés' : 'Rendez-vous créé',
+        description: n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
+        color: 'success',
+        icon: 'i-lucide-check-circle',
+      });
+    }
     const t = useState<number>('appointments.listRefreshTrigger', () => 0);
     t.value += 1;
-    const href = `${props.basePath}/appointments`;
+    const href = createdId
+      ? `${props.basePath}/appointments/${createdId}`
+      : `${props.basePath}/appointments`;
     try {
       await router.push(href);
     } catch {

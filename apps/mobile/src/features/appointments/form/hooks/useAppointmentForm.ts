@@ -725,17 +725,22 @@ export function useMultiAppointmentWizard(opts: {
 
       const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
       if (!result.success) throw new Error(result.error ?? 'Création impossible');
-      return result.createdIds[0];
+      return { id: result.createdIds[0], warning: result.warning };
     },
-    onSuccess: (id) => {
-      if (!id) {
+    onSuccess: ({ id, warning }) => {
+      if (warning) {
+        toast(warning, { type: 'warning' });
+      } else if (!id) {
         toast('Rendez-vous créés', { type: 'success' });
         router.replace(`${opts.basePath}/appointments` as never);
         return;
+      } else {
+        toast('Rendez-vous créé', { type: 'success' });
       }
-      toast('Rendez-vous créé', { type: 'success' });
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      router.replace(`${opts.basePath}/appointment/${id}` as never);
+      router.replace(id
+        ? `${opts.basePath}/appointment/${id}` as never
+        : `${opts.basePath}/appointments` as never);
     },
     onError: (e) => handleApiError(e, toast, 'wizardSubmit'),
   });

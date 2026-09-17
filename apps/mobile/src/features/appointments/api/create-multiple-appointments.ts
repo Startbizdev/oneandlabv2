@@ -16,7 +16,7 @@ export type AppointmentCreatePayload = Record<string, unknown> & {
 export async function createMultipleAppointments(
   payloads: AppointmentCreatePayload[],
   attempt = new ResumableAppointmentBatch<AppointmentCreatePayload>(),
-): Promise<{ success: boolean; createdIds: string[]; error?: string }> {
+): Promise<{ success: boolean; createdIds: string[]; error?: string; warning?: string }> {
   const fingerprint = JSON.stringify(payloads, (key, value) =>
     key === 'creation_batch_id' || key === 'creation_batch_size' ? undefined : value,
   );
@@ -27,9 +27,17 @@ export async function createMultipleAppointments(
     ...payload,
     ...(sharedBatch ? { creation_batch_id: sharedBatch, creation_batch_size: payloads.length, patient_email: payload.patient_email || patientEmail } : {}),
   }));
-  return attempt.run(fingerprint, prepared, async (payload, requestId) => {
+  const result = await attempt.run(fingerprint, prepared, async (payload, requestId) => {
     const response = await createAppointment({ ...payload, client_request_id: requestId });
     if (!response.success || !response.data?.id) throw new Error(response.error || 'Création impossible');
     return response.data.id;
   }, (payload, id) => uploadAppointmentDocuments(id, payload, attempt));
+  if (!result.success && result.creationComplete) {
+    return {
+      success: true,
+      createdIds: result.createdIds,
+      warning: result.error ?? 'Certains documents n’ont pas pu être rattachés.',
+    };
+  }
+  return result;
 }

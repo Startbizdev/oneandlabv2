@@ -48,3 +48,120 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro', 'patient', 'nurse
     });
   }
 }
+
+test('nurse creator can read the patient conversation and cancel the appointment', async ({ page }) => {
+  const user = { id: 'fixture-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple' };
+  const appointment = {
+    id: 'fixture-appointment',
+    patient_id: 'fixture-patient',
+    type: 'blood_test',
+    form_type: 'blood_test',
+    status: 'confirmed',
+    scheduled_at: '2026-10-15 08:30:00',
+    created_at: '2026-09-15 09:00:00',
+    created_by: user.id,
+    created_by_role: 'nurse',
+    assigned_nurse_id: null,
+    assigned_lab_id: 'fixture-lab',
+    assigned_to: 'fixture-preleveur',
+    address: '10 rue Exemple, 75001 Paris',
+    category_name: 'Bilan sanguin',
+    category_id: 'fixture-care',
+    form_data: {
+      first_name: 'Louise',
+      last_name: 'Exemple',
+      phone: '0100000000',
+      birth_date: '1990-01-01',
+      gender: 'female',
+      address: { label: '10 rue Exemple, 75001 Paris', lat: 48.86, lng: 2.34 },
+    },
+  };
+  let cancelPayload: Record<string, unknown> | null = null;
+  await page.addInitScript(user => {
+    localStorage.setItem('auth_token', 'local-ui-fixture');
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
+  }, user);
+  await page.route('**/api/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+    if (url.pathname === '/api/appointments/fixture-appointment/conversation') {
+      return route.fulfill({ json: { success: true, data: { messages: [], can_post: true } } });
+    }
+    if (url.pathname === '/api/appointments/fixture-appointment' && route.request().method() === 'PUT') {
+      cancelPayload = route.request().postDataJSON() as Record<string, unknown>;
+      appointment.status = 'canceled';
+      return route.fulfill({ json: { success: true, data: appointment } });
+    }
+    if (url.pathname === '/api/appointments/fixture-appointment') {
+      return route.fulfill({ json: { success: true, data: appointment } });
+    }
+    return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
+  });
+
+  await page.goto('/nurse/appointments/fixture-appointment');
+  await expect(page.getByText('Messages patient', { exact: true })).toBeVisible();
+  await expect(page.getByText('Aucun message pour ce rendez-vous.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Annuler le rendez-vous', exact: true }).click();
+  await page.getByText('Choisir une raison', { exact: true }).click();
+  await page.getByRole('option', { name: 'Demande du patient', exact: true }).click();
+  await page.getByPlaceholder('Décrivez brièvement la situation...').fill('Demande confirmée par le patient');
+  await page.getByRole('button', { name: "Confirmer l'annulation", exact: true }).click();
+
+  await expect.poll(() => cancelPayload).toMatchObject({
+    status: 'canceled',
+    cancellation_reason: 'patient_request',
+    cancellation_comment: 'Demande confirmée par le patient',
+  });
+});
+
+test('unrelated nurse cannot cancel and sees a real conversation refusal', async ({ page }) => {
+  const user = { id: 'fixture-other-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple' };
+  const appointment = {
+    id: 'fixture-appointment',
+    patient_id: 'fixture-patient',
+    type: 'blood_test',
+    form_type: 'blood_test',
+    status: 'confirmed',
+    scheduled_at: '2026-10-15 08:30:00',
+    created_at: '2026-09-15 09:00:00',
+    created_by: 'fixture-nurse',
+    assigned_nurse_id: null,
+    assigned_lab_id: 'fixture-lab',
+    assigned_to: 'fixture-preleveur',
+    address: '10 rue Exemple, 75001 Paris',
+    category_name: 'Bilan sanguin',
+    form_data: {
+      first_name: 'Louise',
+      last_name: 'Exemple',
+      phone: '0100000000',
+      birth_date: '1990-01-01',
+      gender: 'female',
+      address: { label: '10 rue Exemple, 75001 Paris', lat: 48.86, lng: 2.34 },
+    },
+  };
+  await page.addInitScript(user => {
+    localStorage.setItem('auth_token', 'local-ui-fixture');
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
+  }, user);
+  await page.route('**/api/**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+    if (url.pathname === '/api/appointments/fixture-appointment/conversation') {
+      return route.fulfill({
+        status: 403,
+        json: { success: false, error: 'Accès refusé à ces échanges.' },
+      });
+    }
+    if (url.pathname === '/api/appointments/fixture-appointment') {
+      return route.fulfill({ json: { success: true, data: appointment } });
+    }
+    return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
+  });
+
+  await page.goto('/nurse/appointments/fixture-appointment');
+  await expect(page.getByText('Messages indisponibles', { exact: true })).toBeVisible();
+  await expect(page.getByText('Accès refusé à ces échanges.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Annuler le rendez-vous', exact: true })).toHaveCount(0);
+});

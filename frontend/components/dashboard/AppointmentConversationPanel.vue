@@ -22,7 +22,7 @@
         title="Action impossible"
         :description="actionError"
       />
-      <p v-if="!loading && messages.length === 0" class="text-sm text-gray-500">Aucun message pour ce rendez-vous.</p>
+      <p v-if="!loading && !loadError && messages.length === 0" class="text-sm text-gray-500">Aucun message pour ce rendez-vous.</p>
       <div
         v-for="msg in messages"
         :key="msg.id"
@@ -102,8 +102,12 @@ async function loadMessages() {
   try {
     const res = (await apiFetch(`/appointments/${props.appointmentId}/conversation`, { method: 'GET' })) as {
       success?: boolean;
+      error?: string;
       data?: { messages?: AppointmentConversationMessage[]; can_post?: boolean };
     };
+    if (res?.success === false) {
+      throw new Error(res.error || 'Accès refusé à ces échanges.');
+    }
     messages.value = res?.data?.messages ?? [];
     canPost.value = Boolean(res?.data?.can_post);
     await nextTick();

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../lib/AppointmentCancellationPolicy.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -519,16 +520,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $cancellationReason = null;
             $cancellationComment = null;
             $cancellationPhotoDocumentId = null;
-            if ($input['status'] === 'canceled' && ($user['role'] ?? '') === 'nurse') {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Les infirmiers ne peuvent pas annuler un rendez-vous. Utilisez le partage ou le redispatch.',
-                    'code' => 'NURSE_CANCEL_FORBIDDEN',
-                ]);
-                exit;
-            }
-            if ($input['status'] === 'canceled' && in_array($user['role'], ['pro', 'lab', 'subaccount', 'preleveur', 'super_admin'])) {
+            if ($input['status'] === 'canceled' && in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'], true)) {
                 $reasons = require __DIR__ . '/../../config/cancellation-reasons.php';
                 $cancellationReason = isset($input['cancellation_reason']) ? trim((string) $input['cancellation_reason']) : '';
                 $cancellationComment = isset($input['cancellation_comment']) ? trim((string) $input['cancellation_comment']) : '';
@@ -560,12 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
                         exit;
                     }
-                    $isCreator = ($apt['created_by'] ?? null) === $user['user_id']
-                        && in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount'], true);
-                    $isAssigned = ($apt['assigned_nurse_id'] === $user['user_id'])
-                        || ($apt['assigned_lab_id'] === $user['user_id'])
-                        || ($apt['assigned_to'] === $user['user_id']);
-                    if (!$isCreator && !$isAssigned) {
+                    if (!AppointmentCancellationPolicy::canStaffCancel($user, $apt)) {
                         http_response_code(403);
                         echo json_encode(['success' => false, 'error' => 'Vous ne pouvez annuler que les rendez-vous que vous avez créés ou qui vous sont assignés']);
                         exit;
