@@ -238,6 +238,151 @@ class NotificationMessageFormatter
         return self::joinParts($chunks);
     }
 
+    /**
+     * Détails lisibles d'un soin Pansement-plaie destiné au partage infirmier.
+     * Les valeurs de la ligne normalisée (donc notamment appointment_nursing_items)
+     * priment sur les anciens emplacements form_data.
+     *
+     * @param array<string,mixed> $item
+     * @param array<string,mixed> $formData
+     * @param array<string, array{label: string, valueLabels: array<string,string>}> $optionMeta
+     */
+    public static function shareWoundCareDetails(array $item, array $formData, array $optionMeta = []): string
+    {
+        $details = [];
+        foreach (['wound_type', 'location'] as $optionKey) {
+            $value = self::shareCareOptionValue($optionKey, $item, $formData);
+            if ($value === '') {
+                continue;
+            }
+
+            $meta = isset($optionMeta[$optionKey]) && is_array($optionMeta[$optionKey])
+                ? $optionMeta[$optionKey]
+                : [];
+            $fieldLabel = trim((string) ($meta['label'] ?? ''));
+            if ($fieldLabel === '') {
+                $fieldLabel = $optionKey === 'wound_type' ? 'Type de plaie' : 'Localisation';
+            }
+            $valueLabels = isset($meta['valueLabels']) && is_array($meta['valueLabels'])
+                ? $meta['valueLabels']
+                : [];
+            $valueLabel = isset($valueLabels[$value])
+                ? trim((string) $valueLabels[$value])
+                : self::humanizeOptionValue($value);
+            if ($valueLabel !== '') {
+                $details[] = $fieldLabel . ' : ' . $valueLabel;
+            }
+        }
+
+        return self::joinParts($details);
+    }
+
+    /**
+     * @param array<string,mixed> $item
+     * @param array<string,mixed> $formData
+     */
+    private static function shareCareOptionValue(string $optionKey, array $item, array $formData): string
+    {
+        $itemOptions = self::normalizeCareOptions($item['care_options'] ?? null);
+        $direct = self::scalarOptionValue($itemOptions[$optionKey] ?? null);
+        if ($direct !== '') {
+            return $direct;
+        }
+
+        $categoryId = trim((string) ($item['category_id'] ?? ''));
+        $itemLabel = trim((string) ($item['category_name'] ?? $item['label'] ?? ''));
+        $selectedServices = is_array($formData['selected_services'] ?? null)
+            ? $formData['selected_services']
+            : [];
+        $serviceIds = [];
+        foreach ($selectedServices as $service) {
+            if (!is_array($service)) {
+                continue;
+            }
+            $serviceCategoryId = trim((string) ($service['category_id'] ?? ''));
+            $serviceLabel = trim((string) ($service['name'] ?? $service['label'] ?? ''));
+            if (
+                ($categoryId !== '' && $serviceCategoryId === $categoryId)
+                || ($itemLabel !== '' && $serviceLabel === $itemLabel)
+            ) {
+                $serviceId = trim((string) ($service['id'] ?? ''));
+                if ($serviceId !== '') {
+                    $serviceIds[] = $serviceId;
+                }
+            }
+        }
+        if ($categoryId !== '') {
+            $serviceIds[] = $categoryId;
+        }
+
+        $byService = is_array($formData['formDataByService'] ?? null)
+            ? $formData['formDataByService']
+            : [];
+        foreach (array_values(array_unique($serviceIds)) as $serviceId) {
+            $slice = is_array($byService[$serviceId] ?? null) ? $byService[$serviceId] : [];
+            $sliceOptions = self::normalizeCareOptions($slice['care_options'] ?? null);
+            $value = self::scalarOptionValue($sliceOptions[$optionKey] ?? null);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $nursingItems = is_array($formData['nursing_items'] ?? null)
+            ? $formData['nursing_items']
+            : [];
+        foreach ($nursingItems as $formItem) {
+            if (!is_array($formItem)) {
+                continue;
+            }
+            $formCategoryId = trim((string) ($formItem['category_id'] ?? ''));
+            $formLabel = trim((string) ($formItem['category_name'] ?? $formItem['label'] ?? ''));
+            if (
+                ($categoryId !== '' && $formCategoryId !== $categoryId)
+                || ($categoryId === '' && $itemLabel !== '' && $formLabel !== $itemLabel)
+            ) {
+                continue;
+            }
+            $formOptions = self::normalizeCareOptions($formItem['care_options'] ?? null);
+            $value = self::scalarOptionValue($formOptions[$optionKey] ?? null);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $rootOptions = self::normalizeCareOptions($formData['care_options'] ?? null);
+        return self::scalarOptionValue($rootOptions[$optionKey] ?? null);
+    }
+
+    /** @param mixed $raw @return array<string,mixed> */
+    private static function normalizeCareOptions($raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (is_string($raw) && trim($raw) !== '') {
+            $decoded = json_decode($raw, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    /** @param mixed $value */
+    private static function scalarOptionValue($value): string
+    {
+        return is_scalar($value) ? trim((string) $value) : '';
+    }
+
+    private static function humanizeOptionValue(string $value): string
+    {
+        $readable = trim((string) preg_replace('/[\s_-]+/u', ' ', $value));
+        if ($readable === '') {
+            return '';
+        }
+        return function_exists('mb_strtoupper')
+            ? mb_strtoupper(mb_substr($readable, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($readable, 1, null, 'UTF-8')
+            : ucfirst($readable);
+    }
+
     /** @param array<string,mixed> $formData */
     public static function nursingFrequencyLabel(array $formData): string
     {

@@ -1,29 +1,47 @@
 <template>
-  <UCard v-if="appointmentId">
+  <UCard v-if="appointmentId" id="appointment-conversation" class="scroll-mt-24">
     <template #header>
       <div class="flex items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Messages</h3>
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h3>
         <UButton size="xs" variant="ghost" :loading="loading" @click="loadMessages">Actualiser</UButton>
       </div>
     </template>
 
     <div ref="scrollEl" class="max-h-80 space-y-3 overflow-y-auto pr-1">
+      <UAlert
+        v-if="loadError"
+        color="error"
+        variant="subtle"
+        title="Messages indisponibles"
+        :description="loadError"
+      />
+      <UAlert
+        v-if="actionError"
+        color="error"
+        variant="subtle"
+        title="Action impossible"
+        :description="actionError"
+      />
       <p v-if="!loading && messages.length === 0" class="text-sm text-gray-500">Aucun message pour ce rendez-vous.</p>
       <div
         v-for="msg in messages"
         :key="msg.id"
+        :id="`conversation-message-${msg.id}`"
         class="rounded-lg border border-gray-200/80 px-3 py-2 dark:border-gray-800"
-        :class="msg.author_id === currentUserId ? 'ms-8 bg-primary-50/60 dark:bg-primary-950/20' : 'me-8'"
+        :class="[
+          msg.author_id === currentUserId ? 'ms-8 bg-primary-50/60 dark:bg-primary-950/20' : 'me-8',
+          highlightedMessageId === msg.id ? 'ring-2 ring-primary-400' : '',
+        ]"
       >
         <p class="text-[11px] font-medium text-gray-500">{{ msg.author_name || 'Utilisateur' }}</p>
         <p class="mt-1 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">{{ msg.body }}</p>
         <button
-          v-if="msg.attachment?.id"
+          v-if="msg.attachment?.id || msg.medical_document_id"
           type="button"
           class="mt-2 text-xs font-medium text-primary-600 underline"
-          @click="downloadAttachment(msg.attachment!.id!, msg.attachment?.file_name || undefined)"
+          @click="downloadAttachment(String(msg.attachment?.id || msg.medical_document_id), msg.attachment?.file_name || undefined)"
         >
-          {{ msg.attachment?.file_name || 'Pièce jointe' }}
+          {{ attachmentLabel(msg) }}
         </button>
         <p class="mt-1 text-[10px] text-gray-400">{{ formatDate(msg.created_at) }}</p>
       </div>
@@ -46,8 +64,11 @@ import type { AppointmentConversationMessage } from '@oneandlab/shared-types';
 import { apiFetch } from '~/utils/api';
 import { downloadMedicalDocument } from '~/utils/download-medical-document';
 
-const props = defineProps<{ appointmentId: string }>();
+const props = withDefaults(defineProps<{ appointmentId: string; title?: string }>(), {
+  title: 'Messages',
+});
 const { user } = useAuth();
+const route = useRoute();
 
 const messages = ref<AppointmentConversationMessage[]>([]);
 const canPost = ref(false);
@@ -57,8 +78,13 @@ const draft = ref('');
 const pendingFile = ref<File | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const scrollEl = ref<HTMLElement | null>(null);
+const loadError = ref('');
+const actionError = ref('');
 
 const currentUserId = computed(() => String(user.value?.id ?? ''));
+const highlightedMessageId = computed(() =>
+  typeof route.query.message === 'string' ? route.query.message.trim() : '',
+);
 
 function formatDate(raw?: string) {
   if (!raw) return '';
@@ -72,6 +98,7 @@ function formatDate(raw?: string) {
 async function loadMessages() {
   if (!props.appointmentId) return;
   loading.value = true;
+  loadError.value = '';
   try {
     const res = (await apiFetch(`/appointments/${props.appointmentId}/conversation`, { method: 'GET' })) as {
       success?: boolean;
@@ -80,7 +107,15 @@ async function loadMessages() {
     messages.value = res?.data?.messages ?? [];
     canPost.value = Boolean(res?.data?.can_post);
     await nextTick();
-    scrollEl.value?.scrollTo({ top: scrollEl.value.scrollHeight, behavior: 'smooth' });
+    const target = highlightedMessageId.value
+      ? document.getElementById(`conversation-message-${highlightedMessageId.value}`)
+      : null;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    else scrollEl.value?.scrollTo({ top: scrollEl.value.scrollHeight, behavior: 'smooth' });
+  } catch (error: unknown) {
+    loadError.value = error instanceof Error
+      ? error.message
+      : 'Impossible de charger les échanges. Réessayez.';
   } finally {
     loading.value = false;
   }
@@ -90,25 +125,43 @@ async function sendMessage() {
   if (!props.appointmentId || sending.value) return;
   if (!draft.value.trim() && !pendingFile.value) return;
   sending.value = true;
+  actionError.value = '';
   try {
+    let response: { success?: boolean; error?: string } | undefined;
     if (pendingFile.value) {
       const fd = new FormData();
       fd.append('file', pendingFile.value);
       if (draft.value.trim()) fd.append('body', draft.value.trim());
-      await apiFetch(`/appointments/${props.appointmentId}/conversation`, { method: 'POST', body: fd });
+      response = await apiFetch(`/appointments/${props.appointmentId}/conversation`, { method: 'POST', body: fd });
     } else {
-      await apiFetch(`/appointments/${props.appointmentId}/conversation`, {
+      response = await apiFetch(`/appointments/${props.appointmentId}/conversation`, {
         method: 'POST',
         body: { body: draft.value.trim() },
       });
+    }
+    if (!response?.success) {
+      throw new Error(response?.error || 'Le message n’a pas été envoyé.');
     }
     draft.value = '';
     pendingFile.value = null;
     if (fileInputRef.value) fileInputRef.value.value = '';
     await loadMessages();
+  } catch (error: unknown) {
+    actionError.value = error instanceof Error
+      ? error.message
+      : 'Le message n’a pas été envoyé.';
   } finally {
     sending.value = false;
   }
+}
+
+function attachmentLabel(msg: AppointmentConversationMessage): string {
+  const name = msg.attachment?.file_name?.trim();
+  if (name) return name;
+  const mime = msg.attachment?.mime_type?.toLowerCase() || '';
+  if (mime === 'application/pdf') return 'Afficher le PDF';
+  if (mime.startsWith('image/')) return 'Afficher l’image';
+  return 'Afficher la pièce jointe';
 }
 
 function onFileChange(ev: Event) {
@@ -117,9 +170,28 @@ function onFileChange(ev: Event) {
 }
 
 async function downloadAttachment(docId: string, fileName?: string) {
-  await downloadMedicalDocument(docId, fileName);
+  actionError.value = '';
+  try {
+    await downloadMedicalDocument(docId, fileName);
+  } catch (error: unknown) {
+    actionError.value = error instanceof Error
+      ? error.message
+      : 'Impossible d’ouvrir la pièce jointe.';
+  }
 }
 
 onMounted(() => void loadMessages());
 watch(() => props.appointmentId, () => void loadMessages());
+watch(
+  () => [route.query.conversation, route.query.message] as const,
+  async ([conversation]) => {
+    if (conversation !== '1') return;
+    await nextTick();
+    document.getElementById('appointment-conversation')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  },
+  { immediate: true },
+);
 </script>

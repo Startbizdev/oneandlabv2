@@ -49,7 +49,24 @@ export type StaffHubExchangeItem = {
   activity_at?: string | null;
 };
 
-export type StaffHubSearchItem = StaffHubPatientItem | StaffHubDocumentItem | StaffHubExchangeItem;
+export type StaffHubRelativeItem = {
+  kind: 'relative';
+  id: string;
+  relative_id: string;
+  patient_id: string;
+  relative_name: string;
+  patient_name: string;
+  relationship_type?: string;
+  patient_profile_image_url?: string | null;
+  subtitle?: string;
+  activity_at?: string | null;
+};
+
+export type StaffHubSearchItem =
+  | StaffHubPatientItem
+  | StaffHubRelativeItem
+  | StaffHubDocumentItem
+  | StaffHubExchangeItem;
 
 export type StaffHubSearchResponse = {
   items: StaffHubSearchItem[];

@@ -2508,6 +2508,18 @@ class Appointment
         // Préparer la requête de mise à jour
         $updateFields = ['status = ?', 'updated_at = NOW()'];
         $params = [$newStatus];
+        $republishedOfferExpiresAt = null;
+        if (
+            $redispatch
+            && $newStatus === 'pending'
+            && $this->hasColumn('appointments', 'pending_offer_expires_at')
+        ) {
+            $republishedOfferExpiresAt = PendingOfferExpiry::formatSqlDateTime(
+                PendingOfferExpiry::computeRepublishedExpiresAt()
+            );
+            $updateFields[] = 'pending_offer_expires_at = ?';
+            $params[] = $republishedOfferExpiresAt;
+        }
 
         // Admin : repasser en attente → redémarrer la fenêtre d'offre (TTL 2 h depuis created_at)
         if (
@@ -2551,6 +2563,7 @@ class Appointment
                         $redispatchPreviousAssigneeRole = 'nurse';
                     }
                     $updateFields[] = 'assigned_nurse_id = NULL';
+                    $updateFields[] = 'nurse_share_released_at = NULL';
                 } elseif ($appointment['type'] === 'blood_test') {
                     if (!empty($appointment['assigned_lab_id'])) {
                         $redispatchPreviousAssigneeId = (string) $appointment['assigned_lab_id'];
@@ -2575,6 +2588,7 @@ class Appointment
                     throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
                 $updateFields[] = 'assigned_nurse_id = NULL';
+                $updateFields[] = 'nurse_share_released_at = NULL';
             } else if ($appointment['type'] === 'blood_test') {
                 if ((string) $appointment['assigned_lab_id'] !== (string) $actorId) {
                     throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
@@ -2665,7 +2679,7 @@ class Appointment
         $setParams = array_slice($params, 0, -1);
         $finalParams = array_merge($setParams, $whereParams);
 
-        $writeStatus = function () use ($updateFields, $whereSql, $finalParams, $atomicNurseConfirm, $atomicLabConfirm, $atomicPreleveurConfirm, $id, $actorId, $actorRole, $appointment, $newStatus, $preleveurLabId, $redispatch, $note, $oldStatus): array {
+        $writeStatus = function () use ($updateFields, $whereSql, $finalParams, $atomicNurseConfirm, $atomicLabConfirm, $atomicPreleveurConfirm, $id, $actorId, $actorRole, $appointment, $newStatus, $preleveurLabId, $redispatch, $note, $oldStatus, $republishedOfferExpiresAt): array {
         // Mettre à jour le statut (et potentiellement l'assignation)
         $sql = 'UPDATE appointments SET ' . implode(', ', $updateFields) . ' ' . $whereSql;
         $stmt = $this->db->prepare($sql);
@@ -2998,11 +3012,21 @@ class Appointment
                     $sibRd->execute([$batchIdRd, $patientIdRd, 'nursing', $id, $batchRedispatchNurseId]);
                     while ($sibRow = $sibRd->fetch(PDO::FETCH_ASSOC)) {
                         $sibId = (string) $sibRow['id'];
+                        $siblingExpirySql = $republishedOfferExpiresAt !== null
+                            ? ', pending_offer_expires_at = ?'
+                            : '';
                         $updSib = $this->db->prepare(
-                            'UPDATE appointments SET status = ?, assigned_nurse_id = NULL, updated_at = NOW()
+                            'UPDATE appointments SET status = ?, assigned_nurse_id = NULL, nurse_share_released_at = NULL'
+                            . $siblingExpirySql . ', updated_at = NOW()
                              WHERE id = ? AND assigned_nurse_id = ? AND status IN (\'confirmed\', \'planned\', \'inProgress\')'
                         );
-                        $updSib->execute(['pending', $sibId, $batchRedispatchNurseId]);
+                        $siblingUpdateParams = ['pending'];
+                        if ($republishedOfferExpiresAt !== null) {
+                            $siblingUpdateParams[] = $republishedOfferExpiresAt;
+                        }
+                        $siblingUpdateParams[] = $sibId;
+                        $siblingUpdateParams[] = $batchRedispatchNurseId;
+                        $updSib->execute($siblingUpdateParams);
                         if ($updSib->rowCount() === 0) {
                             continue;
                         }
@@ -3104,20 +3128,67 @@ class Appointment
      */
     public function update(string $id, array $data, string $actorId, string $actorRole): void
     {
-        DatabaseTransaction::run($this->db, function () use ($id, $data, $actorId, $actorRole): void {
-            $this->updateWithinTransaction($id, $data, $actorId, $actorRole);
+        $businessNotification = DatabaseTransaction::run($this->db, function () use ($id, $data, $actorId, $actorRole): ?array {
+            return $this->updateWithinTransaction($id, $data, $actorId, $actorRole);
         });
+
+        if (is_array($businessNotification)) {
+            $this->notificationService->notifyAppointmentBusinessUpdated(
+                $id,
+                $businessNotification['appointment'],
+                $businessNotification['changed_fields'],
+                $actorId
+            );
+        }
     }
 
-    private function updateWithinTransaction(string $id, array $data, string $actorId, string $actorRole): void
+    private function updateWithinTransaction(string $id, array $data, string $actorId, string $actorRole): ?array
     {
         $lock = $this->db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : '';
-        $stmt = $this->db->prepare('SELECT id, type, status FROM appointments WHERE id = ?' . $lock);
+        $stmt = $this->db->prepare('
+            SELECT id, type, status, patient_id, relative_id, assigned_nurse_id, assigned_lab_id,
+                   assigned_to, assigned_pro_id, created_by, created_by_role, scheduled_at,
+                   location_lat, location_lng, address_encrypted, address_dek,
+                   form_data_encrypted, form_data_dek
+            FROM appointments WHERE id = ?' . $lock);
         $stmt->execute([$id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$existing) {
             throw new Exception('Rendez-vous introuvable');
         }
+
+        $oldFormData = [];
+        if (!empty($existing['form_data_encrypted']) && !empty($existing['form_data_dek'])) {
+            try {
+                $decoded = json_decode($this->crypto->decryptField(
+                    (string) $existing['form_data_encrypted'],
+                    (string) $existing['form_data_dek']
+                ), true);
+                $oldFormData = is_array($decoded) ? $decoded : [];
+            } catch (Throwable $e) {
+                $oldFormData = [];
+            }
+        }
+        $oldAddress = null;
+        if (!empty($existing['address_encrypted']) && !empty($existing['address_dek'])) {
+            try {
+                $oldAddress = [
+                    'label' => $this->crypto->decryptField(
+                        (string) $existing['address_encrypted'],
+                        (string) $existing['address_dek']
+                    ),
+                    'lat' => isset($existing['location_lat']) ? (float) $existing['location_lat'] : null,
+                    'lng' => isset($existing['location_lng']) ? (float) $existing['location_lng'] : null,
+                ];
+            } catch (Throwable $e) {
+                $oldAddress = null;
+            }
+        }
+        $beforeBusiness = [
+            'scheduled_at' => $existing['scheduled_at'] ?? null,
+            'form_data' => $oldFormData,
+            'address' => $oldAddress,
+        ];
         $oldStatus = (string) ($existing['status'] ?? '');
         $itemType = (string) $existing['type'];
         $itemKey = $itemType === 'blood_test' ? 'blood_test_items' : 'nursing_items';
@@ -3193,7 +3264,7 @@ class Appointment
         }
 
         if (empty($params)) {
-            return;
+            return null;
         }
 
         $params[] = $id;
@@ -3207,6 +3278,25 @@ class Appointment
         $this->logger->log($actorId, $actorRole, 'update', 'appointment', $id, [
             'fields' => array_keys($data),
         ]);
+
+        $appointmentAfter = $existing;
+        $appointmentAfter['scheduled_at'] = $scheduledAt ?? ($existing['scheduled_at'] ?? null);
+        $appointmentAfter['form_data'] = isset($data['form_data']) && is_array($data['form_data'])
+            ? $data['form_data']
+            : $oldFormData;
+        $appointmentAfter['address'] = isset($data['address']) && is_array($data['address'])
+            ? $data['address']
+            : $oldAddress;
+        foreach (['assigned_lab_id', 'assigned_nurse_id', 'assigned_pro_id'] as $recipientField) {
+            if (array_key_exists($recipientField, $data)) {
+                $appointmentAfter[$recipientField] = !empty($data[$recipientField]) ? $data[$recipientField] : null;
+            }
+        }
+        $changedFields = BusinessNotificationPolicy::changedBusinessFields($beforeBusiness, $appointmentAfter);
+
+        return $changedFields === []
+            ? null
+            : ['appointment' => $appointmentAfter, 'changed_fields' => $changedFields];
     }
 
     /**
@@ -3723,13 +3813,22 @@ class Appointment
     public function redispatchNursingShareReleasedToZone(string $appointmentId, string $historyActorId): void
     {
         $this->dispatchGeographicForNursingFromStoredLocation($appointmentId, null, null);
+        $tracksOfferExpiry = $this->hasColumn('appointments', 'pending_offer_expires_at');
+        $expirySql = $tracksOfferExpiry ? ', pending_offer_expires_at = ?' : '';
         $upd = $this->db->prepare(
-            "UPDATE appointments SET nurse_share_released_at = NULL, updated_at = NOW()
+            "UPDATE appointments SET nurse_share_released_at = NULL{$expirySql}, updated_at = NOW()
              WHERE id = ? AND type = 'nursing' AND status = 'pending'
              AND (assigned_nurse_id IS NULL OR assigned_nurse_id = '' OR TRIM(assigned_nurse_id) = '')
              AND nurse_share_released_at IS NOT NULL"
         );
-        $upd->execute([$appointmentId]);
+        $params = [];
+        if ($tracksOfferExpiry) {
+            $params[] = PendingOfferExpiry::formatSqlDateTime(
+                PendingOfferExpiry::computeRepublishedExpiresAt()
+            );
+        }
+        $params[] = $appointmentId;
+        $upd->execute($params);
         if ($upd->rowCount() === 0) {
             return;
         }

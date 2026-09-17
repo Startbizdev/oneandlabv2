@@ -4,6 +4,10 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
+require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
+require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
+require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -25,22 +29,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-// Seuls les patients peuvent gérer leurs proches
-if ($user['role'] !== 'patient') {
+$role = (string) ($user['role'] ?? '');
+$isPatient = $role === 'patient';
+$staffRoles = ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'];
+if (!$isPatient && !in_array($role, $staffRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
     exit;
 }
 
+$config = require __DIR__ . '/../../config/database.php';
+$dsn = sprintf(
+    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+    $config['host'],
+    $config['port'],
+    $config['database'],
+    $config['charset']
+);
+$db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+$userModel = new User();
 $relativeModel = new PatientRelative();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Liste des proches du patient
     try {
-        $relatives = $relativeModel->getByPatientId($user['user_id']);
+        $patientId = $isPatient ? (string) $user['user_id'] : trim((string) ($_GET['patient_id'] ?? ''));
+        if (!$isPatient && $patientId === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Paramètre patient_id requis']);
+            exit;
+        }
+        if (!$isPatient && !PatientDossierAccess::canAccess($db, $userModel, $user, $patientId)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+            exit;
+        }
+        $relatives = $relativeModel->getByPatientId($patientId);
 
         // Logger la consultation de la liste des proches (HDS)
-        require_once __DIR__ . '/../../lib/Logger.php';
         $logger = new Logger();
         $logger->log(
             $user['user_id'],
@@ -50,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             null,
             [
                 'relatives_count' => count($relatives),
+                'patient_id' => $patientId,
                 'has_sensitive_data' => count(array_filter($relatives, fn($r) => !empty($r['email']) || !empty($r['phone']))) > 0
             ]
         );
@@ -79,6 +106,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
 
+        $patientId = $isPatient
+            ? (string) $user['user_id']
+            : trim((string) ($data['patient_id'] ?? ''));
+        if (!$isPatient && $patientId === '') {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Champ patient_id requis']);
+            exit;
+        }
+        if (
+            !$isPatient
+            && !$userModel->canStaffEditPatientProfile(
+                (string) $user['user_id'],
+                $role,
+                $patientId
+            )
+        ) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+            exit;
+        }
+        StaffPatientConsent::validateOrFail($data, $user);
+
         // Validation basique
         $allowedRelationships = ['child', 'parent', 'spouse', 'sibling', 'grandparent', 'grandchild', 'other'];
         if (!in_array($data['relationship_type'], $allowedRelationships)) {
@@ -91,10 +140,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $allowedKeys = ['first_name', 'last_name', 'relationship_type', 'gender', 'birth_date', 'email', 'phone', 'address'];
         $safeData = array_intersect_key($data, array_flip($allowedKeys));
 
-        $id = $relativeModel->create($safeData, $user['user_id']);
+        $id = $relativeModel->create($safeData, $patientId, $user);
 
         // Récupérer le proche créé pour le retourner
-        $relative = $relativeModel->getById($id, $user['user_id']);
+        $relative = $relativeModel->getById($id, $patientId);
+
+        if (!$isPatient) {
+            StaffPatientConsent::logRecorded($user, $patientId, 'patient_relative_create');
+        }
 
         echo json_encode([
             'success' => true,

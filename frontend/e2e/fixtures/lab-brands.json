@@ -1,0 +1,19 @@
+[
+  { "id": "a1000001-0001-4001-8001-000000000017", "name": "Labio", "slug": "labio", "logo_url": null, "website_url": "https://www.labio.fr", "sort_order": 1 },
+  { "id": "a1000001-0001-4001-8001-000000000018", "name": "Labo Sud", "slug": "labo-sud", "logo_url": null, "website_url": "https://inovie.fr/laboratoires/inovie-labosud/", "sort_order": 2 },
+  { "id": "a1000001-0001-4001-8001-000000000001", "name": "Biogroup", "slug": "biogroup", "logo_url": null, "website_url": "https://biogroup.fr", "sort_order": 3 },
+  { "id": "a1000001-0001-4001-8001-000000000002", "name": "Cerballiance", "slug": "cerballiance", "logo_url": null, "website_url": "https://www.cerballiance.fr", "sort_order": 4 },
+  { "id": "a1000001-0001-4001-8001-000000000003", "name": "Inovie", "slug": "inovie", "logo_url": null, "website_url": "https://inovie.fr", "sort_order": 5 },
+  { "id": "a1000001-0001-4001-8001-000000000004", "name": "SYNLAB", "slug": "synlab", "logo_url": null, "website_url": "https://www.synlab.fr", "sort_order": 6 },
+  { "id": "a1000001-0001-4001-8001-000000000005", "name": "Unilabs", "slug": "unilabs", "logo_url": null, "website_url": "https://unilabs.fr", "sort_order": 7 },
+  { "id": "a1000001-0001-4001-8001-000000000006", "name": "Eurofins", "slug": "eurofins", "logo_url": null, "website_url": "https://www.eurofins.fr", "sort_order": 8 },
+  { "id": "a1000001-0001-4001-8001-000000000008", "name": "Ouest Biologie", "slug": "ouest-biologie", "logo_url": null, "website_url": "https://www.ouest-biologie.com", "sort_order": 9 },
+  { "id": "a1000001-0001-4001-8001-000000000009", "name": "OuiLab", "slug": "ouilab", "logo_url": null, "website_url": "https://ouilab.com", "sort_order": 10 },
+  { "id": "a1000001-0001-4001-8001-000000000010", "name": "MLab", "slug": "mlab", "logo_url": null, "website_url": "https://mlab-groupe.fr", "sort_order": 11 },
+  { "id": "a1000001-0001-4001-8001-000000000011", "name": "B2A", "slug": "b2a", "logo_url": null, "website_url": "https://b2a.fr", "sort_order": 12 },
+  { "id": "a1000001-0001-4001-8001-000000000012", "name": "Bioémeraude", "slug": "bioemeraude", "logo_url": null, "website_url": "https://www.ouest-biologie.com", "sort_order": 13 },
+  { "id": "a1000001-0001-4001-8001-000000000013", "name": "Biodin", "slug": "biodin", "logo_url": null, "website_url": "https://www.ouest-biologie.com", "sort_order": 14 },
+  { "id": "a1000001-0001-4001-8001-000000000014", "name": "Biolor", "slug": "biolor", "logo_url": null, "website_url": "https://www.ouest-biologie.com", "sort_order": 15 },
+  { "id": "a1000001-0001-4001-8001-000000000015", "name": "Biopole", "slug": "biopole", "logo_url": null, "website_url": "https://www.ouest-biologie.com", "sort_order": 16 },
+  { "id": "a1000001-0001-4001-8001-000000000016", "name": "Technipath", "slug": "technipath", "logo_url": null, "website_url": "https://www.synlab.fr", "sort_order": 17 }
+]

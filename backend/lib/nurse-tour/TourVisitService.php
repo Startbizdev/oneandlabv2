@@ -101,12 +101,6 @@ final class TourVisitService
             'form_data' => $formData,
         ], $nurseId, 'nurse');
 
-        try {
-            (new NotificationService())->notifyAppointmentRescheduled($aptId, $nurseId);
-        } catch (Throwable $e) {
-            error_log('[TourVisitService::rescheduleStop] notify: ' . $e->getMessage());
-        }
-
         $tourDate = (string) ($row['tour_date'] ?? '');
         if ($tourDate === '') {
             $tourDate = (new DateTimeImmutable($utc, new DateTimeZone('UTC')))

@@ -2,6 +2,13 @@ import type { LabPreferenceMode } from '@oneandlab/shared-types';
 
 export type { LabPreferenceMode, LabBrandPublic, LabBrandAdmin } from '@oneandlab/shared-types';
 
+export function directedProviderBookingHasLaboratory(
+  providerId: string | null | undefined,
+  providerType: string | null | undefined,
+): boolean {
+  return Boolean(String(providerId ?? '').trim()) && String(providerType ?? '').trim() === 'lab';
+}
+
 export function bloodTestNeedsLabPreferenceStep(
   selectedServices: Array<{ type: string }>,
   opts?: { skipForProviderBooking?: boolean },

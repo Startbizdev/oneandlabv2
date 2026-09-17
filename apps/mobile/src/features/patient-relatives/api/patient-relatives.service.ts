@@ -20,12 +20,14 @@ export function relativeRelationshipType(r: PatientRelative): string {
   return (r.relationship_type ?? r.relationship ?? '').trim();
 }
 
-export async function fetchPatientRelatives() {
-  return api.get<PatientRelative[]>('/patient-relatives');
+export async function fetchPatientRelatives(patientId?: string) {
+  const query = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : '';
+  return api.get<PatientRelative[]>(`/patient-relatives${query}`);
 }
 
-export async function fetchPatientRelative(id: string) {
-  return api.get<PatientRelative>(`/patient-relatives/${id}`);
+export async function fetchPatientRelative(id: string, patientId?: string) {
+  const query = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : '';
+  return api.get<PatientRelative>(`/patient-relatives/${id}${query}`);
 }
 
 export async function createPatientRelative(body: {
@@ -37,6 +39,8 @@ export async function createPatientRelative(body: {
   email?: string | null;
   phone?: string | null;
   address?: AddressPayload | null;
+  patient_id?: string;
+  patient_booking_consent?: boolean;
 }) {
   const response = await api.post<PatientRelative>('/patient-relatives', body);
   if (!response.success) throw new Error(response.error ?? 'Impossible d’ajouter le proche');

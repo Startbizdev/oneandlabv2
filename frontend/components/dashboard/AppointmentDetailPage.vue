@@ -282,7 +282,13 @@
         <!-- Contenu extra colonne principale (ex: historique statuts admin) -->
         <slot v-if="$slots.mainExtra" name="mainExtra" :appointment="appointment" :load-appointment="loadAppointment" />
 
-        <!-- Photos de soins (slot pro/nurse ; la carte est portée par le composant enfant) -->
+        <slot
+          v-if="$slots.conversationCard"
+          name="conversationCard"
+          :appointment="appointment"
+        />
+
+        <!-- Suivi pro ↔ infirmier (slot pro/nurse ; la carte est portée par le composant enfant) -->
         <RdvDocumentsEmbeddedProvide v-if="$slots.carePhotosCard">
           <slot
             name="carePhotosCard"
@@ -292,12 +298,6 @@
             :load-documents="loadDocuments"
           />
         </RdvDocumentsEmbeddedProvide>
-
-        <slot
-          v-if="$slots.conversationCard"
-          name="conversationCard"
-          :appointment="appointment"
-        />
 
         <!-- Documents : même chrome et liste type tableau que le bloc informations RDV -->
         <UCard

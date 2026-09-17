@@ -179,13 +179,22 @@ export function useBookingWizard(opts: {
   });
 
   const relativesQ = useQuery({
-    queryKey: ['patient-relatives'],
+    queryKey: ['patient-relatives', opts.mode === 'dashboard' ? wizard.selectedPatientId : user?.id],
     queryFn: async () => {
-      const res = await fetchPatientRelatives();
+      const res = await fetchPatientRelatives(
+        opts.mode === 'dashboard' ? wizard.selectedPatientId : undefined,
+      );
       if (!res.success) throw new Error(res.error);
       return res.data ?? [];
     },
-    enabled: opts.mode === 'patient',
+    enabled:
+      opts.mode === 'patient'
+      || (
+        opts.mode === 'dashboard'
+        && wizard.patientMode === 'existing'
+        && Boolean(wizard.selectedPatientId)
+        && wizard.selectedPatientId !== NEW_PATIENT_ID
+      ),
     staleTime: CACHE_STALE_RELATIVES_MS,
   });
 
@@ -194,7 +203,10 @@ export function useBookingWizard(opts: {
       let rel = cached ?? relativesQ.data?.find((r) => r.id === relativeId) ?? null;
       if (!rel || !normalizePatientGender(rel.gender) || !rel.birth_date?.trim()) {
         try {
-          const res = await fetchPatientRelative(relativeId);
+          const res = await fetchPatientRelative(
+            relativeId,
+            opts.mode === 'dashboard' ? wizard.selectedPatientId : undefined,
+          );
           if (res.success && res.data) rel = res.data;
         } catch {
           /* liste locale */
@@ -218,15 +230,27 @@ export function useBookingWizard(opts: {
         if (rel.address.complement) wizard.setAddressComplement(String(rel.address.complement));
       }
     },
-    [relativesQ.data, wizard],
+    [relativesQ.data, opts.mode, wizard],
   );
+
+  const lastStaffPatientId = useRef(wizard.selectedPatientId);
+  useEffect(() => {
+    if (opts.mode !== 'dashboard') return;
+    if (lastStaffPatientId.current === wizard.selectedPatientId) return;
+    lastStaffPatientId.current = wizard.selectedPatientId;
+    setSelectedRelativeId(null);
+  }, [opts.mode, wizard.selectedPatientId]);
 
   const selectRelative = useCallback(
     (relativeId: string | null) => {
       setSelectedRelativeId(relativeId);
-      if (relativeId) void applyRelativeToForm(relativeId);
+      if (relativeId) {
+        void applyRelativeToForm(relativeId);
+      } else if (opts.mode === 'dashboard' && wizard.selectedPatientId) {
+        wizard.onSelectPatient(wizard.selectedPatientId, { keepMode: true });
+      }
     },
-    [applyRelativeToForm],
+    [applyRelativeToForm, opts.mode, wizard],
   );
 
   useEffect(() => {
@@ -287,7 +311,7 @@ export function useBookingWizard(opts: {
     enabled: (opts.mode === 'patient' && Boolean(user?.id)) || Boolean(staffPatientUserId),
     selfPatient: opts.mode === 'patient' && !selectedRelativeId,
     patientUserId: staffPatientUserId ?? undefined,
-    relativeId: opts.mode === 'patient' ? selectedRelativeId : null,
+    relativeId: selectedRelativeId,
   });
 
   const documentSubject = opts.mode === 'patient'

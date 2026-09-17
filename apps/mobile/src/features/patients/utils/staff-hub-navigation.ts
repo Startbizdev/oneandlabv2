@@ -18,6 +18,9 @@ export function staffHubItemRoute(
   rolePrefix: RolePrefix,
   role: 'nurse' | 'pro',
 ): string {
+  if (item.kind === 'relative') {
+    return `${rolePrefix}/patient/${item.patient_id}?relative_id=${encodeURIComponent(item.relative_id)}`;
+  }
   if (item.kind === 'patient') {
     return `${rolePrefix}/patient/${item.patient_id}`;
   }

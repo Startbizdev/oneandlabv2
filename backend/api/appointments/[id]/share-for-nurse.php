@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../../lib/admin/AdminDispatchEventLogger.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../models/Appointment.php';
 require_once __DIR__ . '/../../../lib/NotificationMessageFormatter.php';
+require_once __DIR__ . '/../../../lib/PendingOfferExpiry.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -108,6 +109,9 @@ if ($needsRepend && $shouldReleaseForShare) {
     $batchIdEarly = $appointment['creation_batch_id'] ?? null;
     $batchPatientEarly = $appointment['patient_id'] ?? null;
     $anchorCreatedAt = $appointment['created_at'] ?? null;
+    $republishedOfferExpiresAt = PendingOfferExpiry::formatSqlDateTime(
+        PendingOfferExpiry::computeRepublishedExpiresAt()
+    );
 
     /** Repasse en attente : mêmes critères SQL pour SELECT / UPDATE (lot entier, sans filtre strict sur UUID infirmier — évite 1 seul RDV mis à jour). */
     $rependableWhere = "
@@ -163,30 +167,33 @@ if ($needsRepend && $shouldReleaseForShare) {
         $affectedTotal = 0;
         if (!empty($batchIdEarly) && !empty($batchPatientEarly) && $user['role'] === 'nurse' && count($idsToRepend) > 0) {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW()
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(),
+                 pending_offer_expires_at = ?, updated_at = NOW()
                  WHERE creation_batch_id = ? AND patient_id = ? AND type = 'nursing'
                  AND {$rependableWhere}"
             );
-            $upd->execute([$batchIdEarly, $batchPatientEarly]);
+            $upd->execute([$republishedOfferExpiresAt, $batchIdEarly, $batchPatientEarly]);
             $affectedTotal = $upd->rowCount();
         } elseif (empty($batchIdEarly) && !empty($batchPatientEarly) && $anchorCreatedAt && $user['role'] === 'nurse' && count($idsToRepend) > 0) {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW()
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(),
+                 pending_offer_expires_at = ?, updated_at = NOW()
                  WHERE patient_id = ? AND type = 'nursing'
                  AND created_at >= DATE_SUB(?, INTERVAL 3 MINUTE)
                  AND created_at <= DATE_ADD(?, INTERVAL 3 MINUTE)
                  AND {$rependableWhere}"
             );
-            $upd->execute([$batchPatientEarly, $anchorCreatedAt, $anchorCreatedAt]);
+            $upd->execute([$republishedOfferExpiresAt, $batchPatientEarly, $anchorCreatedAt, $anchorCreatedAt]);
             $affectedTotal = $upd->rowCount();
         } else {
             $upd = $db->prepare(
-                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(), updated_at = NOW() WHERE id = ? AND (
+                "UPDATE appointments SET status = 'pending', assigned_nurse_id = NULL, nurse_share_released_at = NOW(),
+                 pending_offer_expires_at = ?, updated_at = NOW() WHERE id = ? AND (
                 (status IN ('confirmed', 'inProgress', 'planned') AND assigned_nurse_id IS NOT NULL)
                 OR (status = 'pending' AND assigned_nurse_id IS NOT NULL)
             )"
             );
-            $upd->execute([$appointmentId]);
+            $upd->execute([$republishedOfferExpiresAt, $appointmentId]);
             $affectedTotal = $upd->rowCount();
         }
 
@@ -389,6 +396,7 @@ $batchId = $appointment['creation_batch_id'] ?? null;
 $batchPatientId = $appointment['patient_id'] ?? null;
 $careLines = [];
 $careItems = [];
+$singleWoundDetails = '';
 
 $appointmentModelShare = new Appointment();
 $sliceForResolved = [
@@ -399,27 +407,79 @@ $sliceForResolved = [
     'form_data' => $formData,
 ];
 $nursingResolvedShare = $appointmentModelShare->resolveNursingItemsForAppointment($sliceForResolved, null);
+$optionMetaByCategory = [];
+$woundDetailsForItem = static function (array $item, array $itemFormData) use (
+    $appointmentModelShare,
+    &$optionMetaByCategory
+): string {
+    $itemCategoryName = trim((string) ($item['category_name'] ?? $item['label'] ?? ''));
+    if ($itemCategoryName !== 'Pansement-plaie') {
+        return '';
+    }
+    $itemCategoryId = trim((string) ($item['category_id'] ?? ''));
+    if (!array_key_exists($itemCategoryId, $optionMetaByCategory)) {
+        $optionMetaByCategory[$itemCategoryId] = $appointmentModelShare->fetchCareCategoryOptionMeta(
+            $itemCategoryId !== '' ? $itemCategoryId : null
+        );
+    }
+
+    return NotificationMessageFormatter::shareWoundCareDetails(
+        $item,
+        $itemFormData,
+        $optionMetaByCategory[$itemCategoryId]
+    );
+};
+$appendCareItem = static function (
+    array $item,
+    array $itemFormData,
+    string $itemAppointmentId,
+    string $lineDate
+) use (&$careLines, &$careItems, $woundDetailsForItem): void {
+    $itemName = trim((string) ($item['category_name'] ?? $item['label'] ?? ''));
+    if ($itemName === '') {
+        $itemName = 'Soins infirmiers';
+    }
+    $details = $woundDetailsForItem($item, $itemFormData);
+    $line = '• ' . $itemName;
+    if ($details !== '') {
+        $line .= ' — ' . $details;
+    }
+    if ($lineDate !== '') {
+        $line .= ' — le ' . $lineDate;
+    }
+    $careLines[] = $line;
+    $careItems[] = [
+        'appointmentId' => $itemAppointmentId,
+        'categoryName' => $itemName,
+        'dateShort' => $lineDate,
+        'details' => $details,
+    ];
+};
 
 if (!empty($batchId) && !empty($batchPatientId)) {
     $allBatchStmt = $db->prepare('
-        SELECT a.id, a.scheduled_at, a.category_id
+        SELECT a.id, a.scheduled_at, a.category_id,
+               a.form_data_encrypted, a.form_data_dek,
+               cc.name AS category_name
         FROM appointments a
+        LEFT JOIN care_categories cc ON cc.id = a.category_id
         WHERE a.creation_batch_id = ?
           AND a.patient_id = ?
           AND a.type = ?
-        ORDER BY a.scheduled_at ASC
+        ORDER BY a.scheduled_at ASC, a.created_at ASC, a.id ASC
     ');
     $allBatchStmt->execute([$batchId, $batchPatientId, 'nursing']);
     $batchRows = $allBatchStmt->fetchAll(PDO::FETCH_ASSOC);
     if (count($batchRows) > 1) {
         foreach ($batchRows as $row) {
-            $lineCat = 'Soins infirmiers';
-            if (!empty($row['category_id'])) {
-                $cst = $db->prepare('SELECT name FROM care_categories WHERE id = ?');
-                $cst->execute([$row['category_id']]);
-                $cr = $cst->fetch(PDO::FETCH_ASSOC);
-                if ($cr && !empty($cr['name'])) {
-                    $lineCat = $cr['name'];
+            $rowFormData = [];
+            if (!empty($row['form_data_encrypted']) && !empty($row['form_data_dek'])) {
+                try {
+                    $rowFormDataJson = $crypto->decryptField($row['form_data_encrypted'], $row['form_data_dek']);
+                    $decodedRowFormData = json_decode((string) $rowFormDataJson, true);
+                    $rowFormData = is_array($decodedRowFormData) ? $decodedRowFormData : [];
+                } catch (Throwable $e) {
+                    $rowFormData = [];
                 }
             }
             $lineDate = '';
@@ -430,28 +490,34 @@ if (!empty($batchId) && !empty($batchPatientId)) {
                     $lineDate = (string) $row['scheduled_at'];
                 }
             }
-            $careLines[] = '• ' . $lineCat . ($lineDate !== '' ? ' — le ' . $lineDate : '');
-            $careItems[] = [
-                'appointmentId' => (string) $row['id'],
-                'categoryName' => $lineCat,
-                'dateShort' => $lineDate,
+            $rowSlice = [
+                'id' => (string) $row['id'],
+                'type' => 'nursing',
+                'category_id' => $row['category_id'] ?? null,
+                'category_name' => $row['category_name'] ?? 'Soins infirmiers',
+                'form_data' => $rowFormData,
             ];
+            $rowItems = $appointmentModelShare->resolveNursingItemsForAppointment($rowSlice, null);
+            foreach ($rowItems as $rowItem) {
+                $appendCareItem($rowItem, $rowFormData, (string) $row['id'], $lineDate);
+            }
         }
     }
 }
 
-if (count($careItems) <= 1 && count($nursingResolvedShare) > 1) {
+if ($careItems === [] && count($nursingResolvedShare) > 1) {
     foreach ($nursingResolvedShare as $it) {
-        $nm = trim((string) ($it['category_name'] ?? $it['label'] ?? ''));
-        if ($nm === '') {
-            $nm = 'Soins infirmiers';
-        }
-        $careLines[] = '• ' . $nm;
-        $careItems[] = [
-            'appointmentId' => (string) $appointmentId,
-            'categoryName' => $nm,
-            'dateShort' => $dateFormatted,
-        ];
+        $appendCareItem($it, $formData, (string) $appointmentId, '');
+    }
+} elseif ($careItems === [] && count($nursingResolvedShare) === 1) {
+    $singleWoundDetails = $woundDetailsForItem($nursingResolvedShare[0], $formData);
+    $singleName = trim((string) (
+        $nursingResolvedShare[0]['category_name']
+        ?? $nursingResolvedShare[0]['label']
+        ?? ''
+    ));
+    if ($singleName !== '') {
+        $categoryName = $singleName;
     }
 }
 
@@ -469,6 +535,9 @@ if (count($careLines) > 1) {
 } else {
     $shareText .= "Type de soins :\n"
         . "🩺 " . $categoryName . "\n";
+    if ($singleWoundDetails !== '') {
+        $shareText .= "\t• " . $singleWoundDetails . "\n";
+    }
 }
 
 if ($durationPart !== '' && count($careLines) <= 1) {

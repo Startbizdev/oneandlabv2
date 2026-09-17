@@ -16,7 +16,7 @@
       <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-            Photos de soins
+            Suivi des soins pro ↔ infirmier
           </h3>
           <span
             v-if="combinedUnread > 0"
@@ -28,7 +28,7 @@
           </span>
         </div>
         <p class="mt-0.5 text-[11px] leading-snug text-muted sm:text-xs">
-          Partagées par l’infirmier ; discussion en direct avec le prescripteur.
+          Messages, photos et PDF réservés au professionnel prescripteur et à l’infirmier assigné.
         </p>
       </div>
     </header>

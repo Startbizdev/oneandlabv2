@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
+import type { AppNotification } from '../api/notifications.service';
+import { resolveNotificationNavigation } from '../utils/notification-navigation';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -13,15 +15,26 @@ Notifications.setNotificationHandler({
 });
 
 function navigateFromNotificationData(data: Record<string, unknown>) {
-  if (data.no_navigate === true || data.no_navigate === 'true') return;
-  const aptId = data.appointment_id ?? data.appointmentId;
   const role = useAuthStore.getState().user?.role;
-  if (!aptId || typeof aptId !== 'string') return;
-
-  if (role === 'nurse') router.push(`/(nurse)/appointment/${aptId}`);
-  else if (role === 'preleveur') router.push(`/(preleveur)/appointment/${aptId}`);
-  else if (role === 'pro') router.push(`/(pro)/appointment/${aptId}`);
-  else if (role === 'patient') router.push(`/(patient)/appointment/${aptId}`);
+  const target = resolveNotificationNavigation(
+    {
+      id: String(data.notification_id ?? data.id ?? ''),
+      type: typeof data.type === 'string' ? data.type : undefined,
+      appointment_id:
+        data.appointment_id != null
+          ? String(data.appointment_id)
+          : data.appointmentId != null
+            ? String(data.appointmentId)
+            : undefined,
+      data,
+    } satisfies AppNotification,
+    role,
+  );
+  if (target.kind !== 'route') return;
+  router.push({
+    pathname: target.pathname,
+    params: target.params,
+  } as never);
 }
 
 export function registerNotificationHandlers() {

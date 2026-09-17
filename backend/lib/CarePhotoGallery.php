@@ -102,7 +102,10 @@ final class CarePhotoGallery
         }
 
         $uid = $user['user_id'] ?? '';
-        if ($appointment['assigned_nurse_id'] === $uid) {
+        if (
+            ($user['role'] ?? '') === 'nurse'
+            && ($appointment['assigned_nurse_id'] ?? '') === $uid
+        ) {
             return true;
         }
         if (($appointment['created_by'] ?? '') === $uid && ($user['role'] ?? '') === 'pro') {

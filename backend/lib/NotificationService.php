@@ -6,6 +6,7 @@ require_once __DIR__ . '/EmailQueue.php';
 require_once __DIR__ . '/SmsSender.php';
 require_once __DIR__ . '/Crypto.php';
 require_once __DIR__ . '/NotificationMessageFormatter.php';
+require_once __DIR__ . '/BusinessNotificationPolicy.php';
 
 /**
  * Service de gestion des notifications
@@ -610,6 +611,53 @@ class NotificationService
         }
 
         // Pas de SMS patient (coût) : cloche + e-mail suffisent.
+    }
+
+    /**
+     * Informe chaque contrepartie autorisée d'un changement métier réel, une seule fois,
+     * sans notifier l'utilisateur à l'origine de la modification.
+     *
+     * @param list<string> $changedFields
+     */
+    public function notifyAppointmentBusinessUpdated(
+        string $appointmentId,
+        array $appointment,
+        array $changedFields,
+        string $actorId
+    ): void {
+        if ($changedFields === []) {
+            return;
+        }
+
+        $parts = [];
+        if (in_array('schedule', $changedFields, true)) {
+            $parts[] = 'Créneau modifié';
+        }
+        if (in_array('address', $changedFields, true)) {
+            $parts[] = 'Adresse modifiée';
+        }
+        $when = NotificationMessageFormatter::whenShort(
+            $appointment['form_data'] ?? null,
+            isset($appointment['scheduled_at']) ? (string) $appointment['scheduled_at'] : null
+        );
+        if ($when !== '') {
+            $parts[] = $when;
+        }
+        $message = NotificationMessageFormatter::joinParts($parts);
+
+        foreach (BusinessNotificationPolicy::appointmentCounterpartIds($appointment, $actorId) as $recipientId) {
+            try {
+                $this->createNotification(
+                    $recipientId,
+                    'appointment_updated',
+                    'RDV modifié',
+                    $message !== '' ? $message : 'Les informations du rendez-vous ont été modifiées.',
+                    ['appointment_id' => $appointmentId]
+                );
+            } catch (Throwable $e) {
+                error_log("notifyAppointmentBusinessUpdated {$recipientId}: " . $e->getMessage());
+            }
+        }
     }
 
     /**
