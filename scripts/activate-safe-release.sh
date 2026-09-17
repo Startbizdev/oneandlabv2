@@ -18,11 +18,17 @@ if printf '%s\n' "$CHECKS" | grep -Eq '^(MISS|ERR)'; then
 fi
 find "$STAGE/backend" -type f -name '*.php' -print0 | xargs -0 -n1 php -l > "$STAGE/php-lint.log"
 php "$STAGE/scripts/deploy-database-safety.php" migrate "$BACKUP"
-# Runtime data stay in the preserved old directory; no copies or removal of clinical files.
-for name in uploads storage keys vendor logs tmp; do
+PERSIST="$BASE/persistent"
+mkdir -p "$PERSIST"/{uploads,logs,storage,keys,tmp}
+# Clinical/runtime data live outside release folders (see scripts/migrate-persistent-runtime.sh).
+for name in uploads storage keys logs tmp vendor; do
   if [[ -e "$BASE/backend/$name" ]]; then
     [[ ! -e "$STAGE/backend/$name" ]] || { echo "Unexpected tracked runtime directory: $name"; exit 1; }
-    ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
+    if [[ -e "$PERSIST/$name" ]]; then
+      ln -s "$PERSIST/$name" "$STAGE/backend/$name"
+    else
+      ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
+    fi
   fi
 done
 shopt -s nullglob
@@ -30,7 +36,11 @@ for source in "$BASE/backend"/.env "$BASE/backend"/.env.*; do
   name="$(basename "$source")"
   [[ "$name" == .env.example ]] && continue
   [[ ! -e "$STAGE/backend/$name" ]] || exit 1
-  ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
+  if [[ "$name" == .env && -f "$PERSIST/.env" ]]; then
+    ln -s "$PERSIST/.env" "$STAGE/backend/.env"
+  else
+    ln -s "$STAGE/previous-backend/$name" "$STAGE/backend/$name"
+  fi
 done
 # Keep hashed chunks for browsers still running the preceding application.
 if [[ -d "$BASE/frontend/.output/public/_nuxt" ]]; then
