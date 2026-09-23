@@ -6,6 +6,7 @@ import { apiFetch } from '~/utils/api';
 import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
+import { APPOINTMENT_PERSONAL_DOC_TYPES } from '~/types/profile';
 
 export interface AppointmentsPagination {
   page: number;
@@ -89,8 +90,7 @@ export const useAppointments = (scope = 'appointments') => {
     }
 
     const fieldMapping: Record<string, string> = {
-      carte_vitale: 'carte_vitale',
-      carte_mutuelle: 'carte_mutuelle',
+      ...Object.fromEntries(APPOINTMENT_PERSONAL_DOC_TYPES.map((key) => [key, key])),
       ordonnance: 'ordonnance',
       autres_assurances: 'autres_assurances',
     };

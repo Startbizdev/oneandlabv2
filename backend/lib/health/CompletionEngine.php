@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/HealthRecordSchema.php';
+require_once __DIR__ . '/HealthRecordValue.php';
 require_once __DIR__ . '/HealthPatientProfile.php';
 
 final class CompletionEngine
@@ -199,7 +200,7 @@ final class CompletionEngine
         if ($value === null || !array_key_exists('value', $value)) {
             return 0.0;
         }
-        $v = $value['value'];
+        $v = HealthRecordValue::fromPayload($value);
         if ($v === null || $v === '') {
             return 0.0;
         }

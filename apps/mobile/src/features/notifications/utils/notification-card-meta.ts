@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { Bell, CalendarClock, MessageSquare, type LucideIcon } from 'lucide-react-native';
+import { Bell, CalendarClock, MessageSquare, Pill, type LucideIcon } from 'lucide-react-native';
 import {
   formatParisDayMonthYear,
   formatParisHm,
@@ -35,6 +35,9 @@ export function notificationVisual(type?: string): {
 } {
   const c = getAppColors();
   const t = (type ?? '').toLowerCase();
+  if (t.includes('pharmacy_order') || t.includes('pharmacie')) {
+    return { Icon: Pill, color: c.primaryDark, bg: c.primaryLight };
+  }
   if (t.includes('appointment') || t.includes('rdv') || t.includes('booking')) {
     return { Icon: CalendarClock, color: c.primary, bg: c.primaryLight };
   }

@@ -130,6 +130,11 @@ import {
   canUploadLabResultatsForAppointmentStatus,
   canUploadMedicalDocumentsForAppointmentStatus,
 } from '~/utils/appointment-documents-upload';
+import {
+  buildAppointmentDetailUploadTypes,
+  getAppointmentDetailDocumentLabel,
+  LAB_RESULTATS_UPLOAD_TYPE,
+} from '~/utils/appointment-detail-document-types';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 
 const { user } = useAuth();
@@ -148,21 +153,7 @@ const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingD
 const uploadingTypes = ref(new Set<string>());
 const currentAppointmentForUpload = ref<any>(null);
 
-const uploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  {
-    value: 'resultats',
-    label: "Résultats d'analyses",
-    icon: 'i-lucide-flask-conical',
-    color: 'red',
-    accept: 'application/pdf',
-    hint: 'PDF uniquement • max 25 Mo',
-  },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const uploadDocumentTypes = buildAppointmentDetailUploadTypes({ resultats: LAB_RESULTATS_UPLOAD_TYPE });
 
 function uploadTypesForAppointment(appointment: any) {
   let list = uploadDocumentTypes;
@@ -217,15 +208,7 @@ async function uploadDocumentFile(file: File, docType: string) {
 }
 
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    carte_vitale: 'Carte Vitale',
-    carte_mutuelle: 'Carte Mutuelle',
-    ordonnance: 'Ordonnance',
-    resultats: 'Résultats',
-    autres_assurances: 'Autre prescription',
-    other: 'Autre',
-  };
-  return labels[type] || type;
+  return getAppointmentDetailDocumentLabel(type);
 }
 
 async function downloadDocument(doc: { id: string; file_name: string }) {

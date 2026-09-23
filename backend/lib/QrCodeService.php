@@ -163,6 +163,35 @@ class QrCodeService
         $profileId = $stmt->fetchColumn();
         if ($profileId) {
             try {
+                $patientStmt = $this->db->prepare(
+                    'SELECT patient_id FROM appointments WHERE id = ? LIMIT 1'
+                );
+                $patientStmt->execute([$appointmentId]);
+                $patientId = $patientStmt->fetchColumn();
+                if ($patientId && (string) $patientId !== (string) $profileId) {
+                    $accessId = $this->generateUuid();
+                    $access = $this->db->prepare('
+                        INSERT INTO patient_professional_access (
+                            id, patient_id, professional_id, source, appointment_id,
+                            origin_qr_code_id, hidden_by_patient, created_at
+                        ) VALUES (?, ?, ?, \'qr_origin\', ?, ?, 0, NOW())
+                        ON DUPLICATE KEY UPDATE
+                            source = \'qr_origin\',
+                            appointment_id = VALUES(appointment_id),
+                            origin_qr_code_id = VALUES(origin_qr_code_id)
+                    ');
+                    $access->execute([
+                        $accessId,
+                        (string) $patientId,
+                        (string) $profileId,
+                        $appointmentId,
+                        $qrCodeId,
+                    ]);
+                }
+            } catch (Throwable $e) {
+                error_log('qr_conversion patient origin: ' . $e->getMessage());
+            }
+            try {
                 $notif = new NotificationService();
                 $notif->createNotification(
                     (string) $profileId,

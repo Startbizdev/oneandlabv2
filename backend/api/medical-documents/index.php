@@ -203,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         unset($d);
 
         // Documents perso du dossier patient (vitale, mutuelle…) — pas les ordonnances profil
-        $profileMergeTypes = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
+        $profileMergeTypes = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances'];
         $canMergeProfileDocs = $patientId && (
             $user['role'] === 'patient'
             || in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'super_admin'], true)
@@ -348,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $postPatientId = null;
         }
         $documentType = $_POST['document_type'] ?? null;
-        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'ordonnance', 'autres_assurances', 'resultats', 'other', 'cancellation_photo'];
+        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'ordonnance', 'autres_assurances', 'resultats', 'other', 'cancellation_photo'];
         $documentType = in_array($documentType ?? '', $allowedTypes, true) ? $documentType : 'other';
 
         $appointment = null;
@@ -466,9 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Générer un ID unique pour le fichier
         $id = bin2hex(random_bytes(16));
-        $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
         
         // Créer le dossier pour ce document
         $documentDir = $uploadDir . $id . '/';
@@ -564,7 +562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         // Si c'est un document de profil (carte_vitale, carte_mutuelle, autres_assurances),
         // sauvegarder dans patient_documents ou patient_relative_documents selon le RDV
-        $profileDocumentTypes = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
+        $profileDocumentTypes = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances'];
         $patientIdForProfile = $standaloneOrdonnance ? $postPatientId : ($appointment['patient_id'] ?? null);
         $relativeIdForProfile = $standaloneOrdonnance ? null : ($appointment['relative_id'] ?? null);
         if ($documentType && in_array($documentType, $profileDocumentTypes, true) && $patientIdForProfile) {

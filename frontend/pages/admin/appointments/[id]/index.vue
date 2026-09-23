@@ -162,6 +162,11 @@ import {
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import {
+  buildAppointmentDetailUploadTypes,
+  getAppointmentDetailDocumentLabel,
+  PRO_RESULTATS_UPLOAD_TYPE,
+} from '~/utils/appointment-detail-document-types';
 
 const route = useRoute();
 const detailRef = ref<{ loadAppointment: () => Promise<void>; loadDocuments: () => Promise<void>; appointment: { value: any } } | null>(null);
@@ -187,14 +192,7 @@ const uploadingTypes = ref(new Set<string>());
 const draggedOver = ref<string | null>(null);
 const fileInputs = ref<Record<string, HTMLInputElement>>({});
 
-const uploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const uploadDocumentTypes = buildAppointmentDetailUploadTypes({ resultats: PRO_RESULTATS_UPLOAD_TYPE });
 
 function setFileInput(docType: string, el: any) {
   if (el) fileInputs.value[docType] = el as HTMLInputElement;
@@ -314,7 +312,15 @@ function formatFileSize(bytes: number) {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autre prescription', other: 'Autre' };
+  const labels: Record<string, string> = {
+    carte_vitale: 'Carte Vitale',
+    carte_mutuelle: 'Carte Mutuelle',
+    attestation_droits_ame: 'Attestation de droits / AME',
+    ordonnance: 'Ordonnance',
+    resultats: 'Résultats',
+    autres_assurances: 'Autre prescription',
+    other: 'Autre',
+  };
   return labels[type] || 'Document';
 }
 function getDocumentTypeBadgeColor(type: string): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {

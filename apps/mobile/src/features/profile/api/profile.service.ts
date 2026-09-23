@@ -10,7 +10,17 @@ export async function fetchUser(id: string, scope: UserFetchScope = 'mobile') {
   if (!res.success || !res.data || res.data.id !== id) throw new Error(res.error ?? 'Profil indisponible');
   const data = { ...res.data };
   const fields = data as Record<string, unknown>;
-  for (const field of ['is_public_profile_enabled', 'is_accepting_appointments', 'accept_rdv_saturday', 'accept_rdv_sunday', 'prescription_generation_enabled']) {
+  for (const field of [
+    'is_public_profile_enabled',
+    'is_accepting_appointments',
+    'accept_rdv_saturday',
+    'accept_rdv_sunday',
+    'prescription_generation_enabled',
+    'pharmacy_accepts_click_collect',
+    'pharmacy_accepts_home_delivery',
+    'pharmacy_orders_paused',
+    'pharmacy_orders_enabled',
+  ]) {
     if (fields[field] === '0' || fields[field] === 0) fields[field] = false;
     if (fields[field] === '1' || fields[field] === 1) fields[field] = true;
   }

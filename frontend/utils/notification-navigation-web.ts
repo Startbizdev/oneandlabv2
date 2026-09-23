@@ -73,6 +73,19 @@ export function webNotificationRoute(
       if (intent.carePhotoId) query.carePhoto = intent.carePhotoId;
       return Object.keys(query).length ? { path, query } : path;
     }
+    case 'pharmacy_order': {
+      if (role === 'patient') return `/patient/traitements/${intent.orderId}`;
+      if (role === 'nurse') return `/nurse/commandes-pharmacie/${intent.orderId}`;
+      if (role === 'super_admin') return `/admin/commandes-pharmacie/${intent.orderId}`;
+      if (role === 'pro') {
+        const type = String(notif.type ?? '');
+        const received = type === 'pharmacy_order_created';
+        return received
+          ? `/pro/commandes-recues/${intent.orderId}`
+          : `/pro/commandes-pharmacie/${intent.orderId}`;
+      }
+      return null;
+    }
     default:
       return null;
   }

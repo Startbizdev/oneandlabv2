@@ -36,6 +36,15 @@
             {{ role === 'subaccount' ? 'Retour aux sous-comptes' : 'Retour aux préleveurs' }}
           </UButton>
           <UButton
+            v-if="editingUserId && (user?.role === 'pro' || user?.role === 'nurse')"
+            :to="`/${user.role}/commandes-pharmacie/new?patient_id=${encodeURIComponent(editingUserId)}`"
+            color="primary"
+            size="sm"
+            icon="i-lucide-pill"
+          >
+            Nouvelle commande
+          </UButton>
+          <UButton
             v-if="publicProfileForm.public_slug && !newPreleveurMode && !newPatientMode && !loading && !profileLoadError"
             :to="publicProfileUrl"
             target="_blank"
@@ -135,6 +144,7 @@
       </div>
 
       <template v-else>
+        <PatientCareOriginSettings v-if="user?.role === 'patient' && !editingUserId" class="mb-6" />
         <!-- Grille : pro seul → 100 %. Édition patient avec historique → rail historique gauche | formulaire centre | docs / modération droite -->
         <div
           class="grid grid-cols-1 gap-6 lg:gap-8"
@@ -160,6 +170,7 @@
               :role="role ?? ''"
               :no-actions="true"
               :email-readonly="!newPreleveurMode"
+              :emploi-locked="!isAdmin"
               @save="onSavePersonalInfo"
               @reset="resetForm"
             />
@@ -780,6 +791,61 @@
                   </div>
                 </div>
 
+                <!-- Commandes pharmacie (pro Pharmacien) -->
+                <template v-if="isPharmacistOwnProfile">
+                  <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 transition-colors" :class="pharmacyAcceptsClickCollect ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50/50 dark:bg-gray-800/30'">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0 flex-1">
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">Click &amp; collect</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Retrait en officine</p>
+                      </div>
+                      <USwitch v-model="pharmacyAcceptsClickCollect" class="shrink-0" />
+                    </div>
+                  </div>
+                  <div v-if="pharmacyAcceptsClickCollect" class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <p class="mb-2 text-sm font-medium">Jours de retrait</p>
+                    <div class="flex flex-wrap gap-2">
+                      <UButton
+                        v-for="day in pharmacyWeekDays"
+                        :key="`collect-${day.value}`"
+                        size="xs"
+                        :variant="pharmacyClickCollectDays.includes(day.value) ? 'solid' : 'outline'"
+                        @click="togglePharmacyDay(pharmacyClickCollectDays, day.value)"
+                      >{{ day.label }}</UButton>
+                    </div>
+                  </div>
+                  <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 transition-colors" :class="pharmacyAcceptsHomeDelivery ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50/50 dark:bg-gray-800/30'">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0 flex-1">
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">Livraison à domicile</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Livraison au patient</p>
+                      </div>
+                      <USwitch v-model="pharmacyAcceptsHomeDelivery" class="shrink-0" />
+                    </div>
+                  </div>
+                  <div v-if="pharmacyAcceptsHomeDelivery" class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    <p class="mb-2 text-sm font-medium">Jours de livraison</p>
+                    <div class="flex flex-wrap gap-2">
+                      <UButton
+                        v-for="day in pharmacyWeekDays"
+                        :key="`delivery-${day.value}`"
+                        size="xs"
+                        :variant="pharmacyHomeDeliveryDays.includes(day.value) ? 'solid' : 'outline'"
+                        @click="togglePharmacyDay(pharmacyHomeDeliveryDays, day.value)"
+                      >{{ day.label }}</UButton>
+                    </div>
+                  </div>
+                  <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 transition-colors" :class="!pharmacyOrdersPaused ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50/50 dark:bg-gray-800/30'">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0 flex-1">
+                        <span class="text-sm font-medium text-gray-900 dark:text-white">Recevoir des commandes</span>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Désactivez pour mettre en pause</p>
+                      </div>
+                      <USwitch :model-value="!pharmacyOrdersPaused" class="shrink-0" @update:model-value="pharmacyOrdersPaused = !$event" />
+                    </div>
+                  </div>
+                </template>
+
                 <!-- Délai minimum (lab, subaccount) -->
                 <div v-if="(isDisplayedProfileLab || isSubaccount) && !newPreleveurMode" class="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                   <p class="text-sm font-medium text-gray-900 dark:text-white">Délai minimum de réservation</p>
@@ -1349,6 +1415,37 @@ const hasProfilePhotoCard = computed(
 const isProOwnProfile = computed(
   () => user.value?.role === 'pro' && !editingUserId.value && !newPatientMode.value
 )
+const isPharmacistOwnProfile = computed(() => {
+  if (!isProOwnProfile.value) return false
+  const emploi = (profileForm.value.emploi ?? '').trim()
+  return emploi.localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0
+})
+const pharmacyAcceptsClickCollect = ref(true)
+const pharmacyAcceptsHomeDelivery = ref(true)
+const pharmacyOrdersPaused = ref(false)
+const pharmacyClickCollectDays = ref<number[]>([1, 2, 3, 4, 5, 6])
+const pharmacyHomeDeliveryDays = ref<number[]>([1, 2, 3, 4, 5, 6])
+const pharmacyWeekDays = [
+  { value: 1, label: 'Lun' }, { value: 2, label: 'Mar' }, { value: 3, label: 'Mer' },
+  { value: 4, label: 'Jeu' }, { value: 5, label: 'Ven' }, { value: 6, label: 'Sam' },
+  { value: 7, label: 'Dim' },
+]
+
+function togglePharmacyDay(days: number[], day: number) {
+  const index = days.indexOf(day)
+  if (index >= 0) days.splice(index, 1)
+  else days.push(day)
+  days.sort((a, b) => a - b)
+}
+
+function isDisabledApiFlag(value: unknown): boolean {
+  return value === false || value === 0 || value === '0'
+}
+
+function isEnabledApiFlag(value: unknown): boolean {
+  return value === true || value === 1 || value === '1'
+}
+
 const canManagePrescriptionSignature = computed(
   () =>
     (isProOwnProfile.value ||
@@ -2031,6 +2128,15 @@ const loadProfile = async () => {
         userData.social_links && typeof userData.social_links === 'object'
           ? { facebook: '', linkedin: '', instagram: '', ...userData.social_links }
           : { facebook: '', linkedin: '', instagram: '' }
+      pharmacyAcceptsClickCollect.value = !isDisabledApiFlag(userData.pharmacy_accepts_click_collect)
+      pharmacyAcceptsHomeDelivery.value = !isDisabledApiFlag(userData.pharmacy_accepts_home_delivery)
+      pharmacyOrdersPaused.value = isEnabledApiFlag(userData.pharmacy_orders_paused)
+      pharmacyClickCollectDays.value = Array.isArray(userData.pharmacy_click_collect_days_json)
+        ? userData.pharmacy_click_collect_days_json
+        : [1, 2, 3, 4, 5, 6]
+      pharmacyHomeDeliveryDays.value = Array.isArray(userData.pharmacy_home_delivery_days_json)
+        ? userData.pharmacy_home_delivery_days_json
+        : [1, 2, 3, 4, 5, 6]
     }
     if (userData.role === 'preleveur') {
       publicProfileForm.value.profile_image_url = userData.profile_image_url || ''
@@ -2284,6 +2390,16 @@ const saveProfile = async (fromSaveAll = false) => {
         body.rpps = profileForm.value.rpps.replace(/\s/g, '')
       }
       body.emploi = profileForm.value.emploi?.trim() || null
+      if (
+        isPharmacistOwnProfile.value ||
+        (profileForm.value.emploi ?? '').trim().localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0
+      ) {
+        body.pharmacy_accepts_click_collect = !!pharmacyAcceptsClickCollect.value
+        body.pharmacy_accepts_home_delivery = !!pharmacyAcceptsHomeDelivery.value
+        body.pharmacy_orders_paused = !!pharmacyOrdersPaused.value
+        body.pharmacy_click_collect_days_json = pharmacyClickCollectDays.value
+        body.pharmacy_home_delivery_days_json = pharmacyHomeDeliveryDays.value
+      }
       if (!editingUserId.value) {
         body.profile_image_url = publicProfileForm.value.profile_image_url || null
         body.biography = publicProfileForm.value.biography?.trim() || null

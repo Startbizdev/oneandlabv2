@@ -187,6 +187,10 @@ import {
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import {
+  buildAppointmentDetailUploadTypes,
+  getAppointmentDetailDocumentLabel,
+} from '~/utils/appointment-detail-document-types';
 import { isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
@@ -366,13 +370,7 @@ function setFileInput(docType: string, el: any) {
   if (el) fileInputs.value[docType] = el as HTMLInputElement;
 }
 
-const uploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const uploadDocumentTypes = buildAppointmentDetailUploadTypes();
 
 function canUploadDocuments(appointment: any) {
   return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);
@@ -574,7 +572,15 @@ function formatFileSize(bytes: number) {
 }
 
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = { carte_vitale: 'Carte Vitale', carte_mutuelle: 'Carte Mutuelle', ordonnance: 'Ordonnance', resultats: 'Résultats', autres_assurances: 'Autre prescription', other: 'Autre' };
+  const labels: Record<string, string> = {
+    carte_vitale: 'Carte Vitale',
+    carte_mutuelle: 'Carte Mutuelle',
+    attestation_droits_ame: 'Attestation de droits / AME',
+    ordonnance: 'Ordonnance',
+    resultats: 'Résultats',
+    autres_assurances: 'Autre prescription',
+    other: 'Autre',
+  };
   return labels[type] || 'Document';
 }
 

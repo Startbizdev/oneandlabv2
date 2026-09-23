@@ -3,6 +3,13 @@
  * Script de test pour vérifier l'upload de documents patients
  */
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Not found']);
+    exit;
+}
+
 // Charger les variables d'environnement si .env existe
 $envFile = __DIR__ . '/.env';
 if (file_exists($envFile) && is_readable($envFile)) {

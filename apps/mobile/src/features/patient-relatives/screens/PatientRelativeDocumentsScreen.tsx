@@ -45,6 +45,7 @@ const PAGE_SIZE = 8;
 const DOC_ICONS: Record<string, LucideIcon> = {
   carte_vitale: CreditCard,
   carte_mutuelle: Shield,
+  attestation_droits_ame: FileText,
   ordonnance: FileText,
   autres_assurances: FileText,
   other: FileText,

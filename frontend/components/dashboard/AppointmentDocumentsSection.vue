@@ -726,6 +726,7 @@ const docCardLeadingIcon = 'h-4 w-4 text-gray-500 dark:text-gray-400';
 const DOC_TYPE_LABELS: Record<string, string> = {
   carte_vitale: 'Carte Vitale',
   carte_mutuelle: 'Carte Mutuelle',
+  attestation_droits_ame: 'Attestation de droits / AME',
   ordonnance: 'Ordonnance',
   resultats: 'Résultats',
   autres_assurances: 'Autre prescription',
@@ -736,6 +737,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 const DOC_TYPE_ICONS: Record<string, string> = {
   carte_vitale: 'i-lucide-credit-card',
   carte_mutuelle: 'i-lucide-shield',
+  attestation_droits_ame: 'i-lucide-file-badge',
   ordonnance: 'i-lucide-file-text',
   resultats: 'i-lucide-flask-conical',
   autres_assurances: 'i-lucide-file-text',

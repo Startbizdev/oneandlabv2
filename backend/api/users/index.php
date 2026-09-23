@@ -125,6 +125,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $filters['role'] = $role;
         }
     }
+    if (($filters['role'] ?? '') === 'patient' && !$isSuperAdmin) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Accès refusé',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
     $status = $_GET['status'] ?? null;
     if ($status && in_array($status, ['active', 'suspended', 'banned'], true)) {
         $filters['status'] = $status;

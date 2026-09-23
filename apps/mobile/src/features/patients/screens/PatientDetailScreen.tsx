@@ -359,6 +359,15 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
         </View>
 
         <Button
+          title="Nouvelle commande pharmacie"
+          fullWidth
+          variant="outline"
+          onPress={() =>
+            router.push(`${rolePrefix}/commandes-pharmacie/new?patientId=${encodeURIComponent(id ?? '')}` as never)
+          }
+        />
+
+        <Button
           title="Créer un rendez-vous"
           fullWidth
           onPress={() => router.push(`${rolePrefix}/appointments/new?patient_id=${id}` as never)}

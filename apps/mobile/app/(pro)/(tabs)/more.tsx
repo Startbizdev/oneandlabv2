@@ -13,7 +13,10 @@ import {
   Share2,
   Smile,
   User,
+  Pill,
+  Inbox,
 } from 'lucide-react-native';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { SHOW_PRESCRIPTIONS_TAB_NAV, prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
@@ -32,6 +35,7 @@ export default function ProMore() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const unread = useUnreadNotificationsCount();
+  const { canOrder: pharmacyCanOrder, canReceive: pharmacyCanReceive } = usePharmacyModuleEnabled();
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -74,6 +78,16 @@ export default function ProMore() {
             title: 'Actions',
             delay: 150,
             items: [
+              ...(pharmacyCanReceive
+                ? [
+                    {
+                      icon: Inbox,
+                      label: 'Commandes reçues',
+                      onPress: () => nav('/(pro)/commandes-recues'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
               {
                 icon: CalendarPlus,
                 label: 'Nouveau rendez-vous',
@@ -117,6 +131,26 @@ export default function ProMore() {
                       icon: FilePenLine,
                       label: 'Ordonnances',
                       onPress: () => nav('/(pro)/(tabs)/prescriptions'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
+              ...(pharmacyCanOrder
+                ? [
+                    {
+                      icon: Pill,
+                      label: 'Commandes pharmacie',
+                      onPress: () => nav('/(pro)/commandes-pharmacie'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
+              ...(pharmacyCanReceive
+                ? [
+                    {
+                      icon: Inbox,
+                      label: 'Commandes reçues',
+                      onPress: () => nav('/(pro)/commandes-recues'),
                       iconAccent: 'teal' as const,
                     },
                   ]

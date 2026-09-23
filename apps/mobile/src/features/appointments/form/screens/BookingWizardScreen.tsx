@@ -478,7 +478,7 @@ export function BookingWizardScreen({
                 ) : w.patientMode === 'new' || w.selectedPatientId === NEW_PATIENT_ID ? (
                   <WizardDocumentFields
                     title="Documents du patient"
-                    subtitle="Carte Vitale et mutuelle — enregistrés avec la fiche patient"
+                    subtitle="Vitale, mutuelle et attestation — enregistrés avec la fiche patient"
                     fields={PERSONAL_DOC_FIELDS}
                     files={bw.personalFiles}
                     onChange={bw.setPersonalFile}
@@ -493,7 +493,7 @@ export function BookingWizardScreen({
                 subtitle={
                   bw.selectedRelativeId
                     ? 'Documents du proche enregistrés sur votre compte'
-                    : 'Carte Vitale et mutuelle déjà enregistrées si présentes'
+                    : 'Vitale, mutuelle et attestation déjà enregistrés si présents'
                 }
                 fields={PERSONAL_DOC_FIELDS}
                 files={bw.personalFiles}

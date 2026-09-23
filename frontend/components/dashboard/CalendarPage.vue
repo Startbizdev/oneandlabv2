@@ -281,7 +281,38 @@ const filteredAppointments = computed(() => {
       a.id?.toLowerCase().includes(query)
     );
   }
-  return filtered;
+  const grouped = new Map<string, typeof filtered>();
+  const singles: typeof filtered = [];
+  for (const appointment of filtered) {
+    const batchId = appointment.creation_batch_id;
+    if (!batchId || (appointment.type !== 'blood_test' && appointment.type !== 'nursing')) {
+      singles.push(appointment);
+      continue;
+    }
+    const key = `${appointment.type}:${batchId}`;
+    const batch = grouped.get(key) ?? [];
+    batch.push(appointment);
+    grouped.set(key, batch);
+  }
+  for (const batch of grouped.values()) {
+    if (batch.length === 1) {
+      singles.push(batch[0]!);
+      continue;
+    }
+    batch.sort((a, b) =>
+      parseAppointmentDateFrance(a.scheduled_at).getTime()
+      - parseAppointmentDateFrance(b.scheduled_at).getTime()
+    );
+    const primary = batch[0]!;
+    singles.push({
+      ...primary,
+      category_name: primary.type === 'blood_test'
+        ? `Prélèvement laboratoire · ${batch.length} actes`
+        : `Soins infirmiers · ${batch.length} actes`,
+      batch_siblings: batch.slice(1),
+    });
+  }
+  return singles;
 });
 
 const todayLabel = computed(() => {

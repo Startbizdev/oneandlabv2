@@ -246,6 +246,7 @@ async function uploadAppointmentFiles(apptId: string, filesMap: Record<string, F
   const fieldMapping: Record<string, string> = {
     carte_vitale: 'carte_vitale',
     carte_mutuelle: 'carte_mutuelle',
+    attestation_droits_ame: 'attestation_droits_ame',
     ordonnance: 'ordonnance',
     autres_assurances: 'autres_assurances',
   };

@@ -83,7 +83,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const DOCUMENT_TYPES: DocumentType[] = ['carte_vitale', 'carte_mutuelle', 'autres_assurances']
+const DOCUMENT_TYPES: DocumentType[] = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances']
 
 /** Même grille que le détail RDV lab (sans résultats d'analyses) */
 const profileUploadTypes = [
@@ -100,6 +100,14 @@ const profileUploadTypes = [
     label: 'Carte Mutuelle',
     icon: 'i-lucide-shield',
     color: 'blue',
+    accept: 'image/*,.pdf',
+    hint: 'JPG, PNG, PDF • max 5 Mo',
+  },
+  {
+    value: 'attestation_droits_ame',
+    label: 'Attestation de droits / AME',
+    icon: 'i-lucide-file-badge',
+    color: 'teal',
     accept: 'image/*,.pdf',
     hint: 'JPG, PNG, PDF • max 5 Mo',
   },

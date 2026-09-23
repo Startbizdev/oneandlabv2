@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/HealthRecordSchema.php';
+require_once __DIR__ . '/HealthRecordValue.php';
 require_once __DIR__ . '/HealthPatientProfile.php';
 require_once __DIR__ . '/CompletionEngine.php';
 require_once __DIR__ . '/CareGapEngine.php';
@@ -98,8 +99,8 @@ final class HealthRecordService
                     'optional' => (bool) ($q['optional'] ?? true),
                     'placeholder' => $q['placeholder'] ?? null,
                     'options' => $q['options'] ?? null,
-                    'value' => $answers[$key]['value'] ?? null,
-                    'display' => $this->formatDisplay($answers[$key]['value'] ?? null),
+                    'value' => HealthRecordValue::fromPayload($answers[$key] ?? null),
+                    'display' => $this->formatDisplay(HealthRecordValue::fromPayload($answers[$key] ?? null)),
                 ];
             }
             $sections[] = [
@@ -153,7 +154,7 @@ final class HealthRecordService
             if (!is_string($key) || $key === '') {
                 continue;
             }
-            $value = is_array($payload) ? ($payload['value'] ?? $payload) : $payload;
+            $value = HealthRecordValue::fromPayload($payload);
             $stmt->execute([
                 health_uuid(),
                 $patientId,
@@ -399,11 +400,15 @@ final class HealthRecordService
 
     private function formatDisplay(mixed $value): string
     {
+        $value = HealthRecordValue::unwrap($value);
         if ($value === null || $value === '') {
             return self::EMPTY_DISPLAY;
         }
-        if (is_string($value) && strtolower(trim($value)) === 'null') {
-            return self::EMPTY_DISPLAY;
+        if (is_string($value)) {
+            $lower = strtolower(trim($value));
+            if ($lower === 'null' || $lower === '[object object]') {
+                return self::EMPTY_DISPLAY;
+            }
         }
         return match ($value) {
             'yes' => 'Oui',

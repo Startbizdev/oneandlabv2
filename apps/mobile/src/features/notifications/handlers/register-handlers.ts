@@ -17,8 +17,15 @@ Notifications.setNotificationHandler({
   }),
 });
 
+function isPharmacistEmploi(emploi: string | null | undefined): boolean {
+  const e = (emploi ?? '').trim();
+  return e.localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0;
+}
+
 function navigateFromNotificationData(data: Record<string, unknown>) {
-  const role = useAuthStore.getState().user?.role;
+  const user = useAuthStore.getState().user;
+  const role = user?.role;
+  const pharmacyCanReceive = user?.role === 'pro' && isPharmacistEmploi(user.emploi);
   const target = resolveNotificationNavigation(
     {
       id: String(data.notification_id ?? data.id ?? ''),
@@ -32,6 +39,7 @@ function navigateFromNotificationData(data: Record<string, unknown>) {
       data,
     } satisfies AppNotification,
     role,
+    { pharmacyCanReceive },
   );
   if (target.kind !== 'route') return;
   router.push({

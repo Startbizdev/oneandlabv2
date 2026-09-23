@@ -6,6 +6,7 @@ import {
   FlaskConical,
   Heart,
   LayoutGrid,
+  Pill,
   Scale,
   Settings,
   Star,
@@ -49,6 +50,12 @@ export default function PatientMore() {
                 icon: FileText,
                 label: 'Mes documents',
                 onPress: () => nav('/profile/documents'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Pill,
+                label: 'Mes traitements',
+                onPress: () => nav('/(patient)/traitements'),
                 iconAccent: 'teal',
               },
               {

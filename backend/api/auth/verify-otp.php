@@ -2,6 +2,8 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
+require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/../../lib/auth_public_helpers.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS - Fonction pour obtenir et valider l'origine
@@ -57,10 +59,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
+    $ip = authClientIp();
+    if (!RateLimit::allow('auth_verify_otp', $ip, 20, 900)) {
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Trop de tentatives. Demandez un nouveau code.',
+            'code' => 'RATE_LIMITED',
+        ]);
+        exit;
+    }
+
     $input = json_decode(file_get_contents('php://input'), true);
     
-    if (!isset($input['user_id']) || !isset($input['otp'])) {
-        throw new Exception('user_id et otp requis');
+    if (!isset($input['user_id'], $input['otp'], $input['session_id'])) {
+        throw new Exception('user_id, session_id et otp requis');
     }
     
     // Convertir l'OTP en string et nettoyer
@@ -75,7 +88,19 @@ try {
     
     // Convertir user_id en string
     $userId = is_string($input['user_id']) ? $input['user_id'] : (string)$input['user_id'];
-    $sessionId = isset($input['session_id']) ? (is_string($input['session_id']) ? $input['session_id'] : (string)$input['session_id']) : '';
+    $sessionId = is_string($input['session_id'])
+        ? trim($input['session_id'])
+        : trim((string) $input['session_id']);
+
+    if (!RateLimit::allow('auth_verify_otp_user', $userId, 10, 900)) {
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Trop de tentatives. Demandez un nouveau code.',
+            'code' => 'RATE_LIMITED',
+        ]);
+        exit;
+    }
     
     $auth = new Auth();
     

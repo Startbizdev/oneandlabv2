@@ -70,4 +70,12 @@ export const queryKeys = {
   labBrands: {
     public: () => ['lab-brands', 'public'] as const,
   },
+  pharmacyOrders: {
+    flags: (userId: string) => ['pharmacy-orders', 'flags', userId] as const,
+    list: (scope: string) => ['pharmacy-orders', 'list', scope] as const,
+    detail: (id: string) => ['pharmacy-orders', 'detail', id] as const,
+    messages: (id: string) => ['pharmacy-orders', 'messages', id] as const,
+    catalog: (postal: string, mode: string) => ['pharmacy-orders', 'catalog', postal, mode] as const,
+    favorites: (userId: string) => ['pharmacy-orders', 'favorites', userId] as const,
+  },
 } as const;

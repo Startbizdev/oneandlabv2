@@ -1192,6 +1192,7 @@ const durationOptions: Array<{ label: string; value: string }> = [...NURSING_DUR
 const personalDocTypes: Array<{ key: string; label: string; icon: string; optional?: boolean }> = [
   { key: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', optional: true },
   { key: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', optional: true },
+  { key: 'attestation_droits_ame', label: 'Attestation de droits / AME', icon: 'i-lucide-file-badge', optional: true },
 ];
 const serviceDocTypes: Array<{
   key: string;
@@ -1231,6 +1232,7 @@ function prescriptionDocTypesForServiceCard(svc: { category_id: string | null; s
 const personalDocHints: Record<string, string> = {
   carte_vitale: 'Recto recommandé — PDF, JPG ou PNG',
   carte_mutuelle: 'Carte ou attestation — PDF, JPG ou PNG',
+  attestation_droits_ame: 'Attestation de droits ou AME — PDF, JPG ou PNG',
 };
 
 const profileDocuments = ref<Record<string, any>>({});
@@ -1761,11 +1763,12 @@ function buildMergedFilesForService(svcId: string): { files: Record<string, File
   const mergedFiles: Record<string, File> = {
     ...(personalFiles.carte_vitale ? { carte_vitale: personalFiles.carte_vitale } : {}),
     ...(personalFiles.carte_mutuelle ? { carte_mutuelle: personalFiles.carte_mutuelle } : {}),
+    ...(personalFiles.attestation_droits_ame ? { attestation_droits_ame: personalFiles.attestation_droits_ame } : {}),
     ...(svcFiles.ordonnance ? { ordonnance: svcFiles.ordonnance } : {}),
     ...(svcFiles.autres_assurances ? { autres_assurances: svcFiles.autres_assurances } : {}),
   };
   const filesData: Record<string, any> = {};
-  const profileLinkKeys = ['carte_vitale', 'carte_mutuelle'] as const;
+  const profileLinkKeys = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame'] as const;
   profileLinkKeys.forEach((key) => {
     if (mergedFiles[key]) {
       filesData[key] = { field: key, name: mergedFiles[key].name, size: mergedFiles[key].size, type: mergedFiles[key].type, isNew: true };

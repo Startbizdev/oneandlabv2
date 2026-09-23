@@ -39,7 +39,14 @@ export const GENDER_OPTIONS = [
 // Patient documents
 // ============================================================================
 
-export type DocumentType = 'carte_vitale' | 'carte_mutuelle' | 'autres_assurances'
+export type DocumentType = 'carte_vitale' | 'carte_mutuelle' | 'attestation_droits_ame' | 'autres_assurances'
+
+/** Carte Vitale, mutuelle et attestation — étape patient des prises de RDV (web). */
+export const APPOINTMENT_PERSONAL_DOC_TYPES = [
+  'carte_vitale',
+  'carte_mutuelle',
+  'attestation_droits_ame',
+] as const satisfies readonly DocumentType[]
 
 export interface PatientDocument {
   medical_document_id: string
@@ -74,6 +81,15 @@ export const DOCUMENT_CONFIGS: Record<DocumentType, DocumentConfig> = {
     icon: 'i-lucide-shield-check',
     iconColor: 'purple',
     required: true,
+    acceptedTypes: ['image/*', 'application/pdf'],
+    maxSize: 25,
+  },
+  attestation_droits_ame: {
+    type: 'attestation_droits_ame',
+    label: 'Attestation de droits / AME',
+    icon: 'i-lucide-file-badge',
+    iconColor: 'blue',
+    required: false,
     acceptedTypes: ['image/*', 'application/pdf'],
     maxSize: 25,
   },

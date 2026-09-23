@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentSubject.php';
+require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -222,9 +223,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Générer un ID unique pour le nouveau document
         $newId = bin2hex(random_bytes(16));
-        $fileExtension = pathinfo($sourceDoc['file_name'], PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($sourceDoc['file_name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename(
+            (string) $sourceDoc['file_name'],
+            (string) $sourceDoc['mime_type']
+        );
         
         // Créer le dossier pour ce document
         $documentDir = $uploadDir . $newId . '/';

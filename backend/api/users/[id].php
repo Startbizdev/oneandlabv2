@@ -88,6 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!$allowed && $user['role'] === 'lab' && ($userData['role'] ?? '') === 'patient') {
             $allowed = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
+        if (!$allowed && in_array($user['role'], ['pro', 'nurse', 'super_admin'], true)) {
+            $allowed = $userModel->pharmacyHasOrderWithUser((string) $user['user_id'], (string) $id);
+        }
         if (!$allowed) {
             http_response_code(403);
             echo json_encode([
@@ -173,6 +176,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     if (($user['role'] ?? '') !== 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {
         unset($input['prescription_generation_enabled']);
+    }
+    if (($user['role'] ?? '') !== 'super_admin' && array_key_exists('pharmacy_orders_enabled', $input)) {
+        unset($input['pharmacy_orders_enabled']);
     }
 
     if (($user['role'] ?? '') === 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {

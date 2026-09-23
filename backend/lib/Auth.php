@@ -97,8 +97,9 @@ class Auth
         $otp = $this->generateOTP();
         $otpHash = password_hash($otp, PASSWORD_BCRYPT);
 
-        // Générer un session ID
+        // Générer un identifiant de session secret et ne stocker que son hash.
         $sessionId = bin2hex(random_bytes(16));
+        $sessionTokenHash = hash('sha256', $sessionId);
 
         // Trouver l'utilisateur par email_hash
         $emailHash = hash('sha256', strtolower($email));
@@ -142,10 +143,12 @@ class Auth
         // Stocker la session OTP - utiliser NOW() de MySQL pour éviter les problèmes de fuseau horaire
         // expires_at sera calculé par MySQL avec DATE_ADD pour être cohérent avec NOW()
         $stmt = $this->db->prepare('
-            INSERT INTO otp_sessions (user_id, otp_hash, expires_at, created_at)
-            VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), NOW())
+            INSERT INTO otp_sessions (
+                user_id, otp_hash, session_token_hash, failed_attempts, expires_at, created_at
+            )
+            VALUES (?, ?, ?, 0, DATE_ADD(NOW(), INTERVAL ? SECOND), NOW())
         ');
-        $stmt->execute([$userId, $otpHash, $this->otpExpiration]);
+        $stmt->execute([$userId, $otpHash, $sessionTokenHash, $this->otpExpiration]);
         
         // Retourner l'OTP pour qu'il puisse être envoyé par email (sera retiré de la réponse finale pour sécurité)
         return [
@@ -164,17 +167,24 @@ class Auth
         if (!Validation::otp($otp)) {
             throw new Exception('Code OTP invalide (6 chiffres requis)');
         }
+        if (!preg_match('/^[a-f0-9]{32}$/', $sessionId)) {
+            throw new Exception('Session OTP invalide');
+        }
 
         // Trouver la session OTP
         if ($userId) {
             $stmt = $this->db->prepare('
-                SELECT id, user_id, otp_hash, expires_at, verified
+                SELECT id, user_id, otp_hash, expires_at, verified, failed_attempts
                 FROM otp_sessions
-                WHERE user_id = ? AND verified = FALSE AND expires_at > NOW()
+                WHERE user_id = ?
+                  AND session_token_hash = ?
+                  AND verified = FALSE
+                  AND failed_attempts < 5
+                  AND expires_at > NOW()
                 ORDER BY created_at DESC
                 LIMIT 1
             ');
-            $stmt->execute([$userId]);
+            $stmt->execute([$userId, hash('sha256', $sessionId)]);
         } else {
             throw new Exception('user_id requis pour vérification OTP');
         }
@@ -248,6 +258,16 @@ class Auth
         $verifyResult = password_verify($otpString, $session['otp_hash']);
         
         if (!$verifyResult) {
+            // Le compteur est persistant et lié à cette session : changer d'IP
+            // ou redémarrer PHP ne permet pas de reprendre le bruteforce.
+            $attemptStmt = $this->db->prepare('
+                UPDATE otp_sessions
+                SET failed_attempts = failed_attempts + 1,
+                    verified = CASE WHEN failed_attempts + 1 >= 5 THEN TRUE ELSE verified END
+                WHERE id = ? AND verified = FALSE
+            ');
+            $attemptStmt->execute([$session['id']]);
+
             // Vérifier s'il y a d'autres sessions récentes avec un code différent
             $otherStmt = $this->db->prepare('
                 SELECT COUNT(*) as count

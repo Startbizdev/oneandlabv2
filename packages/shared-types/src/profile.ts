@@ -33,7 +33,11 @@ export const GENDER_OPTIONS = [
   { label: 'Autre', value: 'other' },
 ] as const;
 
-export type DocumentType = 'carte_vitale' | 'carte_mutuelle' | 'autres_assurances';
+export type DocumentType =
+  | 'carte_vitale'
+  | 'carte_mutuelle'
+  | 'attestation_droits_ame'
+  | 'autres_assurances';
 
 export interface PatientDocument {
   medical_document_id: string;
@@ -66,4 +70,13 @@ export interface AuthUser {
   address?: Address | null;
   /** Pro / infirmier : génération ordonnances (défaut activé). */
   prescription_generation_enabled?: boolean;
+  /** Pro : métier (ex. Pharmacien). */
+  emploi?: string | null;
+  /** Pharmacien : modes de commande acceptés. */
+  pharmacy_accepts_click_collect?: boolean;
+  pharmacy_accepts_home_delivery?: boolean;
+  pharmacy_orders_paused?: boolean;
+  pharmacy_orders_enabled?: boolean;
+  pharmacy_click_collect_days_json?: number[];
+  pharmacy_home_delivery_days_json?: number[];
 }

@@ -1,18 +1,11 @@
-import { Alert, Linking } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Linking } from 'react-native';
 import {
   CalendarPlus,
   MessageSquare,
   Navigation,
-  RefreshCcw,
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
-import { queryKeys } from '@/lib/query-keys';
-import { useToast } from '@/providers/ToastProvider';
-import { handleApiError } from '@/lib/errors/handle-api-error';
-import { updateAppointment } from '../../api/appointments.service';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import {
@@ -58,22 +51,9 @@ export function AppointmentDetailActions({
   onCancel,
   edgeToEdge = false,
 }: Props) {
-  const { show: toast } = useToast();
-  const qc = useQueryClient();
   const status = String(apt.status ?? '');
   const canceled = isAppointmentCanceled(status);
   const active = ['pending', 'confirmed', 'inProgress', 'in_progress'].includes(status);
-
-  const redispatchMut = useMutation({
-    mutationFn: () =>
-      updateAppointment(apt.id, { status: 'pending', redispatch: true }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(apt.id) });
-      void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      toast('Demande redispatchée', { type: 'success' });
-    },
-    onError: (e) => handleApiError(e, toast, 'redispatch'),
-  });
 
   if (canceled) return null;
 
@@ -82,27 +62,6 @@ export function AppointmentDetailActions({
     role === 'nurse' && ['confirmed', 'inProgress', 'in_progress'].includes(status);
   const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
   const showCancelNurse = showRescheduleNurse;
-  const showRedispatchNurse =
-    role === 'nurse' &&
-    status === 'confirmed' &&
-    (!isNursingAppointment(apt.type) || isBloodTestAppointment(apt.type));
-  const showRedispatchNursing =
-    role === 'nurse' &&
-    status === 'confirmed' &&
-    isNursingAppointment(apt.type) &&
-    !isBloodTestAppointment(apt.type);
-
-  const confirmRedispatch = () => {
-    Alert.alert(
-      'Redispatcher ce rendez-vous ?',
-      'Le rendez-vous repassera en attente pour être proposé à d’autres professionnels.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Redispatcher', onPress: () => redispatchMut.mutate() },
-      ],
-    );
-  };
-
   const actions: DetailActionItem[] = [];
 
   if (showRescheduleNurse || showRescheduleOther) {
@@ -135,18 +94,6 @@ export function AppointmentDetailActions({
       icon: Navigation,
       tone: 'neutral',
       onPress: () => openWaze(apt),
-    });
-  }
-
-  if (showRedispatchNurse || showRedispatchNursing) {
-    actions.push({
-      key: 'redispatch',
-      label: 'Redispatcher',
-      hint: 'Proposer à d’autres professionnels',
-      icon: RefreshCcw,
-      tone: 'caution',
-      loading: redispatchMut.isPending,
-      onPress: confirmRedispatch,
     });
   }
 

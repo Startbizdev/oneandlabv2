@@ -103,6 +103,10 @@ import {
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import {
+  buildAppointmentDetailUploadTypes,
+  getAppointmentDetailDocumentLabel,
+} from '~/utils/appointment-detail-document-types';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
@@ -124,13 +128,7 @@ const currentAppointmentForUpload = ref<any>(null);
 const downloadingDocuments = ref(new Set<string>());
 const uploadingTypes = ref(new Set<string>());
 
-const uploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const uploadDocumentTypes = buildAppointmentDetailUploadTypes();
 
 watch(
   () => getAppointmentFromDetailRef(detailRef),
@@ -151,15 +149,7 @@ function canUploadDocuments(appointment: any) {
 }
 
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    carte_vitale: 'Carte Vitale',
-    carte_mutuelle: 'Carte Mutuelle',
-    ordonnance: 'Ordonnance',
-    resultats: 'Résultats',
-    autres_assurances: 'Autre prescription',
-    other: 'Autre',
-  };
-  return labels[type] || 'Document';
+  return getAppointmentDetailDocumentLabel(type);
 }
 
 async function uploadDocumentFile(file: File, docType: string) {

@@ -25,6 +25,7 @@ import { fontFamily, fontSize } from '@/theme/typography';
 const DOC_ICONS: Record<string, LucideIcon> = {
   carte_vitale: CreditCard,
   carte_mutuelle: Shield,
+  attestation_droits_ame: FileText,
   ordonnance: FileText,
   resultats: FlaskConical,
   autres_assurances: FileText,

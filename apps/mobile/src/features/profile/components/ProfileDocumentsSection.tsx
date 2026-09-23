@@ -15,7 +15,7 @@ export function ProfileDocumentsSection() {
       <Animated.View entering={FadeInDown.delay(240).duration(280).springify()}>
         <AppText style={styles.sectionTitle}>Documents médicaux</AppText>
         <AppText style={styles.sectionHint}>
-          Carte Vitale, mutuelle et autres assurances — l’ordonnance se gère sur chaque rendez-vous.
+          Vitale, mutuelle, attestation de droits / AME — l’ordonnance se gère sur chaque rendez-vous.
         </AppText>
       </Animated.View>
       <ProfileDocumentsEmbedded />

@@ -12,6 +12,7 @@
       <directory>tests/admin</directory>
       <directory>tests/appointments</directory>
       <directory>tests/users</directory>
+      <directory>tests/pharmacy</directory>
     </testsuite>
     <testsuite name="AI">
       <directory>tests/ai</directory>
@@ -30,6 +31,9 @@
     </testsuite>
     <testsuite name="Mobile">
       <directory>tests/mobile</directory>
+    </testsuite>
+    <testsuite name="Pharmacy">
+      <directory>tests/pharmacy</directory>
     </testsuite>
   </testsuites>
 </phpunit>

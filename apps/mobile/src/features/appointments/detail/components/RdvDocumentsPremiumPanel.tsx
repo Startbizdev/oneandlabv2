@@ -29,16 +29,20 @@ import {
 } from '@/features/documents/components/medical-documents-stack';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { fontFamily, fontSize } from '@/theme/typography';
+import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 
-const PATIENT_TYPES = [
-  'carte_vitale',
-  'carte_mutuelle',
-  'ordonnance',
-  'autres_assurances',
-  'other',
-] as const;
-
-const STAFF_TYPES = [...PATIENT_TYPES] as const;
+function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
+  const base = APPOINTMENT_DETAIL_DOC_ORDER.filter((t) => t !== 'resultats');
+  if (
+    (role === 'pro' || role === 'lab') &&
+    apt.type === 'blood_test' &&
+    canUploadLabResultatsForAppointmentStatus(apt.status)
+  ) {
+    const withoutOther = base.filter((t) => t !== 'other');
+    return [...withoutOther, 'resultats', 'other'];
+  }
+  return base;
+}
 
 interface Props {
   appointmentId: string;
@@ -51,16 +55,7 @@ interface Props {
 }
 
 function uploadTypesForRole(role: string, apt: Appointment): readonly string[] {
-  if (role === 'patient') return PATIENT_TYPES;
-  const base = [...STAFF_TYPES];
-  if (
-    (role === 'pro' || role === 'lab') &&
-    apt.type === 'blood_test' &&
-    canUploadLabResultatsForAppointmentStatus(apt.status)
-  ) {
-    return [...base, 'resultats'];
-  }
-  return base;
+  return orderedDocTypesForRole(role, apt);
 }
 
 export function RdvDocumentsPremiumPanel({

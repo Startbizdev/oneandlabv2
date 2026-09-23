@@ -214,9 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $id = CarePhotoGallery::newUuid();
-        $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
         $documentDir = $uploadDir . $id . '/';
         if (!is_dir($documentDir)) {
             mkdir($documentDir, 0755, true);

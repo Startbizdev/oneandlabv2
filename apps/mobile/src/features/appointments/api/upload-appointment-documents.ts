@@ -26,6 +26,7 @@ const FIELD_MAP: Record<string, string> = {
   carte_mutuelle: 'carte_mutuelle',
   ordonnance: 'ordonnance',
   autres_assurances: 'autres_assurances',
+  attestation_droits_ame: 'attestation_droits_ame',
 };
 
 export async function uploadAppointmentDocuments(

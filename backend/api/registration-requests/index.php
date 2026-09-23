@@ -49,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($role === 'pro') {
         $proRpps = trim((string)($body['rpps'] ?? ''));
-        if (strlen($proRpps) !== 11 || !ctype_digit($proRpps)) {
+        $emploi = trim((string)($body['emploi'] ?? ''));
+        if (strcasecmp($emploi, 'Autre') !== 0 && (strlen($proRpps) !== 11 || !ctype_digit($proRpps))) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Le numéro RPPS est obligatoire pour un professionnel de santé (11 chiffres).']);
             exit;

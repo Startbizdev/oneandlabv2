@@ -1,11 +1,15 @@
 import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
-import { NURSE_PLAN_LIST, NURSE_PLANS } from '@oneandlab/shared-constants';
+import { NURSE_PLAN_LIST } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SubscriptionPlanCard } from '@/features/nurse/components/SubscriptionPlanCard';
 import { useNurseIap } from '@/features/nurse/hooks/use-nurse-iap';
+import {
+  getSubscriptionPriceParts,
+  NURSE_PRO_TRIAL_FOOTNOTE,
+} from '@/features/nurse/utils/subscription-price-display';
 import { Button } from '@/components/ui/Button';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
@@ -49,7 +53,6 @@ export function NurseSubscriptionScreen() {
     subscriptionLoading,
     subscriptionError,
     refetchSubscription,
-    localizedProPrice,
     purchasePro,
     purchaseLoading,
     restore,
@@ -63,19 +66,20 @@ export function NurseSubscriptionScreen() {
   const canPurchaseStore = subscription?.can_purchase_store !== false;
   const billingLabel = billingSourceLabel(subscription?.billing_source);
 
-  const proPriceLabel = localizedProPrice ?? NURSE_PLANS.nurse_pro.priceLabel;
-
   const cards = useMemo(
     () =>
       NURSE_PLAN_LIST.map((plan) => {
         const isCurrent = plan.slug === activePlan;
         const isProPlan = plan.slug === 'nurse_pro';
+        const { amount, suffix } = getSubscriptionPriceParts(plan);
         let ctaLabel: string | undefined;
         let onCtaPress: (() => void) | undefined;
         let ctaLoading = false;
         let disabled = false;
+        let footnote: string | undefined;
 
         if (isProPlan) {
+          footnote = NURSE_PRO_TRIAL_FOOTNOTE;
           if (isCurrent) {
             ctaLabel = 'Gérer mon abonnement';
             onCtaPress = () => openManageSubscriptions(subscription?.billing_source);
@@ -89,16 +93,19 @@ export function NurseSubscriptionScreen() {
             ctaLabel = 'Géré sur cary.bio';
             disabled = true;
           }
+        } else {
+          footnote = 'Le pack gratuit reste disponible sans carte bancaire.';
         }
 
         return (
           <SubscriptionPlanCard
             key={plan.slug}
             name={plan.name}
-            price={isProPlan ? proPriceLabel : plan.priceLabel}
-            priceSuffix={plan.priceSuffix}
+            priceAmount={amount}
+            priceSuffix={suffix}
             tagline={plan.tagline}
             features={plan.features}
+            footnote={footnote}
             recommended={plan.recommended}
             isCurrent={isCurrent}
             ctaLabel={ctaLabel}
@@ -113,7 +120,6 @@ export function NurseSubscriptionScreen() {
       activePlan,
       canPurchaseStore,
       connected,
-      proPriceLabel,
       purchaseLoading,
       purchasePro,
       storeLoading,

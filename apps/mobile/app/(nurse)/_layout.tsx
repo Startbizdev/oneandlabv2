@@ -70,6 +70,9 @@ export default function NurseLayout() {
       <Stack.Screen name="passage/new" options={{ title: 'Prise en charge' }} />
       <Stack.Screen name="passage/patient-pick" options={{ title: 'Choisir un patient' }} />
       <Stack.Screen name="passage/[seriesId]" options={{ title: 'Détail passage' }} />
+      <Stack.Screen name="commandes-pharmacie/index" options={{ title: 'Commandes pharmacie' }} />
+      <Stack.Screen name="commandes-pharmacie/new" options={{ title: 'Nouvelle commande' }} />
+      <Stack.Screen name="commandes-pharmacie/[id]" options={{ title: 'Détail commande' }} />
     </Stack>
     </StackSceneInsetLayout>
     </View>

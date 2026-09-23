@@ -30,6 +30,12 @@ export interface ProfileUserData {
     instagram?: string;
   } | null;
   prescription_signature_png?: string | null;
+  pharmacy_accepts_click_collect?: boolean;
+  pharmacy_accepts_home_delivery?: boolean;
+  pharmacy_orders_paused?: boolean;
+  pharmacy_orders_enabled?: boolean;
+  pharmacy_click_collect_days_json?: number[];
+  pharmacy_home_delivery_days_json?: number[];
 }
 
 export interface NurseCategoryPreference {

@@ -101,6 +101,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     gender;
   const canSubmitPro = (() => {
     if (!email.trim() || !firstName.trim() || !lastName.trim() || !emploi.trim()) return false;
+    if (emploi.trim() === 'Autre') return true;
     if (isProIpaEmploi(emploi)) return !validateProfessionalId(proRpps) && !!gender.trim();
     return proRpps.replace(/\s/g, '').length >= 11;
   })();
@@ -284,7 +285,9 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
                 hint={
                   isProIpaEmploi(emploi)
                     ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)'
-                    : '11 chiffres'
+                    : emploi.trim() === 'Autre'
+                      ? 'Facultatif pour la catégorie Autre'
+                      : '11 chiffres'
                 }
               />
             </>
