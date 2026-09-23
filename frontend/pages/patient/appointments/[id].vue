@@ -406,6 +406,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, unref, watch } fr
 import { apiFetch } from '~/utils/api';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import { buildAppointmentDetailUploadTypes } from '~/utils/appointment-detail-document-types';
 import { formatPatientUrgentCreneauShortFr } from '~/utils/patient-urgency-display';
 import {
   getAppointmentFromDetailRef,
@@ -493,13 +494,7 @@ function patientDocumentsFilter(docs: unknown) {
 }
 
 /** Pièces joignables au RDV après réservation (aligné infirmier / pro ; pas de résultats lab ni photo annulation). */
-const patientUploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const patientUploadDocumentTypes = buildAppointmentDetailUploadTypes();
 
 const uploadingDocTypes = ref(new Set<string>());
 const currentAppointmentForUpload = ref<any>(null);

@@ -18,21 +18,23 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
 import { DocumentsBlock } from './DocumentsBlock';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
+import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 import { getDocumentTypeLabel } from '../utils/document-labels';
 import { radius, spacing, iconSize, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
-const PATIENT_TYPES = [
-  'carte_vitale',
-  'carte_mutuelle',
-  'ordonnance',
-  'autres_assurances',
-  'other',
-] as const;
-
-const PRO_TYPES = [...PATIENT_TYPES] as const;
-
-const LAB_RESULT_TYPES = ['resultats'] as const;
+function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
+  const base = APPOINTMENT_DETAIL_DOC_ORDER.filter((t) => t !== 'resultats');
+  if (
+    (role === 'pro' || role === 'lab') &&
+    apt.type === 'blood_test' &&
+    canUploadLabResultatsForAppointmentStatus(apt.status)
+  ) {
+    const withoutOther = base.filter((t) => t !== 'other');
+    return [...withoutOther, 'resultats', 'other'];
+  }
+  return base;
+}
 
 interface Props {
   appointmentId: string;
@@ -59,17 +61,7 @@ export function DetailDocumentsSection({
   const [uploading, setUploading] = useState<string | null>(null);
 
   const canUpload = canUploadMedicalDocumentsForAppointmentStatus(apt.status);
-  const canResultats =
-    (role === 'pro' || role === 'lab') &&
-    apt.type === 'blood_test' &&
-    canUploadLabResultatsForAppointmentStatus(apt.status);
-
-  const uploadTypes =
-    role === 'patient'
-      ? PATIENT_TYPES
-      : canResultats
-        ? [...PRO_TYPES, ...LAB_RESULT_TYPES]
-        : PRO_TYPES;
+  const uploadTypes = orderedDocTypesForRole(role, apt);
 
   const uploadMut = useMutation({
     mutationFn: async ({

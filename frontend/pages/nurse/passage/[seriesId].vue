@@ -363,6 +363,7 @@ const uploadingTypes = ref<string[]>([]);
 const uploadTypes = [
   { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card' },
   { value: 'carte_mutuelle', label: 'Carte mutuelle', icon: 'i-lucide-shield' },
+  { value: 'attestation_droits_ame', label: 'Attestation de droits / AME', icon: 'i-lucide-file-badge' },
   { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text' },
   { value: 'autres_assurances', label: 'Autre assurance', icon: 'i-lucide-file-text' },
   { value: 'other', label: 'Autre document', icon: 'i-lucide-file' },
@@ -560,9 +561,9 @@ async function loadContext() {
 
     nurseProfile.value = meRes?.data ?? null;
 
-    const pid = String(
-      appointment.value?.patient_id ?? s?.patient_id ?? '',
-    );
+    // Utiliser la réponse locale : TypeScript ne peut pas déduire que
+    // applyAppointmentToForm() a muté la ref appointment après son reset.
+    const pid = String(aptRes?.data?.patient_id ?? s?.patient_id ?? '');
     if (pid) {
       const pRes = await apiFetch<{ success: boolean; data?: Record<string, unknown>; error?: string }>(
         `/users/${pid}?detail=full`,

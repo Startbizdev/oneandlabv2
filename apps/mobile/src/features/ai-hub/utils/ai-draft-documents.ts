@@ -8,7 +8,7 @@ export type AiDraftDocumentEntry = {
   file_name?: string | null;
 };
 
-const PROFILE_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'] as const;
+const PROFILE_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances'] as const;
 
 const DOC_LABELS: Record<string, string> = {
   carte_vitale: 'Carte Vitale',
@@ -65,7 +65,7 @@ export function getAiDraftDocumentEntries(draft: AiAppointmentDraft): AiDraftDoc
   const payload = draft.payload ?? {};
   const formData = asRecord(payload.form_data) ?? {};
   const merged = { ...asRecord(formData.files), ...asRecord(payload.files) };
-  const order = ['carte_vitale', 'carte_mutuelle', 'autres_assurances', 'ordonnance'];
+  const order = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances', 'ordonnance'];
   const entries: AiDraftDocumentEntry[] = [];
 
   for (const type of order) {

@@ -103,7 +103,7 @@
           <UFormField
             :label="isProIpa ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'"
             name="rpps"
-            required
+            :required="!isProOther"
             class="w-full"
           >
             <UInput
@@ -118,7 +118,9 @@
                 {{
                   isProIpa
                     ? '9 chiffres (Adeli) ou 11 chiffres (RPPS) — un seul numéro'
-                    : '11 chiffres — numéro RPPS du professionnel de santé'
+                    : isProOther
+                      ? 'Facultatif pour la catégorie Autre'
+                      : '11 chiffres — numéro RPPS du professionnel de santé'
                 }}
               </span>
             </template>
@@ -258,12 +260,14 @@ function onAddressSelect(value: AddressSelection | null) {
 const loading = ref(false);
 
 const isProIpa = computed(() => form.emploi?.trim() === 'Infirmier IPA');
+const isProOther = computed(() => form.emploi?.trim() === 'Autre');
 
 const canSubmit = computed(() => {
   if (!form.email?.trim() || !form.first_name?.trim() || !form.last_name?.trim()) return false;
   if (props.role === 'lab' && !form.siret?.replace(/\s/g, '')) return false;
   if (props.role === 'pro') {
     if (!form.emploi?.trim()) return false;
+    if (isProOther.value) return true;
     if (isProIpa.value) return !validateProfessionalId(form.rpps || '') && !!form.gender?.trim();
     return form.rpps?.replace(/\s/g, '').length === 11;
   }

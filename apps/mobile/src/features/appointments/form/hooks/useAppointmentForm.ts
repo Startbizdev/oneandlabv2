@@ -50,8 +50,11 @@ import {
 } from '../utils/pro-nurse-assignment';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import {
+  RELATIVE_PROFILE_UPLOAD_TYPES,
   uploadPatientProfileDocument,
+  uploadRelativeProfileDocument,
   type PatientProfileUploadType,
+  type RelativeProfileUploadType,
 } from '@/features/patients/api/patient-profile.service';
 import { buildAvailabilityPayload, isAvailabilityValid } from '../utils/availability';
 import { appointmentFormSchema, type AppointmentFormSchema } from '../schemas/appointment-form.schema';
@@ -675,18 +678,24 @@ export function useMultiAppointmentWizard(opts: {
         if (!upd.success) throw new Error(upd.error ?? 'Mise à jour patient impossible');
       }
 
-      for (const [key, file] of Object.entries(opts.patientRelativeId ? {} : personalFiles)) {
+      for (const [key, file] of Object.entries(personalFiles)) {
         if (!file || !('uri' in file)) continue;
         try {
-          await uploadPatientProfileDocument(
-            patientId,
-            key as PatientProfileUploadType,
-            {
-              uri: file.uri,
-              fileName: file.name,
-              mimeType: file.mimeType ?? 'image/jpeg',
-            },
-          );
+          const payload = {
+            uri: file.uri,
+            fileName: file.name,
+            mimeType: file.mimeType ?? 'image/jpeg',
+          };
+          if (opts.patientRelativeId) {
+            if (!RELATIVE_PROFILE_UPLOAD_TYPES.includes(key as RelativeProfileUploadType)) continue;
+            await uploadRelativeProfileDocument(
+              opts.patientRelativeId,
+              key as RelativeProfileUploadType,
+              payload,
+            );
+          } else {
+            await uploadPatientProfileDocument(patientId, key as PatientProfileUploadType, payload);
+          }
         } catch (e) {
           if (__DEV__) console.warn('[wizard personal upload]', key, e);
         }

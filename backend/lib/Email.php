@@ -1256,4 +1256,24 @@ class Email
             'ctaSecondaryLabel' => 'Formulaire de contact',
         ]);
     }
+
+    /** Email commande pharmacie — création, acceptation ou refus. */
+    public function sendPharmacyOrderEmail(string $to, string $subject, string $bodyLine, string $detailPath): bool
+    {
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
+        $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
+            . '<p style="margin:0 0 14px 0;">' . $this->escapeHtml($bodyLine) . '</p>'
+            . '<p style="margin:0;">Consultez le détail sur Cary.</p>';
+
+        return $this->send(
+            $to,
+            $subject,
+            $this->baseLayout($content, [
+                'title' => $subject,
+                'preheader' => $bodyLine,
+                'ctaUrl' => $baseUrl . $detailPath,
+                'ctaLabel' => 'Voir la commande',
+            ]),
+        );
+    }
 }

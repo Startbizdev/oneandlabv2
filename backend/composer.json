@@ -17,6 +17,7 @@
         "test:health": "phpunit --testsuite Health",
         "test:rag": "phpunit --testsuite RAG",
         "test:qr": "phpunit --testsuite QR",
-        "test:mobile": "phpunit --testsuite Mobile"
+        "test:mobile": "phpunit --testsuite Mobile",
+        "test:pharmacy": "phpunit --testsuite Pharmacy"
     }
 }

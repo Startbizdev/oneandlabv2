@@ -17,6 +17,11 @@ export type NotificationNavIntent =
       carePhotoId?: string;
       /** Infirmier / labo / sous-compte : ouvrir la modale offre si éligible. */
       pendingModal?: boolean;
+    }
+  | {
+      kind: 'pharmacy_order';
+      orderId: string;
+      messageId?: string;
     };
 
 export type NotificationNavInput = {
@@ -73,6 +78,26 @@ export function resolveNotificationNavIntent(
     data.no_navigate === true ||
     data.no_navigate === 'true'
   ) {
+    return { kind: 'none' };
+  }
+
+  const pharmacyOrderId =
+    data.pharmacy_order_id != null && String(data.pharmacy_order_id).trim() !== ''
+      ? String(data.pharmacy_order_id)
+      : null;
+  if (
+    pharmacyOrderId &&
+    (type.startsWith('pharmacy_order_') || type === 'pharmacy_order_message')
+  ) {
+    if (role === 'nurse' || role === 'pro' || role === 'patient' || role === 'super_admin') {
+      return {
+        kind: 'pharmacy_order',
+        orderId: pharmacyOrderId,
+        ...(type === 'pharmacy_order_message' && conversationMessageId
+          ? { messageId: conversationMessageId }
+          : {}),
+      };
+    }
     return { kind: 'none' };
   }
 

@@ -33,5 +33,7 @@ export * from './resumable-appointment-batch';
 export * from './booking-submit-navigation';
 export * from './care-duration';
 export * from './appointment-date-france';
+export * from './pharmacy-module-access';
+export * from './pharmacy-order-list';
 
 export * from './booking-paris-clock';

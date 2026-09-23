@@ -111,9 +111,10 @@ final class MedicalDocumentsInternal
         }
 
         $newId = bin2hex(random_bytes(16));
-        $fileExtension = pathinfo((string) $sourceDoc['file_name'], PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo((string) $sourceDoc['file_name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename(
+            (string) $sourceDoc['file_name'],
+            (string) $sourceDoc['mime_type']
+        );
         $documentDir = $uploadDir . $newId . '/';
         if (!is_dir($documentDir)) {
             mkdir($documentDir, 0755, true);
@@ -209,9 +210,7 @@ final class MedicalDocumentsInternal
         }
 
         $id = bin2hex(random_bytes(16));
-        $fileExtension = pathinfo($originalFilename, PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($originalFilename, PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename($originalFilename, (string) $mimeType);
         $documentDir = $uploadDir . $id . '/';
         if (!is_dir($documentDir)) {
             mkdir($documentDir, 0755, true);

@@ -13,6 +13,7 @@ export * from './admin-dispatch';
 export * from './lab-brands';
 export * from './patient-absence';
 export * from './appointment-conversation';
+export * from './pharmacy-orders';
 export {
   GENDER_OPTIONS,
   type ProfileForm,

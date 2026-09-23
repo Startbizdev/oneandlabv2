@@ -155,6 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $body = '';
     $medicalDocumentId = null;
+    $attachment = null;
 
     if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['file'];
@@ -185,8 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mkdir($uploadDir, 0755, true);
         }
         $docId = AppointmentConversation::newUuid();
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
         $documentDir = $uploadDir . $docId . '/';
         mkdir($documentDir, 0755, true);
         $filePath = $documentDir . $fileName . '.encrypted';
@@ -210,6 +210,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $encryptedData['dek'],
         ]);
         $medicalDocumentId = $docId;
+        $attachment = [
+            'id' => $docId,
+            'file_name' => $fileName,
+            'mime_type' => $mimeType,
+            'document_type' => 'conversation_attachment',
+        ];
         $body = trim((string) ($_POST['body'] ?? ''));
         if ($body === '') {
             $body = '[Pièce jointe]';
@@ -255,8 +261,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'success' => true,
         'data' => [
             'id' => $messageId,
+            'appointment_id' => $appointmentId,
+            'author_id' => (string) $user['user_id'],
+            'author_name' => $userModel->getDisplayNamesByIds([(string) $user['user_id']])[(string) $user['user_id']] ?? '',
             'body' => $body,
             'medical_document_id' => $medicalDocumentId,
+            'attachment' => $attachment,
+            'created_at' => date('c'),
         ],
     ]);
     exit;

@@ -528,7 +528,13 @@ class User
         // Les champs du profil public sont déjà en clair, pas besoin de déchiffrement
         // public_slug, profile_image_url, cover_image_url, biography, faq, is_public_profile_enabled
         // Décoder les colonnes JSON pour la réponse API
-        foreach (['opening_hours', 'social_links', 'nurse_qualifications'] as $jsonCol) {
+        foreach ([
+            'opening_hours',
+            'social_links',
+            'nurse_qualifications',
+            'pharmacy_click_collect_days_json',
+            'pharmacy_home_delivery_days_json',
+        ] as $jsonCol) {
             if (isset($user[$jsonCol]) && is_string($user[$jsonCol]) && $user[$jsonCol] !== '') {
                 $decoded = json_decode($user[$jsonCol], true);
                 $user[$jsonCol] = $decoded !== null ? $decoded : $user[$jsonCol];
@@ -536,7 +542,16 @@ class User
         }
 
         // Normaliser les booléens lab/subaccount pour que le front reçoive toujours true/false (évite 0/1)
-        foreach (['is_accepting_appointments', 'accept_rdv_saturday', 'accept_rdv_sunday', 'prescription_generation_enabled'] as $boolCol) {
+        foreach ([
+            'is_accepting_appointments',
+            'accept_rdv_saturday',
+            'accept_rdv_sunday',
+            'prescription_generation_enabled',
+            'pharmacy_accepts_click_collect',
+            'pharmacy_accepts_home_delivery',
+            'pharmacy_orders_paused',
+            'pharmacy_orders_enabled',
+        ] as $boolCol) {
             if (array_key_exists($boolCol, $user)) {
                 $user[$boolCol] = (bool) ($user[$boolCol] ?? false);
             }
@@ -639,6 +654,7 @@ class User
      */
     public function update(string $id, array $data, string $actorId, string $actorRole): bool
     {
+        $data = $this->stripUnauthorizedPrivilegeFields($id, $data, $actorId, $actorRole);
         $updates = [];
         $params = [];
 
@@ -930,6 +946,34 @@ class User
             $updates[] = 'prescription_generation_enabled = ?';
             $params[] = $data['prescription_generation_enabled'] ? 1 : 0;
         }
+        if ($this->hasPharmacyOrderProfileColumns()) {
+            foreach ([
+                'pharmacy_accepts_click_collect',
+                'pharmacy_accepts_home_delivery',
+                'pharmacy_orders_paused',
+                'pharmacy_orders_enabled',
+            ] as $pharmacyCol) {
+                if (array_key_exists($pharmacyCol, $data)) {
+                    $updates[] = $pharmacyCol . ' = ?';
+                    $params[] = $data[$pharmacyCol] ? 1 : 0;
+                }
+            }
+            foreach ([
+                'pharmacy_click_collect_days_json',
+                'pharmacy_home_delivery_days_json',
+            ] as $daysCol) {
+                if (array_key_exists($daysCol, $data)) {
+                    $days = is_array($data[$daysCol]) ? $data[$daysCol] : [];
+                    $days = array_values(array_unique(array_filter(
+                        array_map('intval', $days),
+                        static fn (int $day): bool => $day >= 1 && $day <= 7
+                    )));
+                    sort($days);
+                    $updates[] = $daysCol . ' = ?';
+                    $params[] = json_encode($days, JSON_UNESCAPED_UNICODE);
+                }
+            }
+        }
 
         if (empty($updates)) {
             return false;
@@ -1104,6 +1148,16 @@ class User
         return $hasColumn;
     }
 
+    private function hasPharmacyOrderProfileColumns(): bool
+    {
+        static $hasColumn = null;
+        if ($hasColumn === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM profiles LIKE 'pharmacy_orders_enabled'");
+            $hasColumn = $stmt->rowCount() > 0;
+        }
+        return $hasColumn;
+    }
+
     private function hasPrescriptionSignatureColumn(): bool
     {
         static $hasColumn = null;
@@ -1253,10 +1307,103 @@ class User
         return $out;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function stripUnauthorizedPrivilegeFields(string $id, array $data, string $actorId, string $actorRole): array
+    {
+        $isAdmin = $actorRole === 'super_admin';
+        if (!$isAdmin) {
+            unset($data['pharmacy_orders_enabled']);
+            if (array_key_exists('emploi', $data)) {
+                $currentEmploi = '';
+                if ($this->hasEmploiColumn()) {
+                    $stmt = $this->db->prepare('SELECT emploi FROM profiles WHERE id = ? LIMIT 1');
+                    $stmt->execute([$id]);
+                    $currentEmploi = trim((string) ($stmt->fetchColumn() ?: ''));
+                }
+                if (trim((string) ($data['emploi'] ?? '')) !== $currentEmploi) {
+                    unset($data['emploi']);
+                }
+            }
+        }
+
+        if (!$isAdmin && !$this->actorMayManagePharmacyOperations($id, $actorId, $actorRole)) {
+            foreach ([
+                'pharmacy_accepts_click_collect',
+                'pharmacy_accepts_home_delivery',
+                'pharmacy_orders_paused',
+                'pharmacy_click_collect_days_json',
+                'pharmacy_home_delivery_days_json',
+            ] as $pharmacyCol) {
+                unset($data[$pharmacyCol]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function actorMayManagePharmacyOperations(string $id, string $actorId, string $actorRole): bool
+    {
+        if ($actorRole === 'super_admin') {
+            return true;
+        }
+        if ($actorId !== $id || !$this->hasEmploiColumn()) {
+            return false;
+        }
+        $stmt = $this->db->prepare('SELECT role, emploi FROM profiles WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || (string) ($row['role'] ?? '') !== 'pro') {
+            return false;
+        }
+        $emploi = trim((string) ($row['emploi'] ?? ''));
+        foreach ($this->pharmacyReceiverEmplois() as $receiver) {
+            if (strcasecmp($emploi, $receiver) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return list<string> */
+    private function pharmacyReceiverEmplois(): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT setting_value FROM platform_settings WHERE setting_key = ? LIMIT 1'
+            );
+            $stmt->execute(['pharmacy_module_config']);
+            $raw = $stmt->fetchColumn();
+            if (is_string($raw) && $raw !== '') {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded) && isset($decoded['pharmacy_receiver_emplois']) && is_array($decoded['pharmacy_receiver_emplois'])) {
+                    $list = array_values(array_filter(array_map(
+                        static fn ($value): string => trim((string) $value),
+                        $decoded['pharmacy_receiver_emplois']
+                    )));
+                    if ($list !== []) {
+                        return $list;
+                    }
+                }
+            }
+        } catch (Throwable) {
+        }
+
+        return ['Pharmacien'];
+    }
+
     /** Rôles staff avec liste « Mes patients » (pro, infirmier, labo, sous-compte). */
     public static function patientListStaffRoles(): array
     {
         return ['pro', 'nurse', 'lab', 'subaccount'];
+    }
+
+    public static function canListPatients(string $role): bool
+    {
+        return $role === 'super_admin' || in_array($role, self::patientListStaffRoles(), true);
     }
 
     /**
@@ -1966,6 +2113,21 @@ class User
      */
     public function getAll(array $filters = [], int $page = 1, int $limit = 20, string $requesterId = '', string $requesterRole = ''): array
     {
+        if (($filters['role'] ?? '') === 'patient' && $requesterRole !== '') {
+            $hasStaffScope = !empty($filters['created_by']) || !empty($filters['for_lab_owner_id']);
+            if (!self::canListPatients($requesterRole)
+                || ($requesterRole !== 'super_admin' && !$hasStaffScope)
+            ) {
+                return [
+                    'data' => [],
+                    'total' => 0,
+                    'page' => $page,
+                    'limit' => $limit,
+                    'pages' => 0,
+                ];
+            }
+        }
+
         $searchText = trim((string) ($filters['search'] ?? ''));
         $textSearchMode = $searchText !== '' && $requesterRole === 'super_admin';
         $emailSearchHash = ($textSearchMode && filter_var($searchText, FILTER_VALIDATE_EMAIL))
@@ -2306,5 +2468,80 @@ class User
         $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    /** La pharmacie a déjà une commande avec ce patient ou ce demandeur. */
+    public function pharmacyHasOrderWithUser(string $pharmacyId, string $targetId): bool
+    {
+        if ($pharmacyId === '' || $targetId === '') {
+            return false;
+        }
+        try {
+            $stmt = $this->db->prepare('
+                SELECT 1 FROM pharmacy_orders
+                WHERE pharmacy_id = ?
+                  AND (patient_id = ? OR requester_id = ?)
+                LIMIT 1
+            ');
+            $stmt->execute([$pharmacyId, $targetId, $targetId]);
+            return (bool) $stmt->fetchColumn();
+        } catch (PDOException) {
+            return false;
+        }
+    }
+
+    /**
+     * @param list<string> $ids
+     * @return array<string, array{phone: ?string, email: ?string, emploi: ?string, public_slug: ?string, role: ?string}>
+     */
+    public function getContactCardsByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids)));
+        if ($ids === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = 'SELECT id, role, email_encrypted, email_dek, phone_encrypted, phone_dek, public_slug';
+        if ($this->hasEmploiColumn()) {
+            $sql .= ', emploi';
+        }
+        $sql .= ' FROM profiles WHERE id IN (' . $placeholders . ')';
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($ids);
+        $result = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $email = null;
+            if (!empty($row['email_encrypted']) && !empty($row['email_dek'])) {
+                try {
+                    $email = trim((string) $this->crypto->decryptField($row['email_encrypted'], $row['email_dek']));
+                } catch (Exception) {
+                    $email = null;
+                }
+            }
+            if ($email !== null && str_ends_with(strtolower($email), '@patients.internal.local')) {
+                $email = null;
+            }
+            $phone = null;
+            if (!empty($row['phone_encrypted']) && !empty($row['phone_dek'])) {
+                try {
+                    $phone = trim((string) $this->crypto->decryptField($row['phone_encrypted'], $row['phone_dek']));
+                } catch (Exception) {
+                    $phone = null;
+                }
+            }
+            $result[(string) $row['id']] = [
+                'phone' => $phone !== '' ? $phone : null,
+                'email' => $email !== '' ? $email : null,
+                'emploi' => isset($row['emploi']) && trim((string) $row['emploi']) !== ''
+                    ? trim((string) $row['emploi'])
+                    : null,
+                'public_slug' => isset($row['public_slug']) && trim((string) $row['public_slug']) !== ''
+                    ? trim((string) $row['public_slug'])
+                    : null,
+                'role' => isset($row['role']) ? (string) $row['role'] : null,
+            ];
+        }
+
+        return $result;
     }
 }

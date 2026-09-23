@@ -141,6 +141,16 @@ class MedicalDocumentAccess
             );
         }
 
+        // Aligné avec LabResultsListing : infirmier/pro avec accès dossier patient
+        // peut télécharger un résultat labo même sans être assigné au RDV prélèvement.
+        if (!$hasAccess && !empty($document['apt_patient_id'])) {
+            $hasAccess = self::userHasProfileDocumentAccess(
+                $db,
+                $user,
+                (string) $document['apt_patient_id'],
+            );
+        }
+
         return $hasAccess;
     }
 

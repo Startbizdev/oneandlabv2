@@ -21,7 +21,23 @@ function authPublicCors(string $methods = 'POST, OPTIONS'): void
 
 function authClientIp(): string
 {
-    return (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $remoteAddress = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+    $trustedProxies = array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) ($_ENV['TRUSTED_PROXY_IPS'] ?? getenv('TRUSTED_PROXY_IPS') ?: ''))
+    )));
+
+    // X-Forwarded-For est contrôlé par le client sauf si la connexion provient
+    // d'un reverse proxy explicitement approuvé.
+    if ($remoteAddress !== '' && in_array($remoteAddress, $trustedProxies, true)) {
+        $forwarded = explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
+        $candidate = trim((string) ($forwarded[0] ?? ''));
+        if (filter_var($candidate, FILTER_VALIDATE_IP)) {
+            return $candidate;
+        }
+    }
+
+    return filter_var($remoteAddress, FILTER_VALIDATE_IP) ? $remoteAddress : 'unknown';
 }
 
 function authExposeOtpInResponse(): bool

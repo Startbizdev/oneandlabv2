@@ -33,7 +33,11 @@ import { fontFamily, fontSize } from '@/theme/typography';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 
 export function AppointmentConversationScreen() {
-  const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
+  const { id, messageId, fromNotification } = useLocalSearchParams<{
+    id: string;
+    messageId?: string;
+    fromNotification?: string;
+  }>();
   const appointmentId = String(id ?? '');
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'AppointmentConversationScreen_styles');
@@ -122,6 +126,10 @@ export function AppointmentConversationScreen() {
   }
 
   function leaveConversation() {
+    if (fromNotification === '1' && appointmentId) {
+      router.replace(`${roleRoutePrefix(userRole)}/appointment/${appointmentId}` as never);
+      return;
+    }
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;

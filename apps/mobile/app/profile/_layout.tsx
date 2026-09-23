@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   Lock,
   MapPin,
+  Pill,
   Settings,
   User,
 } from 'lucide-react-native';
@@ -135,6 +136,13 @@ export default function ProfileLayout() {
         options={{
           title: 'Zone de couverture',
           headerTitle: tabHeaderTitle('Zone de couverture', PROFILE_HEADER_SF.coverage, MapPin),
+        }}
+      />
+      <Stack.Screen
+        name="pharmacy-settings"
+        options={{
+          title: 'Commandes pharmacie',
+          headerTitle: tabHeaderTitle('Commandes pharmacie', PROFILE_HEADER_SF.profile, Pill),
         }}
       />
       <Stack.Screen name="coverage" options={{ headerShown: false }} />

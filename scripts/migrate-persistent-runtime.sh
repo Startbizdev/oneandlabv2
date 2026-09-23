@@ -100,6 +100,15 @@ sudo find "$PERSIST" -type d -exec chmod 750 {} \;
 sudo find "$PERSIST/uploads" "$PERSIST/logs" "$PERSIST/storage" -type f -exec chmod 640 {} \; 2>/dev/null || true
 sudo chmod 700 "$PERSIST/keys" 2>/dev/null || true
 sudo chmod 600 "$PERSIST/.env" 2>/dev/null || true
+# Le déploiement tourne en ubuntu : il doit lire vendor et écrire dans tmp.
+sudo chmod 751 "$PERSIST"
+if [[ -d "$PERSIST/vendor" ]]; then
+  sudo find "$PERSIST/vendor" -type d -exec chmod 755 {} \;
+  sudo find "$PERSIST/vendor" -type f -exec chmod 644 {} \;
+fi
+if [[ -d "$PERSIST/tmp" ]]; then
+  sudo chmod 1777 "$PERSIST/tmp"
+fi
 
 echo "=== Verification ==="
 for p in uploads logs storage keys vendor tmp .env; do

@@ -10,6 +10,7 @@
         class="w-full"
         searchable
         by="value"
+        :disabled="disabled"
       >
         <template #default>
           <span v-if="selectValue">{{ selectLabel }}</span>
@@ -25,12 +26,13 @@
       :required="required"
       class="w-full"
     >
-      <UInput
+        <UInput
         v-model="customValue"
         :placeholder="customPlaceholder"
         size="xl"
         class="w-full"
         maxlength="120"
+        :disabled="disabled"
       />
     </UFormField>
   </div>
@@ -56,6 +58,7 @@ withDefaults(
     placeholder?: string;
     customLabel?: string;
     customPlaceholder?: string;
+    disabled?: boolean;
   }>(),
   {
     label: 'Profession (emploi)',
@@ -64,6 +67,7 @@ withDefaults(
     placeholder: 'Rechercher votre profession…',
     customLabel: 'Précisez votre profession',
     customPlaceholder: 'Ex. : Podologue, Orthophoniste…',
+    disabled: false,
   },
 );
 

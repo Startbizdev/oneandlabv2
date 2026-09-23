@@ -3,6 +3,7 @@ import { isBloodTestAppointment } from '@oneandlab/shared-utils';
 export type AppointmentDocFieldKey =
   | 'carte_vitale'
   | 'carte_mutuelle'
+  | 'attestation_droits_ame'
   | 'ordonnance'
   | 'autres_assurances';
 
@@ -17,12 +18,24 @@ export type AppointmentDocFieldDef = {
 export const PERSONAL_DOC_FIELDS: AppointmentDocFieldDef[] = [
   { key: 'carte_vitale', label: 'Carte Vitale', optional: true },
   { key: 'carte_mutuelle', label: 'Carte mutuelle', optional: true },
+  { key: 'attestation_droits_ame', label: 'Attestation de droits / AME', optional: true },
 ];
 
 /** Documents dossier patient réutilisables sur un nouveau RDV (pas ordonnance / autre prescription). */
 export const PROFILE_PREFILL_DOC_KEYS = new Set<AppointmentDocFieldKey>(
   PERSONAL_DOC_FIELDS.map((f) => f.key),
 );
+
+/** Ordre liste / téléchargement fiche RDV (mobile, tous rôles). */
+export const APPOINTMENT_DETAIL_DOC_ORDER = [
+  'carte_vitale',
+  'carte_mutuelle',
+  'attestation_droits_ame',
+  'ordonnance',
+  'autres_assurances',
+  'resultats',
+  'other',
+] as const;
 
 /** Ordonnance + complément — étape « Documents » (tous rôles). */
 export const SERVICE_DOC_FIELDS: AppointmentDocFieldDef[] = [

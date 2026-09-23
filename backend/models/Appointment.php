@@ -2551,6 +2551,7 @@ class Appointment
             $allowedRedispatchFrom = ['confirmed', 'planned', 'inProgress'];
             if ($actorRole === 'super_admin') {
                 $allowedRedispatchFrom[] = 'canceled';
+                $allowedRedispatchFrom[] = 'cancelled';
             }
             if (!in_array($oldStatus, $allowedRedispatchFrom, true)) {
                 throw new Exception('Seuls les rendez-vous confirmés, planifiés, en cours ou annulés peuvent être redispatchés.');

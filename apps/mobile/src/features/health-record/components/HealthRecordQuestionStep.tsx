@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Row } from '@/components/layout/primitives';
 import type { HealthRecordQuestion } from '../api/health-record.service';
-import { HEALTH_RECORD_OPTIONAL_BADGE } from '../utils/health-record-display';
+import { HEALTH_RECORD_OPTIONAL_BADGE, unwrapHealthRecordValue, formatHealthRecordStoredValue } from '../utils/health-record-display';
 import { spacing, AppText } from '@/theme';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -26,16 +26,23 @@ const ENUM_LABELS: Record<string, string> = {
 };
 
 function hasStoredValue(value: unknown): boolean {
-  if (value === null || value === undefined || value === '') return false;
-  if (typeof value === 'string' && value.trim().toLowerCase() === 'null') return false;
+  const unwrapped = unwrapHealthRecordValue(value);
+  if (unwrapped === null || unwrapped === undefined || unwrapped === '') return false;
+  if (typeof unwrapped === 'string' && unwrapped.trim().toLowerCase() === 'null') return false;
+  if (typeof unwrapped === 'string' && unwrapped.trim().toLowerCase() === '[object object]') return false;
   return true;
 }
 
 function formatInitialNumber(value: unknown): string {
-  if (!hasStoredValue(value)) return '';
-  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-  if (typeof value === 'string') return value;
+  const unwrapped = unwrapHealthRecordValue(value);
+  if (!hasStoredValue(unwrapped)) return '';
+  if (typeof unwrapped === 'number' && Number.isFinite(unwrapped)) return String(unwrapped);
+  if (typeof unwrapped === 'string') return unwrapped;
   return '';
+}
+
+function formatCurrentValueLabel(value: unknown): string {
+  return formatHealthRecordStoredValue(value);
 }
 
 interface Props {
@@ -79,7 +86,8 @@ export function HealthRecordQuestionStep({
       return;
     }
     if (question.type === 'text' || question.type === 'textarea') {
-      setTextValue(hasStoredValue(initialValue) ? String(initialValue) : '');
+      const unwrapped = unwrapHealthRecordValue(initialValue);
+      setTextValue(typeof unwrapped === 'string' ? unwrapped : '');
       setNumberValue('');
       return;
     }
@@ -93,25 +101,25 @@ export function HealthRecordQuestionStep({
         <QuestionHeader label={question.label_fr} styles={styles} />
         {hasStoredValue(initialValue) ? (
           <AppText style={styles.currentValue}>
-            Réponse actuelle : {ENUM_LABELS[String(initialValue)] ?? String(initialValue)}
+            Réponse actuelle : {formatCurrentValueLabel(initialValue)}
           </AppText>
         ) : null}
         <View style={styles.choices}>
           <Button
             title="Oui"
-            variant={initialValue === 'yes' ? 'primary' : 'secondary'}
+            variant={unwrapHealthRecordValue(initialValue) === 'yes' ? 'primary' : 'secondary'}
             onPress={() => onAnswer('yes')}
             disabled={saving}
           />
           <Button
             title="Non"
-            variant={initialValue === 'no' ? 'primary' : 'secondary'}
+            variant={unwrapHealthRecordValue(initialValue) === 'no' ? 'primary' : 'secondary'}
             onPress={() => onAnswer('no')}
             disabled={saving}
           />
           <Button
             title="Je ne sais pas"
-            variant={initialValue === 'unknown' ? 'primary' : 'ghost'}
+            variant={unwrapHealthRecordValue(initialValue) === 'unknown' ? 'primary' : 'ghost'}
             onPress={() => onAnswer('unknown')}
             disabled={saving}
           />
@@ -127,7 +135,7 @@ export function HealthRecordQuestionStep({
         <QuestionHeader label={question.label_fr} styles={styles} />
         {hasStoredValue(initialValue) ? (
           <AppText style={styles.currentValue}>
-            Réponse actuelle : {ENUM_LABELS[String(initialValue)] ?? String(initialValue)}
+            Réponse actuelle : {formatCurrentValueLabel(initialValue)}
           </AppText>
         ) : null}
         <View style={styles.choices}>
@@ -135,7 +143,7 @@ export function HealthRecordQuestionStep({
             <Button
               key={opt}
               title={ENUM_LABELS[opt] ?? opt}
-              variant={initialValue === opt ? 'primary' : opt === 'unknown' ? 'ghost' : 'secondary'}
+              variant={unwrapHealthRecordValue(initialValue) === opt ? 'primary' : opt === 'unknown' ? 'ghost' : 'secondary'}
               onPress={() => onAnswer(opt)}
               disabled={saving}
             />

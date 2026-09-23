@@ -32,6 +32,7 @@ import {
   Heart,
   Route,
   Scale,
+  Pill,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
@@ -96,8 +97,14 @@ interface MenuSection {
   items: MenuItemProps[];
 }
 
+function isPharmacistEmploi(emploi: string | null | undefined): boolean {
+  const e = (emploi ?? '').trim();
+  return e.localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0;
+}
+
 function getSections(
   role: string | undefined,
+  emploi: string | null | undefined,
   router: ReturnType<typeof useRouter>,
   logout: () => Promise<void>,
 ): MenuSection[] {
@@ -173,6 +180,7 @@ function getSections(
           { icon: CalendarDays, label: 'Mes rendez-vous', onPress: () => navigate('/(patient)/(tabs)/appointments') },
           { icon: CalendarDays, label: 'Réserver un RDV', onPress: () => navigate('/(patient)/(tabs)/book'), ...menuIcons.teal },
           { icon: Heart, label: 'Mes proches', onPress: () => navigate('/(patient)/(tabs)/relatives'), ...menuIcons.heart },
+          { icon: Users, label: 'Mes donneurs de soins', onPress: () => navigate('/profile/care-origins'), ...menuIcons.teal },
           { icon: Star, label: 'Mes avis', onPress: () => navigate('/(patient)/reviews'), ...menuIcons.warning },
         ],
       },
@@ -202,15 +210,21 @@ function getSections(
   }
 
   if (role === 'pro') {
+    const proItems: MenuItemProps[] = [
+      { icon: Users, label: 'Mes patients', onPress: () => navigate('/(pro)/(tabs)/patients') },
+      { icon: CalendarDays, label: 'Rendez-vous', onPress: () => navigate('/(pro)/(tabs)/appointments') },
+    ];
+    if (isPharmacistEmploi(emploi)) {
+      proItems.push({
+        icon: Pill,
+        label: 'Commandes pharmacie',
+        onPress: () => navigate('/profile/pharmacy-settings'),
+        ...menuIcons.teal,
+      });
+    }
     return [
       common,
-      {
-        title: 'Navigation',
-        items: [
-          { icon: Users, label: 'Mes patients', onPress: () => navigate('/(pro)/(tabs)/patients') },
-          { icon: CalendarDays, label: 'Rendez-vous', onPress: () => navigate('/(pro)/(tabs)/appointments') },
-        ],
-      },
+      { title: 'Navigation', items: proItems },
       legalSection,
       logoutSection,
     ];
@@ -242,8 +256,8 @@ export function ProfileHubScreen() {
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
 
   const sections = useMemo(
-    () => getSections(user?.role, router, logout),
-    [user?.role, router, logout, colorblindType],
+    () => getSections(user?.role, user?.emploi, router, logout),
+    [user?.role, user?.emploi, router, logout, colorblindType],
   );
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);

@@ -16,7 +16,9 @@ import {
   Smile,
   Star,
   User,
+  Pill,
 } from 'lucide-react-native';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
@@ -35,6 +37,7 @@ export default function NurseMore() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const unread = useUnreadNotificationsCount();
+  const { canOrder: pharmacyCanOrder } = usePharmacyModuleEnabled();
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -131,6 +134,16 @@ export default function NurseMore() {
                       icon: FilePenLine,
                       label: 'Ordonnances',
                       onPress: () => nav('/(nurse)/prescriptions'),
+                      iconAccent: 'teal' as const,
+                    },
+                  ]
+                : []),
+              ...(pharmacyCanOrder
+                ? [
+                    {
+                      icon: Pill,
+                      label: 'Commandes pharmacie',
+                      onPress: () => nav('/(nurse)/commandes-pharmacie'),
                       iconAccent: 'teal' as const,
                     },
                   ]

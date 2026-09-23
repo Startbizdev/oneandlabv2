@@ -34,9 +34,28 @@ elif [[ -f "$PERSIST/.env" ]]; then
   echo "Linked $BACKEND/.env -> $PERSIST/.env"
 fi
 
+# persistent/ est www-data:www-data 750 : le déploiement (ubuntu) doit pouvoir
+# traverser le dossier et lire Composer, sans ouvrir .env ni les clés.
+if [[ -d "$PERSIST" ]]; then
+  sudo chmod 751 "$PERSIST"
+fi
+if [[ -d "$PERSIST/vendor" ]]; then
+  sudo find "$PERSIST/vendor" -type d -exec chmod 755 {} \;
+  sudo find "$PERSIST/vendor" -type f -exec chmod 644 {} \;
+fi
+if [[ -d "$PERSIST/tmp" ]]; then
+  sudo chmod 1777 "$PERSIST/tmp"
+fi
+
 if sudo -u www-data test -w "$BACKEND/uploads/medical" 2>/dev/null; then
   echo "OK: www-data can write $BACKEND/uploads/medical"
 else
   echo "ERROR: www-data cannot write uploads/medical" >&2
   exit 1
 fi
+
+if [[ ! -r "$BACKEND/vendor/autoload.php" ]]; then
+  echo "ERROR: deploy user cannot read $BACKEND/vendor/autoload.php" >&2
+  exit 1
+fi
+echo "OK: vendor/autoload.php is readable"

@@ -95,7 +95,15 @@
           :maxlength="11"
         />
 
-        <ProEmploiField v-if="isPro" :model-value="form.emploi ?? ''" @update:model-value="form.emploi = $event" />
+        <ProEmploiField
+          v-if="isPro"
+          :model-value="form.emploi ?? ''"
+          :disabled="emploiLocked"
+          @update:model-value="form.emploi = $event"
+        />
+        <p v-if="isPro && emploiLocked" class="text-sm text-muted -mt-2">
+          La profession ne peut être modifiée que par un administrateur.
+        </p>
 
         <FormInput
           v-if="isPro"
@@ -206,6 +214,8 @@ interface Props {
   noActions?: boolean
   /** Création patient par pro/nurse : email non obligatoire */
   emailOptional?: boolean
+  /** La profession ne peut plus être changée après inscription, sauf admin. */
+  emploiLocked?: boolean
 }
 
 interface Emits {
@@ -214,7 +224,7 @@ interface Emits {
   (e: 'reset'): void
 }
 
-const props = withDefaults(defineProps<Props>(), { emailReadonly: true, emailOptional: false })
+const props = withDefaults(defineProps<Props>(), { emailReadonly: true, emailOptional: false, emploiLocked: false })
 const emit = defineEmits<Emits>()
 
 const defaultForm = (): ProfileForm => ({

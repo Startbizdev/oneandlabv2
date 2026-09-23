@@ -139,6 +139,11 @@ import {
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import {
+  buildAppointmentDetailUploadTypes,
+  getAppointmentDetailDocumentLabel,
+  PRO_RESULTATS_UPLOAD_TYPE,
+} from '~/utils/appointment-detail-document-types';
 import { standardAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isCarePhotoGalleryContext, canUploadCarePhotos } from '~/utils/care-photo-gallery-context';
 import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
@@ -182,15 +187,7 @@ const downloadingDocId = ref<string | null>(null);
 const downloadingDocIds = computed(() => (downloadingDocId.value ? [downloadingDocId.value] : []));
 
 function getDocumentTypeLabel(type: string) {
-  const labels: Record<string, string> = {
-    carte_vitale: 'Carte Vitale',
-    carte_mutuelle: 'Carte Mutuelle',
-    ordonnance: 'Ordonnance',
-    resultats: 'Résultats',
-    autres_assurances: 'Autre prescription',
-    other: 'Autre',
-  };
-  return labels[type] || type;
+  return getAppointmentDetailDocumentLabel(type);
 }
 
 async function downloadDocument(doc: { id: string; file_name: string }) {
@@ -227,14 +224,7 @@ const standardSidebarActionsCardVisible = computed(() =>
 const uploadingTypes = ref(new Set<string>());
 const currentAppointmentForUpload = ref<any>(null);
 
-const uploadDocumentTypes = [
-  { value: 'carte_vitale', label: 'Carte Vitale', icon: 'i-lucide-credit-card', color: 'green' },
-  { value: 'carte_mutuelle', label: 'Carte Mutuelle', icon: 'i-lucide-shield', color: 'blue' },
-  { value: 'ordonnance', label: 'Ordonnance', icon: 'i-lucide-file-text', color: 'orange' },
-  { value: 'resultats', label: 'Résultats', icon: 'i-lucide-file-check', color: 'emerald' },
-  { value: 'autres_assurances', label: 'Autre prescription', icon: 'i-lucide-file-text', color: 'purple' },
-  { value: 'other', label: 'Autre document', icon: 'i-lucide-file', color: 'gray' },
-];
+const uploadDocumentTypes = buildAppointmentDetailUploadTypes({ resultats: PRO_RESULTATS_UPLOAD_TYPE });
 
 function canUploadDocuments(appointment: any) {
   return !!appointment && canUploadMedicalDocumentsForAppointmentStatus(appointment.status);

@@ -43,15 +43,17 @@ export function FormDocumentsSection({
 
   const profilePersonalOnFile =
     showProfileSummary &&
-    (profileDocs?.carte_vitale || profileDocs?.carte_mutuelle);
+    (profileDocs?.carte_vitale ||
+      profileDocs?.carte_mutuelle ||
+      profileDocs?.attestation_droits_ame);
 
   return (
     <View style={styles.wrapper}>
       {profilePersonalOnFile ? (
         <View style={styles.profileBanner}>
           <AppText style={styles.profileBannerText}>
-            Votre Carte Vitale et mutuelle sont déjà enregistrées. Ajoutez seulement l’ordonnance
-            pour ce rendez-vous.
+            Vos documents de couverture (Vitale, mutuelle, attestation) sont déjà enregistrés. Ajoutez
+            seulement l’ordonnance pour ce rendez-vous.
           </AppText>
         </View>
       ) : null}

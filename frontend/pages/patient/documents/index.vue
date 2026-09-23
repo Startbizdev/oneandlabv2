@@ -145,6 +145,7 @@ function documentTypeLabel(type: string | null | undefined): string {
   const map: Record<string, string> = {
     carte_vitale: 'Carte Vitale',
     carte_mutuelle: 'Carte mutuelle',
+    attestation_droits_ame: 'Attestation de droits / AME',
     ordonnance: 'Ordonnance',
     autres_assurances: 'Autre prescription',
     resultats: 'Résultats',

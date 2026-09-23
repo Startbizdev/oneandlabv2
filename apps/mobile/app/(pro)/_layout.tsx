@@ -35,6 +35,7 @@ export default function ProLayout() {
         <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
         <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions()} />
         <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
+        <Stack.Screen name="professionnel/[id]" options={{ title: 'Professionnel' }} />
         <Stack.Screen name="patient/[id]/history" options={{ title: 'Historique' }} />
         <Stack.Screen name="patient/[id]/documents" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
@@ -49,6 +50,11 @@ export default function ProLayout() {
         <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
+        <Stack.Screen name="commandes-pharmacie/index" options={{ title: 'Commandes pharmacie' }} />
+        <Stack.Screen name="commandes-pharmacie/new" options={{ title: 'Nouvelle commande' }} />
+        <Stack.Screen name="commandes-pharmacie/[id]" options={{ title: 'Détail commande' }} />
+        <Stack.Screen name="commandes-recues/index" options={{ title: 'Commandes reçues' }} />
+        <Stack.Screen name="commandes-recues/[id]" options={{ title: 'Commande reçue' }} />
       </Stack>
       </StackSceneInsetLayout>
     </View>

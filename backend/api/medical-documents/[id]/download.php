@@ -143,7 +143,23 @@ try {
         }
     }
 
-    if ($filePath === false || !file_exists($filePath)) {
+    $allowedRoots = array_values(array_filter([
+        realpath($backendDir . '/uploads/medical'),
+        realpath($projectRoot . '/uploads/medical'),
+    ]));
+    $isInsideMedicalStorage = false;
+    if ($filePath !== false) {
+        $normalizedFilePath = rtrim($filePath, DIRECTORY_SEPARATOR);
+        foreach ($allowedRoots as $allowedRoot) {
+            $prefix = rtrim((string) $allowedRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            if (strncmp($normalizedFilePath, $prefix, strlen($prefix)) === 0) {
+                $isInsideMedicalStorage = true;
+                break;
+            }
+        }
+    }
+
+    if ($filePath === false || !is_file($filePath) || !$isInsideMedicalStorage) {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode([
@@ -180,8 +196,10 @@ try {
             $document['file_dek']
         );
     } catch (Exception $e) {
+        error_log('medical-document decrypt failed: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Erreur lors du déchiffrement: ' . $e->getMessage()]);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Erreur lors du déchiffrement']);
         exit;
     }
     
@@ -207,7 +225,14 @@ try {
 
     // Envoyer le fichier déchiffré
     header('Content-Type: ' . $document['mime_type']);
-    header('Content-Disposition: attachment; filename="' . $document['file_name'] . '"');
+    $downloadName = str_replace(["\r", "\n", '"', '\\'], '_', basename((string) $document['file_name']));
+    if ($downloadName === '' || $downloadName === '.' || $downloadName === '..') {
+        $downloadName = 'document';
+    }
+    header(
+        'Content-Disposition: attachment; filename="' . $downloadName
+        . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName)
+    );
     header('Content-Length: ' . strlen($decryptedContent));
     header('Cache-Control: private, max-age=0, must-revalidate');
     header('Pragma: no-cache');
@@ -216,11 +241,12 @@ try {
     exit;
     
 } catch (Exception $e) {
+    error_log('medical-document download failed: ' . $e->getMessage());
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
+        'error' => 'Erreur interne du serveur',
         'code' => 'SERVER_ERROR',
     ]);
 }

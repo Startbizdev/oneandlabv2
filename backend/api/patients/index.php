@@ -41,17 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $limit = 50;
     }
     
+    $actorRole = (string) ($user['role'] ?? '');
+    if (!User::canListPatients($actorRole)) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Accès refusé',
+            'code' => 'FORBIDDEN',
+        ]);
+        exit;
+    }
+
     // Filtres de base: rôle patient
     $filters = ['role' => 'patient'];
 
     // Périmètre imposé par rôle (ignore created_by en query pour éviter l'escalade)
-    if ($user['role'] === 'pro' || $user['role'] === 'nurse') {
+    if ($actorRole === 'pro' || $actorRole === 'nurse' || $actorRole === 'subaccount') {
         $filters['created_by'] = $user['user_id'];
-    } elseif ($user['role'] === 'lab') {
+    } elseif ($actorRole === 'lab') {
         $filters['for_lab_owner_id'] = $user['user_id'];
-    } elseif ($user['role'] === 'subaccount') {
-        $filters['created_by'] = $user['user_id'];
-    } elseif ($createdBy) {
+    } elseif ($actorRole === 'super_admin' && $createdBy) {
         $filters['created_by'] = $createdBy;
     }
     

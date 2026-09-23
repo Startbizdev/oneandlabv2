@@ -10,6 +10,7 @@ import {
 } from '../api/health-record.service';
 import { healthRecordQueryKeys } from './use-health-record-completion';
 import { recapItemsToQuestions } from '../utils/health-record-questions';
+import { unwrapHealthRecordValue } from '../utils/health-record-display';
 
 function flattenQuestions(sections: HealthRecordSection[]): HealthRecordQuestion[] {
   const out: HealthRecordQuestion[] = [];
@@ -54,7 +55,7 @@ export function useHealthRecordWizard(sectionFilter?: string, questionKey?: stri
     for (const section of recapQ.data?.sections ?? []) {
       for (const item of section.items ?? []) {
         if (item.key) {
-          map[item.key] = item.value;
+          map[item.key] = unwrapHealthRecordValue(item.value);
         }
       }
     }

@@ -3,6 +3,7 @@ import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   carte_vitale: 'Carte Vitale',
   carte_mutuelle: 'Carte mutuelle',
+  attestation_droits_ame: 'Attestation de droits / AME',
   ordonnance: 'Ordonnance',
   resultats: 'Résultats',
   autres_assurances: 'Autre prescription',

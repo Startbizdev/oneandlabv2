@@ -33,6 +33,7 @@ import {
   setUnreadNotificationsCount,
 } from '../lib/notifications-cache';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { spacing } from '@/theme';
@@ -47,6 +48,7 @@ export function NotificationsScreen() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   const token = useAuthStore((s) => s.token);
+  const { canReceive: pharmacyCanReceive } = usePharmacyModuleEnabled();
 
   const feedQ = useInfiniteQuery({
     queryKey: FEED_QUERY_KEY,
@@ -140,7 +142,7 @@ export function NotificationsScreen() {
   const onPressItem = useCallback(
     (n: AppNotification) => {
       if (!n.read_at) markRead.mutate(n.id);
-      const target = resolveNotificationNavigation(n, role);
+      const target = resolveNotificationNavigation(n, role, { pharmacyCanReceive });
       if (target.kind === 'route') {
         router.push({
           pathname: target.pathname,
@@ -148,7 +150,7 @@ export function NotificationsScreen() {
         } as never);
       }
     },
-    [markRead, role, router],
+    [markRead, pharmacyCanReceive, role, router],
   );
 
   const loadMore = useCallback(() => {

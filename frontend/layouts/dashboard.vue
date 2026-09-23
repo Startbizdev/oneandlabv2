@@ -351,6 +351,7 @@ import { formatBellNotificationLines, sanitizeNotificationText } from "~/utils/n
 import { webNotificationNeedsPendingModal, webNotificationRoute } from "~/utils/notification-navigation-web";
 
 const { user, logout, fetchCurrentUser } = useAuth();
+const { uiFlags, fetchModuleFlags } = usePharmacyModule();
 const route = useRoute();
 const router = useRouter();
 const { holdCount } = useBookingApiHold();
@@ -649,6 +650,7 @@ const breadcrumbItems = computed(() => {
     "/nurse/tournee": { label: "Ma tournée", icon: "i-lucide-list-ordered" },
     "/nurse/soins": { label: "Plans récurrents", icon: "i-lucide-calendar-range" },
     "/nurse/prescriptions": { label: "Ordonnances", icon: "i-lucide-file-pen-line" },
+    "/nurse/commandes-pharmacie": { label: "Commandes pharmacie", icon: "i-lucide-pill" },
     "/nurse/reviews": { label: "Mes avis", icon: "i-lucide-star" },
     "/nurse/abonnement": { label: "Abonnement", icon: "i-lucide-credit-card" },
     
@@ -666,6 +668,7 @@ const breadcrumbItems = computed(() => {
     "/admin/reviews": { label: "Avis", icon: "i-lucide-star" },
     "/admin/notifications": { label: "Notifications", icon: "i-lucide-bell" },
     "/admin/abonnements": { label: "Abonnements", icon: "i-lucide-credit-card" },
+    "/admin/commandes-pharmacie": { label: "Commandes pharmacie", icon: "i-lucide-pill" },
     "/admin/ai": { label: "IA Cary", icon: "i-lucide-sparkles" },
     "/admin/logs": { label: "Logs", icon: "i-lucide-file-text" },
     
@@ -698,6 +701,8 @@ const breadcrumbItems = computed(() => {
     "/pro/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
     "/pro/patients": { label: "Patients", icon: "i-lucide-users" },
     "/pro/prescriptions": { label: "Prescriptions", icon: "i-lucide-file-pen-line" },
+    "/pro/commandes-pharmacie": { label: "Commandes pharmacie", icon: "i-lucide-pill" },
+    "/pro/commandes-recues": { label: "Commandes reçues", icon: "i-lucide-inbox" },
     "/pro/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     "/pro/settings": { label: "Paramètres", icon: "i-lucide-settings" },
     
@@ -876,6 +881,12 @@ const navigationItems = computed(() => {
           icon: "i-lucide-credit-card",
           to: "/admin/abonnements",
           active: active("/admin/abonnements"),
+        },
+        {
+          label: "Commandes pharmacie",
+          icon: "i-lucide-pill",
+          to: "/admin/commandes-pharmacie",
+          active: active("/admin/commandes-pharmacie"),
         },
         {
           label: "IA Cary",
@@ -1165,18 +1176,54 @@ const navigationItems = computed(() => {
     ],
   };
 
-  const base = menus[role] || [[], []];
+  let primary = [...(menus[role]?.[0] ?? [])];
+  const secondary = [...(menus[role]?.[1] ?? [])];
+
   if (
     (role === 'pro' || role === 'nurse') &&
     user.value?.prescription_generation_enabled === false
   ) {
     const blockedPath = role === 'pro' ? '/pro/prescriptions' : '/nurse/prescriptions';
-    return [
-      base[0].filter((item) => item.to !== blockedPath),
-      base[1] ?? [],
-    ];
+    primary = primary.filter((item) => item.to !== blockedPath);
   }
-  return base;
+
+  const flags = uiFlags.value;
+  if (flags?.module_enabled) {
+    const pharmacyItems: (NavigationMenuItem & { to: string; icon: string; active?: boolean })[] = [];
+    if (role === 'nurse' && flags.can_order) {
+      pharmacyItems.push({
+        label: 'Commandes pharmacie',
+        icon: 'i-lucide-pill',
+        to: '/nurse/commandes-pharmacie',
+        active: active('/nurse/commandes-pharmacie'),
+      });
+    }
+    if (role === 'pro') {
+      if (flags.can_order) {
+        pharmacyItems.push({
+          label: 'Commandes pharmacie',
+          icon: 'i-lucide-pill',
+          to: '/pro/commandes-pharmacie',
+          active: active('/pro/commandes-pharmacie'),
+        });
+      }
+      if (flags.can_receive) {
+        pharmacyItems.push({
+          label: 'Commandes reçues',
+          icon: 'i-lucide-inbox',
+          to: '/pro/commandes-recues',
+          active: active('/pro/commandes-recues'),
+        });
+      }
+    }
+    if (pharmacyItems.length > 0) {
+      const profileIdx = primary.findIndex((item) => item.to === '/profile');
+      const insertAt = profileIdx >= 0 ? profileIdx : primary.length;
+      primary.splice(insertAt, 0, ...pharmacyItems);
+    }
+  }
+
+  return [primary, secondary];
 });
 
 const headerUserDisplayName = computed(() => {
@@ -1477,6 +1524,12 @@ watch(
 
 // Initialiser et ouvrir la popup auto pour nurse / lab / subaccount / preleveur (file d'attente)
 let appointmentCounterInitialized = false;
+watch(() => user.value?.role, (role) => {
+  if (['nurse', 'pro'].includes(role ?? '')) {
+    void fetchModuleFlags();
+  }
+}, { immediate: true });
+
 watch(() => user.value?.role, async (role) => {
   if (!['nurse', 'lab', 'subaccount', 'preleveur'].includes(role ?? '') || appointmentCounterInitialized || !user.value) return;
   appointmentCounterInitialized = true;
@@ -1527,6 +1580,9 @@ watch(() => user.value?.role, async (role) => {
 onMounted(async () => {
   // Rafraîchir l'utilisateur pour avoir la photo de profil à jour dans le header (profile_image_url)
   await fetchCurrentUser();
+  if (['nurse', 'pro'].includes(user.value?.role ?? '')) {
+    void fetchModuleFlags();
+  }
   // Charger les notifications immédiatement
   const res = await apiFetch('/notifications?limit=10', { method: 'GET' })
   if (res && res.success) {

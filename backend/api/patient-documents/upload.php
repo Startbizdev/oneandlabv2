@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log("File received: " . $_FILES['file']['name'] . " (" . $_FILES['file']['size'] . " bytes)");
 
         $documentType = $_POST['document_type'] ?? null;
-        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'autres_assurances'];
+        $allowedTypes = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances'];
 
         if (!$documentType || !in_array($documentType, $allowedTypes, true)) {
             http_response_code(400);
@@ -217,9 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // Version 4
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // Variant
         $id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-        $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $safeFileName = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-        $fileName = $safeFileName . '.' . $fileExtension;
+        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
 
         // Créer le dossier pour ce document
         $documentDir = $uploadDir . $id . '/';
