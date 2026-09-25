@@ -47,7 +47,8 @@
 | Prod simulate-picker | **OK** — full 1 486 679 B vs picker 19 525 B (−98,7 %) |
 | QA rechecklist | **Partiel** — public 100 % ; rôles OTP en attente comptes ops ; subaccount N/A prod |
 | Deploy API hotfix | **Fait** — `scope=list` sur prod API |
-| Deploy safe release / EAS | **En cours** — voir SHA ci-dessous post-deploy |
+| Deploy safe release | **OK** — `9fd68af51bb91a6c8d9cf490366163b9eedfcf60` → release `20260925T153449Z-9fd68af51bb9` |
+| EAS iOS/Android production | **BLOQUÉ (gate strict)** — rechecklist rôles OTP incomplète ; suite Playwright complète non exécutée |
 
 ## Runbook deploy (1 page)
 
