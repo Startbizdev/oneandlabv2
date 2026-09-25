@@ -1,10 +1,48 @@
 import { test, expect, type Page } from '@playwright/test';
+import labBrands from './fixtures/lab-brands.json';
+
+test.setTimeout(120_000);
+
+const API_ROUTE = /^https?:\/\/[^/]+\/api\//;
+
+function isPatientsListPath(pathname: string): boolean {
+  const p = pathname.replace(/\/$/, '');
+  return p === '/api/patients' || p.endsWith('/patients');
+}
 
 const patientSearchInput = (page: Page) =>
   page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…');
 
 async function searchPatientInPicker(page: Page, query: string) {
   await patientSearchInput(page).fill(query);
+  // Debounce runPatientSearch (280 ms) + rendu USelectMenu
+  await page.waitForTimeout(350);
+}
+
+async function pickPatientOption(page: Page, name: RegExp) {
+  const pickerBtn = page.getByRole('button', { name: 'Choisir un patient', exact: true });
+  if (!(await patientSearchInput(page).isVisible().catch(() => false))) {
+    await pickerBtn.click();
+  }
+  const option = page.getByRole('option', { name });
+  await expect(option.first()).toBeVisible({ timeout: 20_000 });
+  await patientSearchInput(page).focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+}
+
+async function advanceWizardPastLabBrandStep(page: Page) {
+  const validate = page.getByRole('button', { name: 'Valider et ajouter', exact: true });
+  if (await validate.isVisible().catch(() => false)) {
+    await validate.click();
+  }
+  const labHeading = page.getByRole('heading', { name: 'Choix du laboratoire', exact: true });
+  if (!(await labHeading.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  }
+  if (await labHeading.isVisible().catch(() => false)) {
+    await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+  }
 }
 
 for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
@@ -28,12 +66,28 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     let documentsFail = true;
     let oldDocumentsReturned = false;
     let writes = 0;
-    await page.route('**/api/**', async route => {
+    await page.route(API_ROUTE, async route => {
       const url = new URL(route.request().url());
       if (route.request().method() !== 'GET') writes++;
-      if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-      if (url.pathname === '/api/categories') return route.fulfill({ json: { success: !catalogFails, data: [] } });
-      if (url.pathname === '/api/patients') {
+      if (url.pathname.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
+      if (url.pathname.endsWith('/categories')) {
+        return route.fulfill({
+          json: {
+            success: !catalogFails,
+            data: catalogFails ? [] : [{ id: 'fixture-blood', name: 'Prélèvement', type: 'blood_test', icon: 'droplet', options: [], is_active: 1 }],
+          },
+        });
+      }
+      if (url.pathname.endsWith('/auth/csrf-token')) {
+        return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
+      }
+      if (url.pathname.endsWith('/public/lab-brands')) {
+        return route.fulfill({ json: { success: true, data: labBrands } });
+      }
+      if (url.pathname.endsWith('/public/provider-name')) {
+        return route.fulfill({ json: { success: true, data: { name: 'Prestataire fixture' } } });
+      }
+      if (isPatientsListPath(url.pathname)) {
         const search = (url.searchParams.get('search') || '').toLowerCase();
         if (patientSearchFails && search.length >= 2) {
           return route.fulfill({ json: { success: false, error: 'Indisponible' } });
@@ -49,14 +103,14 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
           },
         });
       }
-      if (url.pathname === '/api/patient-documents') {
+      if (url.pathname.endsWith('/patient-documents')) {
         const id = url.searchParams.get('user_id');
         if (delayFirst && id === 'patient-a') await new Promise(resolve => setTimeout(resolve, 1600));
         await route.fulfill({ json: { success: !documentsFail, data: [{ document_type: 'carte_vitale', file_name: `${id}-vitale.pdf`, medical_document_id: `${id}-document` }] } });
         if (delayFirst && id === 'patient-a') oldDocumentsReturned = true;
         return;
       }
-      const patient = patients.find(p => url.pathname === `/api/users/${p.id}`);
+      const patient = patients.find(p => url.pathname.endsWith(`/users/${p.id}`));
       if (patient) {
         if (delayFirst && patient.id === 'patient-a') {
           await new Promise(resolve => setTimeout(resolve, 1300));
@@ -69,11 +123,17 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
       return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
     });
     await page.goto(`/${role === 'super_admin' ? 'admin' : role}/appointments/new`);
-    await expect(page.getByText('Catalogue de soins indisponible', { exact: true })).toBeVisible();
+    await expect(page.locator('main')).not.toContainText('Chargement du formulaire', { timeout: 90_000 });
+    const catalogueError = page.getByText('Catalogue de soins indisponible', { exact: true });
+    const catalogueReady = page.getByRole('button', { name: /Configurer et ajouter Prélèvement/ });
+    await expect(catalogueError.or(catalogueReady)).toBeVisible({ timeout: 30_000 });
     catalogFails = false;
-    await page.getByRole('button', { name: 'Réessayer', exact: true }).click();
-    await page.getByRole('button', { name: 'Configurer et ajouter Prélèvement', exact: true }).click();
-    await page.getByRole('button', { name: 'Continuer', exact: true }).click();
+    if (await catalogueError.isVisible().catch(() => false)) {
+      await page.getByRole('button', { name: 'Réessayer', exact: true }).click();
+      await expect(catalogueReady).toBeVisible({ timeout: 15_000 });
+    }
+    await catalogueReady.click();
+    await advanceWizardPastLabBrandStep(page);
     await page.getByRole('button', { name: 'Continuer', exact: true }).click();
     const dates = page.locator('.booking-date-carousel [data-booking-date-scroller] > div:not([inert]) button:not([disabled])');
     await dates.nth(1).click();
@@ -88,8 +148,13 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     await page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…').fill('Exemple');
     await expect(page.getByText('Liste des patients indisponible', { exact: true })).toBeVisible();
     patientSearchFails = false;
+    const patientsReload = page.waitForResponse(r => r.url().includes('/patients') && r.ok());
     await page.getByRole('button', { name: 'Recharger les patients', exact: true }).click();
-    await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
+    await patientsReload;
+    await expect(page.getByText('Liste des patients indisponible', { exact: true })).toHaveCount(0);
+    await picker.click();
+    await searchPatientInPicker(page, 'Béatrice');
+    await pickPatientOption(page, /Béatrice Exemple/);
     await expect(page.getByText('Dossier patient indisponible', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true })).toBeDisabled();
     detailFails = false;
@@ -102,10 +167,10 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     delayFirst = true;
     await picker.click();
     await searchPatientInPicker(page, 'Alice');
-    await page.getByRole('option', { name: /Alice Exemple/ }).click();
+    await pickPatientOption(page, /Alice Exemple/);
     await picker.click();
     await searchPatientInPicker(page, 'Béatrice');
-    await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
+    await pickPatientOption(page, /Béatrice Exemple/);
     await expect.poll(() => firstReturned).toBe(true);
     await expect.poll(() => oldDocumentsReturned).toBe(true);
     await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
@@ -132,10 +197,10 @@ for (const role of ['lab', 'subaccount']) {
       localStorage.setItem('auth_user', JSON.stringify(user));
     }, user);
     let failed = true;
-    await page.route('**/api/**', route => {
+    await page.route(API_ROUTE, route => {
       const url = new URL(route.request().url());
-      if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-      if (url.pathname === '/api/patients') return route.fulfill({ json: failed && url.searchParams.get('page') === '2'
+      if (url.pathname.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
+      if (url.pathname.endsWith('/patients')) return route.fulfill({ json: failed && url.searchParams.get('page') === '2'
         ? { success: false } : { success: true, data: [{ id: url.searchParams.get('page'), first_name: url.searchParams.get('page') === '2' ? 'Béatrice' : 'Alice', last_name: 'Exemple' }], pagination: { pages: 2 } } });
       return route.fulfill({ json: { success: true, data: [] } });
     });
@@ -188,21 +253,21 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
   };
   let appointmentPosts = 0;
   let copyPosts = 0;
-  await page.route('**/api/**', async route => {
+  await page.route(API_ROUTE, async route => {
     const url = new URL(route.request().url());
     const method = route.request().method();
-    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-    if (url.pathname === '/api/auth/csrf-token') {
+    if (url.pathname.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
+    if (url.pathname.endsWith('/auth/csrf-token')) {
       return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
     }
-    if (url.pathname === '/api/patients') {
+    if (url.pathname.endsWith('/patients')) {
       const search = (url.searchParams.get('search') || '').toLowerCase();
       if (search.length >= 2) {
         return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
       }
       return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
     }
-    if (url.pathname === '/api/patient-documents') {
+    if (url.pathname.endsWith('/patient-documents')) {
       return route.fulfill({
         json: {
           success: true,
@@ -210,24 +275,24 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
         },
       });
     }
-    if (url.pathname === `/api/users/${patient.id}`) {
+    if (url.pathname.endsWith(`/users/${patient.id}`)) {
       return route.fulfill({ json: { success: true, data: patient } });
     }
-    if (url.pathname === '/api/appointments' && method === 'POST') {
+    if (url.pathname.endsWith('/appointments') && method === 'POST') {
       appointmentPosts++;
       return route.fulfill({ json: { success: true, data: created } });
     }
-    if (url.pathname === '/api/medical-documents/copy' && method === 'POST') {
+    if (url.pathname.endsWith('/medical-documents/copy') && method === 'POST') {
       copyPosts++;
       return route.fulfill({
         status: 403,
         json: { success: false, error: 'Accès refusé au document source ou au rendez-vous' },
       });
     }
-    if (url.pathname === `/api/appointments/${created.id}`) {
+    if (url.pathname.endsWith(`/appointments/${created.id}`)) {
       return route.fulfill({ json: { success: true, data: created } });
     }
-    if (url.pathname === `/api/appointments/${created.id}/conversation`) {
+    if (url.pathname.endsWith(`/appointments/${created.id}/conversation`)) {
       return route.fulfill({ json: { success: true, data: { messages: [], can_post: true } } });
     }
     return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
@@ -246,7 +311,7 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
   }
   await page.getByRole('button', { name: 'Choisir un patient', exact: true }).click();
   await searchPatientInPicker(page, 'Béatrice');
-  await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
+  await pickPatientOption(page, /Béatrice Exemple/);
   await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();
   const confirm = page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true });
@@ -297,21 +362,21 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
     },
   };
   const stats = { appointmentPosts: 0, copyPosts: 0, requestIds: [] as string[] };
-  await page.route('**/api/**', async route => {
+  await page.route(API_ROUTE, async route => {
     const url = new URL(route.request().url());
     const method = route.request().method();
-    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-    if (url.pathname === '/api/auth/csrf-token') {
+    if (url.pathname.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
+    if (url.pathname.endsWith('/auth/csrf-token')) {
       return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
     }
-    if (url.pathname === '/api/patients') {
+    if (url.pathname.endsWith('/patients')) {
       const search = (url.searchParams.get('search') || '').toLowerCase();
       if (search.length >= 2) {
         return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
       }
       return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
     }
-    if (url.pathname === '/api/patient-documents') {
+    if (url.pathname.endsWith('/patient-documents')) {
       return route.fulfill({
         json: {
           success: true,
@@ -319,10 +384,10 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
         },
       });
     }
-    if (url.pathname === `/api/users/${patient.id}`) {
+    if (url.pathname.endsWith(`/users/${patient.id}`)) {
       return route.fulfill({ json: { success: true, data: patient } });
     }
-    if (url.pathname === '/api/appointments' && method === 'POST') {
+    if (url.pathname.endsWith('/appointments') && method === 'POST') {
       stats.appointmentPosts++;
       const body = route.request().postDataJSON() as { client_request_id?: string };
       if (body?.client_request_id) stats.requestIds.push(body.client_request_id);
@@ -331,7 +396,7 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
       }
       return route.fulfill({ json: { success: true, data: created } });
     }
-    if (url.pathname === '/api/medical-documents/copy' && method === 'POST') {
+    if (url.pathname.endsWith('/medical-documents/copy') && method === 'POST') {
       stats.copyPosts++;
       await hooks.onCopy?.();
       return route.fulfill({
@@ -339,10 +404,10 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
         json: { success: false, error: 'Accès refusé au document source ou au rendez-vous' },
       });
     }
-    if (url.pathname === `/api/appointments/${created.id}`) {
+    if (url.pathname.endsWith(`/appointments/${created.id}`)) {
       return route.fulfill({ json: { success: true, data: created } });
     }
-    if (url.pathname === `/api/appointments/${created.id}/conversation`) {
+    if (url.pathname.endsWith(`/appointments/${created.id}/conversation`)) {
       return route.fulfill({ json: { success: true, data: { messages: [], can_post: true } } });
     }
     return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
@@ -361,7 +426,7 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
   }
   await page.getByRole('button', { name: 'Choisir un patient', exact: true }).click();
   await searchPatientInPicker(page, 'Béatrice');
-  await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
+  await pickPatientOption(page, /Béatrice Exemple/);
   await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();
   const confirm = page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true });

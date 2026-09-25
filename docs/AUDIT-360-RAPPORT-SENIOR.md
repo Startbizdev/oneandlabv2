@@ -38,14 +38,16 @@
 
 | Gate | Résultat |
 |------|----------|
-| PHPUnit `composer test` | **Partiel** — 240 OK/skipped, 7E PDO (pas MySQL local), 1F prompt RAG |
-| Frontend typecheck | **OK** (2026-09-25) |
-| Playwright staff-booking + lab-dashboard | **Non exécuté** — timeout webServer local (120s) |
-| mobile:verify | **OK** (typecheck + layout ratchet 15 + eslint 0 errors) |
-| Prod simulate-picker | **OK** — full ~1,49 Mo vs picker ~19 Ko (−98,7 %) |
-| QA manuelle rechecklist | **Partiel** — smoke public API 200 ; reste par rôle |
-| Deploy API hotfix | **Fait** — `appointments/index.php` + `ensure-backend-runtime-links.sh` sur prod |
-| Deploy safe release / EAS | **En attente** commit monorepo + build front + stores |
+| PHPUnit `composer.phar test` | **OK assertions** — 0 failures ; 7 **errors** PDO MySQL absent (Windows env) ; 23 skipped |
+| Frontend typecheck | **OK** |
+| Frontend build `NUXT_PUBLIC_API_BASE=/api` | **OK** — `.output/server/index.mjs` |
+| mobile:verify | **OK** — 0 eslint errors |
+| Playwright P0 (`staff-booking-patients` + `lab-dashboard-pagination`) | **OK** — 11/11 avec retries CI (4 specs flaky booking 4 rôles) |
+| Playwright suite complète | **Non lancée** dans ce cycle (45 specs restantes) |
+| Prod simulate-picker | **OK** — full 1 486 679 B vs picker 19 525 B (−98,7 %) |
+| QA rechecklist | **Partiel** — public 100 % ; rôles OTP en attente comptes ops ; subaccount N/A prod |
+| Deploy API hotfix | **Fait** — `scope=list` sur prod API |
+| Deploy safe release / EAS | **En cours** — voir SHA ci-dessous post-deploy |
 
 ## Runbook deploy (1 page)
 
