@@ -1,0 +1,62 @@
+# AUDIT-360 — Rapport senior Cary
+
+**Date :** 2026-09-25  
+**Périmètre :** plateforme complète (inventaire [AUDIT-360-INVENTAIRE-2026-09-25.md](./AUDIT-360-INVENTAIRE-2026-09-25.md), matrice [AUDIT-360-MATRICE-MODULES.md](./AUDIT-360-MATRICE-MODULES.md)).
+
+## Synthèse
+
+- **Surface :** ~80 endpoints API, ~140 pages web, ~143 routes mobile, 122 migrations SQL — cohérent avec un produit mature multi-rôles.
+- **Risque perf #1 (recheck prod) :** listes `GET /api/appointments` avec enrichissement batch (blood/nursing items) → JSON multi‑Mo pour lab ; **correctif livré :** `scope=list` + dashboard lab.
+- **Risque perf #2 :** listes patients/users full — **picker + search** déjà en code local (admin wizard, CreatorSelectField).
+- **Risque deploy #1 :** `storage` non symlink → 500 booking-draft ; script links **durci** (mkdir persistent + migration répertoire).
+- **Qualité auto :** PHPUnit 247 tests — 216 OK/skipped sur Windows ; 7 erreurs **PDO absent** ; 1 fail prompt RAG (assertion `**`). Playwright/e2e ciblés mis à jour pour picker patient.
+
+## P0 (traités ou en release)
+
+| Item | Action |
+|------|--------|
+| Liste RDV lab lourde | `scope=list` backend + LabDashboard |
+| Picker admin/staff | users/patients `scope=picker` + recherche |
+| Storage deploy | `ensure-backend-runtime-links.sh` |
+| E2E staff booking | `staff-booking-patients.spec.ts` aligné recherche |
+| Ordonnances | Appointment méthodes PrescriptionService (existant session) |
+
+## P1
+
+- Aligner `LabResultAnalysisPromptTest` avec prompt sans markdown.
+- Lab `/patients` : encore pagination full picker — envisager recherche serveur comme wizard.
+- Réduire polling détail RDV + documents (logs prod : même UUID en rafale).
+- CI Windows / dev : documenter PHPUnit sans MySQL (tests health/qr/users search).
+
+## P2
+
+- `view=cards` généralisé pour listes staff mobile/web.
+- Analyse egress nginx automatisée (`scripts/analyze-nginx-egress.sh`).
+- EAS Android+iOS — voir gate deploy.
+
+## Résultats gates (2026-09-25, machine dev)
+
+| Gate | Résultat |
+|------|----------|
+| PHPUnit `composer test` | **Partiel** — 240 OK/skipped, 7E PDO (pas MySQL local), 1F prompt RAG |
+| Frontend typecheck | **OK** (2026-09-25) |
+| Playwright staff-booking + lab-dashboard | **Non exécuté** — timeout webServer local (120s) |
+| mobile:verify | **OK** (typecheck + layout ratchet 15 + eslint 0 errors) |
+| Prod simulate-picker | **OK** — full ~1,49 Mo vs picker ~19 Ko (−98,7 %) |
+| QA manuelle rechecklist | **Partiel** — smoke public API 200 ; reste par rôle |
+| Deploy API hotfix | **Fait** — `appointments/index.php` + `ensure-backend-runtime-links.sh` sur prod |
+| Deploy safe release / EAS | **En attente** commit monorepo + build front + stores |
+
+## Runbook deploy (1 page)
+
+1. Working tree clean → `scripts/deploy-safe-release.sh` (ou backend-only si hotfix API).
+2. Post-deploy SSH : `scripts/ensure-backend-runtime-links.sh /var/www/oneandlab`
+3. `php backend/scripts/simulate-picker-payload.php` (prod)
+4. Smoke : GET `/api/app/version`, login lab, dashboard RDV taille réponse
+5. Rollback : restore backup DB + redeploy tag précédent (script release)
+
+## Known issues par module (extrait)
+
+- **RDV :** COUNT SQL parfois incohérent (has_more heuristique déjà en place).
+- **DevOps :** 2 Go RAM — éviter limit=100 sans scope=list.
+- **Docs legacy :** ne pas utiliser comme spec — uniquement ces fichiers AUDIT-360-*.

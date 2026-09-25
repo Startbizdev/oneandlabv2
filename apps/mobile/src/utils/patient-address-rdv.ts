@@ -29,8 +29,12 @@ export function parseRawPatientAddress(raw: unknown): ParsedPatientAddress | nul
   }
   if (typeof raw === 'object' && !Array.isArray(raw)) {
     const o = raw as Record<string, unknown>;
+    const label =
+      String(o.label ?? o.formatted_address ?? '').trim() ||
+      [o.street, o.postal_code, o.city, o.city_zip].filter(Boolean).map(String).join(', ').trim();
+    if (!label) return null;
     return {
-      label: String(o.label ?? ''),
+      label,
       lat: typeof o.lat === 'number' ? o.lat : undefined,
       lng: typeof o.lng === 'number' ? o.lng : undefined,
       complement: typeof o.complement === 'string' ? o.complement : undefined,

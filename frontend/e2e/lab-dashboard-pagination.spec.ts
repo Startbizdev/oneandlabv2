@@ -16,6 +16,7 @@ for (const role of ['lab', 'subaccount']) {
       if (url.pathname === '/api/lab/stats') return route.fulfill({ json: { success: true, data: { stats: { totalAppointments: 52, todayCount: 51, byStatus: { pending: 1 } } } } });
       if (url.pathname === '/api/appointments') {
         if (url.searchParams.get('limit') !== '50') return route.fulfill({ json: { success: true, data: [] } });
+        expect(url.searchParams.get('scope')).toBe('list');
         const pending = url.searchParams.get('status') === 'pending';
         const current = Number(url.searchParams.get('page'));
         expect(url.searchParams.get('limit')).toBe('50');

@@ -120,15 +120,20 @@
             <template #header>
               <h2 class="text-base font-medium">Ordonnances</h2>
             </template>
-            <div v-if="order.prescription_document_ids.length" class="flex flex-wrap gap-2">
+            <div v-if="order.prescription_document_ids.length" class="space-y-3">
+              <p class="text-sm text-muted">
+                {{
+                  order.prescription_document_ids.length === 1
+                    ? '1 ordonnance jointe à cette commande.'
+                    : `${order.prescription_document_ids.length} ordonnances jointes à cette commande.`
+                }}
+              </p>
               <UButton
-                v-for="(documentId, index) in order.prescription_document_ids"
-                :key="documentId"
                 variant="outline"
-                icon="i-lucide-download"
-                @click="openPrescription(documentId, index)"
+                icon="i-lucide-file-text"
+                :to="`${listPath}/${orderId}/ordonnances`"
               >
-                Télécharger {{ order.prescription_document_ids.length > 1 ? `#${index + 1}` : "l'ordonnance" }}
+                Voir et télécharger les ordonnances
               </UButton>
             </div>
             <p v-else class="text-sm text-muted">Aucune ordonnance jointe.</p>

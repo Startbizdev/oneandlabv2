@@ -142,4 +142,6 @@ export interface AppointmentFilters {
   nurse_segment?: string;
   /** Patient : à venir vs passés (pagination serveur, aligné mobile). */
   patient_period?: 'upcoming' | 'past';
+  /** Liste légère (dashboard lab, widgets) — aligné GET scope=list côté API. */
+  scope?: 'list' | 'full';
 }

@@ -73,6 +73,10 @@ export default function NurseLayout() {
       <Stack.Screen name="commandes-pharmacie/index" options={{ title: 'Commandes pharmacie' }} />
       <Stack.Screen name="commandes-pharmacie/new" options={{ title: 'Nouvelle commande' }} />
       <Stack.Screen name="commandes-pharmacie/[id]" options={{ title: 'Détail commande' }} />
+      <Stack.Screen
+        name="commandes-pharmacie/[id]/ordonnances"
+        options={{ title: 'Ordonnances', animation: 'slide_from_right' }}
+      />
     </Stack>
     </StackSceneInsetLayout>
     </View>

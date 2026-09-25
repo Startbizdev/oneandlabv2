@@ -525,7 +525,7 @@ class Appointment
      * @param list<string> $appointmentIdsOrdered
      * @return array<string, array<string,mixed>>
      */
-    private function loadBloodTestResolveSlicesById(array $appointmentIdsOrdered): array
+    public function loadBloodTestResolveSlicesById(array $appointmentIdsOrdered): array
     {
         $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
         if (empty($ids)) {
@@ -833,7 +833,7 @@ class Appointment
      * @param list<string> $appointmentIdsOrdered
      * @return array<string, array<string,mixed>>
      */
-    private function loadNursingResolveSlicesById(array $appointmentIdsOrdered): array
+    public function loadNursingResolveSlicesById(array $appointmentIdsOrdered): array
     {
         $ids = array_values(array_unique(array_filter(array_map('strval', $appointmentIdsOrdered))));
         if (empty($ids)) {

@@ -63,6 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     } elseif ($actorRole === 'super_admin' && $createdBy) {
         $filters['created_by'] = $createdBy;
     }
+
+    $scope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'full';
+    if ($scope === 'picker') {
+        $filters['scope'] = 'picker';
+    }
+    $search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
+    if ($search !== '') {
+        $filters['search'] = $search;
+    }
     
     // Récupérer les patients
     $result = $userModel->getAll($filters, $page, $limit, $user['user_id'], $user['role']);

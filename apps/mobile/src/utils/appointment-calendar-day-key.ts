@@ -1,13 +1,12 @@
-import dayjs from 'dayjs';
 import type { Appointment } from '@oneandlab/shared-types';
+import { appointmentDayFrance } from '@oneandlab/shared-utils';
 
-/** Jour d’affichage sur le calendrier (YYYY-MM-DD). */
+/** Jour d’affichage sur le calendrier (YYYY-MM-DD, jour civil France). */
 export function appointmentCalendarDayKey(apt: Appointment): string | null {
   const raw = apt.scheduled_at || apt.created_at;
   if (!raw) return null;
-  const d = dayjs(raw);
-  if (!d.isValid()) return null;
-  return d.format('YYYY-MM-DD');
+  const key = appointmentDayFrance(raw);
+  return key || null;
 }
 
 export function appointmentInCalendarMonth(

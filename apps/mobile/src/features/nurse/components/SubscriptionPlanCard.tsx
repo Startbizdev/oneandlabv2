@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Platform, View } from 'react-native';
-import { Stack } from '@/components/layout/primitives';
+import { Row, Stack } from '@/components/layout/primitives';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
@@ -57,7 +57,7 @@ export function SubscriptionPlanCard({
       ]}
     >
       {(showRecommended || isCurrent) && (
-        <View style={styles.badgeRow}>
+        <Row style={styles.badgeRow}>
           {showRecommended ? (
             <View style={styles.badgeRecommended}>
               <AppText style={styles.badgeRecommendedText}>Recommandé</AppText>
@@ -68,7 +68,7 @@ export function SubscriptionPlanCard({
               <AppText style={styles.badgeCurrentText}>Votre offre</AppText>
             </View>
           ) : null}
-        </View>
+        </Row>
       )}
 
       <Stack gap={spacing[3]} style={styles.body}>
@@ -93,12 +93,12 @@ export function SubscriptionPlanCard({
 
         <Stack gap={spacing[2.5]} style={styles.features}>
           {features.map((feature) => (
-            <View key={feature} style={styles.featureRow}>
+            <Row key={feature} style={styles.featureRow} align="start">
               <View style={styles.check}>
                 <Check size={iconSize['2xs']} color={c.primary} strokeWidth={3} />
               </View>
               <AppText style={styles.featureText}>{feature}</AppText>
-            </View>
+            </Row>
           ))}
         </Stack>
 
@@ -145,7 +145,6 @@ function buildStyles(c: AppColors) {
       borderColor: c.textTertiary,
     },
     badgeRow: {
-      flexDirection: 'row' as const,
       flexWrap: 'wrap' as const,
       gap: spacing[2],
       marginBottom: spacing[3],
@@ -216,8 +215,6 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[1],
     },
     featureRow: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-start' as const,
       gap: spacing[2.5],
       minWidth: 0,
     },

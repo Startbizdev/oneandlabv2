@@ -77,14 +77,14 @@ final class NurseTourService
     public function getSummaryRange(string $nurseId, string $fromDate, string $toDate): array
     {
         $stmt = $this->db->prepare("
-            SELECT DATE(CONVERT_TZ(a.scheduled_at, '+00:00', 'Europe/Paris')) AS tour_day,
+            SELECT DATE(a.scheduled_at) AS tour_day,
                    COUNT(*) AS cnt
             FROM appointments a
             WHERE a.type = 'nursing'
               AND a.assigned_nurse_id = ?
               AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
-              AND DATE(CONVERT_TZ(a.scheduled_at, '+00:00', 'Europe/Paris')) BETWEEN ? AND ?
+              AND DATE(a.scheduled_at) BETWEEN ? AND ?
             GROUP BY tour_day
         ");
         $stmt->execute([$nurseId, $fromDate, $toDate]);
@@ -188,15 +188,6 @@ final class NurseTourService
      */
     private function loadAppointmentsForDate(string $nurseId, string $tourDate): array
     {
-        $tz = new DateTimeZone('Europe/Paris');
-        $start = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $tourDate . ' 00:00:00', $tz);
-        $end = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $tourDate . ' 23:59:59', $tz);
-        if (!$start || !$end) {
-            return [];
-        }
-        $startUtc = $start->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
-        $endUtc = $end->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
-
         $stmt = $this->db->prepare("
             SELECT a.*, c.name AS category_name, c.icon AS category_icon, c.image_url AS category_image_url
             FROM appointments a
@@ -205,11 +196,10 @@ final class NurseTourService
               AND a.assigned_nurse_id = ?
               AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
-              AND a.scheduled_at >= ?
-              AND a.scheduled_at <= ?
+              AND DATE(a.scheduled_at) = ?
             ORDER BY a.scheduled_at ASC
         ");
-        $stmt->execute([$nurseId, $startUtc, $endUtc]);
+        $stmt->execute([$nurseId, $tourDate]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $hasMergedColumn = DbSchemaCache::tableHasColumn($this->db, 'appointments', 'merged_into_appointment_id');
         $decoded = AppointmentListPayload::decryptRowsForList($this->appointments, $rows, $nurseId, 'nurse');

@@ -706,7 +706,7 @@ export function useBookingWizard(opts: {
           if (submissionLockedRef.current || submitMut.isPending) return;
           submissionLockedRef.current = true;
           submitMut.mutate(undefined, {
-            onError: () => {
+            onSettled: () => {
               submissionLockedRef.current = false;
             },
           });

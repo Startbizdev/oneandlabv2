@@ -1,7 +1,9 @@
 import { apiFetch, apiFetchBlob } from '~/utils/api';
 import type { PatientAbsence } from '@oneandlab/shared-types';
 import {
+  appointmentDayFrance,
   buildNavigationUrl,
+  calendarDayKeyFromDate,
   computeTourSummaryFromStops,
   isTourStopAbsent,
   resolveTourNextStopId,
@@ -66,10 +68,11 @@ export interface NurseTourPayload {
 }
 
 function formatDateYmd(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return calendarDayKeyFromDate(d);
+}
+
+function todayParisYmd(): string {
+  return appointmentDayFrance(new Date());
 }
 
 function withDerivedTourSummary(data: NurseTourPayload): NurseTourPayload {
@@ -88,7 +91,7 @@ export type UseNurseTourWebOptions = {
 
 export function useNurseTourWeb(options: UseNurseTourWebOptions = {}) {
   const autoLoad = options.autoLoad !== false;
-  const selectedDate = ref(formatDateYmd(new Date()));
+  const selectedDate = ref(todayParisYmd());
   const loading = ref(autoLoad);
   const error = ref<string | null>(null);
   let requestVersion = 0;
@@ -166,7 +169,7 @@ export function useNurseTourWeb(options: UseNurseTourWebOptions = {}) {
       const d = new Date(base);
       d.setDate(d.getDate() + i);
       const date = formatDateYmd(d);
-      const today = formatDateYmd(new Date());
+      const today = todayParisYmd();
       let label = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
       if (date === today) label = "Aujourd'hui";
       items.push({

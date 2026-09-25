@@ -26,7 +26,11 @@ import {
   prescriptionPatientPickerTotalCount,
   usePrescriptionPatientPickerInfinite,
 } from '@/features/prescriptions/hooks/use-prescription-patient-picker-infinite';
-import { fetchPatientRelatives, type PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
+import {
+  fetchPatientRelative,
+  fetchPatientRelatives,
+  type PatientRelative,
+} from '@/features/patient-relatives/api/patient-relatives.service';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { resolvePatientAddressForRdvForm } from '@/utils/patient-address-rdv';
 import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
@@ -83,6 +87,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
 
   const scrollConfig = useStackScrollConfig(styles.formContent);
   const addressAlertShown = useRef<string | null>(null);
+  const addressLabelRef = useRef('');
 
   const patientsQ = usePrescriptionPatientPickerInfinite(true);
   const patients = useMemo(
@@ -136,13 +141,13 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const selectedPharmacy = catalogQ.data?.find((p) => p.id === selectedPharmacyId);
   const selectedRelative = (relativesQ.data ?? []).find((r) => r.id === relativeId);
 
-  const applyAddressFromProfile = useCallback(async (rawAddress: unknown) => {
-    const resolved = await resolvePatientAddressForRdvForm(rawAddress);
-    if (!resolved?.label?.trim()) {
-      setAddress(null);
-      setAddressComplement('');
-      return false;
-    }
+  useEffect(() => {
+    addressLabelRef.current = address?.label?.trim() ?? '';
+  }, [address?.label]);
+
+  const applyAddressIfResolvable = useCallback(async (raw: unknown): Promise<boolean> => {
+    const resolved = await resolvePatientAddressForRdvForm(raw);
+    if (!resolved?.label?.trim()) return false;
     setAddress({
       label: resolved.label,
       lat: resolved.lat,
@@ -159,52 +164,54 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     let cancelled = false;
 
     void (async () => {
-      if (relativeId && selectedRelative) {
-        const ok = await applyAddressFromProfile(selectedRelative.address);
-        if (!cancelled && !ok && addressAlertShown.current !== `${patientId}:${relativeId}`) {
-          addressAlertShown.current = `${patientId}:${relativeId}`;
-          Alert.alert(
-            'Adresse manquante',
-            'Ce proche n’a pas d’adresse enregistrée. Saisissez l’adresse de livraison ci-dessous ou complétez sa fiche.',
-          );
-        }
-        return;
-      }
+      const sources: unknown[] = [];
 
-      const fromPicker = selectedPatient?.address;
-      if (fromPicker) {
-        const ok = await applyAddressFromProfile(fromPicker);
-        if (!cancelled && !ok) {
-          const profile = await fetchUser(patientId);
-          const okProfile = await applyAddressFromProfile(profile.data?.address);
-          if (!cancelled && !okProfile && addressAlertShown.current !== patientId) {
-            addressAlertShown.current = patientId;
-            Alert.alert(
-              'Adresse manquante',
-              'Ce patient n’a pas d’adresse dans son dossier. Saisissez l’adresse de livraison ou complétez sa fiche patient.',
-            );
+      if (relativeId) {
+        let rel: PatientRelative | undefined = selectedRelative;
+        const listHasAddress = Boolean(rel?.address?.label?.trim());
+        if (!listHasAddress) {
+          try {
+            const res = await fetchPatientRelative(relativeId, patientId);
+            if (res.success && res.data) rel = res.data;
+          } catch {
+            /* liste locale */
           }
         }
-        return;
+        if (rel?.address) sources.push(rel.address);
+        if (selectedPatient?.address) sources.push(selectedPatient.address);
+        const profile = await fetchUser(patientId);
+        if (cancelled) return;
+        if (profile.data?.address) sources.push(profile.data.address);
+      } else {
+        if (selectedPatient?.address) sources.push(selectedPatient.address);
+        const profile = await fetchUser(patientId);
+        if (cancelled) return;
+        if (profile.data?.address) sources.push(profile.data.address);
       }
 
-      const profile = await fetchUser(patientId);
-      if (cancelled) return;
-      const ok = await applyAddressFromProfile(profile.data?.address);
-      if (!ok && addressAlertShown.current !== patientId) {
-        addressAlertShown.current = patientId;
-        Alert.alert(
-          'Adresse manquante',
-          'Ce patient n’a pas d’adresse dans son dossier. Saisissez l’adresse de livraison ou complétez sa fiche patient.',
-        );
+      for (const raw of sources) {
+        if (cancelled) return;
+        if (await applyAddressIfResolvable(raw)) return;
       }
+
+      if (addressLabelRef.current) return;
+
+      const alertKey = relativeId ? `${patientId}:${relativeId}` : patientId;
+      if (addressAlertShown.current === alertKey) return;
+      addressAlertShown.current = alertKey;
+      Alert.alert(
+        'Adresse manquante',
+        relativeId
+          ? 'Aucune adresse trouvée pour ce proche ni pour le titulaire. Saisissez l’adresse de livraison ci-dessous ou complétez la fiche du proche.'
+          : 'Ce patient n’a pas d’adresse dans son dossier. Saisissez l’adresse de livraison ou complétez sa fiche patient.',
+      );
     })();
 
     return () => {
       cancelled = true;
     };
   }, [
-    applyAddressFromProfile,
+    applyAddressIfResolvable,
     fulfillmentMode,
     patientId,
     relativeId,
@@ -446,7 +453,10 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                 <AppText style={styles.sectionLabel}>Bénéficiaire de la commande</AppText>
                 <Row wrap gap={spacing[2]} align="center">
                   <Pressable
-                    onPress={() => setRelativeId(null)}
+                    onPress={() => {
+                      setRelativeId(null);
+                      addressAlertShown.current = null;
+                    }}
                     style={[styles.relativePill, !relativeId && styles.relativePillActive]}
                   >
                     <AppText style={[styles.relativePillText, !relativeId && styles.relativePillTextActive]}>
@@ -459,7 +469,10 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                     return (
                       <Pressable
                         key={r.id}
-                        onPress={() => setRelativeId(r.id)}
+                        onPress={() => {
+                          setRelativeId(r.id);
+                          addressAlertShown.current = null;
+                        }}
                         style={[styles.relativePill, active && styles.relativePillActive]}
                       >
                         <AppText style={[styles.relativePillText, active && styles.relativePillTextActive]}>

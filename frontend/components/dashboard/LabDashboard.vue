@@ -271,9 +271,13 @@ onMounted(() => {
 
 const refresh = async () => {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  const listFilters = { scope: 'list' as const };
   await Promise.all([
-    fetchAppointments({ date_from: `${today} 00:00:00`, date_to: `${today} 23:59:59` }, { allPages: true }),
-    fetchPending({ status: 'pending' }, { allPages: true }),
+    fetchAppointments(
+      { ...listFilters, date_from: `${today} 00:00:00`, date_to: `${today} 23:59:59` },
+      { allPages: true },
+    ),
+    fetchPending({ ...listFilters, status: 'pending' }, { allPages: true }),
     fetchLabStats(),
   ]);
 };

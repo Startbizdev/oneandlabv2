@@ -2,15 +2,15 @@
   <UFormField :label="label" :name="name">
     <USelectMenu
       v-model="selectedValue"
+      v-model:search-term="staffSearchTerm"
       :items="selectItems"
       value-key="value"
       :loading="loading"
-      :disabled="loading || !!loadError"
       placeholder="Moi (administration Cary)"
       class="w-full min-w-0"
       clearable
       :filter-fields="['label', 'description', 'searchText', 'group']"
-      :search-input="{ placeholder: 'Rechercher un pro, infirmier ou labo…' }"
+      :search-input="{ placeholder: 'Tapez au moins 2 caractères (nom, email…)' }"
     >
       <template #default>
         <span v-if="!selectedValue" class="text-muted">{{ emptyLabel }}</span>
@@ -22,17 +22,33 @@
           <p v-if="item.description" class="truncate text-xs text-muted">{{ item.description }}</p>
         </div>
       </template>
+      <template #empty="{ searchTerm }">
+        <div class="px-3 py-4 text-center text-sm text-muted">
+          <p v-if="(searchTerm ?? staffSearchTerm).trim().length < 2">
+            Saisissez au moins 2 caractères pour rechercher un professionnel.
+          </p>
+          <p v-else-if="loadError">{{ loadError }}</p>
+          <p v-else>Aucun professionnel actif ne correspond.</p>
+        </div>
+      </template>
     </USelectMenu>
     <div v-if="loadError" role="alert" class="mt-2 space-y-2">
       <p class="text-sm text-error">{{ loadError }}</p>
-      <UButton color="neutral" variant="outline" size="sm" :loading="loading" @click="loadUsers">Réessayer</UButton>
+      <UButton color="neutral" variant="outline" size="sm" :loading="loading" @click="runStaffSearch(staffSearchTerm)">
+        Réessayer
+      </UButton>
     </div>
     <p v-if="help" class="mt-1.5 text-xs text-muted leading-relaxed">{{ help }}</p>
   </UFormField>
 </template>
 
 <script setup lang="ts">
-import { fetchAllUsers, sortUsersByLabel, userDisplayLabel } from '~/utils/fetch-all-users';
+import { apiFetch } from '~/utils/api';
+import {
+  searchStaffCreatorsPicker,
+  sortUsersByLabel,
+  userDisplayLabel,
+} from '~/utils/fetch-all-users';
 
 const props = withDefaults(
   defineProps<{
@@ -56,6 +72,9 @@ const emit = defineEmits<{ 'update:modelValue': [value: string | null] }>();
 const loading = ref(false);
 const loadError = ref('');
 const users = ref<any[]>([]);
+const staffSearchTerm = ref('');
+const selectedUserCache = ref<any | null>(null);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const selectedValue = computed({
   get: () => props.modelValue ?? undefined,
@@ -76,8 +95,15 @@ function userCity(u: Record<string, unknown>): string {
   return String(addr.label ?? '').split(',')[0]?.trim() ?? '';
 }
 
-const selectItems = computed(() =>
-  users.value.map((u) => {
+const selectItems = computed(() => {
+  const merged = [...users.value];
+  const selId = selectedValue.value;
+  if (selId && selectedUserCache.value && String(selectedUserCache.value.id) === String(selId)) {
+    if (!merged.some((u) => String(u.id) === String(selId))) {
+      merged.push(selectedUserCache.value);
+    }
+  }
+  return sortUsersByLabel(merged).map((u) => {
     const role = String(u.role ?? '');
     const city = userCity(u);
     const emploi = u.emploi ? String(u.emploi).trim() : '';
@@ -90,32 +116,63 @@ const selectItems = computed(() =>
       group: roleLabel[role] ?? role,
       searchText: [label, u.email, emploi, city].filter(Boolean).join(' '),
     };
-  }),
-);
+  });
+});
 
 const selectedLabel = computed(() => {
   const hit = selectItems.value.find((i) => i.value === selectedValue.value);
   return hit?.label ?? (selectedValue.value ? 'Professionnel sélectionné' : props.emptyLabel);
 });
 
-async function loadUsers() {
+async function runStaffSearch(term: string) {
+  const q = term.trim();
+  if (q.length < 2) {
+    users.value = [];
+    loadError.value = '';
+    return;
+  }
   if (loading.value) return;
   loading.value = true;
   loadError.value = '';
   try {
-    const [pros, nurses, labs, subaccounts] = await Promise.all([
-      fetchAllUsers({ role: 'pro', status: 'active' }),
-      fetchAllUsers({ role: 'nurse', status: 'active' }),
-      fetchAllUsers({ role: 'lab', status: 'active' }),
-      fetchAllUsers({ role: 'subaccount', status: 'active' }),
-    ]);
-    users.value = sortUsersByLabel([...pros, ...nurses, ...labs, ...subaccounts]);
+    users.value = await searchStaffCreatorsPicker(q, 25);
   } catch {
+    users.value = [];
     loadError.value = 'Impossible de charger les professionnels. Votre sélection est conservée.';
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(loadUsers);
+watch(staffSearchTerm, (term) => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    void runStaffSearch(term);
+  }, 280);
+});
+
+async function ensureSelectedUserLoaded() {
+  const id = selectedValue.value;
+  if (!id || selectedUserCache.value?.id === id) return;
+  try {
+    const res = await apiFetch(`/users/${encodeURIComponent(id)}`, { method: 'GET' });
+    if (res?.success && res.data) {
+      selectedUserCache.value = res.data;
+    }
+  } catch {
+    // label de repli dans selectedLabel
+  }
+}
+
+watch(selectedValue, () => {
+  void ensureSelectedUserLoaded();
+});
+
+onMounted(() => {
+  void ensureSelectedUserLoaded();
+});
+
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+});
 </script>
