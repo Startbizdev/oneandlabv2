@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+docs/AUDIT-360-TEST-ACCOUNTS.local.md
 
 # Dependencies
 node_modules/

@@ -1,62 +1,99 @@
-# AUDIT-360 — Rechecklist QA (générée routes/API)
+# AUDIT-360 — Rechecklist QA (prod `https://cary.bio`)
 
-Smoke **prod** `https://cary.bio` — une session par rôle test. Cocher manuellement après exécution.
+**Règle :** cocher `[x]` **uniquement** avec **Date** + **Preuve** (commande, HTTP, bytes, capture).
+
+| Statut | Signification |
+|--------|----------------|
+| `[ ]` | Non exécuté |
+| `[x]` | OK avec preuve |
+| `[~]` | Partiel / écart documenté (ex. front pas encore déployé) |
+| `[—]` | N/A (module off) avec preuve API |
 
 ## Public
 
-- [ ] GET `/` — 200, pas d’erreur console bloquante
-- [ ] GET `/laboratoires` — liste labs
-- [x] GET `/api/public/labs` — JSON success (curl prod 2026-09-25)
-- [x] GET `/api/app/version` — 200 (curl prod 2026-09-25)
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | GET `/` — 200 | | |
+| [ ] | GET `/laboratoires` — liste | | |
+| [ ] | GET `/api/public/labs` — JSON success | | |
+| [ ] | GET `/api/app/version` — 200 | | |
 
-## Patient (web ou app)
+## Patient
 
-- [ ] Login OTP → `/patient` ou onglets mobile
-- [ ] Liste RDV : GET `/api/appointments?patient_period=upcoming`
-- [ ] Création brouillon : POST `/api/patient/booking-draft` (fichier ≤ limite) — **pas 500 storage**
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | Login OTP → hub patient | | |
+| [ ] | GET `/api/appointments?patient_period=upcoming` | | |
+| [ ] | POST `/api/patient/booking-draft` — pas 500 storage | | |
 
 ## Pro
 
-- [ ] `/pro/appointments` — liste charge
-- [ ] Wizard `/pro/appointments/new` — recherche patient ≥2 car. → `/api/patients?scope=picker&search=…`
-- [ ] Commandes pharmacie + ordonnances si module actif
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `/pro/appointments` charge | | |
+| [ ] | Wizard `/pro/appointments/new` — picker `scope=picker&search=` | | |
+| [ ] | Commandes pharmacie + ordonnances | | |
 
 ## Nurse
 
-- [ ] `/nurse/appointments` — pending + soins
-- [ ] Tournée `/nurse/tournee` — GET `/api/nurse/tour/summary`
-- [ ] Passage `/nurse/passage/new` — picker patient
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `/nurse/appointments` pending + soins | | |
+| [ ] | `/nurse/tournee` — GET `/api/nurse/tour/summary` | | |
+| [ ] | `/nurse/passage/new` — picker patient | | |
 
 ## Lab
 
-- [ ] Dashboard `/lab` — stats `/api/lab/stats?stats_only=1`
-- [ ] Dashboard RDV : `/api/appointments?scope=list&date_from=…` (payload < 500 Ko pour journée typique)
-- [ ] Liste `/lab/appointments` — pagination limit=24
-- [ ] Calendrier lab
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `/lab` — GET `/api/lab/stats?stats_only=1` | | |
+| [ ] | API `scope=list` + date — payload bytes | | |
+| [ ] | Dashboard web envoie `scope=list` (POST-deploy) | | |
+| [ ] | `/lab/appointments` limit=24 | | |
+| [ ] | `/lab/calendar` | | |
 
 ## Subaccount
 
-- [ ] Même smoke dashboard que lab avec `scope=list`
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | Dashboard + `scope=list` (même critères lab) | | |
 
 ## Preleveur
 
-- [ ] `/preleveur/tournee` — tour API
-- [ ] Calendrier preleveur
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `/preleveur/tournee` — tour API | | |
+| [ ] | `/preleveur/calendar` | | |
 
 ## Super admin
 
-- [ ] `/admin/users` — recherche staff picker, pas timeout
-- [ ] `/admin/dispatch` — liste
-- [ ] Wizard `/admin/appointments/new` — recherche patient
-- [ ] `/admin/commandes-pharmacie` + ordonnances
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `/admin/users` — picker search, pas timeout | | |
+| [ ] | `/admin/dispatch` | | |
+| [ ] | `/admin/appointments/new` — recherche patient | | |
+| [ ] | `/admin/commandes-pharmacie` + ordonnances | | |
 
-## Pharmacie (tous rôles éligibles)
+## Pharmacie
 
-- [ ] Création commande — web + mobile route `commandes-pharmacie`
-- [ ] Page ordonnances `[id]/ordonnances` — GET medical-documents
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | Module actif (config API) | | |
+| [ ] | Création commande web/mobile | | |
+| [ ] | Page `[id]/ordonnances` — medical-documents | | |
 
 ## Post-deploy technique
 
-- [ ] SSH : `php backend/scripts/simulate-picker-payload.php` — picker << full
-- [ ] `ensure-backend-runtime-links.sh` — OK www-data drafts + medical uploads
-- [ ] nginx error log : pas de 500 récurrent sur `/api/appointments`
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | `simulate-picker-payload.php` — picker << full | | |
+| [ ] | `ensure-backend-runtime-links.sh` — www-data OK | | |
+| [ ] | nginx — pas de 500 récurrent `/api/appointments` | | |
+| [ ] | Release SHA + rollback path documentés | | |
+
+## Nettoyage audit360
+
+| OK | Item | Date | Preuve |
+|----|------|------|--------|
+| [ ] | Comptes test éphémères supprimés/désactivés | | |
+| [ ] | Données test (RDV/commandes) nettoyées | | |
