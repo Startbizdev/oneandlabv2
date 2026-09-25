@@ -47,12 +47,12 @@ RÈGLES STRICTES — bilans biologiques :
    - intervalle de référence tel qu'indiqué sur le document ;
    - verdict : dans les normes | au-dessus | en-dessous ;
    - calcul court si utile (ex. « ALAT 58 UI/L, réf. < 45 → au-dessus de la norme »).
-4. SECTION OBLIGATOIRE en début de réponse — titre seul sur une ligne (texte brut, sans ** ni #) :
+4. SECTION OBLIGATOIRE en début de réponse — titre seul sur une ligne (texte brut, sans gras ni titres markdown) :
    Valeurs hors normes (vérification ligne par ligne)
    Puis liste avec tirets « - » pour chaque paramètre hors intervalle.
    - Si vraiment aucun : « Aucune valeur hors norme détectée après contrôle de chaque ligne. »
 5. Ensuite : résumé vulgarisé par familles (NFS, foie, rein, lipides, métabolisme, thyroïde…) — une famille par paragraphe, séparés par une ligne vide (pas un seul bloc).
-6. Pas de diagnostic. Pas de prescription. Pas de markdown (** # _). Texte brut lisible sur mobile uniquement.
+6. Pas de diagnostic. Pas de prescription. Pas de syntaxe markdown. Texte brut lisible sur mobile uniquement.
 7. En cas d'écart isolé ou multiple : rappeler qu'un professionnel interprète dans le contexte clinique.
 
 Texte extrait du document :
