@@ -48,7 +48,7 @@
 |----|------|------|--------|
 | [ ] | `/lab` — GET `/api/lab/stats?stats_only=1` | | |
 | [~] | API `scope=list` + date — payload bytes | 2026-09-25 | Hotfix API prod actif ; mesure authentifiée lab à refaire post-login |
-| [~] | Dashboard web envoie `scope=list` (POST-deploy) | 2026-09-25 | **PRE-deploy :** front prod sans LabDashboard déployé — attendu Étape 4 |
+| [~] | Dashboard web envoie `scope=list` (POST-deploy) | 2026-09-25 | Release `9fd68af` déployée — valider Network `/api/appointments?scope=list` login lab ops |
 | [ ] | `/lab/appointments` limit=24 | | |
 | [ ] | `/lab/calendar` | | |
 
@@ -87,9 +87,9 @@
 | OK | Item | Date | Preuve |
 |----|------|------|--------|
 | [x] | `simulate-picker-payload.php` — picker << full | 2026-09-25 | SSH prod : full 1486679 B, picker 19525 B (−98,7 %) |
-| [~] | `ensure-backend-runtime-links.sh` — www-data OK | 2026-09-25 | Script absent `/var/www/oneandlab/scripts/` — **post deploy-safe-release** |
-| [ ] | nginx — pas de 500 récurrent `/api/appointments` | | |
-| [ ] | Release SHA + rollback path documentés | | |
+| [x] | `ensure-backend-runtime-links.sh` — www-data OK | 2026-09-25 | SCP + `sudo bash …/ensure-backend-runtime-links.sh` → drafts + medical OK |
+| [~] | nginx — pas de 500 récurrent `/api/appointments` | 2026-09-25 | Non audité 24h logs dans ce cycle — smoke curl public OK |
+| [x] | Release SHA + rollback path documentés | 2026-09-25 | SHA `9fd68af51bb9` ; rollback `/var/lib/oneandlab-releases/20260925T153449Z-9fd68af51bb9` |
 
 ## Nettoyage audit360
 
