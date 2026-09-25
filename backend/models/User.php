@@ -2081,6 +2081,39 @@ class User
     /**
      * Recherche admin (nom, prénom, email, société, téléphone) sur profils déchiffrés.
      */
+    /**
+     * Projection légère pour selects admin / assignation (évite profile_image_url et métadonnées lourdes).
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    private function compactUserForPicker(array $user): array
+    {
+        $out = [
+            'id' => $user['id'] ?? '',
+            'role' => $user['role'] ?? '',
+            'first_name' => $user['first_name'] ?? '',
+            'last_name' => $user['last_name'] ?? '',
+            'email' => $user['email'] ?? '',
+            'phone' => $user['phone'] ?? null,
+            'company_name' => $user['company_name'] ?? null,
+        ];
+        if (array_key_exists('lab_id', $user)) {
+            $out['lab_id'] = $user['lab_id'];
+        }
+        if (!empty($user['email_display'])) {
+            $out['email_display'] = $user['email_display'];
+        }
+        if (!empty($user['birth_date'])) {
+            $out['birth_date'] = $user['birth_date'];
+        }
+        if (!empty($user['gender'])) {
+            $out['gender'] = $user['gender'];
+        }
+
+        return $out;
+    }
+
     private function profileMatchesAdminSearch(array $user, string $search): bool
     {
         $q = mb_strtolower(trim($search));
@@ -2128,8 +2161,23 @@ class User
             }
         }
 
+        $pickerScope = (($filters['scope'] ?? '') === 'picker');
         $searchText = trim((string) ($filters['search'] ?? ''));
-        $textSearchMode = $searchText !== '' && $requesterRole === 'super_admin';
+        $roleFilter = (string) ($filters['role'] ?? '');
+        $staffCanSearchPicker = $pickerScope
+            && $searchText !== ''
+            && in_array($roleFilter, ['nurse', 'lab', 'subaccount', 'preleveur', 'pro'], true)
+            && in_array($requesterRole, ['pro', 'nurse', 'super_admin'], true);
+        $patientCanSearchPicker = $pickerScope
+            && $searchText !== ''
+            && $roleFilter === 'patient'
+            && self::canListPatients($requesterRole);
+        $textSearchMode = $searchText !== ''
+            && (
+                $requesterRole === 'super_admin'
+                || $staffCanSearchPicker
+                || $patientCanSearchPicker
+            );
         $emailSearchHash = ($textSearchMode && filter_var($searchText, FILTER_VALIDATE_EMAIL))
             ? hash('sha256', strtolower($searchText))
             : null;
@@ -2138,7 +2186,10 @@ class User
         }
         $sql = 'SELECT id, role, created_at, updated_at, banned_until, incident_count, last_incident_at,
             email_encrypted, email_dek, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek,
-            phone_encrypted, phone_dek, profile_image_url';
+            phone_encrypted, phone_dek';
+        if (!$pickerScope) {
+            $sql .= ', profile_image_url';
+        }
         if ($this->hasCompanyNameColumn()) {
             $sql .= ', company_name_encrypted, company_name_dek';
         }
@@ -2215,7 +2266,8 @@ class User
         
         // Pagination
         if ($textSearchMode) {
-            $sql .= ' ORDER BY created_at DESC LIMIT 5000';
+            $searchCap = $pickerScope ? 1200 : 5000;
+            $sql .= ' ORDER BY created_at DESC LIMIT ' . (int) $searchCap;
         } else {
             $offset = ($page - 1) * $limit;
             $sql .= ' ORDER BY created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
@@ -2261,12 +2313,12 @@ class User
                 if ($u['birth_date'] !== null) {
                     $logFields[] = 'birth_date';
                 }
-                if (array_key_exists('profile_image_url', $u)) {
+                if (!$pickerScope && array_key_exists('profile_image_url', $u)) {
                     $url = trim((string) ($u['profile_image_url'] ?? ''));
                     $u['profile_image_url'] = $url !== '' ? $url : null;
                 }
                 $decryptAudit[$u['id']] = $logFields;
-                $decryptedUsers[] = $u;
+                $decryptedUsers[] = $pickerScope ? $this->compactUserForPicker($u) : $u;
             } catch (Exception $e) {
                 $decryptedUsers[] = [
                     'id' => $u['id'],

@@ -6,11 +6,20 @@ BASE="${1:-/var/www/oneandlab}"
 BACKEND="$BASE/backend"
 PERSIST="$BASE/persistent"
 
+mkdir -p "$PERSIST/storage/patient-booking-drafts" "$PERSIST/uploads/medical" 2>/dev/null || true
+
 for name in uploads logs storage keys tmp vendor; do
   target="$PERSIST/$name"
   link="$BACKEND/$name"
+  if [[ "$name" == "storage" || "$name" == "uploads" ]]; then
+    mkdir -p "$target/patient-booking-drafts" "$target/medical" 2>/dev/null || sudo mkdir -p "$target/patient-booking-drafts" "$target/medical"
+  fi
   if [[ ! -d "$target" && ! -f "$target" ]]; then
-    continue
+    if [[ "$name" == "storage" || "$name" == "uploads" ]]; then
+      sudo mkdir -p "$target"
+    else
+      continue
+    fi
   fi
   if [[ -L "$link" ]]; then
     current="$(readlink -f "$link" || true)"
@@ -45,6 +54,29 @@ if [[ -d "$PERSIST/vendor" ]]; then
 fi
 if [[ -d "$PERSIST/tmp" ]]; then
   sudo chmod 1777 "$PERSIST/tmp"
+fi
+
+# Brouillons RDV patient (IAP urgence lab) — écriture PHP-FPM obligatoire
+if [[ -d "$PERSIST/storage" || -L "$BACKEND/storage" ]]; then
+  sudo mkdir -p "$PERSIST/storage/patient-booking-drafts"
+  sudo chown -R www-data:www-data "$PERSIST/storage"
+  sudo chmod -R 775 "$PERSIST/storage"
+fi
+if [[ -e "$BACKEND/storage" && ! -L "$BACKEND/storage" ]]; then
+  if [[ -d "$BACKEND/storage/patient-booking-drafts" ]]; then
+    sudo mkdir -p "$PERSIST/storage/patient-booking-drafts"
+    sudo rsync -a "$BACKEND/storage/" "$PERSIST/storage/" 2>/dev/null || true
+  fi
+  sudo rm -rf "$BACKEND/storage"
+  sudo ln -sfn "$PERSIST/storage" "$BACKEND/storage"
+  echo "Linked $BACKEND/storage -> $PERSIST/storage"
+fi
+
+if sudo -u www-data test -w "$BACKEND/storage/patient-booking-drafts" 2>/dev/null; then
+  echo "OK: www-data can write patient-booking-drafts"
+else
+  echo "ERROR: www-data cannot write storage/patient-booking-drafts" >&2
+  exit 1
 fi
 
 if sudo -u www-data test -w "$BACKEND/uploads/medical" 2>/dev/null; then

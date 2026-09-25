@@ -434,7 +434,12 @@
 </template>
 
 <script setup lang="ts">
-import { appointmentDayFrance, appointmentTimeFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
+import {
+  appointmentDayFrance,
+  appointmentTimeFrance,
+  calendarDayKeyFromDate,
+  parseAppointmentDateFrance,
+} from '@oneandlab/shared-utils';
 import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 import { computed, nextTick, ref, watch } from 'vue';
 import { appointmentListAddressLine } from '~/utils/address-display';
@@ -511,7 +516,7 @@ const currentLabel = computed(() => {
   return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(currentDate.value);
 });
 
-const selectedDayId = computed(() => props.selectedDay ? formatDateId(props.selectedDay) : null);
+const selectedDayId = computed(() => (props.selectedDay ? calendarDayKeyFromDate(props.selectedDay) : null));
 
 const calendarDays = computed(() => {
   const year = currentDate.value.getFullYear();
@@ -532,7 +537,7 @@ const calendarDays = computed(() => {
   for (let i = 0; i < 42; i++) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
-    const dateStr = formatDateId(date);
+    const dateStr = calendarDayKeyFromDate(date);
 
     // Filter items for this day
     const dayItems = props.items.filter(item => {
@@ -544,7 +549,7 @@ const calendarDays = computed(() => {
       dayNumber: date.getDate(),
       fullDate: date,
       isCurrentMonth: date.getMonth() === month,
-      isToday: formatDateId(date) === formatDateId(today),
+      isToday: calendarDayKeyFromDate(date) === calendarDayKeyFromDate(today),
       items: dayItems
     });
   }
@@ -558,7 +563,7 @@ const allSortedItems = computed(() => {
 
   return props.items.filter(item => {
     const key = appointmentDayFrance(item[props.itemDateKey]);
-    return key >= formatDateId(start) && key <= formatDateId(end);
+    return key >= calendarDayKeyFromDate(start) && key <= calendarDayKeyFromDate(end);
   }).sort((a, b) => parseAppointmentDateFrance(a[props.itemDateKey]).getTime() - parseAppointmentDateFrance(b[props.itemDateKey]).getTime());
 });
 
@@ -588,7 +593,7 @@ const mobileListGroups = computed(() => {
   if (props.mobileListFromToday && !mobileShowPastMonth.value) {
     const today = new Date(appointmentDayFrance(new Date()) + 'T12:00:00');
     today.setHours(0, 0, 0, 0);
-    const todayStr = formatDateId(today);
+    const todayStr = calendarDayKeyFromDate(today);
     const filtered: Record<string, any[]> = {};
     const keys = Object.keys(base).filter((k) => k >= todayStr).sort();
     keys.forEach((k) => {
@@ -618,10 +623,6 @@ watch(selectedDayId, (id) => {
 });
 
 // --- METHODS ---
-
-function formatDateId(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 function formatDateFull(dateStr: string) {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(dateStr + 'T12:00:00'));

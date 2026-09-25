@@ -30,7 +30,7 @@ export const useAppointments = (scope = 'appointments') => {
     error.value = null;
     try {
       const params = new URLSearchParams();
-      for (const key of ['status', 'type', 'page', 'limit', 'patient_id', 'nurse_tab', 'nurse_segment', 'patient_period', 'filter_assigned_to', 'date_from', 'date_to'] as const) {
+      for (const key of ['status', 'type', 'page', 'limit', 'patient_id', 'nurse_tab', 'nurse_segment', 'patient_period', 'filter_assigned_to', 'date_from', 'date_to', 'scope'] as const) {
         const value = filters[key];
         if (value != null && value !== '') params.set(key, String(value));
       }

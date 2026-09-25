@@ -53,8 +53,16 @@ export default function ProLayout() {
         <Stack.Screen name="commandes-pharmacie/index" options={{ title: 'Commandes pharmacie' }} />
         <Stack.Screen name="commandes-pharmacie/new" options={{ title: 'Nouvelle commande' }} />
         <Stack.Screen name="commandes-pharmacie/[id]" options={{ title: 'Détail commande' }} />
+        <Stack.Screen
+          name="commandes-pharmacie/[id]/ordonnances"
+          options={{ title: 'Ordonnances', animation: 'slide_from_right' }}
+        />
         <Stack.Screen name="commandes-recues/index" options={{ title: 'Commandes reçues' }} />
         <Stack.Screen name="commandes-recues/[id]" options={{ title: 'Commande reçue' }} />
+        <Stack.Screen
+          name="commandes-recues/[id]/ordonnances"
+          options={{ title: 'Ordonnances', animation: 'slide_from_right' }}
+        />
       </Stack>
       </StackSceneInsetLayout>
     </View>

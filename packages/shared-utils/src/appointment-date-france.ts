@@ -42,3 +42,15 @@ export function appointmentTimeFrance(value: string | Date | null | undefined): 
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
+
+/** Clé jour calendrier (YYYY-MM-DD), alignée sur le jour civil France des DATETIME MySQL. */
+export function calendarDayKeyFromParts(year: number, month: number, day: number): string {
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return appointmentDayFrance(`${year}-${mm}-${dd} 12:00:00`);
+}
+
+/** Clé jour pour une cellule de grille (Y/M/D locaux → jour civil France). */
+export function calendarDayKeyFromDate(date: Date): string {
+  return calendarDayKeyFromParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}

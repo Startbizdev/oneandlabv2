@@ -1,4 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+const patientSearchInput = (page: Page) =>
+  page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…');
+
+async function searchPatientInPicker(page: Page, query: string) {
+  await patientSearchInput(page).fill(query);
+}
 
 for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
   test(`${role}: booking recovers lists and keeps the selected patient during delayed responses`, async ({ page }) => {
@@ -14,7 +21,7 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
       { id: 'patient-b', first_name: 'Béatrice', last_name: 'Exemple', gender: 'female', birth_date: '1990-03-15' },
     ];
     let catalogFails = true;
-    let listFails = true;
+    let patientSearchFails = true;
     let detailFails = true;
     let delayFirst = false;
     let firstReturned = false;
@@ -26,8 +33,22 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
       if (route.request().method() !== 'GET') writes++;
       if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
       if (url.pathname === '/api/categories') return route.fulfill({ json: { success: !catalogFails, data: [] } });
-      if (url.pathname === '/api/patients') return route.fulfill({ json: listFails && url.searchParams.get('page') === '2'
-        ? { success: false } : { success: true, data: [patients[url.searchParams.get('page') === '2' ? 1 : 0]], pagination: { pages: 2 } } });
+      if (url.pathname === '/api/patients') {
+        const search = (url.searchParams.get('search') || '').toLowerCase();
+        if (patientSearchFails && search.length >= 2) {
+          return route.fulfill({ json: { success: false, error: 'Indisponible' } });
+        }
+        const match = patients.filter(p =>
+          `${p.first_name} ${p.last_name}`.toLowerCase().includes(search) || search.includes('ex'),
+        );
+        return route.fulfill({
+          json: {
+            success: true,
+            data: match.length ? match : patients,
+            pagination: { page: 1, pages: 1 },
+          },
+        });
+      }
       if (url.pathname === '/api/patient-documents') {
         const id = url.searchParams.get('user_id');
         if (delayFirst && id === 'patient-a') await new Promise(resolve => setTimeout(resolve, 1600));
@@ -62,11 +83,12 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     if (!(await page.getByRole('button', { name: 'Choisir un patient', exact: true }).count())) {
       await page.getByRole('button', { name: 'Continuer', exact: true }).click();
     }
-    await expect(page.getByText('Liste des patients indisponible', { exact: true })).toBeVisible();
-    listFails = false;
-    await page.getByRole('button', { name: 'Recharger les patients', exact: true }).click();
     const picker = page.getByRole('button', { name: 'Choisir un patient', exact: true });
     await picker.click();
+    await page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…').fill('Exemple');
+    await expect(page.getByText('Liste des patients indisponible', { exact: true })).toBeVisible();
+    patientSearchFails = false;
+    await page.getByRole('button', { name: 'Recharger les patients', exact: true }).click();
     await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
     await expect(page.getByText('Dossier patient indisponible', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true })).toBeDisabled();
@@ -79,8 +101,10 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
     delayFirst = true;
     await picker.click();
+    await searchPatientInPicker(page, 'Alice');
     await page.getByRole('option', { name: /Alice Exemple/ }).click();
     await picker.click();
+    await searchPatientInPicker(page, 'Béatrice');
     await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
     await expect.poll(() => firstReturned).toBe(true);
     await expect.poll(() => oldDocumentsReturned).toBe(true);
@@ -172,7 +196,11 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
       return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
     }
     if (url.pathname === '/api/patients') {
-      return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
+      const search = (url.searchParams.get('search') || '').toLowerCase();
+      if (search.length >= 2) {
+        return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
+      }
+      return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
     }
     if (url.pathname === '/api/patient-documents') {
       return route.fulfill({
@@ -217,6 +245,7 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
     await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   }
   await page.getByRole('button', { name: 'Choisir un patient', exact: true }).click();
+  await searchPatientInPicker(page, 'Béatrice');
   await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
   await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();
@@ -276,7 +305,11 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
       return route.fulfill({ json: { success: true, data: { csrf_token: 'fixture-csrf' } } });
     }
     if (url.pathname === '/api/patients') {
-      return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
+      const search = (url.searchParams.get('search') || '').toLowerCase();
+      if (search.length >= 2) {
+        return route.fulfill({ json: { success: true, data: [patient], pagination: { pages: 1 } } });
+      }
+      return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
     }
     if (url.pathname === '/api/patient-documents') {
       return route.fulfill({
@@ -327,6 +360,7 @@ async function nurseBloodBookingThroughConfirm(page: import('@playwright/test').
     await page.getByRole('button', { name: 'Continuer', exact: true }).click();
   }
   await page.getByRole('button', { name: 'Choisir un patient', exact: true }).click();
+  await searchPatientInPicker(page, 'Béatrice');
   await page.getByRole('option', { name: /Béatrice Exemple/ }).click();
   await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();

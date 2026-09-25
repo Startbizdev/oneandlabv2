@@ -198,7 +198,12 @@
 </template>
 
 <script setup lang="ts">
-import { appointmentDayFrance, appointmentTimeFrance, parseAppointmentDateFrance } from '@oneandlab/shared-utils';
+import {
+  appointmentDayFrance,
+  appointmentTimeFrance,
+  calendarDayKeyFromDate,
+  parseAppointmentDateFrance,
+} from '@oneandlab/shared-utils';
 import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { appointmentPatientDisplayName } from '~/utils/appointment-patient-display';
@@ -341,11 +346,9 @@ const selectedDayLabel = computed(() => {
 
 const selectedDayAppointments = computed(() => {
   if (!selectedDay.value) return [];
-  const d = selectedDay.value;
+  const dayKey = calendarDayKeyFromDate(selectedDay.value);
   return filteredAppointments.value
-    .filter((a) => {
-      return appointmentDayFrance(a.scheduled_at) === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })
+    .filter((a) => appointmentDayFrance(a.scheduled_at) === dayKey)
     .sort((a, b) => parseAppointmentDateFrance(a.scheduled_at).getTime() - parseAppointmentDateFrance(b.scheduled_at).getTime());
 });
 

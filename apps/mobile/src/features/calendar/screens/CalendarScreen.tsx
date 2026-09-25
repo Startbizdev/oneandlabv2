@@ -9,6 +9,7 @@ import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
+import { appointmentDayFrance, calendarDayKeyFromParts } from '@oneandlab/shared-utils';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment, AppointmentListFilters, AppointmentType } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
@@ -150,7 +151,7 @@ export function CalendarScreen({
   );
 
   const cells = useMemo(() => monthMatrix(cursor.year(), cursor.month()), [cursor]);
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = appointmentDayFrance(new Date());
   const cellSize = gridCellSize(layout.width, 7, spacing[1], spacing[4]);
 
   const filterChips = useMemo(() => {
@@ -309,7 +310,7 @@ export function CalendarScreen({
                 if (!day) {
                   return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize + 8 }} />;
                 }
-                const key = day.format('YYYY-MM-DD');
+                const key = calendarDayKeyFromParts(day.year(), day.month() + 1, day.date());
                 const count = byDay.get(key)?.length ?? 0;
                 const isSelected = key === selectedDay;
                 const isToday = key === today;

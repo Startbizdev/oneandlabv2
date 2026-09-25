@@ -137,6 +137,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $limit = (int) ($_GET['limit'] ?? 20);
     // Pagination mobile : 20 par page ; plafond 50 pour éviter les abus.
     $calendarView = ($_GET['view'] ?? '') === 'calendar';
+    $listScope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'full';
+    if ($listScope !== 'list') {
+        $listScope = 'full';
+    }
+    $lightListPayload = $calendarView || $listScope === 'list';
     $limit = min(max($limit, 1), $calendarView ? 250 : 50);
     $offset = ($page - 1) * $limit;
     $patientPeriod = isset($_GET['patient_period']) ? trim((string) $_GET['patient_period']) : null;
@@ -827,8 +832,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 ];
             }
         }
-        // Calendar needs dates, beneficiary, address and slot, not cards' reviews or merged care details.
-        if (!$calendarView) {
+        // Calendar / scope=list : pas d’items batch ni reviews (évite payloads multi‑Mo en dashboard lab).
+        if (!$lightListPayload) {
         // Batch lookup noms + photos (assignés + patient bénéficiaire pour cartes liste)
         $userIds = [];
         foreach ($decryptedAppointments as $apt) {

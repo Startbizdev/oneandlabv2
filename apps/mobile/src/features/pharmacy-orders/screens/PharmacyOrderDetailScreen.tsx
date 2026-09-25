@@ -14,14 +14,15 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Send, WifiOff } from 'lucide-react-native';
+import { FileText, MessageCircle, Send, WifiOff } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { Button } from '@/components/ui/Button';
+import { ActionRowCard } from '@/components/ui/ActionRowCard';
+import { pharmacyOrderPrescriptionsPath } from '../utils/prescriptions-route';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { Row } from '@/components/layout/primitives';
-import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -418,21 +419,22 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
             ) : null}
 
             {order.prescription_document_ids.length ? (
-              <View style={styles.docsBlock}>
-                <AppText style={styles.docsTitle}>Ordonnance(s)</AppText>
-                {order.prescription_document_ids.map((docId) => (
-                  <Button
-                    key={docId}
-                    title="Voir l’ordonnance"
-                    variant="outline"
-                    onPress={async () => {
-                      const res = await openMedicalDocument(docId);
-                      if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
-                    }}
-                    fullWidth
-                  />
-                ))}
-              </View>
+              <ActionRowCard
+                title="Ordonnances jointes"
+                body={
+                  order.prescription_document_ids.length === 1
+                    ? '1 fichier · consulter et télécharger'
+                    : `${order.prescription_document_ids.length} fichiers · consulter et télécharger`
+                }
+                Icon={FileText}
+                iconColor={c.primaryDark}
+                iconBg={c.primaryLight}
+                onPress={() => {
+                  const path = pharmacyOrderPrescriptionsPath(rolePrefix, mode, orderId);
+                  if (path) router.push(path as never);
+                }}
+                accessibilityHint="Ouvre la liste des ordonnances"
+              />
             ) : null}
 
             {renderPharmacyActions()}
@@ -572,12 +574,6 @@ function buildStyles(c: AppColors) {
       fontFamily: fontFamily.medium,
       fontSize: fontSize.sm,
       color: c.error,
-    },
-    docsBlock: { gap: spacing[2], marginTop: spacing[2] },
-    docsTitle: {
-      fontFamily: fontFamily.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
     },
     actions: { gap: spacing[2], marginTop: spacing[2] },
     requesterActions: { gap: spacing[2], marginTop: spacing[3] },

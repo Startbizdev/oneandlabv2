@@ -1,4 +1,9 @@
 import { api } from '@/api/client';
+import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appointment-detail.service';
+
+export async function fetchMedicalDocumentById(documentId: string) {
+  return api.get<MedicalDocumentRow>(`/medical-documents/${encodeURIComponent(documentId)}`);
+}
 
 export async function copyMedicalDocumentToAppointment(
   sourceMedicalDocumentId: string,

@@ -138,8 +138,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($status && in_array($status, ['active', 'suspended', 'banned'], true)) {
         $filters['status'] = $status;
     }
+    $scope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'full';
+    if ($scope === 'picker') {
+        $filters['scope'] = 'picker';
+    }
     $search = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
-    if ($search !== '' && $isSuperAdmin) {
+    $pickerSearchAllowed = $scope === 'picker'
+        && $isListingAssignable
+        && in_array($roleParam, $allowedRolesForListing, true);
+    if ($search !== '' && ($isSuperAdmin || $pickerSearchAllowed)) {
         $filters['search'] = $search;
     }
     
