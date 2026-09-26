@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 for (const width of [360, 768]) {
   test(`public menu: focus, scroll, navigation and resize at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 640 });
     await page.route('**/api/**', route => route.fulfill({ json: { success: true, data: [] } }));
     await page.goto('/');
-    await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+    await waitForNuxtReady(page);
     const trigger = page.getByRole('button', { name: 'Ouvrir le menu', exact: true });
     const dialog = page.getByRole('dialog', { name: 'Explorer Cary' });
     await trigger.click();

@@ -43,7 +43,7 @@
 | Frontend build `NUXT_PUBLIC_API_BASE=/api` | **OK** — `.output/server/index.mjs` |
 | mobile:verify | **OK** — 0 eslint errors |
 | Playwright P0 (`staff-booking-patients` + `lab-dashboard-pagination`) | **OK** — 11/11 avec retries CI (4 specs flaky booking 4 rôles) |
-| Playwright suite complète | **Non lancée** dans ce cycle (45 specs restantes) |
+| Playwright suite complète | **Rouge** (run 2026-09-25 : 103/318 pass) — cause identifiée : attente `#__nuxt.__vue_app__` (Nuxt 3) ; **fix** `e2e/helpers/wait-for-nuxt-ready.ts` + resilience en serial. Re-run ciblé : public 25/28 OK, **workspace-resilience 100 %**, P0 staff flaky si dev hors `127.0.0.1:3000` |
 | Prod simulate-picker | **OK** — full 1 486 679 B vs picker 19 525 B (−98,7 %) |
 | QA rechecklist | **Partiel** — public 100 % ; rôles OTP en attente comptes ops ; subaccount N/A prod |
 | Deploy API hotfix | **Fait** — `scope=list` sur prod API |

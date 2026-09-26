@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 test('table component demo is unavailable in the production build', async ({ request }) => {
   const response = await request.get('/admin/test-table');
@@ -20,7 +21,7 @@ for (const width of [360, 1440]) {
       page.on('pageerror', error => errors.push(error.message));
       await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => route.fulfill({ json: { success: false, error: 'Service temporairement indisponible' } }));
       await page.goto(path);
-      await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+      await waitForNuxtReady(page);
       await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
       await expect(page.getByRole('heading', { name: /^(404|500)$/ })).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

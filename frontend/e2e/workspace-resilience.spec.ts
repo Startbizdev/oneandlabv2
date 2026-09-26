@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-test.describe.configure({ mode: 'parallel' });
+import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
+
+test.describe.configure({ mode: 'serial' });
 
 // Exercise every family of secondary workspace pages against an unavailable API.
 // This is an error-state check, separate from the populated workflow tests.
@@ -30,8 +32,7 @@ for (const [role, routes] of Object.entries(pages)) {
         return route.fulfill({ json: auth ? { success: true, user, data: user } : { success: false, error: 'Service temporairement indisponible' } });
       });
       await page.goto(`/${path}`, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
-      await page.waitForLoadState('networkidle');
+      await waitForNuxtReady(page);
       await expect(page.locator('main').first()).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(errors).toEqual([]);

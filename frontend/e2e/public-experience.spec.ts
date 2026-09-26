@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 for (const width of [360, 768, 1440]) {
   for (const route of ['/', '/pour-les-patients', '/pour-les-infirmiers', '/pour-les-laboratoires', '/pour-les-professionnels', '/contact', '/pour-les-infirmiers/tarifs', '/pour-les-laboratoires/tarifs']) {
@@ -8,7 +9,7 @@ for (const width of [360, 768, 1440]) {
       const errors: string[] = [];
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(route);
-      await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+      await waitForNuxtReady(page);
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('h1')).toBeVisible();
       // Contact uses its own metadata; this added route checks the shared hero's layout.
@@ -23,6 +24,7 @@ for (const width of [360, 768, 1440]) {
 test('home: FAQ content and structured answers agree', async ({ page }) => {
   await page.route('**/api/**', request => request.fulfill({ json: { success: true, data: [] } }));
   await page.goto('/');
+  await waitForNuxtReady(page);
   const question = page.getByRole('button', { name: 'Est-ce remboursé ?', exact: true });
   await question.click();
   await expect(question).toHaveAttribute('aria-expanded', 'true');
