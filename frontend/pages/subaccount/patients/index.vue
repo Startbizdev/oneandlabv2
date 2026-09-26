@@ -35,7 +35,7 @@
         <template #actions><UButton color="neutral" variant="outline" @click="fetchPatients">Réessayer</UButton></template>
       </UAlert>
       <UEmpty
-        v-else-if="!loading && filteredPatients.length === 0"
+        v-else-if="!loading && patients.length === 0"
         icon="i-lucide-users"
         title="Aucun patient trouvé"
         description="Aucun résultat pour votre recherche ou ajoutez votre premier patient."
@@ -48,7 +48,7 @@
 
       <PatientListCompactGrid
         v-else
-        :patients="filteredPatients"
+        :patients="patients"
         base-path="/subaccount"
         show-delete
         :current-user-id="user?.id ?? null"
@@ -61,7 +61,6 @@
 <script setup lang="ts">
 const toast = useAppToast();
 const { user } = useAuth();
-const loadError = ref(false);
 definePageMeta({
   layout: 'dashboard',
   middleware: ['auth', 'role'],
@@ -71,37 +70,8 @@ definePageMeta({
 useHead({ title: 'Mes patients – Sous-compte' });
 
 import { apiFetch } from '~/utils/api';
-import { fetchAllPatientsForDashboard } from '~/utils/fetch-all-patients';
 
-const patients = ref<any[]>([]);
-const loading = ref(true);
-const searchQuery = ref('');
-
-const filteredPatients = computed(() => {
-  const list = patients.value ?? [];
-  const q = (searchQuery.value || '').trim().toLowerCase();
-  if (!q) return list;
-  const fields = ['email', 'first_name', 'last_name', 'phone'];
-  return list.filter((item) =>
-    fields.some((key) => {
-      const val = item[key];
-      if (val == null) return false;
-      return String(val).toLowerCase().includes(q);
-    })
-  );
-});
-
-const fetchPatients = async () => {
-  loading.value = true;
-  loadError.value = false;
-  try {
-    patients.value = await fetchAllPatientsForDashboard(apiFetch);
-  } catch (error) {
-    loadError.value = true;
-  } finally {
-    loading.value = false;
-  }
-};
+const { searchQuery, patients, loading, loadError, fetchPatients } = usePaginatedPatientsDashboard();
 
 async function onDeletePatient(patient: any) {
   const name =
@@ -133,8 +103,4 @@ async function onDeletePatient(patient: any) {
     });
   }
 }
-
-onMounted(() => {
-  fetchPatients();
-});
 </script>

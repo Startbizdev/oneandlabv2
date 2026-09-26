@@ -188,7 +188,7 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
 }
 
 for (const role of ['lab', 'subaccount']) {
-  test(`${role}: patient directory retries an interrupted second page`, async ({ page }) => {
+  test(`${role}: patient directory retries after failed first page and server search`, async ({ page }) => {
     const user = { id: 'fixture-staff', role };
     await page.addInitScript(user => {
       localStorage.setItem('auth_token', 'local-ui-fixture');
@@ -198,8 +198,29 @@ for (const role of ['lab', 'subaccount']) {
     await page.route(API_ROUTE, route => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
-      if (url.pathname.endsWith('/patients')) return route.fulfill({ json: failed && url.searchParams.get('page') === '2'
-        ? { success: false } : { success: true, data: [{ id: url.searchParams.get('page'), first_name: url.searchParams.get('page') === '2' ? 'Béatrice' : 'Alice', last_name: 'Exemple' }], pagination: { pages: 2 } } });
+      if (url.pathname.endsWith('/patients')) {
+        const pageNum = url.searchParams.get('page') ?? '1';
+        const search = (url.searchParams.get('search') ?? '').toLowerCase();
+        if (failed && pageNum === '1') {
+          return route.fulfill({ json: { success: false } });
+        }
+        if (search.includes('béatrice') || search.includes('beatrice')) {
+          return route.fulfill({
+            json: {
+              success: true,
+              data: [{ id: '2', first_name: 'Béatrice', last_name: 'Exemple' }],
+              pagination: { pages: 1 },
+            },
+          });
+        }
+        return route.fulfill({
+          json: {
+            success: true,
+            data: [{ id: '1', first_name: 'Alice', last_name: 'Exemple' }],
+            pagination: { pages: 1 },
+          },
+        });
+      }
       return route.fulfill({ json: { success: true, data: [] } });
     });
     await page.goto(`/${role}/patients`);
@@ -207,8 +228,9 @@ for (const role of ['lab', 'subaccount']) {
     await expect(page.getByText('Aucun patient trouvé', { exact: true })).toHaveCount(0);
     failed = false;
     await page.getByRole('button', { name: 'Réessayer', exact: true }).click();
-    await expect(page.getByText('Béatrice Exemple', { exact: true })).toBeVisible();
+    await expect(page.getByText('Alice Exemple', { exact: true })).toBeVisible();
     await page.getByRole('textbox', { name: 'Rechercher un patient', exact: true }).fill('Béatrice');
+    await expect(page.getByText('Béatrice Exemple', { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText('Alice Exemple', { exact: true })).toHaveCount(0);
   });
 }

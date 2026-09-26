@@ -24,7 +24,7 @@
 ## P1
 
 - Aligner `LabResultAnalysisPromptTest` avec prompt sans markdown.
-- Lab `/patients` : encore pagination full picker — envisager recherche serveur comme wizard.
+- Lab `/patients` : **corrigé** — `usePaginatedPatientsDashboard` (50/page, search ≥2 car.) lab + subaccount.
 - Réduire polling détail RDV + documents (logs prod : même UUID en rafale).
 - CI Windows / dev : documenter PHPUnit sans MySQL (tests health/qr/users search).
 
@@ -45,7 +45,8 @@
 | Playwright P0 (`staff-booking-patients` + `lab-dashboard-pagination`) | **OK** — 11/11 avec retries CI (4 specs flaky booking 4 rôles) |
 | Playwright suite complète | **Rouge** (run 2026-09-25 : 103/318 pass) — cause identifiée : attente `#__nuxt.__vue_app__` (Nuxt 3) ; **fix** `e2e/helpers/wait-for-nuxt-ready.ts` + resilience en serial. Re-run ciblé : public 25/28 OK, **workspace-resilience 100 %**, P0 staff flaky si dev hors `127.0.0.1:3000` |
 | Prod simulate-picker | **OK** — full 1 486 679 B vs picker 19 525 B (−98,7 %) |
-| QA rechecklist | **Partiel** — public 100 % ; rôles OTP en attente comptes ops ; subaccount N/A prod |
+| QA rechecklist | **Partiel** — public + post-deploy + pharmacie (config DB) + smokes backend ; **OTP login** tous rôles encore manuel ops |
+| Backend smoke prod | **OK** — `audit360-prod-backend-smoke.php` (drafts www-data, pharmacy, lab RDV count) |
 | Deploy API hotfix | **Fait** — `scope=list` sur prod API |
 | Deploy safe release | **OK** — `9fd68af51bb91a6c8d9cf490366163b9eedfcf60` → release `20260925T153449Z-9fd68af51bb9` |
 | EAS iOS/Android production | **BLOQUÉ (gate strict)** — rechecklist rôles OTP incomplète ; suite Playwright complète non exécutée |

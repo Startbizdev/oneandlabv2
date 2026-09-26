@@ -63,6 +63,11 @@ for name in backend frontend database; do
   activated+=("$name")
   sudo mv "$STAGE/$name" "$BASE/$name"
 done
+if [[ -f "$STAGE/scripts/ensure-backend-runtime-links.sh" ]]; then
+  sudo bash "$STAGE/scripts/ensure-backend-runtime-links.sh" "$BASE"
+elif [[ -f "$BASE/scripts/ensure-backend-runtime-links.sh" ]]; then
+  sudo bash "$BASE/scripts/ensure-backend-runtime-links.sh" "$BASE"
+fi
 sudo systemctl reload php8.2-fpm
 NODE_ENV=production NUXT_PUBLIC_API_BASE=/api NUXT_API_INTERNAL_BASE=https://cary.bio/api pm2 restart oneandlab-frontend --update-env
 curl --fail --silent --show-error --retry 8 --retry-connrefused --retry-delay 2 http://127.0.0.1:3000/ -o "$STAGE/home-check.html"

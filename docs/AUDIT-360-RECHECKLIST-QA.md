@@ -24,7 +24,7 @@
 |----|------|------|--------|
 | [ ] | Login OTP → hub patient | | |
 | [ ] | GET `/api/appointments?patient_period=upcoming` | | |
-| [ ] | POST `/api/patient/booking-draft` — pas 500 storage | | |
+| [~] | POST `/api/patient/booking-draft` — pas 500 storage | 2026-09-26 | `audit360-prod-backend-smoke.php` → drafts dir OK + www-data writable (pas POST HTTP sans OTP) |
 
 ## Pro
 
@@ -46,7 +46,7 @@
 
 | OK | Item | Date | Preuve |
 |----|------|------|--------|
-| [ ] | `/lab` — GET `/api/lab/stats?stats_only=1` | | |
+| [~] | `/lab` — GET `/api/lab/stats?stats_only=1` | 2026-09-26 | Backend smoke : lab profile + 196 RDV `assigned_lab_id` ; GET stats auth à valider login ops |
 | [~] | API `scope=list` + date — payload bytes | 2026-09-25 | Hotfix API prod actif ; mesure authentifiée lab à refaire post-login |
 | [~] | Dashboard web envoie `scope=list` (POST-deploy) | 2026-09-25 | Release `9fd68af` déployée — valider Network `/api/appointments?scope=list` login lab ops |
 | [ ] | `/lab/appointments` limit=24 | | |
@@ -78,7 +78,7 @@
 
 | OK | Item | Date | Preuve |
 |----|------|------|--------|
-| [ ] | Module actif (config API) | | |
+| [x] | Module actif (config API) | 2026-09-26 | SSH `verify-pharmacy-module.php` + `audit360-prod-backend-smoke.php` → module_enabled oui, 26 commandes |
 | [ ] | Création commande web/mobile | | |
 | [ ] | Page `[id]/ordonnances` — medical-documents | | |
 
@@ -88,7 +88,7 @@
 |----|------|------|--------|
 | [x] | `simulate-picker-payload.php` — picker << full | 2026-09-25 | SSH prod : full 1486679 B, picker 19525 B (−98,7 %) |
 | [x] | `ensure-backend-runtime-links.sh` — www-data OK | 2026-09-25 | SCP + `sudo bash …/ensure-backend-runtime-links.sh` → drafts + medical OK |
-| [~] | nginx — pas de 500 récurrent `/api/appointments` | 2026-09-25 | Non audité 24h logs dans ce cycle — smoke curl public OK |
+| [~] | nginx — pas de 500 récurrent `/api/appointments` | 2026-09-26 | `grep '/api/appointments' access.log \| grep ' 500 '` → **0** (fenêtre log courante, pas 24h garanti) |
 | [x] | Release SHA + rollback path documentés | 2026-09-25 | SHA `9fd68af51bb9` ; rollback `/var/lib/oneandlab-releases/20260925T153449Z-9fd68af51bb9` |
 
 ## Nettoyage audit360
