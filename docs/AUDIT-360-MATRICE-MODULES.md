@@ -13,7 +13,7 @@
 | 6 | Dispatch admin | `admin/dispatch`, offers | `admin-territory-dispatch` | modéré | super_admin | OK | |
 | 7 | Docs / ordonnances | `medical-documents`, PrescriptionService | `patient-documents`, nurse e2e | N+1 détail RDV | ACL docs | P1 | Méthodes Appointment public prod hotfix |
 | 8 | Nurse tournée / passages | `nurse/tour*`, `nurse-passage/*` | `nurse-tournee`, `nurse-passage` | tour summary | nurse | OK | |
-| 9 | Lab / préleveur | `lab/*`, `preleveur/tour*` | `lab-wizard`, `lab-statistics` | stats + list RDV | lab/subaccount | P0 | list scope |
+| 9 | Lab / préleveur | `lab/*`, `preleveur/tour*` | `lab-wizard`, `lab-statistics` | stats + list RDV | lab/subaccount | OK | `scope=list` prod ; `/lab/patients` pagination serveur (2026-09-26) |
 | 10 | Pro | `pro/prescriptions`, pages pro | workspace e2e | faible | pro | OK | |
 | 11 | Pharmacie | `pharmacy-orders`, mobile ordonnances | `pharmacy-orders.spec.ts` | — | PharmacyOrderAccess | OK | Routes ordonnances web+mobile |
 | 12 | Stripe / IAP | `iap`, subscriptions, plan-limits | `billing-management`, `subscription-context` | — | — | dette | Vérif prod IAP hors scope exécution |

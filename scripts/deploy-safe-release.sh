@@ -18,7 +18,7 @@ fi
 [[ -f frontend/.output/server/index.mjs ]] || exit 1
 echo "Preparing release $RELEASE"
 ssh "${SSH[@]}" "$HOST" "test ! -e '$STAGE' && sudo mkdir -p '$STAGE' && sudo chown ubuntu:ubuntu '$STAGE'"
-git archive HEAD backend/api backend/config backend/lib backend/middleware backend/models backend/cron backend/assets backend/scripts backend/index.php backend/.htaccess backend/composer.json frontend database scripts/deploy-database-safety.php scripts/activate-safe-release.sh |
+git archive HEAD backend/api backend/config backend/lib backend/middleware backend/models backend/cron backend/assets backend/scripts backend/index.php backend/.htaccess backend/composer.json frontend database scripts/deploy-database-safety.php scripts/activate-safe-release.sh scripts/ensure-backend-runtime-links.sh |
   ssh "${SSH[@]}" "$HOST" "tar -xf - -C '$STAGE'"
 tar -C frontend -h -czf - .output |
   ssh "${SSH[@]}" "$HOST" "tar -xzf - -C '$STAGE/frontend'"
