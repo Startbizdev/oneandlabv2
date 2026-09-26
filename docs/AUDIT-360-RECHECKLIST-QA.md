@@ -89,7 +89,7 @@
 | [x] | `simulate-picker-payload.php` — picker << full | 2026-09-25 | SSH prod : full 1486679 B, picker 19525 B (−98,7 %) |
 | [x] | `ensure-backend-runtime-links.sh` — www-data OK | 2026-09-25 | SCP + `sudo bash …/ensure-backend-runtime-links.sh` → drafts + medical OK |
 | [~] | nginx — pas de 500 récurrent `/api/appointments` | 2026-09-26 | `grep '/api/appointments' access.log \| grep ' 500 '` → **0** (fenêtre log courante, pas 24h garanti) |
-| [x] | Release SHA + rollback path documentés | 2026-09-25 | SHA `9fd68af51bb9` ; rollback `/var/lib/oneandlab-releases/20260925T153449Z-9fd68af51bb9` |
+| [x] | Release SHA + rollback path documentés | 2026-09-26 | SHA `062c9ee65d9e` ; release `20260926T020517Z-062c9ee65d9e` ; rollback `/var/lib/oneandlab-releases/20260926T020517Z-062c9ee65d9e` |
 
 ## Nettoyage audit360
 
