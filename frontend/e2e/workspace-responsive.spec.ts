@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 // Synthetic data only: this suite must never call a production API.
 const roles = ['nurse', 'pro', 'lab', 'subaccount', 'preleveur', 'super_admin'] as const;
@@ -23,7 +24,7 @@ for (const role of roles) {
       });
       const prefix = role === 'super_admin' ? 'admin' : role;
       await page.goto(`/${prefix}/appointments`);
-      await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+      await waitForNuxtReady(page);
       await expect(page.locator('#workspace-content')).toBeVisible();
       await expect(page.locator('h1').first()).toBeVisible();
       if (width < 768) {
@@ -60,7 +61,7 @@ for (const width of [360, 768, 1440]) {
       pagination: { total: 0, page: 1, limit: 20, pages: 0 }, csrf_token: 'fixture',
     } }));
     await page.goto('/patient');
-    await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+    await waitForNuxtReady(page);
     await expect(page.locator('h1').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Nouveau rendez-vous', exact: true })).toBeVisible();
     if (width < 768) {
@@ -87,7 +88,7 @@ for (const width of [360, 768, 1440]) {
       success: true, user, data: route.request().url().includes('/auth/me') ? user : [], csrf_token: 'fixture',
     } }));
     await page.goto('/nurse/appointments/new');
-    await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as any)?.__vue_app__));
+    await waitForNuxtReady(page);
     const add = page.getByRole('button', { name: 'Configurer et ajouter Prélèvement', exact: true });
     await expect(add).toBeVisible();
     const filters = page.getByRole('group', { name: 'Filtrer par catégorie de soins' });

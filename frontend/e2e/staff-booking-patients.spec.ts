@@ -26,9 +26,7 @@ async function pickPatientOption(page: Page, name: RegExp) {
   }
   const option = page.getByRole('option', { name });
   await expect(option.first()).toBeVisible({ timeout: 20_000 });
-  await patientSearchInput(page).focus();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
+  await option.first().click({ force: true });
 }
 
 async function advanceWizardPastLabBrandStep(page: Page) {
