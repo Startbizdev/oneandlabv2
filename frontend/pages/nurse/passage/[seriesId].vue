@@ -251,6 +251,7 @@
           <span class="text-sm font-semibold">Voir fiche RDV complète</span>
         </button>
         <button
+          v-if="canCancelCurrentAppointment"
           type="button"
           class="flex w-full items-center gap-3 px-1 py-3 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
           @click="onDeleteOne"
@@ -288,6 +289,7 @@ import AppointmentDocumentsSection from '~/components/dashboard/AppointmentDocum
 import PrescriptionSection from '~/components/dashboard/PrescriptionSection.vue';
 import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
 import PatientHealthRecordPanel from '~/components/dashboard/PatientHealthRecordPanel.vue';
+import { canCancelAppointment } from '@oneandlab/shared-utils';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import {
   formatCareSummary,
@@ -354,6 +356,9 @@ const tabItems = [
 
 const series = ref<Awaited<ReturnType<typeof fetchSeries>>>(null);
 const appointment = ref<Record<string, unknown> | null>(null);
+const canCancelCurrentAppointment = computed(() =>
+  canCancelAppointment(appointment.value, { role: user.value?.role, id: user.value?.id }),
+);
 const patientProfile = ref<Record<string, unknown> | null>(null);
 const nurseProfile = ref<Record<string, unknown> | null>(null);
 const documents = ref<any[]>([]);
@@ -707,7 +712,11 @@ async function onDeleteOne() {
     comment: '',
     photoFile: null,
   });
-  if (result.ok) await router.push('/nurse/tournee');
+  if (result.ok) {
+    await router.push('/nurse/tournee');
+    return;
+  }
+  toast.add({ title: 'Annulation impossible', description: result.error, color: 'error' });
 }
 
 async function onDeleteSeries() {

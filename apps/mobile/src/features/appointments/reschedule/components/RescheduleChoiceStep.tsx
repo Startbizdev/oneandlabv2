@@ -65,6 +65,7 @@ const CHOICES: ChoiceConfig[] = [
 interface Props {
   patientName: string;
   choiceMode: RescheduleChoiceMode | null;
+  canReplace: boolean;
   onSelect: (mode: RescheduleChoiceMode) => void;
 }
 
@@ -101,13 +102,16 @@ function RescheduleChoiceCard({
   choice,
   selected,
   index,
+  disabledReason,
   onPress,
 }: {
   choice: ChoiceConfig;
   selected: boolean;
   index: number;
+  disabledReason: string | null;
   onPress: () => void;
 }) {
+  const disabled = disabledReason !== null;
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'RescheduleChoiceStep.RescheduleChoiceCard');
   const Icon = choice.icon;
@@ -116,10 +120,11 @@ function RescheduleChoiceCard({
     <Animated.View entering={FadeInUp.delay(index * 80).duration(380).springify()}>
       <Pressable
         onPress={onPress}
+        disabled={disabled}
         accessibilityRole="radio"
-        accessibilityState={{ selected }}
+        accessibilityState={{ selected, disabled }}
         accessibilityLabel={choice.title}
-        style={({ pressed }) => [styles.cardHit, pressed && styles.cardPressed]}
+        style={({ pressed }) => [styles.cardHit, pressed && styles.cardPressed, disabled && styles.cardDisabled]}
       >
         <View style={[styles.card, selected && styles.cardSelected]}>
           {selected ? (
@@ -171,7 +176,7 @@ function RescheduleChoiceCard({
               </View>
             </Cluster>
 
-            <AppText style={styles.cardDescription}>{choice.description}</AppText>
+            <AppText style={styles.cardDescription}>{disabledReason ?? choice.description}</AppText>
 
             <Row wrap align="center" gap={spacing[2]} style={styles.flowRow}>
               <FlowChipView chip={choice.flow[0]!} />
@@ -186,7 +191,7 @@ function RescheduleChoiceCard({
 }
 
 export function RescheduleChoiceStep({
-  patientName, choiceMode, onSelect }: Props) {
+  patientName, choiceMode, canReplace, onSelect }: Props) {
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_components_RescheduleChoiceStep_tsx_styles');
   return (
@@ -213,6 +218,11 @@ export function RescheduleChoiceStep({
             choice={choice}
             index={index}
             selected={choiceMode === choice.mode}
+            disabledReason={
+              choice.mode === 'cancel_and_new' && !canReplace
+                ? 'Indisponible : vous n’avez pas créé ce rendez-vous. Redispatchez-le ou partagez-le.'
+                : null
+            }
             onPress={() => onSelect(choice.mode)}
           />
         ))}
@@ -266,6 +276,9 @@ function buildStyles(c: AppColors) {
   cardPressed: {
     opacity: 0.94,
     transform: [{ scale: 0.985 }],
+  },
+  cardDisabled: {
+    opacity: 0.5,
   },
   card: {
     borderRadius: radius['2xl'],

@@ -3,6 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { canCancelAppointment } from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAuthStore } from '@/store/auth-store';
@@ -124,9 +125,13 @@ export function useAppointmentDetailScreen(
   const cancellableForPatient = useMemo(
     () =>
       role === 'patient'
-        ? batchSorted.filter((a) => patientCanCancelStatus(a.status))
+        ? batchSorted.filter(
+            (a) =>
+              patientCanCancelStatus(a.status)
+              && canCancelAppointment(a, { role, id: viewerId ?? user?.id }),
+          )
         : [],
-    [role, batchSorted],
+    [role, batchSorted, viewerId, user?.id],
   );
 
   const listDocuments = useMemo(

@@ -57,17 +57,20 @@
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                class="rounded-xl border-2 p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                class="rounded-xl border-2 p-4 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
                 :class="choiceMode === 'cancel_and_new'
                   ? 'border-primary-500 bg-primary-50/80 ring-2 ring-primary-200 dark:border-primary-400 dark:bg-primary-950/40 dark:ring-primary-900'
                   : 'border-slate-200 hover:border-slate-300 dark:border-slate-600 dark:hover:border-slate-500'"
+                :disabled="!canReplace"
                 @click="choiceMode = 'cancel_and_new'"
               >
                 <svg class="mb-2 h-7 w-7 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Remplacer le RDV</h3>
-                <p class="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">Annuler l'ancien, créer le nouveau.</p>
+                <p class="mt-1 text-xs leading-snug text-slate-600 dark:text-slate-400">
+                  {{ canReplace ? "Annuler l'ancien, créer le nouveau." : "Indisponible : vous n'avez pas créé ce RDV. Redispatchez-le ou partagez-le." }}
+                </p>
               </button>
               <button
                 type="button"
@@ -254,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { appointmentTimeFrance, parseAppointmentDateFrance, createAppointmentRequestId } from '@oneandlab/shared-utils';
+import { appointmentTimeFrance, parseAppointmentDateFrance, createAppointmentRequestId, canCancelAppointment } from '@oneandlab/shared-utils';
 const creationRequestId = ref(createAppointmentRequestId());
 import { apiFetch } from '~/utils/api'
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
@@ -349,6 +352,16 @@ const patientPhone = computed(() => {
   if (!a) return ''
   return (a.relative?.phone ?? a.form_data?.phone ?? '')?.trim() || ''
 })
+
+const canCancelSourceAppointment = computed(() =>
+  canCancelAppointment(props.appointment, { role: user.value?.role, id: user.value?.id }),
+)
+
+/** « Remplacer » : modification sur place (infirmier assigné) ou annulation autorisée de l'ancien RDV. */
+const canReplace = computed(() =>
+  (user.value?.role === 'nurse' && nurseCanRescheduleInPlace(props.appointment, user.value?.id))
+  || canCancelSourceAppointment.value,
+)
 
 const submitButtonLabel = computed(() => {
   if (
@@ -605,7 +618,7 @@ async function submit() {
     }
     const newId = createRes.data.id as string
 
-    if (choiceMode.value === 'cancel_and_new' && role !== 'nurse') {
+    if (choiceMode.value === 'cancel_and_new' && canCancelSourceAppointment.value) {
       const cancelRes = await apiFetch(`/appointments/${a.id}`, {
         method: 'PUT',
         body: { status: 'canceled', cancellation_reason: 'reschedule', cancellation_comment: 'Remplacé par un nouveau rendez-vous (reprise).' },

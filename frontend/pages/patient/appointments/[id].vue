@@ -408,6 +408,7 @@ import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
 import { buildAppointmentDetailUploadTypes } from '~/utils/appointment-detail-document-types';
 import { formatPatientUrgentCreneauShortFr } from '~/utils/patient-urgency-display';
+import { canCancelAppointment } from '@oneandlab/shared-utils';
 import {
   getAppointmentFromDetailRef,
   getBatchAppointmentsSortedFromDetailRef,
@@ -552,9 +553,15 @@ function patientCanCancelAppointmentStatus(status: unknown): boolean {
   return ['pending', 'confirmed', 'planned'].includes(String(status ?? ''));
 }
 
-/** Tous les créneaux du lot encore annulables par le patient. */
+const { user } = useAuth();
+
+/** Créneaux du lot encore annulables par le patient : statut actif et RDV pris par lui-même. */
 const appointmentsToCancelForPatient = computed(() =>
-  batchAppointmentsSorted.value.filter((a: any) => patientCanCancelAppointmentStatus(a?.status)),
+  batchAppointmentsSorted.value.filter(
+    (a: any) =>
+      patientCanCancelAppointmentStatus(a?.status)
+      && canCancelAppointment(a, { role: user.value?.role, id: user.value?.id }),
+  ),
 );
 
 const patientCancelModalBody = computed(() => {

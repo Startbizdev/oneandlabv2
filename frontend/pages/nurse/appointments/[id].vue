@@ -44,6 +44,7 @@
               Reprendre le RDV
             </UButton>
             <UButton
+              v-if="canCancelAppointment(appointment, { role: user?.role, id: user?.id })"
               type="button"
               color="error"
               variant="outline"
@@ -191,7 +192,7 @@ import {
   buildAppointmentDetailUploadTypes,
   getAppointmentDetailDocumentLabel,
 } from '~/utils/appointment-detail-document-types';
-import { isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
+import { canCancelAppointment, isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';

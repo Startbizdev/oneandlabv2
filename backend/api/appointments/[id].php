@@ -300,11 +300,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
                         exit;
                     }
-                    if (!AppointmentCancellationPolicy::canStaffCancel($user, $apt)) {
+                    if (!AppointmentCancellationPolicy::canCancel($user, $apt)) {
                         http_response_code(403);
-                        echo json_encode(['success' => false, 'error' => 'Vous ne pouvez annuler que les rendez-vous que vous avez créés ou qui vous sont assignés']);
+                        echo json_encode([
+                            'success' => false,
+                            'error' => in_array($user['role'], ['nurse', 'pro'], true)
+                                ? 'Vous ne pouvez annuler que les rendez-vous que vous avez créés. Vous pouvez redispatcher ou partager ce rendez-vous.'
+                                : 'Vous ne pouvez annuler que les rendez-vous que vous avez créés ou qui vous sont assignés',
+                            'code' => 'FORBIDDEN',
+                        ]);
                         exit;
                     }
+                }
+            }
+
+            // Patient : seule action de statut autorisée = annuler un RDV qu'il a lui-même créé
+            if (($user['role'] ?? '') === 'patient') {
+                if ($input['status'] !== 'canceled' || $redispatch) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Action non autorisée sur ce rendez-vous', 'code' => 'FORBIDDEN']);
+                    exit;
+                }
+                $config = require __DIR__ . '/../../config/database.php';
+                $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
+                $dbPatientCancel = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
+                $stmtPatientCancel = $dbPatientCancel->prepare('SELECT created_by FROM appointments WHERE id = ?');
+                $stmtPatientCancel->execute([$id]);
+                $aptPatientCancel = $stmtPatientCancel->fetch(PDO::FETCH_ASSOC);
+                if (!$aptPatientCancel) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
+                    exit;
+                }
+                if (!AppointmentCancellationPolicy::canCancel($user, $aptPatientCancel)) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Vous ne pouvez annuler que les rendez-vous que vous avez pris vous-même. Contactez le professionnel qui a créé ce rendez-vous.',
+                        'code' => 'FORBIDDEN',
+                    ]);
+                    exit;
                 }
             }
 

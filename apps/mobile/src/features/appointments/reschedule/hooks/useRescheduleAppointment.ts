@@ -1,4 +1,4 @@
-import { appointmentTimeFrance, createAppointmentRequestId } from '@oneandlab/shared-utils';
+import { appointmentTimeFrance, canCancelAppointment, createAppointmentRequestId } from '@oneandlab/shared-utils';
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -143,6 +143,10 @@ export function useRescheduleAppointment(opts: {
 
   const apt = appointmentQ.data;
   const serviceType = apt?.type === 'nursing' ? 'nursing' : 'blood_test';
+  const canCancelSource = canCancelAppointment(apt, { role: opts.role, id: user?.id });
+  /** « Remplacer » : modification sur place (infirmier assigné) ou annulation autorisée de l'ancien RDV. */
+  const canReplace =
+    (opts.role === 'nurse' && apt != null && nurseCanRescheduleInPlace(apt, user?.id)) || canCancelSource;
 
   const categoriesQ = useQuery({
     queryKey: queryKeys.categories.list(serviceType),
@@ -193,6 +197,9 @@ export function useRescheduleAppointment(opts: {
   const submitMut = useMutation({
     mutationFn: async () => {
       if (!apt || !choiceMode) throw new Error('Rendez-vous introuvable');
+      if (choiceMode === 'cancel_and_new' && !canReplace) {
+        throw new Error("Vous n'avez pas créé ce rendez-vous : redispatchez-le ou partagez-le.");
+      }
       if (!form.category_id) throw new Error('Veuillez sélectionner un type de soin.');
       if (!form.scheduled_at?.trim()) throw new Error('La date est obligatoire.');
       if (!form.address?.label?.trim()) throw new Error("L'adresse est obligatoire.");
@@ -238,7 +245,7 @@ export function useRescheduleAppointment(opts: {
       }
       const newId = createRes.data.id;
 
-      if (choiceMode === 'cancel_and_new' && opts.role !== 'nurse') {
+      if (choiceMode === 'cancel_and_new' && canCancelSource) {
         const cancelRes = await updateAppointment(apt.id, {
           status: 'canceled',
           cancellation_reason: 'reschedule',
@@ -283,6 +290,7 @@ export function useRescheduleAppointment(opts: {
     step,
     choiceMode,
     setChoiceMode,
+    canReplace,
     goToForm,
     goBackToChoice,
     form,

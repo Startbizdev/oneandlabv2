@@ -25,6 +25,7 @@ type Props = {
   deleteOneLoading: boolean;
   deleteSeriesLoading: boolean;
   showDeleteSeries?: boolean;
+  showDeleteOne?: boolean;
   hasPatient?: boolean;
   isPatientAbsent?: boolean;
   onMaterialize: () => void;
@@ -47,6 +48,7 @@ export function PassageDetailActionsSheet({
   deleteOneLoading,
   deleteSeriesLoading,
   showDeleteSeries = true,
+  showDeleteOne = true,
   hasPatient = false,
   isPatientAbsent = false,
   onMaterialize,
@@ -131,19 +133,21 @@ export function PassageDetailActionsSheet({
       },
     });
 
-    items.push({
-      key: 'delete_one',
-      label: 'Supprimer ce passage',
-      icon: Trash2,
-      tone: 'destructive',
-      loading: deleteOneLoading,
-      disabled: deleteOneLoading || deleteSeriesLoading,
-      showChevron: false,
-      onPress: () => {
-        onClose();
-        onDeleteOne();
-      },
-    });
+    if (showDeleteOne) {
+      items.push({
+        key: 'delete_one',
+        label: 'Supprimer ce passage',
+        icon: Trash2,
+        tone: 'destructive',
+        loading: deleteOneLoading,
+        disabled: deleteOneLoading || deleteSeriesLoading,
+        showChevron: false,
+        onPress: () => {
+          onClose();
+          onDeleteOne();
+        },
+      });
+    }
 
     if (showDeleteSeries) {
       items.push({
@@ -181,6 +185,7 @@ export function PassageDetailActionsSheet({
     isPatientAbsent,
     showMaterialize,
     showDeleteSeries,
+    showDeleteOne,
   ]);
 
   return (

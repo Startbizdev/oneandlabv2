@@ -70,6 +70,7 @@ export function RescheduleAppointmentScreen({
         <RescheduleChoiceStep
           patientName={patientTitle}
           choiceMode={r.choiceMode}
+          canReplace={r.canReplace}
           onSelect={r.setChoiceMode}
         />
       </FormScreen>

@@ -50,7 +50,12 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '@/features/appointments/detail/utils/appointment-address-display';
-import { buildNavigationUrl, resolvePassageCustomTime, resolvePassageTimeRange } from '@oneandlab/shared-utils';
+import {
+  buildNavigationUrl,
+  canCancelAppointment,
+  resolvePassageCustomTime,
+  resolvePassageTimeRange,
+} from '@oneandlab/shared-utils';
 
 import { updateNurseTourStopStatus } from '@/features/tournee-nurse/api/nurse-tour.service';
 
@@ -1335,6 +1340,7 @@ export function PassageDetailScreen() {
         deleteOneLoading={deleteOneMut.isPending}
         deleteSeriesLoading={deleteSeriesMut.isPending}
         showDeleteSeries={!isAppointmentOnly}
+        showDeleteOne={canCancelAppointment(apt, { role: user?.role, id: user?.id })}
         onMaterialize={() => materializeMut.mutate()}
         onEnRoute={() => enRouteMut.mutate()}
         onMarkDone={() => markDoneMut.mutate()}

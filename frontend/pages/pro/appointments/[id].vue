@@ -92,6 +92,7 @@
               Reprendre RDV pour ce patient
             </UButton>
             <UButton
+              v-if="canCancelAppointment(appointment, { role: user?.role, id: user?.id })"
               type="button"
               color="error"
               variant="outline"
@@ -139,6 +140,7 @@ import {
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
 import { canUploadMedicalDocumentsForAppointmentStatus } from '~/utils/appointment-documents-upload';
+import { canCancelAppointment } from '@oneandlab/shared-utils';
 import {
   buildAppointmentDetailUploadTypes,
   getAppointmentDetailDocumentLabel,

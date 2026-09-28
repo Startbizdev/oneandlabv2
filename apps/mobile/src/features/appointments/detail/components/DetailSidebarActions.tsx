@@ -11,7 +11,12 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { isBloodTestAppointment, isNursingAppointment, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
+import {
+  canCancelAppointment,
+  isBloodTestAppointment,
+  isNursingAppointment,
+  staffCanManageOwnPendingBloodTest,
+} from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -139,10 +144,11 @@ export function DetailSidebarActions({
     nurseCanRescheduleOrCancel(apt, { role, viewerId }) ||
     staffCanManageOwnPendingBloodTest(apt, viewerId);
 
+  const canCancel = canCancelAppointment(apt, { role, id: viewerId });
   const showRescheduleNurse = role === 'nurse' && nurseManage;
   const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
-  const showCancelNurse = role === 'nurse' && nurseManage;
-  const showCancelOther = (role === 'pro' || role === 'preleveur') && active;
+  const showCancelNurse = role === 'nurse' && nurseManage && canCancel;
+  const showCancelOther = (role === 'pro' || role === 'preleveur') && active && canCancel;
   const showRedispatchNonNursing =
     role === 'nurse' && status === 'confirmed' && !nursing && !blood;
   const showRedispatchInNursingBlock =
