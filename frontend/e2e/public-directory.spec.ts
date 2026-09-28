@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
-// Start fixtures/public-api-server.cjs and set NUXT_API_INTERNAL_BASE to
-// http://127.0.0.1:8889/api on the Nuxt preview server before running this file.
+// Run with `npm run test:e2e:ssr` (production build + fixtures/public-api-server.cjs).
 for (const [directory, endpoint] of [['infirmiers', 'nurses'], ['laboratoires', 'labs']]) {
   test(`${directory}: national directory shares server rendering and page navigation`, async ({ request, page }) => {
     const response = await request.get(`/${directory}`);

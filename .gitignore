@@ -12,11 +12,28 @@ vendor/
 dist/
 .output/
 .nuxt/
+.output-e2e/
+.nuxt-e2e/
+
+# Données runtime backend (documents patients chiffrés, compteurs) — jamais dans git
+backend/uploads/medical/
+backend/uploads/medical2026/
+backend/uploads/rate-limit/
 .nitro/
 
 # Logs
 *.log
 logs/
+
+# Build / test artefacts (ne pas versionner)
+*.phar
+*.tmp
+.phpunit.result.cache
+backend/.phpunit.result.cache
+CHECKFACTFONCTION/
+
+# Cursor local plans (ne pas versionner le clone)
+.cursor/plans/
 
 # IDE
 .idea/

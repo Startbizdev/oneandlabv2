@@ -1526,7 +1526,7 @@ watch(
 let appointmentCounterInitialized = false;
 watch(() => user.value?.role, (role) => {
   if (['nurse', 'pro'].includes(role ?? '')) {
-    void fetchModuleFlags();
+    void fetchModuleFlags().catch(() => {});
   }
 }, { immediate: true });
 
@@ -1581,7 +1581,7 @@ onMounted(async () => {
   // Rafraîchir l'utilisateur pour avoir la photo de profil à jour dans le header (profile_image_url)
   await fetchCurrentUser();
   if (['nurse', 'pro'].includes(user.value?.role ?? '')) {
-    void fetchModuleFlags();
+    void fetchModuleFlags().catch(() => {});
   }
   // Charger les notifications immédiatement
   const res = await apiFetch('/notifications?limit=10', { method: 'GET' })

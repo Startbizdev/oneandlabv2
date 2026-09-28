@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
+import { waitForHydration } from './helpers/wait-for-nuxt-ready';
 
 test('laboratory: current subscription opens management instead of a second checkout', async ({ page }) => {
   const user = { id: 'fixture-lab', role: 'lab', first_name: 'Camille', last_name: 'Exemple' };
@@ -9,7 +11,7 @@ test('laboratory: current subscription opens management instead of a second chec
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ lab: true }));
   }, user);
   let checkoutRequests = 0;
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     const url = new URL(route.request().url());
     let data: unknown = [];
     if (url.pathname.includes('/auth/me')) data = user;
@@ -32,7 +34,7 @@ test('laboratory: current subscription opens management instead of a second chec
 test('laboratory: public pricing keeps a free entry without starting billing', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 900 });
   let checkouts = 0;
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     if (route.request().url().includes('create-checkout-session')) checkouts++;
     return route.fulfill({ json: { success: true, data: [] } });
   });
@@ -56,7 +58,7 @@ for (const role of ['nurse', 'lab']) {
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ [user.role]: true }));
     }, user);
     let fail = true, checkouts = 0;
-    await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => {
+    await page.route(apiRoutePattern(), route => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
       if (path.endsWith('/stripe/subscription')) return route.fulfill({ json: { success: !fail, data: { id: 'fixture-sub', plan_slug: role === 'nurse' ? 'nurse_pro' : 'lab_pro', status: 'incomplete', current_period_end: '2026-10-15' } } });
@@ -86,7 +88,7 @@ for (const role of ['nurse', 'lab']) {
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ [user.role]: true }));
     }, user);
     let checkouts = 0;
-    await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => {
+    await page.route(apiRoutePattern(), route => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
       if (path.endsWith('/stripe/subscription')) return route.fulfill({ json: { success: true, data: { id: 'fixture-sub', plan_slug: role === 'nurse' ? 'nurse_pro' : 'lab_pro', status: 'active' } } });
@@ -94,6 +96,7 @@ for (const role of ['nurse', 'lab']) {
       return route.fulfill({ json: { success: true, data: [] } });
     });
     await page.goto(`/pour-les-${role === 'nurse' ? 'infirmiers' : 'laboratoires'}/tarifs`);
+    await waitForHydration(page);
     await page.getByRole('button', { name: 'Choisir Pro', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/${role}/abonnement$`));
     await expect(page.getByRole('heading', { name: 'Votre abonnement', exact: true })).toBeVisible();
@@ -113,7 +116,7 @@ for (const [source, label, target] of [
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
     }, user);
     let portals = 0;
-    await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => {
+    await page.route(apiRoutePattern(), route => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
       if (path.endsWith('/stripe/subscription')) return route.fulfill({ json: { success: true, data: { id: 'fixture-sub', plan_slug: 'nurse_pro', status: 'active', billing_source: source } } });

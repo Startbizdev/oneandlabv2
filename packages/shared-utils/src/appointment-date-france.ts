@@ -1,7 +1,25 @@
+/** Single wall-clock formatter for France (booking + calendar + MySQL DATETIME). */
+export const PARIS_TIME_ZONE = 'Europe/Paris';
+
 const parisClock = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+  timeZone: PARIS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
+
+export function parisWallClockPartValues(at: number): {
+  year: string; month: string; day: string; hour: string; minute: string; second: string;
+} {
+  const parts = parisClock.formatToParts(new Date(at));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value;
+  return {
+    year: part('year'),
+    month: part('month'),
+    day: part('day'),
+    hour: part('hour'),
+    minute: part('minute'),
+    second: part('second'),
+  };
+}
 
 /** Resolve a France wall clock independently of the device timezone. Invalid DST gaps stay invalid. */
 export function parisWallClockDate(year: number, month: number, day: number, hour = 0, minute = 0, second = 0, millisecond = 0): Date {
@@ -40,7 +58,7 @@ export function appointmentDayFrance(value: string | Date | null | undefined): s
 export function appointmentTimeFrance(value: string | Date | null | undefined): string {
   const date = value instanceof Date ? value : parseAppointmentDateFrance(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  return date.toLocaleTimeString('fr-FR', { timeZone: PARIS_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 }
 
 /** Clé jour calendrier (YYYY-MM-DD), alignée sur le jour civil France des DATETIME MySQL. */

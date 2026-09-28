@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 async function signIn(page: Page) {
   const user = { id: 'fixture-admin', role: 'super_admin', first_name: 'Camille', last_name: 'Exemple' };
@@ -7,7 +8,7 @@ async function signIn(page: Page) {
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ super_admin: true }));
   }, user);
-  await page.route('**/api/**', route => route.fulfill({ json: { success: true, user, data: new URL(route.request().url()).pathname.endsWith('/auth/me') ? user : [] } }));
+  await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, user, data: new URL(route.request().url()).pathname.endsWith('/auth/me') ? user : [] } }));
 }
 
 test('users search: superseded responses cannot replace current results', async ({ page }) => {

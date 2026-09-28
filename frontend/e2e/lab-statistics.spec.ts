@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 for (const width of [360, 1440]) {
   test(`lab statistics: unavailable data, retry and complete appointment details at ${width}px`, async ({ page }) => {
@@ -12,7 +13,7 @@ for (const width of [360, 1440]) {
       localStorage.setItem('auth_user', JSON.stringify(user));
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ lab: true }));
     }, user);
-    await page.route('**/api/**', route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
+    await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
     let failed = true;
     await page.route('**/api/lab/stats', route => route.fulfill({ json: { success: !failed, data: {
       isLabView: true,

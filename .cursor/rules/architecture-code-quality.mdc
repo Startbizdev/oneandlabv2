@@ -1,0 +1,60 @@
+---
+description: Architecture, sécurité, base de données, erreurs, performance, tests et critères de fin de tâche
+alwaysApply: true
+---
+
+# Architecture & Code Quality
+
+Before modifying code:
+
+1. Inspect the existing implementation, related modules, types, utilities, services and tests.
+2. Reuse existing architecture and abstractions; do not create duplicate helpers, services, hooks, components, schemas or business rules.
+3. Prefer the smallest correct change. Do not refactor unrelated code unless strictly required.
+4. Do not introduce a new architectural pattern when an existing project pattern solves the problem.
+
+## Architecture
+
+- Keep business logic outside UI components; keep database access centralized (backend `lib/` services and `models/`).
+- Do not duplicate business rules across API endpoints, frontend and mobile (share via `packages/` when relevant).
+- Preserve clear boundaries between UI, application logic, domain logic and persistence. Avoid circular dependencies, giant modules and giant components.
+- Do not create abstractions without a concrete architectural reason.
+
+## Database
+
+- Avoid N+1 queries; never query inside large loops when batching is possible.
+- Select only required columns when rows may be large.
+- Use transactions for atomic multi-step operations.
+- Preserve existing data in migrations; never make destructive schema changes without explicitly identifying the risk.
+
+## Security
+
+- Authentication is not authorization: validate permissions and resource ownership server-side for every privileged action.
+- Never trust IDs, roles, prices, permissions or state coming from the client; validate external inputs server-side.
+- Default to fail-closed for authorization and sensitive business operations.
+- Never expose secrets or privileged data to the frontend or mobile app.
+
+## Error handling
+
+- Do not swallow errors or use silent fallbacks that hide invalid states (`catch { return null }` only if null is a valid business outcome).
+- Preserve useful error context and follow the existing logging strategy.
+
+## Performance
+
+- Do not optimize blindly: identify the actual expensive operation and confirm the gain first.
+- Avoid unnecessary memoization, caching, premature parallelization, repeated fetching and loading huge objects.
+
+## Dependencies
+
+- Do not add a package when the project already provides the functionality, or for trivial functionality.
+- Verify API compatibility with the installed versions.
+
+## Tests
+
+- Never delete, weaken or rewrite a failing test to make the suite pass; fix the implementation first.
+- Add tests for regressions and important business rules. Test observable behavior; mock only external boundaries.
+
+## Completion
+
+Before declaring a task complete: check duplication, TypeScript/PHP errors, lint, relevant tests, callers of changed APIs, authorization, loading/error/empty states, backward compatibility, and that no unrelated functionality was removed.
+
+Never claim "complete" if tests/build/typecheck were not actually run.

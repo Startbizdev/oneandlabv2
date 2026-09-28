@@ -22,12 +22,20 @@ if (file_exists($envFile) && !isset($_ENV['DB_HOST'])) {
     }
 }
 
+$dbEnv = static function (string $key, $default) {
+    if (isset($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+    $value = getenv($key);
+    return $value !== false ? $value : $default;
+};
+
 return [
-    'host' => $_ENV['DB_HOST'] ?? 'localhost',
-    'port' => $_ENV['DB_PORT'] ?? 3306,
-    'database' => $_ENV['DB_NAME'] ?? 'oneandlab',
-    'username' => $_ENV['DB_USER'] ?? 'root',
-    'password' => $_ENV['DB_PASS'] ?? '',
+    'host' => $dbEnv('DB_HOST', 'localhost'),
+    'port' => $dbEnv('DB_PORT', 3306),
+    'database' => $dbEnv('DB_NAME', 'oneandlab'),
+    'username' => $dbEnv('DB_USER', 'root'),
+    'password' => $dbEnv('DB_PASS', ''),
     'charset' => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'options' => [

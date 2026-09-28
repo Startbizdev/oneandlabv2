@@ -4,59 +4,52 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
+require_once __DIR__ . '/../fixtures/SkipsWithoutPdo.php';
+require_once __DIR__ . '/../TestDatabase.php';
+require_once __DIR__ . '/../fixtures/TestFixtures.php';
 require_once __DIR__ . '/../../models/User.php';
 
 /**
- * Tests unitaires légers sur le périmètre d'édition patient staff.
- * Nécessite une base locale configurée (sinon skipped).
+ * Périmètre d'édition patient staff (fixtures Docker).
  */
 final class StaffPatientEditAccessTest extends TestCase
 {
-    private ?PDO $db = null;
-    private ?User $userModel = null;
+    use SkipsWithoutPdo;
+
+    private PDO $db;
+    private User $userModel;
 
     protected function setUp(): void
     {
-        try {
-            $config = require __DIR__ . '/../../config/database.php';
-            $this->db = new PDO(
-                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']),
-                $config['username'],
-                $config['password'],
-                $config['options'] ?? []
-            );
-            $this->userModel = new User();
-        } catch (Throwable $e) {
-            $this->markTestSkipped('DB unavailable: ' . $e->getMessage());
+        parent::setUp();
+        if (!TestDatabase::isConfigured()) {
+            $this->markTestSkipped('TEST_DATABASE_DSN');
         }
+        $this->db = TestDatabase::pdo();
+        $this->userModel = new User($this->db);
     }
 
     public function testCanStaffEditPatientProfileRejectsNonPatientTarget(): void
     {
-        $stmt = $this->db->query("SELECT id FROM profiles WHERE role = 'pro' LIMIT 1");
-        $proId = (string) ($stmt->fetchColumn() ?: '');
-        if ($proId === '') {
-            $this->markTestSkipped('No pro profile');
-        }
-        $this->assertFalse($this->userModel->canStaffEditPatientProfile($proId, 'pro', $proId));
+        $this->assertFalse(
+            $this->userModel->canStaffEditPatientProfile(TestFixtures::PRO, 'pro', TestFixtures::PRO)
+        );
     }
 
     public function testVisiblePatientInStaffListIsEditable(): void
     {
-        $proStmt = $this->db->query("SELECT id FROM profiles WHERE role = 'pro' LIMIT 1");
-        $proId = (string) ($proStmt->fetchColumn() ?: '');
-        if ($proId === '') {
-            $this->markTestSkipped('No pro profile');
+        $proId = TestFixtures::PRO;
+        $patientId = TestFixtures::PATIENT_A;
+
+        if ($this->db->query("SHOW TABLES LIKE 'patient_professional_access'")->fetch()) {
+            $id = sprintf('00000000-0000-4000-8000-%012x', random_int(0, 0xffffffff));
+            $stmt = $this->db->prepare(
+                'INSERT IGNORE INTO patient_professional_access (id, patient_id, professional_id, source, appointment_id, created_at)
+                 VALUES (?, ?, ?, ?, NULL, NOW())'
+            );
+            $stmt->execute([$id, $patientId, $proId, 'manual_link']);
         }
 
-        $filters = ['role' => 'patient', 'created_by' => $proId];
-        $listed = $this->userModel->getAll($filters, 1, 5, $proId, 'pro');
-        $rows = $listed['data'] ?? [];
-        if ($rows === []) {
-            $this->markTestSkipped('No patient for pro');
-        }
-
-        $patientId = (string) ($rows[0]['id'] ?? '');
         $this->assertTrue($this->userModel->isPatientVisibleInStaffList($proId, 'pro', $patientId));
         $this->assertTrue($this->userModel->canStaffEditPatientProfile($proId, 'pro', $patientId));
     }

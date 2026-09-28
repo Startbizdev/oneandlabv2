@@ -306,7 +306,6 @@ const thumbFetchInFlight = ref<Set<string>>(new Set());
 
 /** Rafraîchissement discret pour approcher le temps réel sans surcharger l’API. */
 const POLL_MS = 8_000;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const unreadByDoc = ref<Record<string, number>>({});
 const commentCountHint = ref<Record<string, string>>({});
@@ -391,7 +390,7 @@ function applyPollPayload(data: {
 
 async function pollCarePhotoThreads() {
   const aid = aptIdPrimary.value;
-  if (!aid || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
+  if (!aid) return;
   try {
     const res = await apiFetch(`/appointments/${encodeURIComponent(aid)}/care-photos`, { method: 'GET' });
     if (!res?.success || !res.data) return;
@@ -401,19 +400,10 @@ async function pollCarePhotoThreads() {
   }
 }
 
-function startPolling() {
-  stopPolling();
-  void pollCarePhotoThreads();
-  if (typeof window === 'undefined') return;
-  pollTimer = setInterval(() => void pollCarePhotoThreads(), POLL_MS);
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
+const {
+  start: startPolling,
+  stop: stopPolling,
+} = usePolling(pollCarePhotoThreads, POLL_MS);
 
 function openCareDiscussion(doc: any) {
   if (!doc?.id || !aptIdPrimary.value) return;

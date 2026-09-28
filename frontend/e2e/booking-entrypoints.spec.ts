@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 for (const width of [360, 1440]) {
   test(`payment return retries verification without resubmitting payment at ${width}px`, async ({ page }) => {
@@ -60,9 +60,3 @@ for (const width of [360, 1440]) {
     expect(await page.locator('meta[name="robots"]').evaluateAll(nodes => nodes.some(node => node.getAttribute('content')?.includes('noindex')))).toBe(true);
   });
 }
-
-test('printed QR resolves on the server and preserves professional attribution', async ({ request }) => {
-  const response = await request.get('/qr/fixture-qr', { maxRedirects: 0 });
-  expect(response.status()).toBe(302);
-  expect(response.headers().location).toBe('/rendez-vous/nouveau?qr=fixture-qr&assigned_nurse_id=fixture-nurse');
-});

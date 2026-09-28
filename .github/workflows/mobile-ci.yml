@@ -45,3 +45,6 @@ jobs:
 
       - name: ESLint
         run: npm run lint -- --max-warnings 9999
+
+      - name: Unit scripts
+        run: npm run test

@@ -1,0 +1,11 @@
+{
+    "role": "super_admin",
+    "scope": "list",
+    "light": true,
+    "calendar": false,
+    "patient_period": null,
+    "param_count": 0,
+    "has_order": true,
+    "total": "n",
+    "select_has_relative": true
+}

@@ -37,7 +37,7 @@ class Auth
         $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         $this->logger = new Logger();
 
-        $this->jwtSecret = $_ENV['JWT_SECRET'] ?? '';
+        $this->jwtSecret = $_ENV['JWT_SECRET'] ?? (getenv('JWT_SECRET') ?: '');
         if (empty($this->jwtSecret)) {
             throw new Exception('JWT_SECRET non configuré');
         }

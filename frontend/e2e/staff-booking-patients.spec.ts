@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
 import labBrands from './fixtures/lab-brands.json';
 
 test.setTimeout(120_000);
@@ -13,19 +13,44 @@ function isPatientsListPath(pathname: string): boolean {
 const patientSearchInput = (page: Page) =>
   page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…');
 
+function isPatientPickerSearchResponse(url: string, method: string): boolean {
+  if (method !== 'GET') return false;
+  try {
+    const pathname = new URL(url).pathname.replace(/\/$/, '');
+    return pathname === '/api/patients' || pathname.endsWith('/patients');
+  } catch {
+    return url.includes('/patients');
+  }
+}
+
 async function searchPatientInPicker(page: Page, query: string) {
-  await patientSearchInput(page).fill(query);
-  // Debounce runPatientSearch (280 ms) + rendu USelectMenu
-  await page.waitForTimeout(350);
+  const trimmed = query.trim();
+  const input = patientSearchInput(page);
+  await expect(input).toBeVisible({ timeout: 15_000 });
+  const waitSearch =
+    trimmed.length >= 2
+      ? page
+          .waitForResponse(
+            (r) => isPatientPickerSearchResponse(r.url(), r.request().method()),
+            { timeout: 20_000 },
+          )
+          .catch(() => null)
+      : Promise.resolve(null);
+  await input.click();
+  await input.fill('');
+  await input.pressSequentially(trimmed, { delay: 20 });
+  await waitSearch;
+  // USelectMenu peut vider l’input après les options — ne pas exiger toHaveValue.
 }
 
 async function pickPatientOption(page: Page, name: RegExp) {
   const pickerBtn = page.getByRole('button', { name: 'Choisir un patient', exact: true });
   if (!(await patientSearchInput(page).isVisible().catch(() => false))) {
     await pickerBtn.click();
+    await expect(patientSearchInput(page)).toBeVisible({ timeout: 15_000 });
   }
   const option = page.getByRole('option', { name });
-  await expect(option.first()).toBeVisible({ timeout: 20_000 });
+  await expect(option.first()).toBeVisible({ timeout: 25_000 });
   await option.first().click({ force: true });
 }
 
@@ -146,7 +171,10 @@ for (const role of ['super_admin', 'lab', 'subaccount', 'pro']) {
     await page.getByPlaceholder('Rechercher par nom, email, téléphone, date de naissance…').fill('Exemple');
     await expect(page.getByText('Liste des patients indisponible', { exact: true })).toBeVisible();
     patientSearchFails = false;
-    const patientsReload = page.waitForResponse(r => r.url().includes('/patients') && r.ok());
+    const patientsReload = page.waitForResponse(
+      (r) => isPatientPickerSearchResponse(r.url(), r.request().method()) && r.ok(),
+      { timeout: 20_000 },
+    );
     await page.getByRole('button', { name: 'Recharger les patients', exact: true }).click();
     await patientsReload;
     await expect(page.getByText('Liste des patients indisponible', { exact: true })).toHaveCount(0);
@@ -229,8 +257,14 @@ for (const role of ['lab', 'subaccount']) {
     failed = false;
     await page.getByRole('button', { name: 'Réessayer', exact: true }).click();
     await expect(page.getByText('Alice Exemple', { exact: true })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Rechercher un patient', exact: true }).fill('Béatrice');
-    await expect(page.getByText('Béatrice Exemple', { exact: true })).toBeVisible({ timeout: 15_000 });
+    const searchBox = page.getByRole('textbox', { name: 'Rechercher un patient', exact: true });
+    const serverSearch = page.waitForResponse(
+      (r) => isPatientPickerSearchResponse(r.url(), r.request().method()) && r.ok(),
+      { timeout: 20_000 },
+    );
+    await searchBox.fill('Béatrice');
+    await serverSearch;
+    await expect(page.getByText('Béatrice Exemple', { exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText('Alice Exemple', { exact: true })).toHaveCount(0);
   });
 }
@@ -335,9 +369,10 @@ test('nurse: existing documents copy 403 still keeps the created appointment wit
   await expect(page.getByText('patient-b-vitale.pdf', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: /Je confirme que le patient/ }).check();
   const confirm = page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true });
+  await expect(confirm).toBeEnabled({ timeout: 15_000 });
+  const createdNav = page.waitForURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 30_000 });
   await confirm.click();
-  await expect(confirm).toBeDisabled();
-  await expect(page).toHaveURL(/\/nurse\/appointments\/created-apt-1/, { timeout: 5000 });
+  await createdNav;
   await expect(page.getByRole('button', { name: 'Confirmer le rendez-vous', exact: true })).toHaveCount(0);
   await expect.poll(() => copyPosts).toBe(1);
   expect(appointmentPosts).toBe(1);

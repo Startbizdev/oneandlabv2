@@ -1,0 +1,11 @@
+{
+    "role": "lab",
+    "scope": "full",
+    "light": false,
+    "calendar": false,
+    "patient_period": null,
+    "param_count": 6,
+    "has_order": true,
+    "total": "n",
+    "select_has_relative": true
+}

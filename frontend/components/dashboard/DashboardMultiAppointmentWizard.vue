@@ -517,6 +517,7 @@ import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/util
 import { runWithBookingCelebrationOverlay } from '~/composables/useBookingCelebrationOverlay';
 import { bookingDbg, celebrationRotateIconsFromServices } from '~/utils/booking-celebration-debug';
 import { searchPatientsPicker } from '~/utils/fetch-all-patients';
+import { usePatientPicker } from '~/composables/usePatientPicker';
 import { fetchAllUsers } from '~/utils/fetch-all-users';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot';
 import { isBloodTestAppointment, isNursingAppointment } from '~/utils/appointment-type-rules';
@@ -929,11 +930,17 @@ async function loadLabsAndNursesForAdminDashboard() {
   }
 }
 
-const patients = ref<any[]>([]);
-const patientsLoading = ref(false);
-const patientsError = ref(false);
-const patientSearchTerm = ref('');
-let patientSearchTimer: ReturnType<typeof setTimeout> | null = null;
+const {
+  patients,
+  patientsLoading,
+  patientsError,
+  patientSearchTerm,
+  loadPatients,
+  resetPatientPickerList,
+} = usePatientPicker({
+  searchPatients: (q) => searchPatientsPicker(apiFetch, q, 40),
+  canSearch: () => !!user.value?.id,
+});
 const patientProfileError = ref(false);
 let patientProfileVersion = 0;
 const patientProfileLoading = ref(false);
@@ -1355,37 +1362,6 @@ async function loadCareCategories() {
   }
 }
 
-async function runPatientSearch(term: string) {
-  if (!user.value?.id) return;
-  const q = term.trim();
-  if (q.length < 2) {
-    patients.value = [];
-    patientsError.value = false;
-    return;
-  }
-  patientsLoading.value = true;
-  patientsError.value = false;
-  try {
-    patients.value = await searchPatientsPicker(apiFetch, q, 40);
-  } catch {
-    patients.value = [];
-    patientsError.value = true;
-  } finally {
-    patientsLoading.value = false;
-  }
-}
-
-async function loadPatients() {
-  await runPatientSearch(patientSearchTerm.value);
-}
-
-watch(patientSearchTerm, (term) => {
-  if (patientSearchTimer) clearTimeout(patientSearchTimer);
-  patientSearchTimer = setTimeout(() => {
-    void runPatientSearch(term);
-  }, 280);
-});
-
 async function applyPatientToForm(p: any, version?: number) {
   if (!p) return;
   const addr = await resolvePatientAddressForRdvForm(p?.address);
@@ -1519,7 +1495,6 @@ onUnmounted(() => {
   patientProfileVersion++;
   linkedNursesVersion++;
   clearPatientContactLookupTimer();
-  if (patientSearchTimer) clearTimeout(patientSearchTimer);
 });
 
 function mergeQuickServiceIntoBooking(payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) {
@@ -1554,8 +1529,7 @@ function removeServiceFromCareSelection(serviceId: string) {
 
 async function goToStaffFormStep() {
   step.value = staffFormWizardStep.value;
-  patients.value = [];
-  patientsError.value = false;
+  resetPatientPickerList();
   if (isAdminDashboard.value) {
     await loadLabsAndNursesForAdminDashboard();
   }

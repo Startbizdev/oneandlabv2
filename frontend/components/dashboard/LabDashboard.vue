@@ -71,6 +71,13 @@
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
+import {
+  parisTodayYmd,
+  filterAppointmentsOnParisDay,
+  filterPendingUnassignedLabAppointments,
+  buildLabDashboardTodayFetchParams,
+  buildLabDashboardPendingFetchParams,
+} from '~/composables/useAppointmentsList';
 
 type DashboardMode = 'lab' | 'subaccount';
 
@@ -221,15 +228,12 @@ const quickLinks = computed(() => {
   return links;
 });
 
-const todayAppointments = computed(() => {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
-  return appointments.value
-    .filter((a) => a.scheduled_at?.startsWith(today))
-    .sort((a, b) => (a.scheduled_at || '').localeCompare(b.scheduled_at || ''));
-});
+const todayAppointments = computed(() =>
+  filterAppointmentsOnParisDay(appointments.value, parisTodayYmd()),
+);
 
 const pendingAppointments = computed(() =>
-  pendingRows.value.filter((a) => a.status === 'pending' && a.assigned_lab_id == null)
+  filterPendingUnassignedLabAppointments(pendingRows.value),
 );
 
 async function fetchLabStats() {
@@ -270,14 +274,10 @@ onMounted(() => {
 });
 
 const refresh = async () => {
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
-  const listFilters = { scope: 'list' as const };
+  const today = parisTodayYmd();
   await Promise.all([
-    fetchAppointments(
-      { ...listFilters, date_from: `${today} 00:00:00`, date_to: `${today} 23:59:59` },
-      { allPages: true },
-    ),
-    fetchPending({ ...listFilters, status: 'pending' }, { allPages: true }),
+    fetchAppointments(buildLabDashboardTodayFetchParams(today), { allPages: true }),
+    fetchPending(buildLabDashboardPendingFetchParams(), { allPages: true }),
     fetchLabStats(),
   ]);
 };

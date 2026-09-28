@@ -1,0 +1,11 @@
+{
+    "role": "patient",
+    "scope": "full",
+    "light": false,
+    "calendar": false,
+    "patient_period": "upcoming",
+    "param_count": 8,
+    "has_order": true,
+    "total": "n",
+    "select_has_relative": true
+}

@@ -831,7 +831,6 @@ function scrollToAvisSection() {
 
 const APPOINTMENT_POLL_MS_ACTIVE = 6000;
 const APPOINTMENT_POLL_MS_QUIET = 30_000;
-let appointmentPollTimer: ReturnType<typeof setInterval> | null = null;
 let silentAppointmentRefreshInFlight = false;
 
 function currentAppointmentPollIntervalMs(): number {
@@ -840,13 +839,6 @@ function currentAppointmentPollIntervalMs(): number {
   const terminal = new Set(['canceled', 'cancelled', 'completed', 'refused', 'expired']);
   const anyActive = list.some((a: any) => !terminal.has(String(a.status || '')));
   return anyActive ? APPOINTMENT_POLL_MS_ACTIVE : APPOINTMENT_POLL_MS_QUIET;
-}
-
-function stopAppointmentPolling() {
-  if (appointmentPollTimer != null) {
-    clearInterval(appointmentPollTimer);
-    appointmentPollTimer = null;
-  }
 }
 
 async function refreshAppointmentSilently() {
@@ -861,20 +853,16 @@ async function refreshAppointmentSilently() {
   }
 }
 
-function startAppointmentPolling() {
-  stopAppointmentPolling();
-  appointmentPollTimer = setInterval(() => {
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    if (canceling.value) return;
-    void refreshAppointmentSilently();
-  }, currentAppointmentPollIntervalMs());
-}
-
-function onAppointmentDetailVisibility() {
-  if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
-  if (canceling.value) return;
-  void refreshAppointmentSilently();
-}
+const {
+  start: startAppointmentPolling,
+  stop: stopAppointmentPolling,
+} = usePolling(
+  async () => {
+    await refreshAppointmentSilently();
+  },
+  currentAppointmentPollIntervalMs,
+  { shouldSkip: () => canceling.value },
+);
 
 function onAppointmentDetailWindowFocus() {
   if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
@@ -894,8 +882,7 @@ onMounted(() => {
   preleveurBannerInterval = setInterval(() => {
     preleveurBannerNow.value = Date.now();
   }, 15000);
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', onAppointmentDetailVisibility);
+  if (typeof window !== 'undefined') {
     window.addEventListener('focus', onAppointmentDetailWindowFocus);
   }
 });
@@ -906,8 +893,7 @@ onUnmounted(() => {
     clearInterval(preleveurBannerInterval);
     preleveurBannerInterval = null;
   }
-  if (typeof document !== 'undefined') {
-    document.removeEventListener('visibilitychange', onAppointmentDetailVisibility);
+  if (typeof window !== 'undefined') {
     window.removeEventListener('focus', onAppointmentDetailWindowFocus);
   }
 });
@@ -916,6 +902,7 @@ watch(
   () => batchAppointmentsSorted.value.map((a: any) => String(a?.status ?? '')).join(','),
   () => {
     if (typeof document === 'undefined') return;
+    stopAppointmentPolling();
     startAppointmentPolling();
   },
 );

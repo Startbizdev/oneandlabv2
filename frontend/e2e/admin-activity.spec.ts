@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 for (const width of [360, 1440]) {
   test(`admin activity details and API retry at ${width}px`, async ({ page }) => {

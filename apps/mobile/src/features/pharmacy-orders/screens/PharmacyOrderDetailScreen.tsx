@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, MessageCircle, Send, WifiOff } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
@@ -25,6 +26,8 @@ import { Input } from '@/components/ui/Input';
 import { Row } from '@/components/layout/primitives';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { queryKeys } from '@/lib/query-keys';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
+import { useAppActive } from '@/lib/hooks/use-app-active';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { fetchUser } from '@/features/profile/api/profile.service';
@@ -61,6 +64,8 @@ interface Props {
 
 export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
+  const focused = useIsFocused();
+  const appActive = useAppActive();
   const orderId = String(id ?? '');
   const router = useRouter();
   const c = useAppColors();
@@ -83,6 +88,8 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       return res.data;
     },
     enabled: !!orderId,
+    refetchInterval: focusedRefetchInterval(15000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const messagesQ = useQuery({
@@ -93,7 +100,8 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       return res.data;
     },
     enabled: !!orderId,
-    refetchInterval: 15000,
+    refetchInterval: focusedRefetchInterval(15000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const patientQ = useQuery({

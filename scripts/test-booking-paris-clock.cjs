@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
 function compile(relative,deps={}){const file=path.resolve(__dirname,'..',relative);const m=new Module(file);m.require=n=>deps[n]??require(n);m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText,file);return m.exports;}
-const clock=compile('packages/shared-utils/src/booking-paris-clock.ts');
+const france=compile('packages/shared-utils/src/appointment-date-france.ts');
+const clock=compile('packages/shared-utils/src/booking-paris-clock.ts',{'./appointment-date-france':france});
 const limits=compile('packages/shared-constants/src/availability.ts');
 assert.equal(limits.AVAILABILITY_MAX_HOUR_BLOOD_TEST,17);
 assert.equal(limits.AVAILABILITY_MAX_HOUR_NURSING,22);

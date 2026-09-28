@@ -1,10 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 for (const width of [360, 768]) {
   test(`public menu: focus, scroll, navigation and resize at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 640 });
-    await page.route('**/api/**', route => route.fulfill({ json: { success: true, data: [] } }));
+    await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, data: [] } }));
     await page.goto('/');
     await waitForNuxtReady(page);
     const trigger = page.getByRole('button', { name: 'Ouvrir le menu', exact: true });

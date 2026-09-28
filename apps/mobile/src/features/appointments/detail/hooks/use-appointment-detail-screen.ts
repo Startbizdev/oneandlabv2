@@ -1,10 +1,13 @@
 import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { queryKeys } from '@/lib/query-keys';
 import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAuthStore } from '@/store/auth-store';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
 import { useAppointmentDetail } from '../../hooks/use-appointment-detail';
 import {
@@ -44,6 +47,8 @@ export function useAppointmentDetailScreen(
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const config = getAppointmentDetailRoleConfig(role);
+  const focused = useIsFocused();
+  const appActive = useAppActive();
 
   const detailQ = useAppointmentDetail(id);
   const detailBlock = appointmentDetailBlockReason(detailQ.data);
@@ -210,14 +215,18 @@ export function useAppointmentDetailScreen(
     return createElement(RdvDetailNavTitle, { title, status });
   }, [primary, batchSorted.length, role, viewerId]);
 
-  useEffect(() => {
-    if (!config.enablePolling || !id) return;
+  const pollEvery = useMemo(() => {
+    if (!config.enablePolling || !id) return false;
     const terminal = new Set(['canceled', 'cancelled', 'completed', 'refused', 'expired']);
     const anyActive = batchSorted.some((a) => !terminal.has(String(a.status ?? '')));
-    const ms = anyActive ? POLL_ACTIVE_MS : POLL_QUIET_MS;
-    const t = setInterval(() => refreshAll(), ms);
+    return focusedRefetchInterval(anyActive ? POLL_ACTIVE_MS : POLL_QUIET_MS, focused, appActive);
+  }, [config.enablePolling, id, batchSorted, focused, appActive]);
+
+  useEffect(() => {
+    if (pollEvery === false) return;
+    const t = setInterval(() => refreshAll(), pollEvery);
     return () => clearInterval(t);
-  }, [config.enablePolling, id, batchSorted, refreshAll]);
+  }, [pollEvery, refreshAll]);
 
   return {
     role,

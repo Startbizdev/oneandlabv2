@@ -1,4 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
+import { waitForHydration } from './helpers/wait-for-nuxt-ready';
 import { maxVertexDistanceKm } from '@oneandlab/shared-utils';
 
 async function signIn(page: Page) {
@@ -8,7 +10,7 @@ async function signIn(page: Page) {
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ super_admin: true }));
   }, user);
-  await page.route('**/api/**', route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
+  await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
 }
 
 for (const width of [360, 1440]) {
@@ -71,6 +73,7 @@ test('coverage: choose an infirmier beyond the first page and retry a failed pro
     id: 'fixture-last', address: { label: 'Adresse fictive, Paris', lat: 48.85, lng: 2.35 },
   } } }));
   await page.goto('/admin/coverage');
+  await waitForHydration(page);
   await page.getByRole('button', { name: 'Créer une zone', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Choisir un infirmier' }).click();
@@ -116,6 +119,7 @@ test('dispatch: late search cannot replace the current results', async ({ page }
   });
   await page.goto('/admin/dispatch');
   const search = page.getByRole('textbox', { name: 'Rechercher une attribution' });
+  await waitForHydration(page);
   await search.fill('Ancien');
   await expect.poll(() => oldStarted).toBe(true);
   await search.fill('Actuel');

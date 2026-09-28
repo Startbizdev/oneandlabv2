@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 test.describe.configure({ mode: 'serial' });
@@ -27,7 +28,7 @@ for (const [role, routes] of Object.entries(pages)) {
       }, user);
       const errors: string[] = [];
       page.on('pageerror', error => errors.push(error.message));
-      await page.route('**/api/**', route => {
+      await page.route(apiRoutePattern(), route => {
         const auth = route.request().url().includes('/auth/me');
         return route.fulfill({ json: auth ? { success: true, user, data: user } : { success: false, error: 'Service temporairement indisponible' } });
       });

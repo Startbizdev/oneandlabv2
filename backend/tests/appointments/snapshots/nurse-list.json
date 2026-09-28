@@ -1,0 +1,11 @@
+{
+    "role": "nurse",
+    "scope": "list",
+    "light": true,
+    "calendar": false,
+    "patient_period": null,
+    "param_count": 8,
+    "has_order": true,
+    "total": "n",
+    "select_has_relative": true
+}

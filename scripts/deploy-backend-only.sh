@@ -32,6 +32,7 @@ deploy_sync_dir \
   "$SSH_HOST:$REMOTE_BASE/backend/" \
   --exclude=vendor \
   --exclude=.env \
+  --exclude='.env.*' \
   --exclude=uploads \
   --exclude=scripts/migration \
   --exclude=scripts/test-*.php \

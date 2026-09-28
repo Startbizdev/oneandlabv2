@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 async function signIn(page: Page, role: string) {
   const user = { id: 'fixture-staff', role, first_name: 'Camille', last_name: 'Exemple' };
@@ -7,7 +8,7 @@ async function signIn(page: Page, role: string) {
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ [user.role]: true }));
   }, user);
-  await page.route('**/api/**', route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
+  await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
 }
 
 for (const failSecondPage of [false, true]) {
@@ -19,13 +20,13 @@ for (const failSecondPage of [false, true]) {
     const ranges: string[] = [];
     await page.route('**/api/appointments?**', route => {
       const params = new URL(route.request().url()).searchParams;
-      expect(params.get('limit')).toBe('50');
+      expect(params.get('limit')).toBe('250');
       const dateFrom = params.get('date_from') || '';
       ranges.push(dateFrom);
       const number = Number(params.get('page'));
       if (number === 2 && fail) return route.fulfill({ json: { success: false, error: 'Page indisponible' } });
       const prefix = dateFrom.slice(0, 7);
-      return route.fulfill({ json: { success: true, data: [{ id: `fixture-page-${number}`, type: 'nursing', status: 'confirmed', scheduled_at: `${prefix}-${number === 1 ? '15' : '16'} 08:30:00`, form_data: { first_name: 'Camille', last_name: `Exemple ${number}` } }], pagination: { page: number, limit: 50, pages: 2, total: 2, has_more: number === 1 } } });
+      return route.fulfill({ json: { success: true, data: [{ id: `fixture-page-${number}`, type: 'nursing', status: 'confirmed', scheduled_at: `${prefix}-${number === 1 ? '15' : '16'} 08:30:00`, form_data: { first_name: 'Camille', last_name: `Exemple ${number}` } }], pagination: { page: number, limit: 250, pages: 2, total: 2, has_more: number === 1 } } });
     });
     await page.goto('/admin/calendar');
     if (fail) {

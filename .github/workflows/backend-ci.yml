@@ -1,0 +1,60 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'database/**'
+      - 'docker-compose.test.yml'
+      - 'docker/php-test/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'database/**'
+      - 'docker-compose.test.yml'
+      - 'docker/php-test/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: oneandlab_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_NAME: oneandlab_test
+      DB_USER: root
+      DB_PASS: ""
+      TEST_DATABASE_DSN: "mysql:host=127.0.0.1;port=3306;dbname=oneandlab_test;charset=utf8mb4"
+      TEST_DATABASE_USER: root
+      TEST_DATABASE_PASS: ""
+      BACKEND_KEK_HEX: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      TEST_PATIENT_ID: "00000000-0000-4000-8000-00000000a001"
+      TEST_PATIENT_B_ID: "00000000-0000-4000-8000-00000000a002"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, gd
+          coverage: none
+      - run: sudo apt-get update && sudo apt-get install -y default-mysql-client
+      - run: composer install --no-interaction --prefer-dist
+      - run: php scripts/test-db-bootstrap.php
+      - run: vendor/bin/phpunit --testsuite All

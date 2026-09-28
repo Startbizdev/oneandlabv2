@@ -1,0 +1,44 @@
+# Base MySQL jetable + PHP 8.2 (pdo_mysql, gd) pour PHPUnit.
+# Usage : npm run test:backend
+services:
+  mysql-test:
+    image: mysql:8.4
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_HOST: "%"
+      TZ: Europe/Paris
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "127.0.0.1:13316:3306"
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  php-test:
+    build: ./docker/php-test
+    depends_on:
+      mysql-test:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    environment:
+      DB_HOST: mysql-test
+      DB_PORT: "3306"
+      DB_NAME: oneandlab_test
+      DB_USER: root
+      DB_PASS: ""
+      TEST_DATABASE_DSN: "mysql:host=mysql-test;port=3306;dbname=oneandlab_test;charset=utf8mb4"
+      TEST_DATABASE_USER: root
+      TEST_DATABASE_PASS: ""
+      # KEK de test uniquement (32 bytes hex) — jamais en prod
+      BACKEND_KEK_HEX: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      JWT_SECRET: "test-jwt-secret-oneandlab-docker-only-not-for-prod"
+      TEST_PATIENT_ID: "00000000-0000-4000-8000-00000000a001"
+      TEST_PATIENT_B_ID: "00000000-0000-4000-8000-00000000a002"
+      TZ: Europe/Paris
+    working_dir: /app/backend
+    command: ["sh", "-c", "composer install --no-interaction --prefer-dist -q && php scripts/test-db-bootstrap.php && vendor/bin/phpunit --testsuite All"]

@@ -6,6 +6,10 @@
 --   57231bd0b02f69facd2a19f406d8034baf88 — « Autre » (1 option + 1 préférence infirmier)
 --   070ef3d46e61ee15ee587c6db9ff68752244 — « Mon bilan prévention » (aucune référence fille)
 
+-- Les variables @old_* doivent avoir la collation des colonnes (sinon « Illegal mix of collations »
+-- sur un serveur dont la collation par défaut diffère, ex. MySQL 8 utf8mb4_0900_ai_ci).
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 START TRANSACTION;
 
 -- --- Autre : doublon avec nouvel UUID puis réassignation des FK, suppression de l’ancienne ligne ---

@@ -601,20 +601,15 @@ async function scrollToBottom() {
   el.scrollTop = el.scrollHeight;
 }
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-function stopPoll() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
+const {
+  start: startPollBase,
+  stop: stopPoll,
+} = usePolling(async () => {
+  if (open.value) await loadThread(true);
+}, 8000);
 
 function startPoll() {
-  stopPoll();
-  pollTimer = setInterval(() => {
-    if (open.value) void loadThread(true);
-  }, 8000);
+  startPollBase();
 }
 
 function formatShortDate(iso: string) {

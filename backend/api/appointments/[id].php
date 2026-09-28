@@ -4,8 +4,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
-require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/AppointmentCancellationPolicy.php';
+require_once __DIR__ . '/../../lib/appointments/bootstrap.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -17,70 +17,6 @@ if (in_array($origin, $corsConfig['allowed_origins'], true)) {
 header('Access-Control-Allow-Methods: GET, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 header('Access-Control-Allow-Credentials: true');
-
-/**
- * PATCH créneau passage infirmier (form_data + scheduled_at) — pas une refonte admin complète.
- */
-function appointment_is_schedule_only_patch(array $input): bool
-{
-    if (isset($input['address']) || isset($input['status']) || isset($input['category_id'])) {
-        return false;
-    }
-    foreach (array_keys($input) as $key) {
-        if (!in_array($key, ['form_data', 'scheduled_at'], true)) {
-            return false;
-        }
-    }
-
-    return isset($input['form_data']) || isset($input['scheduled_at']);
-}
-
-/** Reprise RDV par l’infirmier assigné (date, créneau, adresse, type de soin) — sans recréer ni annuler. */
-function appointment_is_nurse_reschedule_patch(array $input): bool
-{
-    if (isset($input['status']) || isset($input['assigned_nurse_id']) || isset($input['assigned_lab_id'])) {
-        return false;
-    }
-    $allowed = ['form_data', 'scheduled_at', 'address', 'category_id'];
-    foreach (array_keys($input) as $key) {
-        if (!in_array($key, $allowed, true)) {
-            return false;
-        }
-    }
-
-    return isset($input['form_data']) || isset($input['scheduled_at']) || isset($input['address']);
-}
-
-/** @deprecated alias */
-function appointment_is_nurse_passage_schedule_patch(array $input): bool
-{
-    return appointment_is_schedule_only_patch($input);
-}
-
-function appointment_patient_owns_pending(PDO $db, string $appointmentId, string $patientId): bool
-{
-    $stmt = $db->prepare("
-        SELECT id FROM appointments
-        WHERE id = ? AND patient_id = ? AND status = 'pending'
-        LIMIT 1
-    ");
-    $stmt->execute([$appointmentId, $patientId]);
-
-    return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
-}
-
-function appointment_nurse_assigned_to_nursing(PDO $db, string $appointmentId, string $nurseId): bool
-{
-    $stmt = $db->prepare("
-        SELECT id FROM appointments
-        WHERE id = ? AND type = 'nursing' AND assigned_nurse_id = ?
-          AND status IN ('confirmed', 'inProgress', 'planned', 'completed')
-        LIMIT 1
-    ");
-    $stmt->execute([$appointmentId, $nurseId]);
-
-    return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -122,37 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         );
         $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
         
-        try {
-            $hasMergedColumn = (bool) $db->query("
-                SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'appointments'
-                  AND COLUMN_NAME = 'merged_into_appointment_id'
-            ")->fetchColumn();
-        } catch (Throwable $e) {
-            $hasMergedColumn = false;
-        }
-        try {
-            $hasCreationBatchColumn = (bool) $db->query("
-                SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'appointments'
-                  AND COLUMN_NAME = 'creation_batch_id'
-            ")->fetchColumn();
-        } catch (Throwable $e) {
-            $hasCreationBatchColumn = false;
-        }
-        $mergedSelect = $hasMergedColumn ? ', merged_into_appointment_id' : '';
-        $creationBatchSelect = $hasCreationBatchColumn ? ', creation_batch_id' : '';
-        $stmt = $db->prepare("
-            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
-            FROM appointments
-            WHERE id = ?
-        ");
-        $stmt->execute([$id]);
-        $appointmentCheck = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$appointmentCheck) {
+        $accessContext = AppointmentDetailAccess::loadAccessContext($db, $id);
+        if ($accessContext === null) {
             http_response_code(404);
             echo json_encode([
                 'success' => false,
@@ -161,175 +68,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ]);
             exit;
         }
+        $id = $accessContext['id'];
+        $appointmentCheck = $accessContext['row'];
+        $hasCreationBatchColumn = $accessContext['has_creation_batch_column'];
+        $shareTokenGet = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
 
-        if (!empty($appointmentCheck['merged_into_appointment_id'])) {
-            $id = (string) $appointmentCheck['merged_into_appointment_id'];
-            $stmt->execute([$id]);
-            $appointmentCheck = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$appointmentCheck) {
-                http_response_code(404);
-                echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable', 'code' => 'NOT_FOUND']);
-                exit;
-            }
-        }
-        
-        // Vérifier les permissions d'accès de base
-        $hasAccess = (
-            $appointmentCheck['patient_id'] === $user['user_id'] ||
-            $appointmentCheck['assigned_nurse_id'] === $user['user_id'] ||
-            $appointmentCheck['assigned_lab_id'] === $user['user_id'] ||
-            (!empty($appointmentCheck['assigned_to']) && $appointmentCheck['assigned_to'] === $user['user_id']) ||
-            $appointmentCheck['created_by'] === $user['user_id'] ||
-            $user['role'] === 'super_admin'
+        $hasAccess = AppointmentDetailAccess::userHasDetailAccess(
+            $db,
+            $user,
+            $appointmentCheck,
+            $id,
+            $hasCreationBatchColumn,
+            $shareTokenGet !== '' ? $shareTokenGet : null
         );
-        
-        // Infirmier : pas d'accès aux blood_test créés par d'autres (seulement nursing ou blood_test créés par lui)
-        if ($user['role'] === 'nurse' && $appointmentCheck['type'] === 'blood_test' && $appointmentCheck['created_by'] !== $user['user_id']) {
-            $hasAccess = false;
-        }
-        
-        // Les préleveurs ne peuvent accéder qu'aux rendez-vous de type "blood_test".
-        if ($user['role'] === 'preleveur' && $appointmentCheck['type'] !== 'blood_test') {
-            $hasAccess = false;
-        }
 
-        if (!$hasAccess && $user['role'] === 'preleveur' && $appointmentCheck['type'] === 'blood_test') {
-            $prelLabStmt = $db->prepare("SELECT lab_id FROM profiles WHERE id = ? AND role = 'preleveur' LIMIT 1");
-            $prelLabStmt->execute([$user['user_id']]);
-            $prelLabId = (string) ($prelLabStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
-            $assignedTo = (string) ($appointmentCheck['assigned_to'] ?? '');
-            $assignedLab = (string) ($appointmentCheck['assigned_lab_id'] ?? '');
-            if ($assignedTo !== '' && $assignedTo === (string) $user['user_id']) {
-                $hasAccess = true;
-            }
-            if (
-                !$hasAccess
-                && $appointmentCheck['status'] === 'pending'
-                && $assignedTo === ''
-                && $prelLabId !== ''
-                && $assignedLab === $prelLabId
-            ) {
-                $hasAccess = true;
-            }
-            if (!$hasAccess && $appointmentCheck['status'] === 'pending') {
-                $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
-                $offerStmt->execute([$id, $user['user_id']]);
-                if ($offerStmt->fetch()) {
-                    $hasAccess = true;
-                }
-            }
-        }
-        
-        // Lab / sous-compte : accès si le RDV est assigné à l'équipe (lab parent inclus pour les sous-comptes) ou offre pending
-        if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount'], true) && $appointmentCheck['type'] === 'blood_test') {
-            $teamIds = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
-            if (in_array($appointmentCheck['assigned_lab_id'], $teamIds, true)) {
-                $hasAccess = true;
-            }
-            if (!$hasAccess && !empty($appointmentCheck['assigned_to']) && in_array($appointmentCheck['assigned_to'], $teamIds, true)) {
-                $hasAccess = true;
-            }
-            if (!$hasAccess && empty($appointmentCheck['assigned_lab_id']) && $appointmentCheck['status'] === 'pending') {
-                $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
-                foreach ($teamIds as $tid) {
-                    $offerStmt->execute([$id, $tid]);
-                    if ($offerStmt->fetch()) {
-                        $hasAccess = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Infirmier : accès si assigné à lui OU si RDV offert (pending, dans appointment_offers) OU sibling de lot OU jeton de partage valide
-        if (!$hasAccess && $user['role'] === 'nurse' && $appointmentCheck['type'] === 'nursing' &&
-            $appointmentCheck['status'] === 'pending' && empty($appointmentCheck['assigned_nurse_id'])) {
-            $offerStmt = $db->prepare('SELECT 1 FROM appointment_offers WHERE appointment_id = ? AND profile_id = ? LIMIT 1');
-            $offerStmt->execute([$id, $user['user_id']]);
-            if ($offerStmt->fetch()) {
-                $hasAccess = true;
-            } else {
-                // Accès sibling de lot : si l'infirmier a une offre pour n'importe quel RDV du même lot, il accède à tous les siblings
-                $batchIdForAccess = $hasCreationBatchColumn ? ($appointmentCheck['creation_batch_id'] ?? null) : null;
-                if (!empty($batchIdForAccess)) {
-                    $batchOfferStmt = $db->prepare('
-                        SELECT 1 FROM appointment_offers ao
-                        INNER JOIN appointments a ON ao.appointment_id = a.id
-                        WHERE ao.profile_id = ? AND a.creation_batch_id = ? AND a.type = \'nursing\'
-                        LIMIT 1
-                    ');
-                    $batchOfferStmt->execute([$user['user_id'], $batchIdForAccess]);
-                    if ($batchOfferStmt->fetch()) {
-                        $hasAccess = true;
-                    }
-                }
-                if (!$hasAccess) {
-                    $shareTokenGet = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
-                    if ($shareTokenGet !== '') {
-                        require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
-                        if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenGet, $id)) {
-                            $hasAccess = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Infirmier créateur : plus d'accès au détail si un autre infirmier est assigné (refus / redispatch puis acceptation par un confrère)
-        if ($user['role'] === 'nurse' && ($appointmentCheck['type'] ?? '') === 'nursing'
-            && !empty($appointmentCheck['assigned_nurse_id'])
-            && (string) $appointmentCheck['assigned_nurse_id'] !== (string) $user['user_id']
-        ) {
-            $hasAccess = false;
-        }
-        
         if (!$hasAccess) {
-            require_once __DIR__ . '/../../lib/AppointmentDetailGate.php';
-            AppointmentDetailGate::respondWhenForbidden(
-                $db,
-                $appointmentCheck,
-                (string) $user['user_id'],
-                (string) $user['role'],
-            );
-            http_response_code(403);
-            echo json_encode([
-                'success' => false,
-                'error' => 'Accès refusé à ce rendez-vous',
-                'code' => 'FORBIDDEN',
-            ]);
-            exit;
+            AppointmentDetailAccess::respondForbiddenOrExit($db, $user, $appointmentCheck);
         }
 
-        // Lien partagé : matérialiser les offres pour l’infirmier (lot + liste « Mes demandes »)
-        $shareTokenMaterialize = isset($_GET['share_token']) ? trim((string) $_GET['share_token']) : '';
-        if ($user['role'] === 'nurse' && $shareTokenMaterialize !== '') {
-            require_once __DIR__ . '/../../lib/AppointmentShareToken.php';
-            if (AppointmentShareToken::grantsNurseShareAccess($db, $shareTokenMaterialize, $id)) {
-                AppointmentShareToken::materializeOffersForNurseFromShare($db, $user['user_id'], $id);
-            }
-        }
-
-        $appointment = $appointmentModel->getById($id, $user['user_id'], $user['role']);
+        AppointmentDetailAccess::materializeShareOffersForNurse($db, $user, $id, $shareTokenGet !== '' ? $shareTokenGet : null);
 
         $include = isset($_GET['include']) ? trim((string) $_GET['include']) : '';
-        if ($appointment && str_contains($include, 'batch')) {
-            $siblings = $appointment['batch_siblings'] ?? [];
-            $batchAppointments = [];
-            if (is_array($siblings) && count($siblings) > 0) {
-                foreach ($siblings as $sib) {
-                    $sibId = is_array($sib) ? ($sib['id'] ?? null) : null;
-                    if (!$sibId || (string) $sibId === (string) $id) {
-                        continue;
-                    }
-                    $sibFull = $appointmentModel->getById((string) $sibId, $user['user_id'], $user['role']);
-                    if ($sibFull) {
-                        $batchAppointments[] = $sibFull;
-                    }
-                }
-            }
-            $appointment['batch_appointments'] = $batchAppointments;
-        }
-        
+        $appointment = AppointmentDetailGetPayload::loadWithOptionalBatch(
+            $appointmentModel,
+            $user,
+            $id,
+            $include
+        );
+
         if (!$appointment) {
             http_response_code(404);
             echo json_encode([
@@ -338,16 +104,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'code' => 'NOT_FOUND',
             ]);
             exit;
-        }
-
-        require_once __DIR__ . '/../../lib/AppointmentListPayload.php';
-        $appointment = AppointmentListPayload::enrichProfileMediaForDetail($appointment);
-        if (!empty($appointment['batch_appointments']) && is_array($appointment['batch_appointments'])) {
-            foreach ($appointment['batch_appointments'] as $idx => $batchApt) {
-                if (is_array($batchApt)) {
-                    $appointment['batch_appointments'][$idx] = AppointmentListPayload::enrichProfileMediaForDetail($batchApt);
-                }
-            }
         }
 
         // Logger la consultation de rendez-vous (HDS)
@@ -428,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($isFullUpdate) {
             $allowNursePassagePatch = false;
             $allowPatientSchedulePatch = false;
-            if (($user['role'] ?? '') === 'nurse' && appointment_is_nurse_reschedule_patch($input)) {
+            if (($user['role'] ?? '') === 'nurse' && AppointmentDetailPatchRules::isNurseReschedulePatch($input)) {
                 $config = require __DIR__ . '/../../config/database.php';
                 $dsn = sprintf(
                     'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -438,13 +194,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $config['charset'],
                 );
                 $dbNursePatch = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
-                $allowNursePassagePatch = appointment_nurse_assigned_to_nursing(
+                $allowNursePassagePatch = AppointmentDetailPatchRules::nurseAssignedToNursing(
                     $dbNursePatch,
                     $id,
                     (string) ($user['user_id'] ?? ''),
                 );
             }
-            if (($user['role'] ?? '') === 'patient' && appointment_is_schedule_only_patch($input)) {
+            if (($user['role'] ?? '') === 'patient' && AppointmentDetailPatchRules::isScheduleOnlyPatch($input)) {
                 $config = require __DIR__ . '/../../config/database.php';
                 $dsn = sprintf(
                     'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -454,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $config['charset'],
                 );
                 $dbPatientPatch = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
-                $allowPatientSchedulePatch = appointment_patient_owns_pending(
+                $allowPatientSchedulePatch = AppointmentDetailPatchRules::patientOwnsPending(
                     $dbPatientPatch,
                     $id,
                     (string) ($user['user_id'] ?? ''),
@@ -498,21 +254,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     echo json_encode(['success' => false, 'error' => 'Rendez-vous introuvable']);
                     exit;
                 }
-                if ($user['role'] !== 'super_admin') {
-                    $isAssigned = ($aptPerm['assigned_nurse_id'] === $user['user_id'])
-                        || ($aptPerm['assigned_lab_id'] === $user['user_id'])
-                        || ($aptPerm['assigned_to'] === $user['user_id']);
-                    $isProCreator = ($user['role'] === 'pro' && ($aptPerm['created_by'] ?? null) === $user['user_id']);
-                    $isLabTeam = false;
-                    if (!$isAssigned && !$isProCreator && in_array($user['role'], ['lab', 'subaccount'], true)) {
-                        $teamIds = LabTeamAccess::teamMemberIds($dbPerm, $user['user_id'], $user['role']);
-                        $isLabTeam = in_array($aptPerm['assigned_lab_id'], $teamIds, true) || in_array($aptPerm['assigned_to'], $teamIds, true);
-                    }
-                    if (!$isAssigned && !$isProCreator && !$isLabTeam) {
-                        http_response_code(403);
-                        echo json_encode(['success' => false, 'error' => 'Vous ne pouvez terminer que les rendez-vous qui vous sont assignés ou que vous avez créés']);
-                        exit;
-                    }
+                if (
+                    $user['role'] !== 'super_admin'
+                    && !AppointmentDetailPatchRules::canStaffSetCompletedOrInProgressWithDb($dbPerm, $user, $aptPerm)
+                ) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Vous ne pouvez terminer que les rendez-vous qui vous sont assignés ou que vous avez créés']);
+                    exit;
                 }
             }
 

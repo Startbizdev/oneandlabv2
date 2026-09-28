@@ -11,7 +11,7 @@ final class AppointmentCreateInsertTest extends TestCase
 {
     public function testCreateInsertBindCountMatchesColumns(): void
     {
-        $source = file_get_contents(dirname(__DIR__, 2) . '/models/Appointment.php');
+        $source = file_get_contents(dirname(__DIR__, 2) . '/lib/appointments/AppointmentCreationService.php');
         $this->assertIsString($source);
 
         if (!preg_match(
@@ -19,7 +19,7 @@ final class AppointmentCreateInsertTest extends TestCase
             $source,
             $fieldsMatch
         )) {
-            $this->fail('Bloc insertFields introuvable dans Appointment::create');
+            $this->fail('Bloc insertFields introuvable dans AppointmentCreationService::createWithinTransaction');
         }
 
         $baseFields = preg_split('/\s*,\s*/', preg_replace('/\s+/', ' ', trim($fieldsMatch[1])));

@@ -6,7 +6,7 @@
  */
 
 return [
-    'kek_hex' => $_ENV['BACKEND_KEK_HEX'] ?? '',
+    'kek_hex' => $_ENV['BACKEND_KEK_HEX'] ?? (getenv('BACKEND_KEK_HEX') ?: ''),
     'algorithm' => 'aes-256-gcm',
     'key_length' => 32, // 256 bits
 ];

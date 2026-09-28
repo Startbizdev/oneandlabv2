@@ -8,6 +8,9 @@ import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
+import { useIsFocused } from '@react-navigation/native';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
 import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
@@ -70,6 +73,8 @@ export function AppointmentDetailScreen({ role }: Props) {
   }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const focused = useIsFocused();
+  const appActive = useAppActive();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
 
@@ -104,7 +109,8 @@ export function AppointmentDetailScreen({ role }: Props) {
       return res.data;
     },
     enabled: Boolean(hasCareGallery && id),
-    refetchInterval: 8000,
+    refetchInterval: focusedRefetchInterval(8000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const carePhotos = carePhotosQ.data?.photos ?? [];

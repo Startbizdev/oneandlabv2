@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 const apiPattern = () => new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href;
 

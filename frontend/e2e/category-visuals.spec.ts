@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 async function setup(page: Page, admin: boolean, image = false) {
   const user = { id: 'fixture-admin', role: 'super_admin', first_name: 'Camille', last_name: 'Exemple' };
@@ -8,7 +9,7 @@ async function setup(page: Page, admin: boolean, image = false) {
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ super_admin: true }));
   }, user);
   const category = { id: 'fixture-care', name: 'Soin personnalisé', type: 'blood_test', icon: image ? null : 'syringe', is_active: 1, options: [], image_url: '/api/fixture-care.svg' };
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
     if (url.searchParams.has('category_options_for')) return route.fulfill({ json: { success: true, data: [] } });
@@ -86,7 +87,7 @@ test('nurse care preferences retain the admin icon when toggled', async ({ page 
   }, user);
   const preference = { category_id: 'fixture-care', name: 'Soin personnalisé', icon: 'syringe', is_enabled: false };
   let updates = 0;
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/nurse-category-preferences') {
       if (route.request().method() !== 'GET') { updates++; preference.is_enabled = true; }

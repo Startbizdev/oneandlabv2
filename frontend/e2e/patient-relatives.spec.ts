@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern, gotoWaitingForApi, normalizeApiPathname } from './helpers/api-route';
 
 for (const width of [360, 1440]) {
   test(`relatives: load, edit and create retries preserve the right form at ${width}px`, async ({ page }) => {
@@ -14,24 +15,28 @@ for (const width of [360, 1440]) {
     let detailFails = true;
     let saveFails = true;
     const writes: { method: string; body: any }[] = [];
-    await page.route('**/api/**', route => {
-      const url = new URL(route.request().url());
+    await page.route(apiRoutePattern(), route => {
+      const path = normalizeApiPathname(route.request().url());
       const method = route.request().method();
-      if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-      if (url.pathname.startsWith('/api/patient-relatives')) {
-        if (method === 'GET') return route.fulfill({ json: url.pathname.endsWith('/relative-a')
+      if (path === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+      if (path.startsWith('/api/patient-relatives')) {
+        if (method === 'GET') return route.fulfill({ json: path.endsWith('/relative-a')
           ? { success: !detailFails, data: relatives[0] } : { success: !listFails, data: relatives } });
         const body = route.request().postDataJSON();
         writes.push({ method, body });
         if (saveFails) return route.fulfill({ json: { success: false, error: 'Enregistrement indisponible' } });
         if (method === 'PUT') relatives[0] = { ...relatives[0], ...body };
         if (method === 'POST') relatives.push({ id: 'relative-b', ...body });
-        if (method === 'DELETE') relatives = relatives.filter(relative => !url.pathname.endsWith(`/${relative.id}`));
+        if (method === 'DELETE') relatives = relatives.filter(relative => !path.endsWith(`/${relative.id}`));
         return route.fulfill({ json: { success: true, data: relatives.at(-1) } });
       }
       return route.fulfill({ json: { success: true, data: [] } });
     });
-    await page.goto('/patient/relatives');
+    await gotoWaitingForApi(
+      page,
+      '/patient/relatives',
+      (p, m) => m === 'GET' && p === '/api/patient-relatives',
+    );
     await expect(page.getByText('Impossible de charger vos proches', { exact: true })).toBeVisible();
     await expect(page.getByText('Aucun proche enregistré', { exact: true })).toHaveCount(0);
     listFails = false;

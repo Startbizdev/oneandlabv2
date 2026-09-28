@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 for (const role of ['pro', 'lab']) {
   for (const width of [360, 1440]) {
@@ -12,7 +13,7 @@ for (const role of ['pro', 'lab']) {
       }, user);
       let creates = 0, failDocument = true;
       const uploads: string[] = [];
-      await page.route('**/api/**', route => {
+      await page.route(apiRoutePattern(), route => {
         const request = route.request();
         const path = new URL(request.url()).pathname;
         if (path === '/api/patients' && request.method() === 'POST') {

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 test('patient birth date excludes invalid days and resets an initially empty date', async ({ page }) => {
   const user = { id: 'fixture-patient', role: 'patient', first_name: 'Camille', last_name: 'Exemple', email: 'fixture@example.invalid', birth_date: null };

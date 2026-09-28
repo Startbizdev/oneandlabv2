@@ -1,0 +1,81 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'packages/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'packages/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  typecheck-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace=oneandlab-frontend
+      - run: npm run test:unit --workspace=oneandlab-frontend
+        continue-on-error: false
+
+  e2e-p1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+        working-directory: frontend
+      - name: Playwright P1 (non-blocking)
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+        run: |
+          npm run dev &
+          for i in $(seq 1 60); do curl -sf http://localhost:3000 >/dev/null && break; sleep 3; done
+          npm run test:e2e:p1
+        continue-on-error: true
+
+  # SSR : build de production + API publique synthétique (webServer géré par playwright.ssr.config.ts).
+  e2e-ssr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+        working-directory: frontend
+      - name: Playwright SSR (non-blocking)
+        working-directory: frontend
+        run: npm run test:e2e:ssr
+        continue-on-error: true
+
+  # P1 Playwright : informatif tant que la suite n'est pas stable 2× de suite (ne bloque pas le merge).
+  e2e-p1-informational:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e:p1 --workspace=oneandlab-frontend
+        continue-on-error: true

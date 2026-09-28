@@ -1,10 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 test('table component demo is unavailable in the production build', async ({ request }) => {
   const response = await request.get('/admin/test-table');
   expect(response.status()).toBe(404);
   expect(await response.text()).not.toContain('Page de test du composant tableau');
+});
+
+test('printed QR resolves on the server and preserves professional attribution', async ({ request }) => {
+  const response = await request.get('/qr/fixture-qr', { maxRedirects: 0 });
+  expect(response.status()).toBe(302);
+  expect(response.headers().location).toBe('/rendez-vous/nouveau?qr=fixture-qr&assigned_nurse_id=fixture-nurse');
 });
 
 const routes = [

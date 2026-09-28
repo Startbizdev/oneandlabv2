@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 for (const width of [360, 1440]) {
   test(`booking calendar: usable paging and selected date retained at ${width}px`, async ({ page }) => {

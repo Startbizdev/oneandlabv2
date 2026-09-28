@@ -4,7 +4,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,6 +55,8 @@ export function AppointmentConversationScreen() {
   const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const navigation = useNavigation();
   const router = useRouter();
+  const focused = useIsFocused();
+  const appActive = useAppActive();
 
   const { data, error, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.appointments.conversation(appointmentId),
@@ -62,7 +66,8 @@ export function AppointmentConversationScreen() {
       return res.data;
     },
     enabled: !!appointmentId,
-    refetchInterval: 15000,
+    refetchInterval: focusedRefetchInterval(15000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const sendMutation = useMutation({

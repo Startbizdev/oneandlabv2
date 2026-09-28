@@ -3,6 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
   useInfiniteQuery,
@@ -10,6 +11,8 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { Bell } from 'lucide-react-native';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import {
   buildTabSceneScrollConfig,
@@ -48,6 +51,8 @@ export function NotificationsScreen() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   const token = useAuthStore((s) => s.token);
+  const focused = useIsFocused();
+  const appActive = useAppActive();
   const { canReceive: pharmacyCanReceive } = usePharmacyModuleEnabled();
 
   const feedQ = useInfiniteQuery({
@@ -64,7 +69,7 @@ export function NotificationsScreen() {
     initialPageParam: 0,
     getNextPageParam: (lastPage) => lastPage.nextOffset,
     enabled: Boolean(token),
-    refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
+    refetchInterval: focusedRefetchInterval(NOTIFICATION_POLL_INTERVAL_MS, focused, appActive),
     refetchIntervalInBackground: false,
   });
 

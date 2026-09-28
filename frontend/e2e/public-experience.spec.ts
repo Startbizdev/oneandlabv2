@@ -1,11 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 for (const width of [360, 768, 1440]) {
   for (const route of ['/', '/pour-les-patients', '/pour-les-infirmiers', '/pour-les-laboratoires', '/pour-les-professionnels', '/contact', '/pour-les-infirmiers/tarifs', '/pour-les-laboratoires/tarifs']) {
     test(`public ${route} fits at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.route('**/api/**', request => request.fulfill({ json: { success: true, data: [] } }));
+      await page.route(apiRoutePattern(), request => request.fulfill({ json: { success: true, data: [] } }));
       const errors: string[] = [];
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(route);
@@ -22,7 +23,7 @@ for (const width of [360, 768, 1440]) {
 }
 
 test('home: FAQ content and structured answers agree', async ({ page }) => {
-  await page.route('**/api/**', request => request.fulfill({ json: { success: true, data: [] } }));
+  await page.route(apiRoutePattern(), request => request.fulfill({ json: { success: true, data: [] } }));
   await page.goto('/');
   await waitForNuxtReady(page);
   const question = page.getByRole('button', { name: 'Est-ce remboursé ?', exact: true });

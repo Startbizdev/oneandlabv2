@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 const user = { id: 'fixture-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple' };
 async function authenticate(page: Page) {
@@ -20,7 +21,7 @@ async function changeProfile(page: Page, query: string) {
 test('patient dossier: unavailable documents have a retry, without a false empty library', async ({ page }) => {
   await authenticate(page);
   let failed = true;
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/users/fixture-patient') return route.fulfill({ json: { success: true, data: { id: 'fixture-patient', role: 'patient', first_name: 'Louise', last_name: 'Exemple' } } });
     if (path === '/api/patient-documents') return route.fulfill({ json: failed
@@ -42,7 +43,7 @@ test('patient dossier: delayed documents cannot cross profiles or survive the cr
   let firstRequested = false;
   let releaseFirst!: () => void;
   const waiting = new Promise<void>(resolve => { releaseFirst = resolve; });
-  await page.route('**/api/**', async route => {
+  await page.route(apiRoutePattern(), async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
     if (path.startsWith('/api/users/fixture-')) {

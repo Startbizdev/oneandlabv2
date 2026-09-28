@@ -1,66 +1,48 @@
 # AUDIT-360 — Rapport senior Cary
 
-**Date :** 2026-09-25  
-**Périmètre :** plateforme complète (inventaire [AUDIT-360-INVENTAIRE-2026-09-25.md](./AUDIT-360-INVENTAIRE-2026-09-25.md), matrice [AUDIT-360-MATRICE-MODULES.md](./AUDIT-360-MATRICE-MODULES.md)).
+**Date :** 2026-09-28 (e2e complète verte + test live sur MySQL local ; migrations rejouables ; hygiène git/deploy)  
+**Périmètre :** inventaire [AUDIT-360-INVENTAIRE-2026-09-25.md](./AUDIT-360-INVENTAIRE-2026-09-25.md), matrice [AUDIT-360-MATRICE-MODULES.md](./AUDIT-360-MATRICE-MODULES.md).
 
 ## Synthèse
 
-- **Surface :** ~80 endpoints API, ~140 pages web, ~143 routes mobile, 122 migrations SQL — cohérent avec un produit mature multi-rôles.
-- **Risque perf #1 (recheck prod) :** listes `GET /api/appointments` avec enrichissement batch (blood/nursing items) → JSON multi‑Mo pour lab ; **correctif livré :** `scope=list` + dashboard lab.
-- **Risque perf #2 :** listes patients/users full — **picker + search** déjà en code local (admin wizard, CreatorSelectField).
-- **Risque deploy #1 :** `storage` non symlink → 500 booking-draft ; script links **durci** (mkdir persistent + migration répertoire).
-- **Qualité auto :** PHPUnit 247 tests — 216 OK/skipped sur Windows ; 7 erreurs **PDO absent** ; 1 fail prompt RAG (assertion `**`). Playwright/e2e ciblés mis à jour pour picker patient.
+- Refactor anti-régression + ménage H0 (MD morts, artefacts, scripts debug PHP racine `backend/`) ; `.sh` deploy conservés.
+- Appointments API : `index.php` ~58 L (handlers).
+- **IAP :** `SubscriptionDisplayTest` (format mobile) ; e2e billing/subscription dans `test:e2e:p1`.
+- **IA Cary :** `AiChatRateLimitTest` ; skips `pdo_mysql` inutiles retirés ; e2e `cary-ai-booking` (mock stream) dans `test:e2e:p1`.
+- **Carnet :** Jest `health-record-display` ; Health* PHP sous Docker MySQL.
+- **Bug app corrigé :** `layouts/dashboard.vue` — `fetchModuleFlags()` sans `.catch` → exception non gérée sur tout l'espace nurse/pro quand la config pharmacie échoue.
+- **Migrations :** les 124 fichiers se rejouent sur base vierge (0 échec) :
+  - `048_*` : mélange de collations sous MySQL 8 (`utf8mb4_0900_ai_ci` par défaut vs colonnes `utf8mb4_unicode_ci`) → `SET NAMES … COLLATE utf8mb4_unicode_ci` ;
+  - `088_*` : `ADD COLUMN IF NOT EXISTS` (syntaxe MariaDB, refusée par MySQL) → garde `information_schema` + `PREPARE`, idempotente.
+- **Test live (sans mocks) :** `docker-compose.e2e-live.yml` (MySQL 8.4 jetable + API PHP réelle, `.env` du repo masqué, `DB_NAME` forcé `*_test`) ; `patient-documents.live.spec.ts` (login, upload, liste, suppression) via `npm run test:e2e:live`. Remplace l'ancien spec qui exigeait un compte réel.
+- **Hygiène git / deploy :**
+  - uploads médicaux chiffrés + rate-limit retirés du suivi git (1102 fichiers) et ajoutés au `.gitignore` ;
+  - `deploy-prod.sh` / `deploy-backend-only.sh` : `--exclude='.env.*'` (`.env.backup` / `.env.old` n'étaient pas exclus).
+- **Fiabilité Playwright :**
+  - mocks API ancrés (`apiRoutePattern()`) : `**/api/**` interceptait le module dev `@vue/devtools-api/lib/esm/api/index.js` (app non hydratée) ;
+  - fixture commune `e2e/fixtures/test.ts` : `page.goto` attend l'hydratation (marqueur `plugins/hydrated-marker.client.ts`) ;
+  - specs SSR isolées dans `playwright.ssr.config.ts` (build prod `.nuxt-e2e` + `e2e/fixtures/public-api-server.cjs`, port 3217 sans réutilisation) ;
+  - specs obsolètes réalignées (calendrier `limit=250`, compteurs documents nurse-passage).
+- **H7 deploy :** attente GO explicite ([checklist](./AUDIT-360-SMOKE-H7.md)).
 
-## P0 (traités ou en release)
+## Dette résiduelle
 
-| Item | Action |
-|------|--------|
-| Liste RDV lab lourde | `scope=list` backend + LabDashboard |
-| Picker admin/staff | users/patients `scope=picker` + recherche |
-| Storage deploy | `ensure-backend-runtime-links.sh` |
-| E2E staff booking | `staff-booking-patients.spec.ts` aligné recherche |
-| Ordonnances | Appointment méthodes PrescriptionService (existant session) |
+- Historique git : les uploads chiffrés restent dans les anciens commits (réécriture d'historique = décision humaine, force-push).
+- Serveur prod : d'éventuels `backend/.env.backup` / `.env.old` déjà déployés restent à supprimer à la main (au GO).
+- Jobs Playwright CI encore `continue-on-error` (à rendre bloquants après 2 runs CI Linux verts).
+- Vérif receipts Apple/Google **prod** (sandbox) hors CI.
+- Deploy + smoke prod + build EAS non exécutés (attente GO).
+- Note dev : `npm run typecheck` / `nuxt prepare` réécrit `.nuxt` et casse un `nuxt dev` en cours (le relancer).
 
-## P1
-
-- Aligner `LabResultAnalysisPromptTest` avec prompt sans markdown.
-- Lab `/patients` : **corrigé** — `usePaginatedPatientsDashboard` (50/page, search ≥2 car.) lab + subaccount.
-- Réduire polling détail RDV + documents (logs prod : même UUID en rafale).
-- CI Windows / dev : documenter PHPUnit sans MySQL (tests health/qr/users search).
-
-## P2
-
-- `view=cards` généralisé pour listes staff mobile/web.
-- Analyse egress nginx automatisée (`scripts/analyze-nginx-egress.sh`).
-- EAS Android+iOS — voir gate deploy.
-
-## Résultats gates (2026-09-25, machine dev)
+## Gates
 
 | Gate | Résultat |
 |------|----------|
-| PHPUnit `composer.phar test` | **OK assertions** — 0 failures ; 7 **errors** PDO MySQL absent (Windows env) ; 23 skipped |
-| Frontend typecheck | **OK** |
-| Frontend build `NUXT_PUBLIC_API_BASE=/api` | **OK** — `.output/server/index.mjs` |
-| mobile:verify | **OK** — 0 eslint errors |
-| Playwright P0 (`staff-booking-patients` + `lab-dashboard-pagination`) | **OK** — 11/11 avec retries CI (4 specs flaky booking 4 rôles) |
-| Playwright suite complète | **Rouge** (run 2026-09-25 : 103/318 pass) — cause identifiée : attente `#__nuxt.__vue_app__` (Nuxt 3) ; **fix** `e2e/helpers/wait-for-nuxt-ready.ts` + resilience en serial. Re-run ciblé : public 25/28 OK, **workspace-resilience 100 %**, P0 staff flaky si dev hors `127.0.0.1:3000` |
-| Prod simulate-picker | **OK** — full 1 486 679 B vs picker 19 525 B (−98,7 %) |
-| QA rechecklist | **Partiel** — public + post-deploy + pharmacie (config DB) + smokes backend ; **OTP login** tous rôles encore manuel ops |
-| Backend smoke prod | **OK** — `audit360-prod-backend-smoke.php` (drafts www-data, pharmacy, lab RDV count) |
-| Deploy API hotfix | **Fait** — `scope=list` sur prod API |
-| Deploy safe release | **OK** — `9fd68af51bb91a6c8d9cf490366163b9eedfcf60` → release `20260925T153449Z-9fd68af51bb9` |
-| EAS iOS/Android production | **BLOQUÉ (gate strict)** — rechecklist rôles OTP incomplète ; suite Playwright complète non exécutée |
-
-## Runbook deploy (1 page)
-
-1. Working tree clean → `scripts/deploy-safe-release.sh` (ou backend-only si hotfix API).
-2. Post-deploy SSH : `scripts/ensure-backend-runtime-links.sh /var/www/oneandlab`
-3. `php backend/scripts/simulate-picker-payload.php` (prod)
-4. Smoke : GET `/api/app/version`, login lab, dashboard RDV taille réponse
-5. Rollback : restore backup DB + redeploy tag précédent (script release)
-
-## Known issues par module (extrait)
-
-- **RDV :** COUNT SQL parfois incohérent (has_more heuristique déjà en place).
-- **DevOps :** 2 Go RAM — éviter limit=100 sans scope=list.
-- **Docs legacy :** ne pas utiliser comme spec — uniquement ces fichiers AUDIT-360-*.
+| Docker PHPUnit (replay 124 migrations) | 282 OK, 0 skip |
+| Frontend typecheck + Vitest | OK (9 tests) |
+| Playwright P1 (`test:e2e:p1`) | 73 passed |
+| Playwright dev complet (`test:e2e`) | 272 passed |
+| Playwright SSR (`test:e2e:ssr`) | 46 passed |
+| Playwright live (`test:e2e:live`, MySQL local) | 1 passed |
+| Mobile Jest lib | focused-refetch + document-file-kind + health-record-display |
+| Deploy / EAS | attente GO |

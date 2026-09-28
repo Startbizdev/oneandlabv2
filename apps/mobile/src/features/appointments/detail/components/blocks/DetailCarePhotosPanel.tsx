@@ -4,9 +4,12 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Camera, MessageCircle } from 'lucide-react-native';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { CarePhotoAttachment } from './CarePhotoAttachment';
 import type { Appointment } from '@oneandlab/shared-types';
 import { fetchCarePhotos } from '../../api/appointment-detail.service';
@@ -46,6 +49,8 @@ export function DetailCarePhotosPanel({
   const c = useAppColors();
   const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles');
   const router = useRouter();
+  const focused = useIsFocused();
+  const appActive = useAppActive();
   const { show: toast } = useToast();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -61,7 +66,8 @@ export function DetailCarePhotosPanel({
       return res.data;
     },
     enabled: isCarePhotoGalleryContext(apt),
-    refetchInterval: 8000,
+    refetchInterval: focusedRefetchInterval(8000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const canUpload =

@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 for (const fixture of [
   { used: 0, plan: 'discovery', success: true, visible: false },
@@ -17,7 +18,7 @@ for (const fixture of [
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
     }, user);
     let loaded = false;
-    await page.route('**/api/**', async route => {
+    await page.route(apiRoutePattern(), async route => {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
       if (path.endsWith('/plan-limits')) {

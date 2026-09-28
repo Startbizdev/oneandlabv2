@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 // Uses the same synthetic SSR API as public-directory.spec.ts.
 for (const path of ['/infirmier', '/Laboratoire', '/professionnel']) {

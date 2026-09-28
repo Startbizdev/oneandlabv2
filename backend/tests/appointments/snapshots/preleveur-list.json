@@ -1,0 +1,11 @@
+{
+    "role": "preleveur",
+    "scope": "list",
+    "light": true,
+    "calendar": false,
+    "patient_period": null,
+    "param_count": 3,
+    "has_order": true,
+    "total": "n",
+    "select_has_relative": true
+}

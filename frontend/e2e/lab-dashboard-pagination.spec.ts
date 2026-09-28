@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 
 for (const role of ['lab', 'subaccount']) {
   test(`${role} dashboard loads all today's appointments without overwriting pending requests`, async ({ page }) => {

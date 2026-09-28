@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
 
 function formatTourDate(d: Date): string {
   const y = d.getFullYear();

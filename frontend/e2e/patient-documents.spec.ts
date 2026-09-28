@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern, gotoWaitingForApi, normalizeApiPathname } from './helpers/api-route';
 
 test('patient document library: upload dialog, authenticated upload and confirmed deletion', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 900 });
@@ -13,28 +14,32 @@ test('patient document library: upload dialog, authenticated upload and confirme
   let posts = 0;
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.route('**/api/**', route => {
+  await page.route(apiRoutePattern(), route => {
     const request = route.request();
-    const url = new URL(request.url());
+    const path = normalizeApiPathname(request.url());
     let data: unknown = [];
-    if (url.pathname.endsWith('/auth/me')) data = user;
-    if (url.pathname.includes('csrf')) data = { csrf_token: 'fixture-csrf' };
-    if (url.pathname === '/api/medical-documents' && request.method() === 'GET') {
+    if (path.endsWith('/auth/me')) data = user;
+    if (path.includes('csrf')) data = { csrf_token: 'fixture-csrf' };
+    if (path === '/api/medical-documents' && request.method() === 'GET') {
       data = [
         { id: 'nurse-document', file_name: 'Résultats du laboratoire.pdf', document_type: 'resultats', created_at: '2026-09-15', can_delete: false },
         ...(uploaded && !deleted ? [{ id: 'own-document', file_name: 'Ordonnance.pdf', document_type: 'ordonnance', created_at: '2026-09-15', can_delete: true }] : []),
       ];
     }
-    if (url.pathname === '/api/medical-documents' && request.method() === 'POST') {
+    if (path === '/api/medical-documents' && request.method() === 'POST') {
       expect(request.headers().authorization).toBe('Bearer local-ui-fixture');
       expect(request.postDataBuffer()?.toString()).toContain('ordonnance');
       uploaded = true;
       posts++;
     }
-    if (url.pathname === '/api/medical-documents/own-document' && request.method() === 'DELETE') deleted = true;
+    if (path === '/api/medical-documents/own-document' && request.method() === 'DELETE') deleted = true;
     return route.fulfill({ json: { success: true, user, data } });
   });
-  await page.goto('/patient/documents');
+  await gotoWaitingForApi(
+    page,
+    '/patient/documents',
+    (p, m) => m === 'GET' && p === '/api/medical-documents',
+  );
   await expect(page.getByText('Résultats du laboratoire.pdf', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Supprimer', exact: true })).toHaveCount(0);

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 async function signIn(page: Page, role: string) {
   const user = { id: 'fixture-staff', role, first_name: 'Camille', last_name: 'Exemple' };
@@ -7,7 +8,7 @@ async function signIn(page: Page, role: string) {
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ [user.role]: true }));
   }, user);
-  await page.route('**/api/**', route => route.fulfill({ json: {
+  await page.route(apiRoutePattern(), route => route.fulfill({ json: {
     success: true, user, csrf_token: 'fixture', data: route.request().url().includes('/auth/me') ? user : [],
   } }));
 }

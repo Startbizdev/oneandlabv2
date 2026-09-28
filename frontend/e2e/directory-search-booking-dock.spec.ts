@@ -1,14 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
+import { waitForHydration } from './helpers/wait-for-nuxt-ready';
 
 for (const width of [360, 1440]) {
   for (const directory of ['infirmiers', 'laboratoires']) {
     test(`${directory}: city search and clear at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.route('**/api/**', route => {
+      await page.route(apiRoutePattern(), route => {
         const city = new URL(route.request().url()).searchParams.get('city');
         return route.fulfill({ json: { success: true, data: [{ id: 'search', slug: 'search', name: city ? 'Résultat Lyon' : 'Tous les professionnels' }], pagination: { page: 1, pages: 1 } } });
       });
       await page.goto(`/${directory}`);
+      await waitForHydration(page);
       await page.getByLabel('Dans quelle ville ?').fill('Lyon');
       await page.getByRole('button', { name: 'Rechercher les professionnels' }).click();
       await expect(page.getByText('Résultat Lyon', { exact: true })).toBeVisible();
@@ -21,7 +24,7 @@ for (const width of [360, 1440]) {
 
   test(`public booking: empty and filled dock at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.route('**/api/**', route => route.fulfill({ json: { success: true, data: [] } }));
+    await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, data: [] } }));
     await page.goto('/rendez-vous/nouveau');
     const next = page.getByRole('button', { name: 'Continuer', exact: true });
     await expect(next).toBeDisabled();

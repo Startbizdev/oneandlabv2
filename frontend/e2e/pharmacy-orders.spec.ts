@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern, normalizeApiPathname } from './helpers/api-route';
 
 const baseConfig = {
   module_enabled: true,
@@ -63,9 +64,9 @@ async function pharmacyApiFixture(page: Page, role: 'nurse' | 'pro' = 'nurse') {
 
   const state = { failList: false, orderStatus: fixtureOrder.status };
 
-  await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => {
+  await page.route(apiRoutePattern(), route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const path = normalizeApiPathname(request.url());
 
     if (path.endsWith('/auth/me')) {
       return route.fulfill({ json: { success: true, data: user, user } });
@@ -130,8 +131,9 @@ async function pharmacyApiFixture(page: Page, role: 'nurse' | 'pro' = 'nurse') {
 
 test('API mock — config module et flags UI pour infirmier', async ({ page }) => {
   await pharmacyApiFixture(page, 'nurse');
+  await page.goto('/');
   const result = await page.evaluate(async () => {
-    const res = await fetch('/api/pharmacy-module/config', { credentials: 'include' });
+    const res = await fetch(`${window.location.origin}/api/pharmacy-module/config`, { credentials: 'include' });
     return res.json();
   });
   expect(result.success).toBe(true);
@@ -141,8 +143,9 @@ test('API mock — config module et flags UI pour infirmier', async ({ page }) =
 
 test('API mock — liste commandes envoyées', async ({ page }) => {
   await pharmacyApiFixture(page, 'nurse');
+  await page.goto('/');
   const result = await page.evaluate(async () => {
-    const res = await fetch('/api/pharmacy-orders?scope=sent', { credentials: 'include' });
+    const res = await fetch(`${window.location.origin}/api/pharmacy-orders?scope=sent`, { credentials: 'include' });
     return res.json();
   });
   expect(result.success).toBe(true);
@@ -153,14 +156,15 @@ test('API mock — liste commandes envoyées', async ({ page }) => {
 
 test('API mock — pharmacie reçoit et accepte une commande', async ({ page }) => {
   const { state } = await pharmacyApiFixture(page, 'pro');
+  await page.goto('/');
   const listed = await page.evaluate(async () => {
-    const res = await fetch('/api/pharmacy-orders?scope=received', { credentials: 'include' });
+    const res = await fetch(`${window.location.origin}/api/pharmacy-orders?scope=received`, { credentials: 'include' });
     return res.json();
   });
   expect(listed.data[0].pharmacy_id).toBe('fixture-pharmacy');
 
   const patched = await page.evaluate(async () => {
-    const res = await fetch('/api/pharmacy-orders/fixture-pharmacy-order-1', {
+    const res = await fetch(`${window.location.origin}/api/pharmacy-orders/fixture-pharmacy-order-1`, {
       method: 'PATCH',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

@@ -12,6 +12,8 @@ export default defineNuxtConfig({
     compatibilityDate: '2024-11-01',
     devtools: { enabled: true },
     srcDir: '.',
+    // Build e2e SSR isolé : ne doit pas écraser `.nuxt` d'un `nuxt dev` en cours
+    buildDir: process.env.NUXT_BUILD_DIR || '.nuxt',
   
     modules: ['@nuxt/ui'],
 
@@ -32,6 +34,7 @@ export default defineNuxtConfig({
     },
 
     nitro: {
+      ...(process.env.NUXT_OUTPUT_DIR ? { output: { dir: process.env.NUXT_OUTPUT_DIR } } : {}),
       devProxy: {
         '/api': { target: 'http://localhost:8888', changeOrigin: true },
       },

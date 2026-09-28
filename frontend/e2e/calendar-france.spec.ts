@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+
+const apiPattern = () => new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href;
 
 for (const timezoneId of ['Asia/Dubai', 'America/Los_Angeles']) {
   test.describe(timezoneId, () => {
@@ -16,7 +18,7 @@ for (const timezoneId of ['Asia/Dubai', 'America/Los_Angeles']) {
           { id: 'fixture-last', scheduled_at: '2026-10-31 23:45:00', first_name: 'Finmois' },
           { id: 'fixture-boundary', scheduled_at: '2026-10-31T23:15:00Z', first_name: 'Novembre' },
         ].map(row => ({ ...row, type: 'blood_test', status: 'confirmed', form_data: { first_name: row.first_name, last_name: 'Exemple' }, address: { label: 'Adresse fictive, Paris' } }));
-        await page.route('**/api/**', route => {
+        await page.route(apiPattern(), route => {
           const path = new URL(route.request().url()).pathname;
           const data = path.endsWith('/auth/me') ? user : path === '/api/appointments' ? rows : [];
           return route.fulfill({ json: { success: true, user, data, pagination: { total: 2, page: 1, pages: 1, limit: 250 } } });

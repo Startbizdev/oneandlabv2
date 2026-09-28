@@ -1,0 +1,19 @@
+---
+description: Corriger les erreurs en dev senior et vérifier avant d'affirmer
+alwaysApply: true
+---
+
+# Correction des erreurs : toujours en dev senior
+
+- Corriger la cause réelle de chaque erreur (lint, type, test, build) après avoir compris le contexte : lire le code concerné, ses appelants et la règle métier avant de modifier.
+- Ne jamais contourner pour livrer vite : pas d'assouplissement de règle ESLint ou TypeScript, pas de préfixe `_` pour faire taire un avertissement, pas de `eslint-disable`, `@ts-ignore`, `as any`, `as unknown as`, `v8 ignore` ni de test affaibli pour faire passer un contrôle.
+- Un avertissement « inutilisé » est un signal : supprimer le code ou le paramètre mort (appelants compris), supprimer la duplication, ou utiliser la valeur. Une erreur interceptée dans un `catch` doit être traitée ou journalisée, jamais avalée sans raison.
+- Seule exception : un faux positif avéré de l'outil, désactivé sur la ligne avec la raison en commentaire et inscrit dans la liste nominative vérifiée par les tests d'inventaire.
+- Prendre le temps nécessaire : vérifier chaque correction (typecheck, lint, tests du domaine) avant de passer à la suivante, et signaler clairement tout comportement douteux découvert plutôt que de le masquer.
+
+# Vérifier avant d'affirmer
+
+- Ne jamais décrire le fonctionnement d'une page, d'un composant, d'un calcul ou d'une donnée sans l'avoir vérifié dans le code, la base de données ou Stripe.
+- Ne pas inventer d'élément d'interface, de colonne, de statut ou de fonctionnalité : vérifier qu'il existe avant d'en parler.
+- Distinguer clairement ce qui est vérifié de ce qui est une hypothèse, et dire « je ne sais pas » plutôt que deviner.
+- Comprendre le fonctionnement métier de la plateforme (rendez-vous de prélèvement, rôles patient / infirmier / préleveur / laboratoire / pro / admin, abonnements) avant de proposer un changement ou une règle.

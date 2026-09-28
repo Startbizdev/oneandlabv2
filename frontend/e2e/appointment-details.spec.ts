@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern, gotoWaitingForApi, normalizeApiPathname } from './helpers/api-route';
 test.describe.configure({ mode: 'parallel' });
 
 for (const role of ['super_admin', 'lab', 'subaccount', 'pro', 'patient', 'nurse', 'preleveur']) {
@@ -82,25 +83,40 @@ test('nurse creator can read the patient conversation and cancel the appointment
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
   }, user);
-  await page.route('**/api/**', async route => {
-    const url = new URL(route.request().url());
-    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-    if (url.pathname === '/api/appointments/fixture-appointment/conversation') {
+  await page.route(apiRoutePattern(), async route => {
+    const path = normalizeApiPathname(route.request().url());
+    if (path === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+    if (path === '/api/appointments/fixture-appointment/conversation') {
       return route.fulfill({ json: { success: true, data: { messages: [], can_post: true } } });
     }
-    if (url.pathname === '/api/appointments/fixture-appointment' && route.request().method() === 'PUT') {
+    if (path === '/api/appointments/fixture-appointment' && route.request().method() === 'PUT') {
       cancelPayload = route.request().postDataJSON() as Record<string, unknown>;
       appointment.status = 'canceled';
       return route.fulfill({ json: { success: true, data: appointment } });
     }
-    if (url.pathname === '/api/appointments/fixture-appointment') {
+    if (path === '/api/appointments/fixture-appointment') {
       return route.fulfill({ json: { success: true, data: appointment } });
+    }
+    if (path === '/api/categories') {
+      return route.fulfill({
+        json: {
+          success: true,
+          data: [{ id: 'fixture-care', name: 'Bilan sanguin', type: 'blood_test', icon: 'syringe' }],
+        },
+      });
+    }
+    if (path === '/api/medical-documents') {
+      return route.fulfill({ json: { success: true, data: [] } });
     }
     return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
   });
 
-  await page.goto('/nurse/appointments/fixture-appointment');
-  await expect(page.getByText('Messages patient', { exact: true })).toBeVisible();
+  await gotoWaitingForApi(
+    page,
+    '/nurse/appointments/fixture-appointment',
+    (p, m) => m === 'GET' && p === '/api/appointments/fixture-appointment',
+  );
+  await expect(page.getByRole('heading', { name: 'Messages patient', exact: true })).toBeVisible();
   await expect(page.getByText('Aucun message pour ce rendez-vous.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Annuler le rendez-vous', exact: true }).click();
   await page.getByText('Choisir une raison', { exact: true }).click();
@@ -145,22 +161,37 @@ test('unrelated nurse cannot cancel and sees a real conversation refusal', async
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
   }, user);
-  await page.route('**/api/**', async route => {
-    const url = new URL(route.request().url());
-    if (url.pathname === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
-    if (url.pathname === '/api/appointments/fixture-appointment/conversation') {
+  await page.route(apiRoutePattern(), async route => {
+    const path = normalizeApiPathname(route.request().url());
+    if (path === '/api/auth/me') return route.fulfill({ json: { success: true, user, data: user } });
+    if (path === '/api/appointments/fixture-appointment/conversation') {
       return route.fulfill({
         status: 403,
         json: { success: false, error: 'Accès refusé à ces échanges.' },
       });
     }
-    if (url.pathname === '/api/appointments/fixture-appointment') {
+    if (path === '/api/appointments/fixture-appointment') {
       return route.fulfill({ json: { success: true, data: appointment } });
+    }
+    if (path === '/api/categories') {
+      return route.fulfill({
+        json: {
+          success: true,
+          data: [{ id: 'fixture-care', name: 'Bilan sanguin', type: 'blood_test', icon: 'syringe' }],
+        },
+      });
+    }
+    if (path === '/api/medical-documents') {
+      return route.fulfill({ json: { success: true, data: [] } });
     }
     return route.fulfill({ json: { success: true, data: [], pagination: { pages: 1 } } });
   });
 
-  await page.goto('/nurse/appointments/fixture-appointment');
+  await gotoWaitingForApi(
+    page,
+    '/nurse/appointments/fixture-appointment',
+    (p, m) => m === 'GET' && p === '/api/appointments/fixture-appointment',
+  );
   await expect(page.getByText('Messages indisponibles', { exact: true })).toBeVisible();
   await expect(page.getByText('Accès refusé à ces échanges.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Annuler le rendez-vous', exact: true })).toHaveCount(0);

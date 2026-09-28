@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 async function signIn(page: Page, role: string, blockedStorage = false) {
   const user = { id: 'fixture-onboarding', role, first_name: 'Camille', last_name: 'Exemple' };
@@ -14,7 +15,7 @@ async function signIn(page: Page, role: string, blockedStorage = false) {
       };
     }
   }, { user, blockedStorage });
-  await page.route('**/api/**', route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
+  await page.route(apiRoutePattern(), route => route.fulfill({ json: { success: true, user, data: route.request().url().includes('/auth/me') ? user : [] } }));
 }
 
 for (const role of ['patient', 'nurse', 'pro', 'preleveur']) {

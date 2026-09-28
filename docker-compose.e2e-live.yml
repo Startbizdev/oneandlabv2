@@ -1,0 +1,49 @@
+# Backend réel jetable pour les e2e « live » : MySQL vierge migré + API PHP sur 127.0.0.1:8888.
+# Usage : npm run test:e2e:live --workspace=oneandlab-frontend (démarre et arrête cette stack).
+services:
+  mysql-e2e:
+    image: mysql:8.4
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_HOST: "%"
+      TZ: Europe/Paris
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  api-e2e:
+    build: ./docker/php-test
+    depends_on:
+      mysql-e2e:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./:/app
+      # Masque le .env du repo : cette stack ne doit jamais viser une vraie base
+      - ./docker/e2e-live/empty.env:/app/.env:ro
+      # Uploads et compteurs jetables, hors du repo
+      - e2e-uploads:/app/backend/uploads/medical
+      - e2e-rate-limit:/app/backend/uploads/rate-limit
+    environment:
+      DB_HOST: mysql-e2e
+      DB_PORT: "3306"
+      DB_NAME: oneandlab_test
+      DB_USER: root
+      DB_PASS: ""
+      # Clés de test uniquement — jamais en prod
+      BACKEND_KEK_HEX: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      JWT_SECRET: "test-jwt-secret-oneandlab-docker-only-not-for-prod"
+      E2E_LIVE_PASSWORD: "E2e-Live-Cary-2026!"
+      TZ: Europe/Paris
+    working_dir: /app/backend
+    command: ["sh", "-c", "composer install --no-interaction --prefer-dist -q && php scripts/test-db-bootstrap.php && php scripts/e2e-live-seed.php && php -S 0.0.0.0:8888 index.php"]
+
+volumes:
+  e2e-uploads:
+  e2e-rate-limit:

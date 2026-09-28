@@ -4,7 +4,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useAppActive } from '@/lib/hooks/use-app-active';
+import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -91,6 +93,8 @@ export function CarePhotoDiscussionScreen({
   const { id: appointmentId } = useLocalSearchParams<{ id: string; photoId?: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const focused = useIsFocused();
+  const appActive = useAppActive();
   const { show: toast } = useToast();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -130,7 +134,8 @@ export function CarePhotoDiscussionScreen({
       return res.data;
     },
     enabled: Boolean(appointmentId),
-    refetchInterval: 8000,
+    refetchInterval: focusedRefetchInterval(8000, focused, appActive),
+    refetchIntervalInBackground: false,
   });
 
   const photos = useMemo(

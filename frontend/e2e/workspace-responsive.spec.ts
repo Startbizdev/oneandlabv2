@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 import { waitForNuxtReady } from './helpers/wait-for-nuxt-ready';
 
 // Synthetic data only: this suite must never call a production API.
@@ -15,7 +16,7 @@ for (const role of roles) {
         localStorage.setItem('auth_user', JSON.stringify(user));
         localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify(Object.fromEntries(roles.map(r => [r, true]))));
       }, { user, roles });
-      await page.route('**/api/**', async route => {
+      await page.route(apiRoutePattern(), async route => {
         const path = new URL(route.request().url()).pathname;
         let data: unknown = [];
         if (path.endsWith('/auth/me')) data = user;
@@ -56,7 +57,7 @@ for (const width of [360, 768, 1440]) {
       localStorage.setItem('auth_user', JSON.stringify(user));
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ patient: true }));
     }, user);
-    await page.route('**/api/**', route => route.fulfill({ json: {
+    await page.route(apiRoutePattern(), route => route.fulfill({ json: {
       success: true, user, data: route.request().url().includes('/auth/me') ? user : [],
       pagination: { total: 0, page: 1, limit: 20, pages: 0 }, csrf_token: 'fixture',
     } }));
@@ -84,7 +85,7 @@ for (const width of [360, 768, 1440]) {
       localStorage.setItem('auth_user', JSON.stringify(user));
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
     }, user);
-    await page.route('**/api/**', route => route.fulfill({ json: {
+    await page.route(apiRoutePattern(), route => route.fulfill({ json: {
       success: true, user, data: route.request().url().includes('/auth/me') ? user : [], csrf_token: 'fixture',
     } }));
     await page.goto('/nurse/appointments/new');

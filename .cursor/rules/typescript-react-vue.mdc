@@ -1,0 +1,19 @@
+---
+description: TypeScript strict et bonnes pratiques de composants (React Native, Vue/Nuxt)
+globs: **/*.{ts,tsx,vue}
+alwaysApply: false
+---
+
+# TypeScript
+
+- Strict TypeScript only. Never introduce `any` unless technically unavoidable and explicitly justified.
+- Avoid `as`, non-null assertions (`!`) and unsafe casts used only to silence TypeScript.
+- Derive types from schemas or shared types (`packages/shared-types`) instead of duplicating equivalent types.
+
+# Components (React Native and Vue)
+
+- Do not store derived values in state (use render-time computation or `computed`).
+- Avoid effects/watchers for logic that belongs in render or event handlers.
+- No unnecessary global state, no duplicated state; keep components focused.
+- Avoid unnecessary client-side fetching and never move server logic to the client.
+- Preserve accessibility semantics.

@@ -9,7 +9,11 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:p1": "playwright test e2e/lab-wizard.spec.ts e2e/appointment-details.spec.ts e2e/appointment-edit.spec.ts e2e/booking-paris-timezone.spec.ts e2e/calendar-france.spec.ts e2e/nurse-tournee.spec.ts e2e/nurse-passage.spec.ts e2e/pharmacy-orders.spec.ts e2e/patient-documents.spec.ts e2e/patient-relatives.spec.ts e2e/billing-management.spec.ts e2e/subscription-context.spec.ts e2e/cary-ai-booking.spec.ts",
+    "test:e2e:ssr": "playwright test --config playwright.ssr.config.ts",
+    "test:e2e:live": "playwright test --config playwright.live.config.ts",
+    "test:e2e:ui": "playwright test --ui",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.89",
@@ -33,6 +37,7 @@
     "@types/node": "^24.10.1",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
     "vue-tsc": "3.3.11"
   }
 }

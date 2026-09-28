@@ -17,7 +17,9 @@
     "typecheck:shared": "npm run typecheck --workspaces --if-present",
     "mobile:typecheck": "npm run typecheck --workspace=@oneandlab/mobile",
     "mobile:lint": "npm run lint --workspace=@oneandlab/mobile",
-    "mobile:verify": "npm run typecheck --workspace=@oneandlab/mobile && npm run lint:layout --workspace=@oneandlab/mobile && npm run lint:styles --workspace=@oneandlab/mobile -- --strict-colors && npm run lint --workspace=@oneandlab/mobile"
+    "mobile:verify": "npm run typecheck --workspace=@oneandlab/mobile && npm run lint:layout --workspace=@oneandlab/mobile && npm run lint:styles --workspace=@oneandlab/mobile -- --strict-colors && npm run lint --workspace=@oneandlab/mobile && npm run test --workspace=@oneandlab/mobile",
+    "test:backend": "docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from php-test",
+    "test:backend:down": "docker compose -f docker-compose.test.yml down -v"
   },
   "devDependencies": {
     "patch-package": "^8.0.1"

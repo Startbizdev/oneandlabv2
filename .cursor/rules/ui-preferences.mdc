@@ -1,0 +1,13 @@
+---
+description: Préférences UI du frontend web (Tailwind, composants réutilisables, tableau de bord)
+globs: frontend/**/*.{vue,ts}
+alwaysApply: false
+---
+
+# Préférences UI
+
+- Utiliser Tailwind pour toutes les nouvelles interfaces et refontes. Ne pas créer de fichiers de CSS brut, de balises style ou de feuilles de surcharge pour le design.
+- Construire des composants réutilisables pour les champs, sélecteurs, états vides, cartes et graphiques. Les sélecteurs doivent utiliser des panneaux personnalisés accessibles, pas les listes natives du navigateur.
+- Privilégier une interface épurée, cohérente et responsive. Éviter les cadres imbriqués, titres répétés, jauges décoratives et accordéons qui cachent les informations du profil.
+- Vérifier les données, statuts et règles du backend avant d'afficher un indicateur ou une fonctionnalité. Ne pas inventer de statistiques ni afficher d'essais pour les offres actuelles.
+- Les indicateurs du tableau de bord doivent être visibles directement, avec des graphiques utiles et interactifs basés sur des données réelles.

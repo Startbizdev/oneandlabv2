@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures/test';
 import labBrands from './fixtures/lab-brands.json';
 
 const bloodCategory = {

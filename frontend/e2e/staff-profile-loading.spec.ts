@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
+import { apiRoutePattern } from './helpers/api-route';
 
 for (const relative of [false, true]) {
   test(`staff profile: ${relative ? 'relative' : 'patient'} lookup failure cannot expose an editable fallback`, async ({ page }) => {
@@ -9,7 +10,7 @@ for (const relative of [false, true]) {
       localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
     }, user);
     let failed = true;
-    await page.route('**/api/**', route => {
+    await page.route(apiRoutePattern(), route => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/users/fixture-patient') return route.fulfill({ json: { success: relative || !failed, data: { id: 'fixture-patient', role: 'patient', first_name: 'Titulaire', last_name: 'Exemple', email: 'fixture@example.invalid', phone: '0600000000' } } });
       if (path === '/api/patient-relatives/fixture-relative') return route.fulfill({ json: { success: !failed, data: { id: 'fixture-relative', patient_id: 'fixture-patient', first_name: 'Proche', last_name: 'Exemple', relationship_type: 'child' } } });
