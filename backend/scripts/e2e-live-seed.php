@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Après test-db-bootstrap.php : donne un mot de passe au patient et au labo fixtures pour les e2e « live »
+ * Après test-db-bootstrap.php : donne un mot de passe aux fixtures patient, labo, infirmier et pro pour les e2e « live »
  * (frontend réel + API PHP réelle + MySQL jetable). Refuse toute base qui ne finit pas par "_test".
  */
 
@@ -30,7 +30,7 @@ $pdo = new PDO(
 );
 
 $update = $pdo->prepare('UPDATE profiles SET password_hash = ?, password_set_at = NOW(), must_change_password = 0 WHERE id = ?');
-foreach ([TestFixtures::PATIENT_A, TestFixtures::LAB] as $profileId) {
+foreach ([TestFixtures::PATIENT_A, TestFixtures::LAB, TestFixtures::NURSE, TestFixtures::PRO] as $profileId) {
     $update->execute([password_hash($password, PASSWORD_BCRYPT), $profileId]);
     echo 'Mot de passe e2e défini pour ' . TestFixtures::profiles()[$profileId]['email'] . "\n";
 }

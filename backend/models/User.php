@@ -905,12 +905,13 @@ class User
             $params[] = $data['public_slug'] ?: null;
         }
         
-        if (isset($data['profile_image_url'])) {
+        // array_key_exists : une valeur null doit effacer la photo (suppression depuis le profil)
+        if (array_key_exists('profile_image_url', $data)) {
             $updates[] = 'profile_image_url = ?';
             $params[] = $data['profile_image_url'] ?: null;
         }
         
-        if (isset($data['cover_image_url'])) {
+        if (array_key_exists('cover_image_url', $data)) {
             $updates[] = 'cover_image_url = ?';
             $params[] = $data['cover_image_url'] ?: null;
         }

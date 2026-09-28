@@ -119,7 +119,7 @@ export function ProfileImagesBlock({
             ) : null}
           </Pressable>
           <Row wrap gap={spacing[2]} style={styles.coverActions}>
-            <Pressable onPress={() => pickImage('cover')} disabled={busy} style={styles.actionBtn}>
+            <Pressable onPress={() => handlePick('cover')} disabled={busy} style={styles.actionBtn}>
               <Row gap={spacing[2]} align="center">
                 <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
                 <AppText style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</AppText>

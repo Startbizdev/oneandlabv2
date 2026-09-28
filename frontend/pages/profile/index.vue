@@ -2471,8 +2471,9 @@ const saveProfile = async (fromSaveAll = false) => {
           color: 'green',
         })
       }
-      if (!editingUserId.value) await loadProfile()
-      else initialForm.value = { ...profileForm.value }
+      // saveAll recharge une seule fois à la fin : recharger ici écraserait la photo avant savePublicProfile
+      if (editingUserId.value) initialForm.value = { ...profileForm.value }
+      else if (!fromSaveAll) await loadProfile()
     } else {
       toast.add({ title: 'Erreur', description: response.error || 'Impossible de sauvegarder', color: 'red' })
     }
@@ -2510,6 +2511,7 @@ async function saveAll() {
     await saveProfile(true)
     if (hasCoverageZone.value) await saveCoverage(true)
     if (hasPublicProfile.value) await savePublicProfile(true)
+    if (!editingUserId.value) await loadProfile()
     toast.add({ title: 'Enregistré', description: 'Toutes les modifications ont été enregistrées.', color: 'green' })
   } catch {
     // Erreurs déjà affichées par les sous-fonctions
