@@ -1,6 +1,6 @@
 {
   "name": "@oneandlab/mobile",
-  "version": "1.8.32",
+  "version": "1.8.33",
   "private": true,
   "main": "index.js",
   "scripts": {
