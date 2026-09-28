@@ -1,160 +1,140 @@
 <template>
-  <USlideover
-    v-model:open="open"
-    :title="slideoverTitle"
-    :close="false"
-    :ui="slideoverUi"
-  >
-    <template #content="{ close }">
-      <div class="relative flex h-full flex-col overflow-hidden bg-app-canvas/90 backdrop-blur-xl dark:bg-gray-950/90">
-        
-        <div class="absolute right-4 top-4 z-50">
-          <UButton
-            color="neutral"
-            variant="subtle"
-            size="sm"
-            :icon="closeIcon"
-            class="rounded-full shadow-sm ring-1 ring-gray-200/50 dark:ring-gray-800/50"
-            aria-label="Fermer le profil"
-            @click="close"
-          />
-        </div>
-
-        <div v-if="loading" class="flex flex-1 flex-col gap-6 p-6">
-          <USkeleton class="h-32 w-full rounded-2xl" />
-          <div class="space-y-3">
-            <USkeleton class="h-6 w-3/4" />
-            <USkeleton class="h-4 w-1/2" />
-          </div>
-          <USkeleton class="flex-1 rounded-2xl" />
-        </div>
-
-        <div 
-          v-else-if="error || !effectiveSlug" 
-          class="flex flex-1 flex-col items-center justify-center p-8 text-center"
-        >
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
-            <UIcon name="i-lucide-user-x" class="h-8 w-8 text-red-500" />
-          </div>
-          <h3 class="text-base font-semibold text-gray-900 dark:text-white">
-            {{ error ? 'Une erreur est survenue' : 'Profil introuvable' }}
-          </h3>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ error || "Nous n'avons pas pu charger les informations de ce praticien." }}
-          </p>
-          <UButton
-            v-if="error"
-            variant="ghost"
-            label="Réessayer"
-            class="mt-4"
-            @click="fetchProfile"
-          />
-        </div>
-
-        <div 
-          v-else 
-          class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scrollbar-thin"
-        >
-          <ProviderPublicProfilePanel
-            :loading="loading"
-            :error="error"
-            :profile="profile"
-            :type="providerType"
-            :address="profile?.address ?? profile?.city_plain ?? null"
-            :map-center="profile?.map_center ?? null"
-            :radius-km="profile?.radius_km ?? null"
-            :share-url="shareUrlOverride"
-          />
+  <ProfileSheet v-model:open="open" :title="sheetTitle">
+    <div v-if="loading" class="space-y-5 px-4 py-5 sm:px-6" aria-busy="true">
+      <div class="flex items-start gap-4">
+        <USkeleton class="size-16 shrink-0 rounded-full" />
+        <div class="flex-1 space-y-2 pt-1">
+          <USkeleton class="h-5 w-2/3" />
+          <USkeleton class="h-4 w-1/3" />
         </div>
       </div>
+      <USkeleton class="h-10 w-full" />
+      <USkeleton class="h-24 w-full" />
+    </div>
+
+    <div
+      v-else-if="error || notFound || !effectiveSlug"
+      class="flex flex-col items-center px-6 py-16 text-center"
+    >
+      <UIcon name="i-lucide-user-x" class="size-10 text-muted" />
+      <p class="mt-3 text-sm font-medium text-gray-900 dark:text-white">
+        {{ error ? 'Impossible de charger ce profil' : 'Profil introuvable' }}
+      </p>
+      <p v-if="error" class="mt-1 text-sm text-muted">
+        {{ error }}
+      </p>
+      <UButton
+        v-if="error"
+        variant="outline"
+        color="neutral"
+        size="sm"
+        icon="i-lucide-refresh-cw"
+        class="mt-4"
+        @click="fetchProfile"
+      >
+        Réessayer
+      </UButton>
+    </div>
+
+    <template v-else-if="profile">
+      <ProviderPublicProfilePanel
+        v-if="profile.type === 'nurse'"
+        type="nurse"
+        :profile="profile.data"
+        :share-url="shareUrl"
+      />
+      <ProviderPublicProfilePanel
+        v-else
+        type="lab"
+        :profile="profile.data"
+        :share-url="shareUrl"
+      />
     </template>
-  </USlideover>
+  </ProfileSheet>
 </template>
 
 <script setup lang="ts">
-/**
- * Interface & Types
- */
-interface ProviderProfile {
-  name: string;
-  first_name?: string;
-  last_name?: string;
-  address?: string;
-  city_plain?: string;
-  map_center?: any;
-  radius_km?: number;
-  faq?: any;
-  role?: string;
-}
+import type { PublicLabProfile, PublicNurseProfile } from '@oneandlab/shared-types';
+
+type ProviderType = 'nurse' | 'lab';
+
+type PublicProfileResponse<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+  redirect?: boolean;
+  new_slug?: string;
+};
+
+type LoadedProfile =
+  | { type: 'nurse'; data: PublicNurseProfile }
+  | { type: 'lab'; data: PublicLabProfile };
 
 const props = defineProps<{
-  providerType: 'nurse' | 'lab';
+  providerType: ProviderType;
   slug: string | null;
 }>();
 
-/**
- * States & Config
- */
 const open = defineModel<boolean>('open', { default: false });
 const config = useRuntimeConfig();
-const appConfig = useAppConfig();
 
-const profile = ref<ProviderProfile | null>(null);
+const profile = ref<LoadedProfile | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const notFound = ref(false);
 
-const closeIcon = computed(() => (appConfig.ui?.icons?.close as string) || 'i-lucide-x');
-
-/**
- * UI Configuration (UX Focus)
- */
-const slideoverUi = {
-  content: 'flex flex-col !divide-y-0 max-h-[100dvh] min-h-0 p-0 focus:outline-none w-full max-w-md sm:max-w-lg shadow-2xl',
-  body: 'p-0',
-  header: 'p-0',
-};
-
-/**
- * Computed Logic
- */
 const effectiveSlug = computed(() => props.slug?.trim() || '');
 
-const slideoverTitle = computed(() => {
-  if (loading.value) return 'Chargement...';
-  if (profile.value?.name) return profile.value.name;
-  return props.providerType === 'nurse' ? 'Infirmier' : 'Laboratoire';
-});
+const sheetTitle = computed(() =>
+  props.providerType === 'nurse' ? 'Profil infirmier' : 'Profil laboratoire',
+);
 
-const shareUrlOverride = computed(() => {
-  const slug = effectiveSlug.value;
+const shareUrl = computed(() => {
+  const slug = profile.value?.data.slug || effectiveSlug.value;
   if (!slug) return undefined;
-  
   const baseUrl = config.public.siteUrl?.replace(/\/$/, '') || '';
   const segment = props.providerType === 'nurse' ? 'infirmier' : 'laboratoire';
-  
   return `${baseUrl}/${segment}/${encodeURIComponent(slug)}`;
 });
 
-/**
- * Data Fetching & Utilities
- */
-const parseFaq = (raw: unknown): any[] => {
-  if (!raw) return [];
-  if (typeof raw === 'string') {
-    try { return JSON.parse(raw); } catch { return []; }
-  }
-  return Array.isArray(raw) ? raw : [];
-};
-
-const getApiUrl = (type: 'nurse' | 'lab', slug: string) => {
+function profileUrl(type: ProviderType, slug: string): string {
   const base = config.public.apiBase || '/api';
-  const apiBase = (import.meta.server && !base.startsWith('http')) 
+  const apiBase = import.meta.server && !base.startsWith('http')
     ? String(config.apiInternalBase).replace(/\/$/, '')
     : base;
-  
-  const path = type === 'nurse' ? 'public/nurse' : 'public/lab';
-  return `${apiBase}/${path}/${encodeURIComponent(slug)}`;
-};
+  return `${apiBase}/public/${type}/${encodeURIComponent(slug)}`;
+}
+
+function withDisplayName<T extends PublicNurseProfile | PublicLabProfile>(data: T): T {
+  const name = data.name?.trim() || [data.first_name, data.last_name].filter(Boolean).join(' ').trim();
+  return { ...data, name: name || (props.providerType === 'nurse' ? 'Infirmier(e)' : 'Laboratoire') };
+}
+
+/** `null` = profil absent ou non public (404) ; toute autre réponse non OK est une erreur. */
+async function requestProfile<T>(type: ProviderType, slug: string): Promise<PublicProfileResponse<T> | null> {
+  const response = await $fetch.raw<PublicProfileResponse<T>>(profileUrl(type, slug), {
+    timeout: 10000,
+    ignoreResponseError: true,
+  });
+  if (response.status === 404) return null;
+  if (!response.ok || !response._data) throw new Error(`HTTP ${response.status}`);
+  return response._data;
+}
+
+async function fetchNurse(slug: string): Promise<LoadedProfile | null> {
+  const response = await requestProfile<PublicNurseProfile>('nurse', slug);
+  if (!response?.success || !response.data) return null;
+  return { type: 'nurse', data: withDisplayName(response.data) };
+}
+
+async function fetchLab(slug: string): Promise<LoadedProfile | null> {
+  let response = await requestProfile<PublicLabProfile>('lab', slug);
+  if (response?.redirect && response.new_slug) {
+    response = await requestProfile<PublicLabProfile>('lab', response.new_slug);
+  }
+  if (!response?.success || !response.data) return null;
+  return { type: 'lab', data: withDisplayName(response.data) };
+}
 
 async function fetchProfile() {
   const slug = effectiveSlug.value;
@@ -162,69 +142,31 @@ async function fetchProfile() {
 
   loading.value = true;
   error.value = null;
-
+  notFound.value = false;
   try {
-    const response = await $fetch<any>(getApiUrl(props.providerType, slug));
-
-    // Gestion spécifique de la redirection Lab
-    let finalData = response;
-    if (props.providerType === 'lab' && response.redirect && response.new_slug) {
-      finalData = await $fetch<any>(getApiUrl('lab', response.new_slug));
-    }
-
-    if (finalData.success && finalData.data) {
-      const d = finalData.data;
-      profile.value = {
-        ...d,
-        role: props.providerType === 'nurse' ? 'nurse' : 'subaccount',
-        name: d.name || `${d.first_name || ''} ${d.last_name || ''}`.trim() || slideoverTitle.value,
-        faq: parseFaq(d.faq)
-      };
-    } else {
-      error.value = finalData.error || 'Profil introuvable';
-    }
-  } catch (err: any) {
-    console.error('[ProfileFetchError]', err);
-    error.value = err.data?.message || "Impossible de récupérer les données.";
+    const result = props.providerType === 'nurse' ? await fetchNurse(slug) : await fetchLab(slug);
+    profile.value = result;
+    notFound.value = result === null;
+  } catch (err: unknown) {
+    console.error('[ProviderPublicProfileSlideover] fetch failed', err);
+    profile.value = null;
+    error.value = 'Vérifiez votre connexion puis réessayez.';
   } finally {
     loading.value = false;
   }
 }
 
-/**
- * Watchers
- */
 watch(
   () => [open.value, props.slug] as const,
-  ([isOpen, newSlug]) => {
+  ([isOpen, slug]) => {
     if (!isOpen) {
       profile.value = null;
+      error.value = null;
+      notFound.value = false;
       return;
     }
-    if (newSlug) fetchProfile();
+    if (slug) void fetchProfile();
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>
-
-<style scoped>
-/* Optimisation du défilement pour iOS */
-.overscroll-contain {
-  overscroll-behavior: contain;
-}
-
-/* Scrollbar discrète et élégante */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 4px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #e5e7eb;
-  border-radius: 9999px;
-}
-html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #1f2937;
-}
-</style>
