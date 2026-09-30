@@ -285,11 +285,7 @@ final class AppointmentDispatchService
                        p.lab_id
                 FROM coverage_zones cz
                 INNER JOIN profiles p ON cz.owner_id = p.id
-                WHERE cz.role IN ('lab', 'subaccount')
-                AND cz.is_active = TRUE
-                AND cz.radius_km IS NOT NULL
-                AND (cz.center_lat IS NOT NULL AND cz.center_lng IS NOT NULL
-                     OR (p.address_encrypted IS NOT NULL AND p.address_dek IS NOT NULL))
+                WHERE " . CoverageZoneMatcher::usableLabZoneSql('cz', 'p') . "
             ";
             $params = [];
             if ($restrictLabIds !== null) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../lib/Validation.php';
 require_once __DIR__ . '/../lib/DbSchemaCache.php';
+require_once __DIR__ . '/../lib/CoverageZoneMatcher.php';
 
 class LabBrand
 {
@@ -48,11 +49,80 @@ class LabBrand
         ');
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $labIdsByBrand = $this->labIdsByBrand();
+        $appointmentCounts = $this->appointmentCountsByBrand();
         foreach ($rows as &$row) {
             $row['lab_ids'] = $labIdsByBrand[(string) $row['id']] ?? [];
+            $row['appointment_count'] = $appointmentCounts[(string) $row['id']] ?? 0;
         }
         unset($row);
         return $rows;
+    }
+
+    /**
+     * Comptes labo et leur capacité à recevoir un RDV réseau : zone prise de sang utilisable et RDV acceptés.
+     *
+     * @return list<array{id: string, has_active_zone: bool, is_accepting_appointments: bool}>
+     */
+    public function listLabReachability(): array
+    {
+        $stmt = $this->db->query("
+            SELECT p.id, p.is_accepting_appointments,
+                EXISTS (
+                    SELECT 1 FROM coverage_zones cz
+                    WHERE cz.owner_id = p.id AND " . CoverageZoneMatcher::usableLabZoneSql('cz', 'p') . "
+                ) AS has_active_zone
+            FROM profiles p
+            WHERE p.role = 'lab'
+        ");
+        return array_map(static fn (array $row): array => [
+            'id' => (string) $row['id'],
+            'has_active_zone' => (bool) $row['has_active_zone'],
+            'is_accepting_appointments' => !empty($row['is_accepting_appointments']),
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
+
+    /**
+     * Ordre d'affichage : la liste doit contenir exactement toutes les marques.
+     *
+     * @param mixed $brandIds
+     */
+    public function reorder(mixed $brandIds): void
+    {
+        if (!is_array($brandIds) || $brandIds === []) {
+            throw new InvalidArgumentException('Liste des marques requise.');
+        }
+        $ids = array_values(array_map(static fn ($id): string => trim((string) $id), $brandIds));
+        $existing = array_map('strval', $this->db->query('SELECT id FROM lab_brands')->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        $sortedIds = $ids;
+        sort($sortedIds);
+        sort($existing);
+        if ($sortedIds !== $existing) {
+            throw new InvalidArgumentException('La liste doit contenir chaque marque une seule fois. Rechargez la page.');
+        }
+        $this->inTransaction(function () use ($ids): void {
+            $stmt = $this->db->prepare('UPDATE lab_brands SET sort_order = ?, updated_at = NOW() WHERE id = ?');
+            foreach ($ids as $index => $id) {
+                $stmt->execute([$index + 1, $id]);
+            }
+        });
+    }
+
+    /** @return array<string, int> */
+    private function appointmentCountsByBrand(): array
+    {
+        if (!DbSchemaCache::tableHasColumn($this->db, 'appointments', 'preferred_lab_brand_id')) {
+            return [];
+        }
+        $stmt = $this->db->query('
+            SELECT preferred_lab_brand_id, COUNT(*) AS n FROM appointments
+            WHERE preferred_lab_brand_id IS NOT NULL
+            GROUP BY preferred_lab_brand_id
+        ');
+        $counts = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $counts[(string) $row['preferred_lab_brand_id']] = (int) $row['n'];
+        }
+        return $counts;
     }
 
     public function getById(string $id): ?array
@@ -173,7 +243,7 @@ class LabBrand
     /** @param array<string, mixed> $input */
     public function create(array $input): array
     {
-        $payload = $this->normalizeInput($input);
+        $payload = $this->normalizeInput($input, null);
         $bytes = random_bytes(16);
         $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
         $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);
@@ -202,10 +272,12 @@ class LabBrand
     /** @param array<string, mixed> $input */
     public function update(string $id, array $input): ?array
     {
-        if ($this->getById($id) === null) {
+        $existing = $this->getById($id);
+        if ($existing === null) {
             return null;
         }
-        $payload = $this->normalizeInput($input, false);
+        $fields = ['name', 'slug', 'logo_url', 'website_url', 'sort_order', 'is_active'];
+        $payload = $this->normalizeInput(array_merge(array_intersect_key($existing, array_flip($fields)), $input), $id);
         $this->inTransaction(function () use ($id, $payload, $input): void {
             $stmt = $this->db->prepare('
                 UPDATE lab_brands
@@ -236,29 +308,43 @@ class LabBrand
     }
 
     /** @param array<string, mixed> $input */
-    private function normalizeInput(array $input, bool $requireName = true): array
+    private function normalizeInput(array $input, ?string $currentId): array
     {
         $name = trim((string) ($input['name'] ?? ''));
-        if ($requireName && $name === '') {
+        if ($name === '') {
             throw new InvalidArgumentException('Le nom de la marque est requis.');
         }
-        $slug = trim((string) ($input['slug'] ?? ''));
+        $slug = self::slugify(trim((string) ($input['slug'] ?? '')) ?: $name);
         if ($slug === '') {
-            $slug = self::slugify($name);
+            throw new InvalidArgumentException('Le nom doit contenir au moins une lettre ou un chiffre.');
         }
-        if ($slug === '') {
-            throw new InvalidArgumentException('Le slug est requis.');
+        $duplicate = $this->db->prepare('SELECT name FROM lab_brands WHERE slug = ? AND id <> ? LIMIT 1');
+        $duplicate->execute([$slug, $currentId ?? '']);
+        $duplicateName = $duplicate->fetchColumn();
+        if ($duplicateName !== false) {
+            throw new InvalidArgumentException("La marque « {$duplicateName} » porte déjà ce nom.");
         }
-        $logoUrl = trim((string) ($input['logo_url'] ?? ''));
-        $websiteUrl = trim((string) ($input['website_url'] ?? ''));
         return [
             'name' => $name,
             'slug' => $slug,
-            'logo_url' => $logoUrl !== '' ? $logoUrl : null,
-            'website_url' => $websiteUrl !== '' ? $websiteUrl : null,
+            'logo_url' => self::optionalHttpUrl($input['logo_url'] ?? null, 'L’adresse du logo'),
+            'website_url' => self::optionalHttpUrl($input['website_url'] ?? null, 'L’adresse du site web'),
             'sort_order' => (int) ($input['sort_order'] ?? 0),
             'is_active' => !empty($input['is_active']) ? 1 : 0,
         ];
+    }
+
+    private static function optionalHttpUrl(mixed $value, string $label): ?string
+    {
+        $url = trim((string) ($value ?? ''));
+        if ($url === '') {
+            return null;
+        }
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        if (filter_var($url, FILTER_VALIDATE_URL) === false || !in_array($scheme, ['http', 'https'], true)) {
+            throw new InvalidArgumentException("{$label} doit commencer par https:// (ou http://).");
+        }
+        return $url;
     }
 
     public static function slugify(string $name): string

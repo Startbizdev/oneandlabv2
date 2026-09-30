@@ -32,7 +32,7 @@ for (const width of [360, 1440]) {
       await expect(page.getByRole('heading', { name: kind === 'brands' ? 'Marques indisponibles' : 'Catégories indisponibles', exact: true })).toBeVisible();
       failLoad = false;
       await page.getByRole('button', { name: 'Réessayer', exact: true }).click();
-      const toggle = page.getByRole('switch', { name: 'Activer Exemple', exact: true });
+      const toggle = page.getByRole('switch', { name: kind === 'brands' ? 'Exemple visible pour les patients' : 'Activer Exemple', exact: true });
       await expect(toggle).not.toBeChecked();
       await toggle.click();
       await expect.poll(() => writes.length).toBe(1);
@@ -53,7 +53,7 @@ for (const width of [360, 1440]) {
         failWrite = false;
         await dialog.getByRole('button', { name: 'Enregistrer', exact: true }).click();
         await expect(dialog).toBeHidden();
-        await expect(page.getByText('Réseau Exemple', { exact: true })).toBeVisible();
+        await expect(page.getByText('Réseau Exemple', { exact: true }).filter({ visible: true })).toBeVisible();
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });

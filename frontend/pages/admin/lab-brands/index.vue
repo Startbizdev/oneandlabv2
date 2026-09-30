@@ -4,7 +4,7 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Marques laboratoire"
-        description="Gérez les réseaux proposés lors d’un prélèvement (nom, logo, site, ordre) et les comptes labo qui reçoivent leurs RDV."
+        description="Réseaux proposés aux patients lors d’une prise de sang, et comptes labo qui reçoivent leurs RDV."
       >
         <template #actions>
           <UButton color="primary" icon="i-lucide-plus" size="md" :on-click="openCreate">
@@ -14,8 +14,8 @@
       </AppPageHeader>
     </template>
 
-    <div v-if="loading" class="space-y-2">
-      <div v-for="i in 6" :key="i" class="h-14 animate-pulse rounded-lg bg-muted/40" />
+    <div v-if="loading" class="space-y-2" aria-label="Chargement des marques">
+      <USkeleton v-for="i in 6" :key="i" class="h-16 rounded-lg" />
     </div>
 
     <div v-else-if="loadError" role="alert" class="rounded-xl border border-default bg-default p-5 space-y-3">
@@ -23,6 +23,7 @@
       <p class="text-sm text-muted">Impossible de charger les marques de laboratoire.</p>
       <UButton variant="outline" color="neutral" @click="loadBrands">Réessayer</UButton>
     </div>
+
     <UEmpty
       v-else-if="brands.length === 0"
       icon="i-lucide-building-2"
@@ -31,115 +32,132 @@
       :actions="[{ label: 'Ajouter une marque', variant: 'solid', onClick: openCreate }]"
     />
 
-    <div v-else class="overflow-hidden rounded-xl border border-default divide-y divide-default">
-      <div
-        v-for="brand in brands"
-        :key="brand.id"
-        class="flex flex-wrap items-center gap-3 px-4 py-3"
-        :class="!brand.is_active ? 'opacity-60' : ''"
-      >
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-default bg-muted/20">
-          <img v-if="brand.logo_url" :src="brand.logo_url" :alt="brand.name" class="h-8 w-8 object-contain" />
-          <UIcon v-else name="i-lucide-building-2" class="h-5 w-5 text-muted" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-medium">{{ brand.name }}</span>
-            <UBadge variant="subtle" size="xs">{{ brand.slug }}</UBadge>
-          </div>
-          <p v-if="brand.website_url" class="truncate text-xs text-muted">{{ brand.website_url }}</p>
-          <p class="text-xs" :class="brandLabCount(brand) ? 'text-muted' : 'text-warning'" :data-testid="`brand-labs-${brand.slug}`">
-            {{ brandLabsSummary(brand) }}
-          </p>
-        </div>
-        <span class="text-xs text-muted">Ordre {{ brand.sort_order }}</span>
-        <USwitch
-          :model-value="!!brand.is_active"
-          :aria-label="`Activer ${brand.name}`"
-          :disabled="togglingId === brand.id"
-          size="xs"
-          @update:model-value="toggleActive(brand)"
+    <template v-else>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <UInput
+          v-model="search"
+          icon="i-lucide-search"
+          placeholder="Rechercher une marque"
+          aria-label="Rechercher une marque"
+          class="w-full sm:w-72"
         />
-        <div class="flex gap-1">
-          <UButton size="xs" variant="ghost" square icon="i-lucide-pencil" :aria-label="`Modifier ${brand.name}`" @click="editBrand(brand)" />
-          <UButton
-            size="xs"
-            variant="ghost"
-            color="error"
-            square
-            icon="i-lucide-trash-2"
-            :aria-label="`Supprimer ${brand.name}`"
-            :loading="deletingId === brand.id"
-            @click="removeBrand(brand)"
-          />
-        </div>
+        <p class="text-sm text-muted">
+          {{ visibleCount }} visible{{ visibleCount > 1 ? 's' : '' }} sur {{ brands.length }}
+          <template v-if="search.trim()"> · réordonnancement disponible sans recherche</template>
+        </p>
       </div>
-    </div>
 
-    <UModal v-model:open="modalOpen">
-      <template #content>
-        <UCard>
-          <template #header>
-            <h3 class="text-lg font-medium">{{ editingId ? 'Modifier la marque' : 'Nouvelle marque' }}</h3>
-          </template>
-          <form class="space-y-4" @submit.prevent="saveBrand">
-            <UFormField label="Nom" required>
-              <UInput v-model="form.name" placeholder="Nom du réseau" class="w-full" />
-            </UFormField>
-            <UFormField label="Identifiant dans les liens" help="Laissez vide pour le créer à partir du nom.">
-              <UInput v-model="form.slug" placeholder="nom-du-reseau" class="w-full" />
-            </UFormField>
-            <UFormField label="URL logo">
-              <UInput v-model="form.logo_url" placeholder="https://..." class="w-full" />
-            </UFormField>
-            <UFormField label="Site web">
-              <UInput v-model="form.website_url" placeholder="https://..." class="w-full" />
-            </UFormField>
-            <UFormField
-              label="Comptes labo qui reçoivent les RDV"
-              help="Les labos choisis reçoivent les RDV de ce réseau si l’adresse du patient est dans leur zone. Sans labo, le RDV part à l’administration."
-            >
-              <USelectMenu
-                v-model="form.lab_ids"
-                :items="labSelectItems"
-                value-key="value"
-                multiple
-                :loading="labsLoading"
-                :disabled="labsLoading || labsError"
-                placeholder="Aucun compte labo"
-                class="w-full"
-                :filter-fields="['label', 'description']"
-                :search-input="{ placeholder: 'Filtrer…' }"
-                data-testid="brand-lab-select"
-              />
-              <div v-if="labsError" role="alert" class="mt-2 flex items-center gap-2">
-                <p class="text-sm text-error">Liste des laboratoires indisponible.</p>
-                <UButton size="xs" variant="outline" color="neutral" @click="loadLabs">Réessayer</UButton>
-              </div>
-            </UFormField>
-            <UFormField label="Ordre d’affichage">
-              <UInput v-model.number="form.sort_order" type="number" min="0" class="w-full" />
-            </UFormField>
-            <div class="flex items-center gap-2">
-              <USwitch v-model="form.is_active" aria-label="Marque active" />
-              <span class="text-sm">Active</span>
+      <UAlert
+        v-if="labsError"
+        color="warning"
+        variant="soft"
+        title="État des comptes labo indisponible"
+        description="Les rattachements sont conservés, mais leur capacité à recevoir des RDV ne peut pas être affichée."
+        :actions="[{ label: 'Réessayer', onClick: loadLabs }]"
+      />
+
+      <UEmpty v-if="filteredBrands.length === 0" icon="i-lucide-search" title="Aucune marque trouvée" description="Modifiez la recherche." />
+
+      <div v-else class="space-y-3 sm:hidden">
+        <article
+          v-for="brand in filteredBrands"
+          :key="brand.id"
+          class="rounded-xl border border-default bg-default p-4 space-y-3"
+          :class="!brand.is_active ? 'opacity-70' : ''"
+        >
+          <div class="flex items-start gap-3">
+            <AdminLabBrandLogo :brand="brand" />
+            <div class="min-w-0 flex-1">
+              <h2 class="break-words font-semibold">{{ brand.name }}</h2>
+              <p v-if="brand.website_url" class="break-all text-xs text-muted">{{ brand.website_url }}</p>
             </div>
-            <UAlert v-if="formError" color="error" variant="soft" :title="formError" />
-            <div class="flex justify-end gap-2">
-              <UButton variant="outline" color="neutral" @click="($event) => { modalOpen = false }">Annuler</UButton>
-              <UButton type="submit" color="primary" :loading="saving">Enregistrer</UButton>
+            <USwitch
+              :model-value="!!brand.is_active"
+              :aria-label="`${brand.name} visible pour les patients`"
+              :disabled="togglingId === brand.id"
+              @update:model-value="toggleActive(brand)"
+            />
+          </div>
+          <div :data-testid="`brand-labs-${brand.slug}`">
+            <p v-if="labsLoading" class="text-xs text-muted">Vérification des comptes labo…</p>
+            <AdminLabBrandLabStatus v-else :lab-ids="brand.lab_ids ?? []" :labs-by-id="labsById" />
+          </div>
+          <p class="text-xs text-muted">{{ appointmentLabel(brand) }}</p>
+          <div class="flex flex-wrap gap-2">
+            <UButton size="sm" variant="outline" icon="i-lucide-pencil" :aria-label="`Modifier ${brand.name}`" @click="openEdit(brand)">Modifier</UButton>
+            <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-arrow-up" :aria-label="`Monter ${brand.name}`" :disabled="!canMove(brand, -1)" @click="move(brand, -1)" />
+            <UButton size="sm" variant="ghost" color="neutral" icon="i-lucide-arrow-down" :aria-label="`Descendre ${brand.name}`" :disabled="!canMove(brand, 1)" @click="move(brand, 1)" />
+            <UButton size="sm" variant="ghost" color="error" icon="i-lucide-trash-2" :aria-label="`Supprimer ${brand.name}`" @click="openDelete(brand)" />
+          </div>
+        </article>
+      </div>
+
+      <UTable
+        v-if="filteredBrands.length > 0"
+        class="hidden overflow-hidden rounded-xl border border-default bg-default sm:block"
+        :data="filteredBrands"
+        :columns="columns"
+      >
+        <template #order-cell="{ row }">
+          <div class="flex items-center gap-0.5">
+            <UButton size="xs" variant="ghost" color="neutral" square icon="i-lucide-arrow-up" :aria-label="`Monter ${row.original.name}`" :disabled="!canMove(row.original, -1)" @click="move(row.original, -1)" />
+            <UButton size="xs" variant="ghost" color="neutral" square icon="i-lucide-arrow-down" :aria-label="`Descendre ${row.original.name}`" :disabled="!canMove(row.original, 1)" @click="move(row.original, 1)" />
+          </div>
+        </template>
+        <template #brand-cell="{ row }">
+          <div class="flex min-w-0 items-center gap-3" :class="!row.original.is_active ? 'opacity-70' : ''">
+            <AdminLabBrandLogo :brand="row.original" />
+            <div class="min-w-0">
+              <p class="font-medium">{{ row.original.name }}</p>
+              <p v-if="row.original.website_url" class="max-w-56 truncate text-xs text-muted">{{ row.original.website_url }}</p>
             </div>
-          </form>
-        </UCard>
-      </template>
-    </UModal>
+          </div>
+        </template>
+        <template #labs-cell="{ row }">
+          <div class="max-w-md whitespace-normal" :data-testid="`brand-labs-${row.original.slug}`">
+            <p v-if="labsLoading" class="text-xs text-muted">Vérification des comptes labo…</p>
+            <AdminLabBrandLabStatus v-else :lab-ids="row.original.lab_ids ?? []" :labs-by-id="labsById" />
+          </div>
+        </template>
+        <template #appointments-cell="{ row }">
+          <span class="text-sm text-muted">{{ row.original.appointment_count ?? 0 }}</span>
+        </template>
+        <template #visible-cell="{ row }">
+          <USwitch
+            :model-value="!!row.original.is_active"
+            :aria-label="`${row.original.name} visible pour les patients`"
+            :disabled="togglingId === row.original.id"
+            @update:model-value="toggleActive(row.original)"
+          />
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="flex gap-1">
+            <UButton size="xs" variant="ghost" square icon="i-lucide-pencil" :aria-label="`Modifier ${row.original.name}`" @click="openEdit(row.original)" />
+            <UButton size="xs" variant="ghost" color="error" square icon="i-lucide-trash-2" :aria-label="`Supprimer ${row.original.name}`" @click="openDelete(row.original)" />
+          </div>
+        </template>
+      </UTable>
+    </template>
+
+    <AdminLabBrandFormModal
+      v-model:open="formOpen"
+      :brand="editingBrand"
+      :labs="labOptions"
+      :labs-loading="labsLoading"
+      :labs-error="labsError"
+      :next-sort-order="brands.length + 1"
+      @saved="onSaved"
+      @retry-labs="loadLabs"
+    />
+    <AdminLabBrandDeleteModal v-model:open="deleteOpen" :brand="deletingBrand" @deleted="onDeleted" @hide="hideInsteadOfDelete" />
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
-import type { LabBrandAdmin } from '@oneandlab/shared-types';
+import type { LabBrandAdmin, LabBrandLabReachability } from '@oneandlab/shared-types';
 import { apiFetch } from '~/utils/api';
 import { fetchAllUsers, sortUsersByLabel, userDisplayLabel } from '~/utils/fetch-all-users';
+import { filterBrandsByName, moveId, type LabAccountOption } from '~/utils/lab-brand-admin';
 
 definePageMeta({
   layout: 'dashboard',
@@ -151,62 +169,61 @@ const toast = useAppToast();
 const brands = ref<LabBrandAdmin[]>([]);
 const loading = ref(true);
 const loadError = ref(false);
-const saving = ref(false);
-const deletingId = ref('');
+const search = ref('');
 const togglingId = ref('');
-const modalOpen = ref(false);
-const editingId = ref('');
-const formError = ref('');
+const reordering = ref(false);
+const formOpen = ref(false);
+const editingBrand = ref<LabBrandAdmin | null>(null);
+const deleteOpen = ref(false);
+const deletingBrand = ref<LabBrandAdmin | null>(null);
 
-const form = reactive({
-  name: '',
-  slug: '',
-  logo_url: '',
-  website_url: '',
-  sort_order: 0,
-  is_active: true,
-  lab_ids: [] as string[],
-});
-
-type LabOption = { value: string; label: string; description?: string };
-const labOptions = ref<LabOption[]>([]);
+const labOptions = ref<LabAccountOption[]>([]);
 const labsLoading = ref(false);
 const labsError = ref(false);
-const labsLoaded = ref(false);
+const labsById = computed(() => new Map(labOptions.value.map(lab => [lab.id, lab])));
 
-const labLabelById = computed(() => new Map(labOptions.value.map(lab => [lab.value, lab.label])));
+const columns = [
+  { id: 'order', header: 'Ordre' },
+  { id: 'brand', header: 'Marque' },
+  { id: 'labs', header: 'Comptes labo' },
+  { id: 'appointments', header: 'RDV' },
+  { id: 'visible', header: 'Visible' },
+  { id: 'actions', header: '' },
+];
 
-const labSelectItems = computed<LabOption[]>(() => {
-  const items = [...labOptions.value];
-  for (const id of form.lab_ids) {
-    if (!items.some(item => item.value === id)) items.unshift({ value: id, label: 'Compte labo inactif ou introuvable' });
-  }
-  return items;
-});
+const filteredBrands = computed(() => filterBrandsByName(brands.value, search.value));
+const visibleCount = computed(() => brands.value.filter(brand => brand.is_active).length);
 
-function brandLabCount(brand: LabBrandAdmin): number {
-  return brand.lab_ids?.length ?? 0;
+function normalizeBrands(rows: LabBrandAdmin[]): LabBrandAdmin[] {
+  return rows.map(brand => ({ ...brand, is_active: Number(brand.is_active) === 1 }));
 }
 
-function brandLabsSummary(brand: LabBrandAdmin): string {
-  const ids = brand.lab_ids ?? [];
-  if (ids.length === 0) return 'Aucun compte labo : RDV traités par l’administration';
-  const names = ids.map(id => labLabelById.value.get(id)).filter((name): name is string => !!name);
-  if (names.length === 0) return `${ids.length} compte(s) labo`;
-  return `Reçoivent les RDV : ${names.join(', ')}${names.length < ids.length ? ` (+${ids.length - names.length})` : ''}`;
+function appointmentLabel(brand: LabBrandAdmin): string {
+  const count = brand.appointment_count ?? 0;
+  if (count === 0) return 'Aucun RDV n’a encore choisi ce réseau';
+  return count === 1 ? '1 RDV a choisi ce réseau' : `${count} RDV ont choisi ce réseau`;
 }
 
 async function loadLabs() {
   labsLoading.value = true;
   labsError.value = false;
   try {
-    const rows = await fetchAllUsers({ role: 'lab', status: 'active' });
-    labOptions.value = sortUsersByLabel(rows).map(lab => ({
-      value: String(lab.id),
-      label: userDisplayLabel(lab),
-      description: lab.email ? String(lab.email) : undefined,
-    }));
-    labsLoaded.value = true;
+    const [rows, reachRes] = await Promise.all([
+      fetchAllUsers({ role: 'lab', status: 'active' }),
+      apiFetch('/admin/lab-brands/labs', { method: 'GET' }) as Promise<{ success?: boolean; data?: LabBrandLabReachability[] }>,
+    ]);
+    if (!reachRes?.success || !Array.isArray(reachRes.data)) throw new Error('État des comptes labo indisponible');
+    const reachById = new Map(reachRes.data.map(item => [String(item.id), item]));
+    labOptions.value = sortUsersByLabel(rows).map(lab => {
+      const reach = reachById.get(String(lab.id));
+      return {
+        id: String(lab.id),
+        label: userDisplayLabel(lab),
+        email: lab.email ? String(lab.email) : undefined,
+        hasActiveZone: !!reach?.has_active_zone,
+        acceptsAppointments: !!reach?.is_accepting_appointments,
+      };
+    });
   } catch (error) {
     console.error('Chargement des laboratoires (marques):', error);
     labsError.value = true;
@@ -219,99 +236,59 @@ async function loadBrands() {
   loading.value = true;
   loadError.value = false;
   try {
-    const res = (await apiFetch('/admin/lab-brands', { method: 'GET' })) as {
-      success?: boolean;
-      data?: LabBrandAdmin[];
-      error?: string;
-    };
-    if (res?.success && Array.isArray(res.data)) {
-      brands.value = res.data.map(brand => ({ ...brand, is_active: Number(brand.is_active) === 1 }));
-    } else {
-      throw new Error('Chargement impossible');
-    }
-  } catch {
+    const res = (await apiFetch('/admin/lab-brands', { method: 'GET' })) as { success?: boolean; data?: LabBrandAdmin[] };
+    if (!res?.success || !Array.isArray(res.data)) throw new Error('Chargement impossible');
+    brands.value = normalizeBrands(res.data);
+  } catch (error) {
+    console.error('Chargement des marques:', error);
     loadError.value = true;
   } finally {
     loading.value = false;
   }
 }
 
-function resetForm() {
-  form.name = '';
-  form.slug = '';
-  form.logo_url = '';
-  form.website_url = '';
-  form.sort_order = brands.value.length + 1;
-  form.is_active = true;
-  form.lab_ids = [];
-  formError.value = '';
-}
-
 function openCreate() {
-  editingId.value = '';
-  resetForm();
-  modalOpen.value = true;
+  editingBrand.value = null;
+  formOpen.value = true;
 }
 
-function editBrand(brand: LabBrandAdmin) {
-  editingId.value = brand.id;
-  form.name = brand.name;
-  form.slug = brand.slug;
-  form.logo_url = brand.logo_url ?? '';
-  form.website_url = brand.website_url ?? '';
-  form.sort_order = brand.sort_order;
-  form.is_active = !!brand.is_active;
-  form.lab_ids = [...(brand.lab_ids ?? [])];
-  formError.value = '';
-  modalOpen.value = true;
+function openEdit(brand: LabBrandAdmin) {
+  editingBrand.value = brand;
+  formOpen.value = true;
 }
 
-async function saveBrand() {
-  if (saving.value) return;
-  if (!form.name.trim()) {
-    formError.value = 'Le nom est requis.';
-    return;
-  }
-  saving.value = true;
-  formError.value = '';
-  const body = {
-    name: form.name.trim(),
-    slug: form.slug.trim() || undefined,
-    logo_url: form.logo_url.trim() || null,
-    website_url: form.website_url.trim() || null,
-    sort_order: Number(form.sort_order) || 0,
-    is_active: form.is_active ? 1 : 0,
-    // Sans liste de labos chargée, ne pas envoyer lab_ids : le serveur conserve les rattachements existants.
-    ...(labsLoaded.value ? { lab_ids: [...form.lab_ids] } : {}),
-  };
-  try {
-    const res = editingId.value
-      ? await apiFetch(`/admin/lab-brands/${editingId.value}`, { method: 'PUT', body })
-      : await apiFetch('/admin/lab-brands', { method: 'POST', body });
-    if ((res as { success?: boolean }).success) {
-      modalOpen.value = false;
-      await loadBrands();
-      toast.add({ title: 'Enregistré', color: 'success' });
-    } else {
-      formError.value = (res as { error?: string }).error || 'Erreur';
-    }
-  } catch (e) {
-    formError.value = e instanceof Error ? e.message : 'Erreur';
-  } finally {
-    saving.value = false;
-  }
+function openDelete(brand: LabBrandAdmin) {
+  deletingBrand.value = brand;
+  deleteOpen.value = true;
+}
+
+async function onSaved() {
+  await loadBrands();
+  toast.add({ title: 'Marque enregistrée', color: 'success' });
+}
+
+async function onDeleted() {
+  await loadBrands();
+  toast.add({ title: 'Marque supprimée', color: 'success' });
+}
+
+async function hideInsteadOfDelete(brand: LabBrandAdmin) {
+  deleteOpen.value = false;
+  if (brand.is_active) await toggleActive(brand);
 }
 
 async function toggleActive(brand: LabBrandAdmin) {
   if (togglingId.value) return;
   togglingId.value = brand.id;
+  const nextActive = !brand.is_active;
   try {
-    const response = await apiFetch(`/admin/lab-brands/${brand.id}`, {
+    const response = (await apiFetch(`/admin/lab-brands/${brand.id}`, {
       method: 'PUT',
-      body: { ...brand, is_active: brand.is_active ? 0 : 1 },
-    });
-    if (!response?.success) throw new Error('La visibilité de la marque n’a pas été modifiée. Réessayez.');
+      body: { is_active: nextActive ? 1 : 0 },
+    })) as { success?: boolean; error?: string };
+    if (!response?.success) throw new Error(response?.error || 'La visibilité de la marque n’a pas été modifiée. Réessayez.');
     await loadBrands();
+    toast.add({ title: nextActive ? `${brand.name} est visible pour les patients` : `${brand.name} est masquée aux patients`, color: 'success' });
   } catch (error) {
     toast.add({ title: 'Modification non enregistrée', description: error instanceof Error ? error.message : 'Réessayez.', color: 'error' });
   } finally {
@@ -319,25 +296,28 @@ async function toggleActive(brand: LabBrandAdmin) {
   }
 }
 
-async function removeBrand(brand: LabBrandAdmin) {
-  if (deletingId.value) return;
-  if (!confirm(`Supprimer la marque « ${brand.name} » ?`)) return;
-  deletingId.value = brand.id;
+function canMove(brand: LabBrandAdmin, delta: -1 | 1): boolean {
+  if (search.value.trim() || reordering.value) return false;
+  const index = brands.value.findIndex(item => item.id === brand.id);
+  return index + delta >= 0 && index + delta < brands.value.length;
+}
+
+async function move(brand: LabBrandAdmin, delta: -1 | 1) {
+  if (!canMove(brand, delta)) return;
+  reordering.value = true;
   try {
-    const res = (await apiFetch(`/admin/lab-brands/${brand.id}`, { method: 'DELETE' })) as {
+    const ids = moveId(brands.value.map(item => item.id), brand.id, delta);
+    const res = (await apiFetch('/admin/lab-brands/reorder', { method: 'POST', body: { ids } })) as {
       success?: boolean;
+      data?: LabBrandAdmin[];
       error?: string;
     };
-    if (res?.success) {
-      await loadBrands();
-      toast.add({ title: 'Marque supprimée', color: 'success' });
-    } else {
-      toast.add({ title: 'Erreur', description: res?.error || 'Suppression impossible', color: 'error' });
-    }
-  } catch {
-    toast.add({ title: 'Suppression impossible', description: 'La marque est conservée. Réessayez.', color: 'error' });
+    if (!res?.success || !Array.isArray(res.data)) throw new Error(res?.error || 'L’ordre n’a pas été modifié. Réessayez.');
+    brands.value = normalizeBrands(res.data);
+  } catch (error) {
+    toast.add({ title: 'Ordre non enregistré', description: error instanceof Error ? error.message : 'Réessayez.', color: 'error' });
   } finally {
-    deletingId.value = '';
+    reordering.value = false;
   }
 }
 

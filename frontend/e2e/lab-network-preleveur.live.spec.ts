@@ -86,7 +86,7 @@ test.describe.serial('réseau labo et demandes préleveur (live)', () => {
     await admin.getByRole('option', { name: /Labo Central/ }).click();
     await admin.keyboard.press('Escape');
     await admin.getByRole('button', { name: 'Enregistrer', exact: true }).click();
-    await expect(admin.getByTestId(`brand-labs-${BIOGROUP.slug}`)).toContainText('Labo Central');
+    await expect(admin.getByTestId(`brand-labs-${BIOGROUP.slug}`).filter({ visible: true })).toContainText('Labo Central');
     expect(mysql(`SELECT lab_profile_id FROM lab_brand_labs WHERE brand_id = '${BIOGROUP.id}'`)).toBe(IDS.lab);
     await admin.close();
 

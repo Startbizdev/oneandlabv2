@@ -8,6 +8,19 @@ require_once __DIR__ . '/CoverageZoneGeo.php';
 final class CoverageZoneMatcher
 {
     /**
+     * Zone labo/sous-compte prise en compte par le dispatch prise de sang : active, avec rayon,
+     * et un centre (zone ou adresse du profil) pour calculer la distance.
+     */
+    public static function usableLabZoneSql(string $zoneAlias, string $profileAlias): string
+    {
+        return "{$zoneAlias}.role IN ('lab', 'subaccount')
+                AND {$zoneAlias}.is_active = TRUE
+                AND {$zoneAlias}.radius_km IS NOT NULL
+                AND ({$zoneAlias}.center_lat IS NOT NULL AND {$zoneAlias}.center_lng IS NOT NULL
+                     OR ({$profileAlias}.address_encrypted IS NOT NULL AND {$profileAlias}.address_dek IS NOT NULL))";
+    }
+
+    /**
      * @param array<string, mixed> $zone Ligne coverage_zones + champs profil optionnels
      * @param array{lat: float, lng: float}|null $profAddress Adresse déchiffrée du pro
      */
