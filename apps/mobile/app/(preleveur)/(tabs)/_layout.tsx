@@ -8,6 +8,12 @@ import {
 export default createRoleTabsLayout([
   { name: 'index', ...APPOINTMENTS_TAB_TRIGGER },
   {
+    name: 'patients',
+    accessibilityLabel: 'Mes patients',
+    sf: { default: 'person.2', selected: 'person.2.fill' },
+    androidIcon: 'people',
+  },
+  {
     name: 'tournee',
     accessibilityLabel: 'Tournée',
     sf: { default: 'map', selected: 'map.fill' },

@@ -14,6 +14,7 @@ import { FormScreen } from '@/components/layout/FormScreen';
 import { LabBrandPreferenceStep } from '../components/LabBrandPreferenceStep';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
+import { isPatientEmailOptionalForBookingRole } from '../utils/booking-wizard-role-rules';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import { useAuthStore } from '@/store/auth-store';
 import { CareSelectionStep } from '../components/CareSelectionStep';
@@ -423,7 +424,7 @@ export function BookingWizardScreen({
                   gender={w.form.watch('gender')}
                   birthDate={w.form.watch('birth_date')}
                   onChange={(field, value) => w.form.setValue(field as 'first_name', value)}
-                  emailOptional={role === 'nurse' || role === 'pro'}
+                  emailOptional={isPatientEmailOptionalForBookingRole(role)}
                 />
                 {w.patientMode === 'existing' && w.selectedPatientId ? (
                   <>

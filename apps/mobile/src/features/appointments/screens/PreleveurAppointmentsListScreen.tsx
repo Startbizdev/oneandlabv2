@@ -2,9 +2,10 @@ import type { AppColors } from '@/theme/colors';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
@@ -46,9 +47,11 @@ function isAssignedConfirmed(apt: Appointment, userId: string | undefined): bool
 
 interface Props {
   detailPathPrefix: string;
+  bookHref?: Href;
+  bookLabel?: string;
 }
 
-export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
+export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bookLabel }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PreleveurAppointmentsListScreen_tsx_PreleveurAppointmentsListScreen_styles');
 
   const router = useRouter();
@@ -96,13 +99,19 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix }: Props) {
 
   const ListHeader = useCallback(
     () => (
-      <AppointmentsListSearchHost
-        embedded
-        onQueryChange={onSearchQueryChange}
-        searchPlaceholder="Nom, adresse, soin…"
-      />
+      <View style={styles.scrollHeader}>
+        <AppointmentsListSearchHost
+          embedded
+          followedByBookCta={bookHref != null}
+          onQueryChange={onSearchQueryChange}
+          searchPlaceholder="Nom, adresse, soin…"
+        />
+        {bookHref != null ? (
+          <AppointmentsBookCta href={bookHref} {...(bookLabel != null ? { label: bookLabel } : {})} />
+        ) : null}
+      </View>
     ),
-    [onSearchQueryChange],
+    [bookHref, bookLabel, onSearchQueryChange, styles.scrollHeader],
   );
 
   return (
@@ -142,6 +151,11 @@ function buildStyles(c: AppColors) {
     paddingTop: 0,
     paddingBottom: spacing[8],
     flexGrow: 1,
+  },
+  scrollHeader: {
+    marginTop: 0,
+    alignSelf: 'stretch' as const,
+    width: '100%' as const,
   },
   listHeaderComponent: {
     paddingTop: 0,

@@ -3,7 +3,7 @@ import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
-import { onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
+import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 
 export default function PreleveurLayout() {
@@ -15,6 +15,7 @@ export default function PreleveurLayout() {
       <Stack screenOptions={stackHeaderOptions()}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
+        <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions()} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
         <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
         <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />

@@ -4,7 +4,11 @@ import { AppointmentsTabScreenFrame } from '@/navigation/tab-screen-frames';
 export default function PreleveurHome() {
   return (
     <AppointmentsTabScreenFrame>
-      <PreleveurAppointmentsListScreen detailPathPrefix="/(preleveur)/appointment" />
+      <PreleveurAppointmentsListScreen
+        detailPathPrefix="/(preleveur)/appointment"
+        bookHref="/(preleveur)/appointments/new"
+        bookLabel="Demander un prélèvement"
+      />
     </AppointmentsTabScreenFrame>
   );
 }

@@ -37,6 +37,8 @@ type Props = {
   /** Dossier déjà existant — fermer sans effacer (liste rafraîchie côté parent). */
   onExistingPatient?: (patient: PatientRow) => void;
   stackBehavior?: 'push' | 'switch' | 'replace';
+  /** Recherche de doublon (`/patients/lookup`, réservée pro / infirmier / labo). */
+  detectDuplicates?: boolean;
 };
 
 function addressForApi(
@@ -60,6 +62,7 @@ export function CreatePatientModal({
   onCreated,
   onExistingPatient,
   stackBehavior,
+  detectDuplicates = true,
 }: Props) {
   const styles = useThemedStyles(buildStyles, 'features_patients_components_CreatePatientModal_tsx_styles');
   const qc = useQueryClient();
@@ -80,7 +83,7 @@ export function CreatePatientModal({
     duplicateRow,
     dismissDuplicate,
     resetDuplicate,
-  } = usePatientDuplicateDetection(email, phone, visible);
+  } = usePatientDuplicateDetection(email, phone, visible && detectDuplicates);
 
   const reset = () => {
     setFirstName('');

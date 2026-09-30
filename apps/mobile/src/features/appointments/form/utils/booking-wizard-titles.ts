@@ -10,6 +10,7 @@ export function bookingCareSelectionTitle(role?: string): string {
       return 'Soins infirmiers ou prises de sang pour le patient ?';
     case 'lab':
     case 'subaccount':
+    case 'preleveur':
       return 'Quel prélèvement pour ce rendez-vous ?';
     case 'admin':
       return 'Quels actes pour ce rendez-vous ?';

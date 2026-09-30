@@ -45,6 +45,12 @@ import { NEW_PATIENT_ID } from '../types';
 import { buildSingleAppointmentPayload } from '../utils/build-single-payload';
 import { mergePersonalFilesIntoFormData } from '../utils/merge-wizard-files';
 import {
+  bookingAppointmentsListPath,
+  isBloodTestOnlyBookingRole,
+  isPatientEmailOptionalForBookingRole,
+  skipsLabPreferenceStepForBookingRole,
+} from '../utils/booking-wizard-role-rules';
+import {
   applyProNurseAssignmentToPayloads,
   type ProNurseAssignment,
 } from '../utils/pro-nurse-assignment';
@@ -509,6 +515,8 @@ export function useMultiAppointmentWizard(opts: {
     [fillWizardPatient, patientsQ],
   );
 
+  const bloodTestOnly = isBloodTestOnlyBookingRole(opts.role);
+
   const nursingCatsQ = useQuery({
     queryKey: queryKeys.categories.list('nursing', 'picker'),
     queryFn: async () => {
@@ -516,6 +524,7 @@ export function useMultiAppointmentWizard(opts: {
       return res.data ?? [];
     },
     staleTime: CACHE_STALE_CATEGORIES_MS,
+    enabled: !bloodTestOnly,
   });
   const bloodCatsQ = useQuery({
     queryKey: queryKeys.categories.list('blood_test', 'picker'),
@@ -540,17 +549,22 @@ export function useMultiAppointmentWizard(opts: {
     [qc],
   );
 
+  const nursingSource = useMemo(
+    () => (bloodTestOnly ? [] : (nursingCatsQ.data ?? [])),
+    [bloodTestOnly, nursingCatsQ.data],
+  );
+
   const allCategories = useMemo((): CareCategory[] => {
-    const merged = [...(nursingCatsQ.data ?? []), ...(bloodCatsQ.data ?? [])];
+    const merged = [...nursingSource, ...(bloodCatsQ.data ?? [])];
     return isPatientBooking ? filterStaffOnlyCareCategoriesForPatient(merged) : merged;
-  }, [nursingCatsQ.data, bloodCatsQ.data, isPatientBooking]);
+  }, [nursingSource, bloodCatsQ.data, isPatientBooking]);
 
   const nursingCategories = useMemo(
     () =>
       isPatientBooking
-        ? filterStaffOnlyCareCategoriesForPatient(nursingCatsQ.data ?? [])
-        : (nursingCatsQ.data ?? []),
-    [nursingCatsQ.data, isPatientBooking],
+        ? filterStaffOnlyCareCategoriesForPatient(nursingSource)
+        : nursingSource,
+    [nursingSource, isPatientBooking],
   );
 
   const bloodCategories = useMemo(
@@ -632,11 +646,12 @@ export function useMultiAppointmentWizard(opts: {
         selectedServices,
         (labPref?.mode as LabPreferenceMode | '') || 'platform_match',
         labPref?.brandId,
+        { skipForProviderBooking: skipsLabPreferenceStepForBookingRole(opts.role) },
       );
       if (labErr) throw new Error(labErr);
 
       const err = validateUnifiedRdvPayload(formData, selectedServices, {
-        patientEmailOptional: opts.role === 'nurse' || opts.role === 'pro',
+        patientEmailOptional: isPatientEmailOptionalForBookingRole(opts.role),
       });
       if (err) throw new Error(err.message);
 
@@ -745,7 +760,7 @@ export function useMultiAppointmentWizard(opts: {
           type: 'warning',
         });
         qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-        router.replace(`${opts.basePath}/appointments` as never);
+        router.replace(bookingAppointmentsListPath(opts.basePath, opts.role) as never);
         return;
       }
       if (warning) {

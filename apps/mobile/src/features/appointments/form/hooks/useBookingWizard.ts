@@ -46,6 +46,10 @@ import type { LocalFileRef } from '../types';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import { profileDocRefFromRow } from '../types/document-file-ref';
 import { mergePersonalFilesIntoFormData } from '../utils/merge-wizard-files';
+import {
+  isPatientEmailOptionalForBookingRole,
+  skipsLabPreferenceStepForBookingRole,
+} from '../utils/booking-wizard-role-rules';
 import { PROFILE_PREFILL_DOC_KEYS } from '../constants/appointment-document-fields';
 import { useWizardProfileDocuments } from './useWizardProfileDocuments';
 import { fetchUser } from '@/features/profile/api/profile.service';
@@ -129,8 +133,11 @@ export function useBookingWizard(opts: {
   });
 
   const needsLabPreferenceStep = useMemo(
-    () => bloodTestNeedsLabPreferenceStep(wizard.selectedServices),
-    [wizard.selectedServices],
+    () =>
+      bloodTestNeedsLabPreferenceStep(wizard.selectedServices, {
+        skipForProviderBooking: skipsLabPreferenceStepForBookingRole(opts.role),
+      }),
+    [wizard.selectedServices, opts.role],
   );
   const formWizardStep = needsLabPreferenceStep ? 2 : 1;
 
@@ -547,7 +554,7 @@ export function useBookingWizard(opts: {
       };
 
       const err = validateUnifiedRdvPayload(formData, wizard.selectedServices, {
-        patientEmailOptional: opts.mode === 'dashboard' && (opts.role === 'nurse' || opts.role === 'pro'),
+        patientEmailOptional: opts.mode === 'dashboard' && isPatientEmailOptionalForBookingRole(opts.role),
       });
       if (err) throw new Error(err.message);
 
@@ -649,7 +656,7 @@ export function useBookingWizard(opts: {
       consent,
       patientFormData: { ...patient, address },
       selectedServices: wizard.selectedServices,
-      patientEmailOptional: opts.mode === 'dashboard' && (opts.role === 'nurse' || opts.role === 'pro'),
+      patientEmailOptional: opts.mode === 'dashboard' && isPatientEmailOptionalForBookingRole(opts.role),
     });
     if (missing.length > 0) {
       const msg =
