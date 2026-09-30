@@ -21,6 +21,24 @@ final class PreleveurLabRequestDenied extends RuntimeException
 final class PreleveurLabRequestPolicy
 {
     /**
+     * Le préleveur ne crée que des prises de sang (nouvelle demande comme reprise).
+     *
+     * @param array<string, mixed> $input
+     */
+    public static function assertBloodTestOnly(array $input): void
+    {
+        $type = isset($input['type']) ? (string) $input['type'] : '';
+        $formType = isset($input['form_type']) ? (string) $input['form_type'] : '';
+        if ($type !== 'blood_test' || $formType !== 'blood_test') {
+            throw new PreleveurLabRequestDenied(
+                'Les préleveurs ne peuvent créer que des rendez-vous de prise de sang.',
+                403,
+                'FORBIDDEN'
+            );
+        }
+    }
+
+    /**
      * @param array<string, mixed> $input
      * @return array<string, mixed>
      */

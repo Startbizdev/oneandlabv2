@@ -51,10 +51,7 @@ $config = require __DIR__ . '/../../../../config/database.php';
 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
-$teamIds = LabTeamAccess::teamMemberIds($db, $requesterId, $role);
-$prelStmt = $db->prepare('SELECT 1 FROM profiles WHERE id = ? AND role = ? LIMIT 1');
-$prelStmt->execute([$preleveurId, 'preleveur']);
-if (!$prelStmt->fetchColumn() || !in_array($preleveurId, $teamIds, true)) {
+if (!LabTeamAccess::isPreleveurOfTeam($db, $requesterId, $role, $preleveurId)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Ce préleveur n\'appartient pas à votre laboratoire']);
     exit;

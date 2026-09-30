@@ -50,6 +50,36 @@ test('le mode et la marque sont validés puis copiés dans le payload blood_test
   });
 });
 
+test('le préleveur n’a pas d’étape réseau labo et envoie platform_match (web + mobile)', async () => {
+  const root = new URL('../../../', import.meta.url);
+  assert.equal(bloodTestNeedsLabPreferenceStep(blood, { skipForProviderBooking: true }), false);
+  assert.equal(validateLabPreferenceBeforeSubmit(blood, '', null, { skipForProviderBooking: true }), null);
+
+  const [payload] = applyLabPreferenceToBloodPayloads(
+    [{ type: 'blood_test', form_data: {} }],
+    { lab_preference_mode: 'platform_match', preferred_lab_brand_id: null },
+  );
+  assert.equal(payload.lab_preference_mode, 'platform_match');
+  assert.equal(payload.preferred_lab_brand_id ?? null, null);
+
+  const webWizard = await readFile(
+    new URL('frontend/components/dashboard/DashboardMultiAppointmentWizard.vue', root),
+    'utf8',
+  );
+  assert.match(webWizard, /isPreleveurDashboard = computed\(\(\) => props\.basePath === '\/preleveur'\)/);
+  assert.match(webWizard, /skipForProviderBooking: isPreleveurDashboard\.value/);
+  const webPage = await readFile(new URL('frontend/pages/preleveur/appointments/new.vue', root), 'utf8');
+  assert.match(webPage, /:restrict-category-types="\['blood_test'\]"/);
+
+  const mobileWizard = await readFile(
+    new URL('apps/mobile/src/features/appointments/form/hooks/useBookingWizard.ts', root),
+    'utf8',
+  );
+  assert.match(mobileWizard, /skipForProviderBooking: skipsLabPreferenceStepForBookingRole\(opts\.role\)/);
+  const mobileRoute = await readFile(new URL('apps/mobile/app/(preleveur)/appointments/new.tsx', root), 'utf8');
+  assert.match(mobileRoute, /role="preleveur"/);
+});
+
 test('les hooks mobile conservent un état unique et partagent validation/payload', async () => {
   const root = fileURLToPath(new URL('../../../', import.meta.url));
   const bookingWizard = await readFile(

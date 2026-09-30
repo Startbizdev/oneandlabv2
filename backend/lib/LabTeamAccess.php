@@ -35,4 +35,16 @@ class LabTeamAccess
 
         return array_column($teamStmt->fetchAll(PDO::FETCH_ASSOC), 'id');
     }
+
+    /** Le profil est un préleveur rattaché à l'équipe du lab / sous-compte demandeur. */
+    public static function isPreleveurOfTeam(PDO $db, string $requesterId, string $requesterRole, string $preleveurId): bool
+    {
+        $stmt = $db->prepare('SELECT 1 FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $stmt->execute([$preleveurId, 'preleveur']);
+        if (!$stmt->fetchColumn()) {
+            return false;
+        }
+
+        return in_array($preleveurId, self::teamMemberIds($db, $requesterId, $requesterRole), true);
+    }
 }

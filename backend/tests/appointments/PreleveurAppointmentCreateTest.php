@@ -93,6 +93,48 @@ final class PreleveurAppointmentCreateTest extends TestCase
         $this->assertSame('FORBIDDEN', $denied->errorCode);
     }
 
+    public function testNursingRequestIsRejected(): void
+    {
+        PreleveurLabRequestPolicy::assertBloodTestOnly($this->requestInput());
+
+        foreach ([['type' => 'nursing', 'form_type' => 'nursing'], ['type' => 'blood_test', 'form_type' => 'nursing'], []] as $override) {
+            $input = array_merge($this->requestInput(), $override);
+            if ($override === []) {
+                unset($input['type'], $input['form_type']);
+            }
+            $error = null;
+            try {
+                PreleveurLabRequestPolicy::assertBloodTestOnly($input);
+            } catch (PreleveurLabRequestDenied $e) {
+                $error = $e;
+            }
+            $this->assertInstanceOf(PreleveurLabRequestDenied::class, $error);
+            $this->assertSame(403, $error->httpStatus);
+            $this->assertSame('FORBIDDEN', $error->errorCode);
+        }
+    }
+
+    public function testPreleveurRequestIsRecordedAsDirectAssign(): void
+    {
+        $prepared = PreleveurLabRequestPolicy::apply($this->db, TestFixtures::PRELEVEUR, $this->requestInput());
+        $id = (new Appointment($this->db))->create($prepared, TestFixtures::PRELEVEUR, 'preleveur');
+        $this->appointmentIds[] = $id;
+
+        (new AppointmentPostCreateEffects($this->db))->runAfterCreate(
+            $id,
+            ['user_id' => TestFixtures::PRELEVEUR, 'role' => 'preleveur'],
+            [],
+            $prepared,
+            TestFixtures::PRELEVEUR,
+            'preleveur',
+            null
+        );
+
+        $stmt = $this->db->prepare('SELECT dispatch_mode FROM appointments WHERE id = ?');
+        $stmt->execute([$id]);
+        $this->assertSame('direct_assign', $stmt->fetchColumn());
+    }
+
     public function testPreleveurWithoutLabIsRejected(): void
     {
         $orphan = $this->insertPreleveurWithoutLab();

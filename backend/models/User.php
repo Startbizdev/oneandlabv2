@@ -1344,6 +1344,9 @@ class User
     {
         require_once __DIR__ . '/../lib/DatabaseTransaction.php';
 
+        $patientData['role'] = 'patient';
+        $patientData['created_by'] = $preleveurId;
+
         return DatabaseTransaction::run($this->db, function () use ($patientData, $preleveurId, $labId): string {
             $patientId = (string) $this->create($patientData, $preleveurId, 'preleveur');
             $this->patientAccess()->linkPatientProfessional($patientId, $labId, null, 'lab_assignment', true);

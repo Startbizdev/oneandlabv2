@@ -78,16 +78,10 @@ final class AppointmentCreatePostHandler
         }
 
         if ($user['role'] === 'preleveur') {
-            $t = isset($input['type']) ? (string) $input['type'] : '';
-            $ft = isset($input['form_type']) ? (string) $input['form_type'] : '';
-            if ($t !== 'blood_test' || $ft !== 'blood_test') {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Les préleveurs ne peuvent créer que des rendez-vous de prise de sang.',
-                    'code' => 'FORBIDDEN',
-                ]);
-                exit;
+            try {
+                PreleveurLabRequestPolicy::assertBloodTestOnly($input);
+            } catch (PreleveurLabRequestDenied $e) {
+                self::denyPreleveur($e);
             }
             $fromId = isset($input['reschedule_from_appointment_id']) ? trim((string) $input['reschedule_from_appointment_id']) : '';
             $input = $fromId === ''
@@ -261,14 +255,19 @@ final class AppointmentCreatePostHandler
         try {
             return PreleveurLabRequestPolicy::apply($db, (string) $user['user_id'], $input);
         } catch (PreleveurLabRequestDenied $e) {
-            http_response_code($e->httpStatus);
-            echo json_encode([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'code' => $e->errorCode,
-            ]);
-            exit;
+            self::denyPreleveur($e);
         }
+    }
+
+    private static function denyPreleveur(PreleveurLabRequestDenied $e): never
+    {
+        http_response_code($e->httpStatus);
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'code' => $e->errorCode,
+        ]);
+        exit;
     }
 
     /**

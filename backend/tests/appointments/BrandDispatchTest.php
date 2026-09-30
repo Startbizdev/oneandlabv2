@@ -177,6 +177,49 @@ final class BrandDispatchTest extends TestCase
         $this->assertSame('patient_brand_choice', $stmt->fetchColumn());
     }
 
+    public function testBrandLabRefusingSaturdayIsExcluded(): void
+    {
+        $saturday = $this->nextSaturdayAt10();
+        $aptId = $this->insertBrandAppointment();
+
+        $this->db->prepare('UPDATE profiles SET accept_rdv_saturday = 0 WHERE id = ?')->execute([$this->labs['inZone']]);
+        $this->assertSame(0, $this->dispatch->dispatchBrandLabs($aptId, $this->brandId, self::LAT, self::LNG, $saturday));
+        $this->assertSame([], $this->offerProfileIds($aptId));
+
+        $this->db->prepare('UPDATE profiles SET accept_rdv_saturday = 1 WHERE id = ?')->execute([$this->labs['inZone']]);
+        $this->assertSame(1, $this->dispatch->dispatchBrandLabs($aptId, $this->brandId, self::LAT, self::LNG, $saturday));
+        $this->assertSame([$this->labs['inZone']], $this->offerProfileIds($aptId));
+    }
+
+    public function testDeletingLabProfileRemovesItsBrandLink(): void
+    {
+        $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$this->labs['closed']]);
+
+        $this->assertEqualsCanonicalizing(
+            [$this->labs['inZone'], $this->labs['farAway'], $this->labs['longLead']],
+            $this->brands->listLabIds($this->brandId)
+        );
+    }
+
+    public function testLabCreatorBookingABrandIsRecordedAsBrandChoice(): void
+    {
+        $aptId = $this->insertBrandAppointment();
+        $inputForCreate = ['type' => 'blood_test', 'lab_preference_mode' => 'brand_choice', 'preferred_lab_brand_id' => $this->brandId];
+        (new AppointmentPostCreateEffects($this->db))->runAfterCreate(
+            $aptId,
+            ['user_id' => $this->labs['notLinked'], 'role' => 'lab'],
+            [],
+            $inputForCreate,
+            $this->labs['notLinked'],
+            'lab',
+            null
+        );
+
+        $stmt = $this->db->prepare('SELECT dispatch_mode FROM appointments WHERE id = ?');
+        $stmt->execute([$aptId]);
+        $this->assertSame('patient_brand_choice', $stmt->fetchColumn());
+    }
+
     private function insertLab(bool $accepting, int $leadHours, float $lat, float $lng): string
     {
         $id = $this->uuid();
@@ -237,6 +280,11 @@ final class BrandDispatchTest extends TestCase
             $date = $date->modify('+1 day');
         }
         return $date->format('Y-m-d') . ' 10:00:00';
+    }
+
+    private function nextSaturdayAt10(): string
+    {
+        return (new DateTimeImmutable('saturday next week'))->format('Y-m-d') . ' 10:00:00';
     }
 
     private function uuid(): string

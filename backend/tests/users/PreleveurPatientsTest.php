@@ -6,6 +6,7 @@ require_once __DIR__ . '/../fixtures/SkipsWithoutPdo.php';
 require_once __DIR__ . '/../fixtures/TestFixtures.php';
 require_once __DIR__ . '/../TestDatabase.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -20,6 +21,8 @@ final class PreleveurPatientsTest extends TestCase
     private User $users;
     /** @var list<string> */
     private array $patientIds = [];
+    /** @var list<string> préleveurs avant labos (FK lab_id) */
+    private array $extraProfileIds = [];
 
     protected function setUp(): void
     {
@@ -35,6 +38,9 @@ final class PreleveurPatientsTest extends TestCase
     {
         if (isset($this->db)) {
             foreach ($this->patientIds as $id) {
+                $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$id]);
+            }
+            foreach (array_reverse($this->extraProfileIds) as $id) {
                 $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$id]);
             }
             $this->db->prepare('DELETE FROM patient_professional_access WHERE professional_id = ? AND source = ?')
@@ -112,6 +118,48 @@ final class PreleveurPatientsTest extends TestCase
         $patientId = $this->createPatient();
         $this->assertFalse($this->users->removePreleveurAssignment(TestFixtures::PRELEVEUR, $patientId));
         $this->assertTrue($this->users->isPatientVisibleInStaffList(TestFixtures::PRELEVEUR, 'preleveur', $patientId));
+    }
+
+    public function testAssignmentIsLimitedToOwnTeamPreleveurAndPatients(): void
+    {
+        $otherLab = $this->insertProfile('lab', null);
+        $otherPreleveur = $this->insertProfile('preleveur', $otherLab);
+        $otherPatient = $this->users->createPatientForPreleveur($this->patientData(''), $otherPreleveur, $otherLab);
+        $this->patientIds[] = $otherPatient;
+
+        $this->assertTrue(LabTeamAccess::isPreleveurOfTeam($this->db, TestFixtures::LAB, 'lab', TestFixtures::PRELEVEUR));
+        $this->assertTrue(LabTeamAccess::isPreleveurOfTeam($this->db, TestFixtures::SUBACCOUNT, 'subaccount', TestFixtures::PRELEVEUR));
+        $this->assertFalse(LabTeamAccess::isPreleveurOfTeam($this->db, TestFixtures::LAB, 'lab', $otherPreleveur));
+        $this->assertFalse(LabTeamAccess::isPreleveurOfTeam($this->db, $otherLab, 'lab', TestFixtures::PRELEVEUR));
+        $this->assertFalse(LabTeamAccess::isPreleveurOfTeam($this->db, TestFixtures::LAB, 'lab', TestFixtures::SUBACCOUNT));
+
+        $this->assertFalse($this->users->isPatientVisibleInStaffList(TestFixtures::LAB, 'lab', $otherPatient));
+        $this->assertTrue($this->users->isPatientVisibleInStaffList($otherLab, 'lab', $otherPatient));
+        $this->assertFalse($this->users->isPatientVisibleInStaffList(TestFixtures::PRELEVEUR, 'preleveur', $otherPatient));
+    }
+
+    private function insertProfile(string $role, ?string $labId): string
+    {
+        $crypto = new Crypto();
+        $bytes = random_bytes(16);
+        $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
+        $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);
+        $id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+        $email = $role . '-' . $id . '@test.invalid';
+        $emailEnc = $crypto->encryptField($email);
+        $first = $crypto->encryptField('Autre');
+        $last = $crypto->encryptField('Labo');
+        $this->db->prepare('
+            INSERT INTO profiles (id, role, lab_id, email_encrypted, email_dek, email_hash, first_name_encrypted, first_name_dek,
+                last_name_encrypted, last_name_dek)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ')->execute([
+            $id, $role, $labId, $emailEnc['encrypted'], $emailEnc['dek'], hash('sha256', $email),
+            $first['encrypted'], $first['dek'], $last['encrypted'], $last['dek'],
+        ]);
+        $this->extraProfileIds[] = $id;
+
+        return $id;
     }
 
     private function createPatient(): string
