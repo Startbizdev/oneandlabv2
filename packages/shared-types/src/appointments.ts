@@ -106,6 +106,8 @@ export interface AppointmentListFilters {
   date_to?: string;
   /** Préleveur : uniquement les missions assignées (évite la saturation par les offres labo). */
   assigned_only?: boolean;
+  /** Préleveur : ses demandes de prélèvement en attente de validation par son labo. */
+  preleveur_segment?: 'mes_demandes';
   /** Patient mobile : à venir vs passés (pagination serveur). */
   patient_period?: 'upcoming' | 'past';
 }

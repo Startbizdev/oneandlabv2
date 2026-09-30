@@ -123,23 +123,6 @@ final class AppointmentPostCreateEffects
 
         if (!empty($input['patient_id'])) {
             $userModel = new User();
-            $qrBooking = !empty($inputForCreate['attribution_qr_id']) || !empty($inputForCreate['utm_qr']);
-            $assignedProfId = $inputForCreate['assigned_pro_id']
-                ?? $inputForCreate['assigned_nurse_id']
-                ?? $inputForCreate['assigned_lab_id']
-                ?? null;
-            if ($qrBooking && $assignedProfId) {
-                try {
-                    $userModel->linkPatientProfessional(
-                        (string) $input['patient_id'],
-                        (string) $assignedProfId,
-                        $appointmentId,
-                        'qr_booking'
-                    );
-                } catch (Throwable $e) {
-                    error_log('PatientProfessionalAccess (qr_booking): ' . $e->getMessage());
-                }
-            }
             try {
                 $userModel->linkPatientAccessAfterAppointmentCreate(
                     (string) $input['patient_id'],

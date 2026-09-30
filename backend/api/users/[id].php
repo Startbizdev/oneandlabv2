@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/users/ProfileLabAssignmentPolicy.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -189,24 +190,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
 
-    // Lab modifiant un préleveur/sous-compte : lab_id ne peut être que le lab principal ou un de ses sous-comptes
-    if ($user['role'] === 'lab' && isset($input['lab_id'])) {
-        $newLabId = !empty(trim((string)$input['lab_id'])) ? trim((string)$input['lab_id']) : null;
-        $allowedLabIds = [$user['user_id']];
-        $config = require __DIR__ . '/../../config/database.php';
-        $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
-        $pdo = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
-        $stmtSub = $pdo->prepare("SELECT id FROM profiles WHERE lab_id = ? AND role = 'subaccount'");
-        $stmtSub->execute([$user['user_id']]);
-        while ($row = $stmtSub->fetch(PDO::FETCH_ASSOC)) {
-            if (!empty($row['id'])) $allowedLabIds[] = $row['id'];
-        }
-        if ($newLabId !== null && !in_array($newLabId, $allowedLabIds, true)) {
-            http_response_code(400);
+    if (array_key_exists('lab_id', $input)) {
+        $newLabId = trim((string) ($input['lab_id'] ?? ''));
+        try {
+            ProfileLabAssignmentPolicy::assertCanAssign($userModel, $user['user_id'], $user['role'], $id, $newLabId !== '' ? $newLabId : null);
+        } catch (ProfileLabAssignmentDenied $e) {
+            http_response_code($e->httpStatus);
             echo json_encode([
                 'success' => false,
-                'error' => 'Le laboratoire assigné doit être le vôtre ou un de vos sous-comptes.',
-                'code' => 'INVALID_LAB_ID',
+                'error' => $e->getMessage(),
+                'code' => $e->errorCode,
             ]);
             exit;
         }

@@ -451,6 +451,11 @@ final class AppointmentListQueryBuilder
 
     private function applyPreleveurScope(string $userId): void
     {
+        if (trim((string) ($_GET['preleveur_segment'] ?? '')) === 'mes_demandes') {
+            $this->appendWhere(" AND a.type = 'blood_test' AND a.created_by = ? AND a.status = 'pending'");
+            $this->params[] = $userId;
+            return;
+        }
         $assignedOnly = !empty($_GET['assigned_only'])
             && in_array(strtolower(trim((string) $_GET['assigned_only'])), ['1', 'true', 'yes'], true);
         if ($assignedOnly) {

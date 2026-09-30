@@ -7,6 +7,9 @@ require_once __DIR__ . '/../DbSchemaCache.php';
 /** Liens patient ↔ professionnel (PPA) et règles d’accès staff aux dossiers patients. */
 final class PatientProfessionalAccessService
 {
+    /** Doit rester inclus dans l'ENUM patient_professional_access.source (qr_origin est posé par QrCodeService). */
+    public const LINK_SOURCES = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'lab_assignment'];
+
     public function __construct(private PDO $db)
     {
     }
@@ -75,8 +78,7 @@ final class PatientProfessionalAccessService
             }
             return;
         }
-        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'qr_booking', 'lab_assignment'];
-        if (!in_array($source, $allowed, true)) {
+        if (!in_array($source, self::LINK_SOURCES, true)) {
             $source = 'created';
         }
         $linkId = $this->generateUUID();

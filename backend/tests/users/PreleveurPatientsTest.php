@@ -140,23 +140,7 @@ final class PreleveurPatientsTest extends TestCase
 
     private function insertProfile(string $role, ?string $labId): string
     {
-        $crypto = new Crypto();
-        $bytes = random_bytes(16);
-        $bytes[6] = chr(ord($bytes[6]) & 0x0f | 0x40);
-        $bytes[8] = chr(ord($bytes[8]) & 0x3f | 0x80);
-        $id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
-        $email = $role . '-' . $id . '@test.invalid';
-        $emailEnc = $crypto->encryptField($email);
-        $first = $crypto->encryptField('Autre');
-        $last = $crypto->encryptField('Labo');
-        $this->db->prepare('
-            INSERT INTO profiles (id, role, lab_id, email_encrypted, email_dek, email_hash, first_name_encrypted, first_name_dek,
-                last_name_encrypted, last_name_dek)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ')->execute([
-            $id, $role, $labId, $emailEnc['encrypted'], $emailEnc['dek'], hash('sha256', $email),
-            $first['encrypted'], $first['dek'], $last['encrypted'], $last['dek'],
-        ]);
+        $id = TestFixtures::insertProfile($this->db, $role, $labId);
         $this->extraProfileIds[] = $id;
 
         return $id;

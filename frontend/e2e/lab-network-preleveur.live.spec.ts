@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures/test';
+import { waitForHydration } from './helpers/wait-for-nuxt-ready';
 
 // Aucun mock : frontend → API PHP → MySQL (comptes et zones créés par backend/scripts/e2e-live-seed.php).
 const PASSWORD = 'E2e-Live-Cary-2026!';
@@ -29,6 +30,7 @@ const offersFor = (appointmentId: string) =>
 async function login(page: Page, role: string, email: string) {
   await page.addInitScript(r => localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ [r]: true })), role);
   await page.goto('/login?mode=password');
+  await waitForHydration(page);
   await page.getByLabel('Email', { exact: true }).fill(email);
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Se connecter', exact: true }).click();

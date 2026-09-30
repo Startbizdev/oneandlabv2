@@ -21,7 +21,8 @@ import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing } from '@/theme';
+import { spacing, AppText } from '@/theme';
+import { fontFamily, fontSize } from '@/theme/typography';
 
 const CONFIRMED_STATUSES = new Set(['confirmed', 'in_progress', 'on_the_way']);
 
@@ -65,7 +66,20 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
     status: 'confirmed,in_progress,on_the_way',
   });
 
+  const pendingRequestsQuery = useInfiniteAppointmentsList({
+    limit: APPOINTMENTS_LIST_PAGE_SIZE,
+    type: 'blood_test',
+    preleveur_segment: 'mes_demandes',
+  });
+
   const { refetch } = query;
+  const { refetch: refetchPendingRequests } = pendingRequestsQuery;
+
+  const pendingRequestRows = useMemo(() => {
+    let list = flattenInfiniteAppointments(pendingRequestsQuery.data?.pages);
+    if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
+    return buildAppointmentDisplayRows(list, { direction: 'upcoming' });
+  }, [pendingRequestsQuery.data?.pages, search]);
 
   const displayRows = useMemo(() => {
     let list = flattenInfiniteAppointments(query.data?.pages).filter(
@@ -77,27 +91,28 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
 
   useAppForegroundRefetch(() => {
     void refetch();
+    void refetchPendingRequests();
   });
+
+  const openAppointment = useCallback(
+    (apt: Appointment) => {
+      router.push(`${detailPathPrefix}/${apt.id}` as never);
+    },
+    [detailPathPrefix, router],
+  );
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
-      <AppointmentListRowCard
-        row={row}
-        index={index}
-        role="preleveur"
-        onPress={(apt) => {
-          router.push(`${detailPathPrefix}/${apt.id}` as never);
-        }}
-      />
+      <AppointmentListRowCard row={row} index={index} role="preleveur" onPress={openAppointment} />
     ),
-    [detailPathPrefix, router],
+    [openAppointment],
   );
 
   const onSearchQueryChange = useCallback((value: string) => {
     setSearch(value);
   }, []);
 
-  const ListHeader = useCallback(
+  const listHeader = useMemo(
     () => (
       <View style={styles.scrollHeader}>
         <AppointmentsListSearchHost
@@ -109,9 +124,24 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
         {bookHref != null ? (
           <AppointmentsBookCta href={bookHref} {...(bookLabel != null ? { label: bookLabel } : {})} />
         ) : null}
+        {pendingRequestRows.length > 0 ? (
+          <View style={styles.pendingSection}>
+            <AppText style={styles.sectionTitle}>Demandes en attente de votre labo</AppText>
+            {pendingRequestRows.map((row, index) => (
+              <AppointmentListRowCard
+                key={row.kind === 'batch' ? row.key : row.appointment.id}
+                row={row}
+                index={index}
+                role="preleveur"
+                onPress={openAppointment}
+              />
+            ))}
+            <AppText style={styles.sectionTitle}>Missions confirmées</AppText>
+          </View>
+        ) : null}
       </View>
     ),
-    [bookHref, bookLabel, onSearchQueryChange, styles.scrollHeader],
+    [bookHref, bookLabel, onSearchQueryChange, openAppointment, pendingRequestRows, styles],
   );
 
   return (
@@ -121,7 +151,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
         items={displayRows}
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={listHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -156,6 +186,19 @@ function buildStyles(c: AppColors) {
     marginTop: 0,
     alignSelf: 'stretch' as const,
     width: '100%' as const,
+  },
+  pendingSection: {
+    gap: spacing[3],
+    marginBottom: spacing[3],
+  },
+  sectionTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.xs,
+    color: c.textTertiary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    paddingHorizontal: spacing[1],
+    marginTop: spacing[3],
   },
   listHeaderComponent: {
     paddingTop: 0,
