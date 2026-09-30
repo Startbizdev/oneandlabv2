@@ -97,6 +97,11 @@ if ($mode === 'backup') {
           ) IS NULL
     ");
     echo 'Migration 109 verified: wound_type lourd present; rows updated=' . (int) $woundUpdate . ".\n";
+
+    $releaseRoot = dirname(__DIR__);
+    require_once $releaseRoot . '/backend/scripts/migrations/lab-network-migrations.php';
+    echo applyMigration116LabBrandLabs($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration117PpaLabAssignment($db, $releaseRoot . '/database/migrations') . "\n";
 } elseif ($mode === 'verify') {
     $before=json_decode(file_get_contents($dir.'/counts-before.json'),true,512,JSON_THROW_ON_ERROR);
     $missing=array_diff_key($before,$counts);

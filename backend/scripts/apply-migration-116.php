@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/migrations/lab-network-migrations.php';
+
 $config = require __DIR__ . '/../config/database.php';
 $pdo = new PDO(
     sprintf(
@@ -15,11 +17,9 @@ $pdo = new PDO(
     $config['password'],
     $config['options'] ?? []
 );
-$file = dirname(__DIR__, 2) . '/database/migrations/116_lab_brand_labs.sql';
-$sql = is_readable($file) ? file_get_contents($file) : false;
-if ($sql === false) {
-    fwrite(STDERR, "Migration 116 introuvable ou illisible.\n");
+try {
+    echo applyMigration116LabBrandLabs($pdo, dirname(__DIR__, 2) . '/database/migrations') . "\n";
+} catch (RuntimeException $e) {
+    fwrite(STDERR, $e->getMessage() . "\n");
     exit(1);
 }
-$pdo->exec($sql);
-echo "Migration 116 (comptes labo par marque) terminée.\n";
