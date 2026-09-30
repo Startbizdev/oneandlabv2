@@ -187,7 +187,6 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { careSymbol } from '@oneandlab/shared-utils';
 import {
   buildAccentMapForSortedIds,
   getAccentFallback,

@@ -24,7 +24,7 @@
               :image-src="row.imageSrc"
               :icon-name="row.iconName"
               icon-class="h-4 w-4 text-gray-600 dark:text-gray-400"
-              img-class="h-4 w-4 object-contain"
+              img-class="h-7 w-7 object-contain"
             />
           </span>
           <div class="min-w-0 flex-1">
