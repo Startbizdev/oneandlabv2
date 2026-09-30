@@ -1,12 +1,12 @@
 <?php
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../../../../middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../../../../middleware/RoleMiddleware.php';
-require_once __DIR__ . '/../../../../models/LabBrand.php';
-require_once __DIR__ . '/../../../../config/cors.php';
+require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
+require_once __DIR__ . '/../../../models/LabBrand.php';
+require_once __DIR__ . '/../../../config/cors.php';
 
-$corsConfig = require __DIR__ . '/../../../../config/cors.php';
+$corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
