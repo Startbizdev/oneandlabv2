@@ -140,7 +140,7 @@ final class AppointmentReadService
         
         // Déchiffrer adresse + form_data (indépendamment — ne pas perdre form_data si l'adresse échoue)
         $this->formDataCrypto->decryptSensitiveFields($appointment, $requesterId, $requesterRole);
-        $this->enrichPreferredLabBrand($appointment);
+        $this->enrichPreferredLabBrand($appointment, $requesterRole === 'super_admin');
         
         // Nettoyer les champs chiffrés
         unset($appointment['address_encrypted'], $appointment['address_dek']);
@@ -451,7 +451,7 @@ final class AppointmentReadService
     }
 
     /** @param array<string, mixed> $appointment */
-    private function enrichPreferredLabBrand(array &$appointment): void
+    private function enrichPreferredLabBrand(array &$appointment, bool $includeDispatchStats = false): void
     {
         if (!$this->hasColumn('appointments', 'preferred_lab_brand_id')) {
             return;
@@ -466,6 +466,12 @@ final class AppointmentReadService
             if ($brand !== null) {
                 $appointment['preferred_lab_brand_name'] = $brand['name'] ?? null;
                 $appointment['preferred_lab_brand_logo_url'] = $brand['logo_url'] ?? null;
+                if ($includeDispatchStats) {
+                    $appointment['preferred_lab_brand_lab_count'] = count($brand['lab_ids'] ?? []);
+                    $offers = $this->db->prepare('SELECT COUNT(*) FROM appointment_offers WHERE appointment_id = ?');
+                    $offers->execute([(string) $appointment['id']]);
+                    $appointment['preferred_lab_brand_offer_count'] = (int) $offers->fetchColumn();
+                }
             }
         } catch (Throwable $e) {
             error_log('enrichPreferredLabBrand: ' . $e->getMessage());

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../Validation.php';
+require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../NotificationMessageFormatter.php';
 require_once __DIR__ . '/../AdminEmailNotifier.php';
 require_once __DIR__ . '/AppointmentItemsResolver.php';
@@ -82,6 +83,25 @@ final class AppointmentNotificationService
         if (!$skipDispatch) {
             $batchIdForDispatch = is_string($data['creation_batch_id'] ?? null) && !empty($data['creation_batch_id']) ? $data['creation_batch_id'] : null;
             $this->dispatchService->dispatchGeographic($id, $data['type'] ?? '', $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null, null, $batchIdForDispatch);
+        }
+
+        $brandLabsNotified = null;
+        if (($data['type'] ?? '') === 'blood_test' && empty($bloodTestAssignedLabId)) {
+            $brandLabsNotified = $this->dispatchBrandChoiceIfAny($id, $lat, $lng, $data['scheduled_at'] ?? null, $data['form_data'] ?? null);
+        }
+
+        if (
+            ($data['type'] ?? '') === 'blood_test'
+            && $createdByRole === 'preleveur'
+            && !empty($bloodTestAssignedLabId)
+            && $this->isPendingWithoutCollector($id)
+        ) {
+            $this->dispatchService->dispatchDirectedLabOnly(
+                $id,
+                (string) $bloodTestAssignedLabId,
+                $data['scheduled_at'] ?? null,
+                $data['form_data'] ?? null
+            );
         }
 
         // Notification ciblée : uniquement l'infirmier concerné (réservation depuis son profil public)
@@ -223,7 +243,53 @@ final class AppointmentNotificationService
             'scheduled_at' => $data['scheduled_at'] ?? null,
             'form_data' => $data['form_data'] ?? null,
         ], $notifyPatientExtras));
-        $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '', $data['form_data'] ?? null);
+        $this->notifyAllAdmins($id, $data['type'] ?? '', $data['scheduled_at'] ?? '', $data['form_data'] ?? null, $brandLabsNotified);
+    }
+
+    /**
+     * RDV « réseau choisi » persisté : offres aux labos de la marque.
+     * Retourne null si le RDV n'est pas brand_choice, sinon le nombre de labos notifiés.
+     */
+    public function redispatchBrandChoiceIfAny(string $id, float $lat, float $lng, ?string $scheduledAt, ?array $formData, ?string $excludeProfileId): bool
+    {
+        $notified = $this->dispatchBrandChoiceIfAny($id, $lat, $lng, $scheduledAt, $formData, $excludeProfileId);
+        if ($notified === null) {
+            return false;
+        }
+        if ($notified === 0) {
+            $this->notifyAllAdmins($id, 'blood_test', (string) ($scheduledAt ?? ''), $formData, 0);
+        }
+        return true;
+    }
+
+    private function isPendingWithoutCollector(string $id): bool
+    {
+        $stmt = $this->db->prepare('SELECT status, assigned_to FROM appointments WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row !== false
+            && ($row['status'] ?? '') === 'pending'
+            && trim((string) ($row['assigned_to'] ?? '')) === '';
+    }
+
+    private function dispatchBrandChoiceIfAny(string $id, float $lat, float $lng, ?string $scheduledAt, ?array $formData, ?string $excludeProfileId = null): ?int
+    {
+        if (!DbSchemaCache::tableHasColumn($this->db, 'appointments', 'preferred_lab_brand_id')) {
+            return null;
+        }
+        $stmt = $this->db->prepare('SELECT lab_preference_mode, preferred_lab_brand_id FROM appointments WHERE id = ? LIMIT 1');
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || ($row['lab_preference_mode'] ?? '') !== 'brand_choice' || empty($row['preferred_lab_brand_id'])) {
+            return null;
+        }
+        try {
+            return $this->dispatchService->dispatchBrandLabs($id, (string) $row['preferred_lab_brand_id'], $lat, $lng, $scheduledAt, $formData, $excludeProfileId);
+        } catch (Throwable $e) {
+            error_log('dispatchBrandChoiceIfAny: ' . $e->getMessage());
+            return 0;
+        }
     }
 
     /**
@@ -762,7 +828,7 @@ final class AppointmentNotificationService
     /**
      * Notifie tous les administrateurs super_admin de la création d'un nouveau rendez-vous
      */
-    private function notifyAllAdmins(string $appointmentId, string $appointmentType, string $scheduledAt, ?array $formData = null): void
+    private function notifyAllAdmins(string $appointmentId, string $appointmentType, string $scheduledAt, ?array $formData = null, ?int $brandLabsNotified = null): void
     {
         try {
             // Récupérer tous les profils avec le rôle super_admin
@@ -784,17 +850,29 @@ final class AppointmentNotificationService
             $isBrandChoice = is_array($formData)
                 && ($formData['lab_preference_mode'] ?? '') === 'brand_choice'
                 && $brandName !== '';
+            $brandToProcess = $isBrandChoice && (int) ($brandLabsNotified ?? 0) === 0;
             
             // Créer une notification pour chaque admin
             foreach ($admins as $admin) {
                 try {
-                    $title = $isBrandChoice ? 'Prélèvement — marque à traiter' : 'Nouveau RDV';
-                    $message = $isBrandChoice
-                        ? NotificationMessageFormatter::joinParts(['Marque', $brandName, $typeLabel])
-                        : NotificationMessageFormatter::joinParts(['À traiter', $typeLabel]);
+                    if ($brandToProcess) {
+                        $title = 'Prélèvement — marque à traiter';
+                        $message = NotificationMessageFormatter::joinParts(['Marque', $brandName, $typeLabel]);
+                    } elseif ($isBrandChoice) {
+                        $title = 'Prélèvement — réseau notifié';
+                        $message = NotificationMessageFormatter::joinParts([
+                            'Marque',
+                            $brandName,
+                            $typeLabel,
+                            $brandLabsNotified . ' labo(s) du réseau notifié(s)',
+                        ]);
+                    } else {
+                        $title = 'Nouveau RDV';
+                        $message = NotificationMessageFormatter::joinParts(['À traiter', $typeLabel]);
+                    }
                     $this->notificationService->createNotification(
                         $admin['id'],
-                        $isBrandChoice ? 'blood_test_brand_to_process' : 'new_appointment_created',
+                        $brandToProcess ? 'blood_test_brand_to_process' : 'new_appointment_created',
                         $title,
                         $message,
                         [
@@ -802,6 +880,7 @@ final class AppointmentNotificationService
                             'type' => $appointmentType,
                             'scheduled_at' => $scheduledAt,
                             'preferred_lab_brand_name' => $brandName !== '' ? $brandName : null,
+                            'brand_labs_notified' => $brandLabsNotified,
                         ]
                     );
                 } catch (Exception $e) {

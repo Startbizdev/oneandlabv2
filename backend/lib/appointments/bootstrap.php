@@ -22,4 +22,5 @@ require_once __DIR__ . '/AppointmentDetailAccess.php';
 require_once __DIR__ . '/AppointmentDetailGetPayload.php';
 require_once __DIR__ . '/AppointmentApiLogging.php';
 require_once __DIR__ . '/AppointmentListGetHandler.php';
+require_once __DIR__ . '/PreleveurLabRequestPolicy.php';
 require_once __DIR__ . '/AppointmentCreatePostHandler.php';

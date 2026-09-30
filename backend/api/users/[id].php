@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $allowed = (($userData['role'] ?? '') === 'patient')
                 && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
-        if (!$allowed && $user['role'] === 'subaccount') {
+        if (!$allowed && in_array($user['role'], ['subaccount', 'preleveur'], true)) {
             $allowed = (($userData['role'] ?? '') === 'patient')
                 && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $canEdit = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
         }
     }
-    if (!$canEdit && in_array($user['role'], ['pro', 'nurse', 'subaccount'], true)) {
+    if (!$canEdit && in_array($user['role'], ['pro', 'nurse', 'subaccount', 'preleveur'], true)) {
         $canEdit = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
     }
     if (!$canEdit) {

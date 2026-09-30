@@ -98,8 +98,8 @@ class User
             throw new Exception('Rôle invalide: ' . $role . '. Rôles autorisés: ' . implode(', ', self::ALLOWED_ROLES));
         }
 
-        // Pro / infirmier / lab / sous-compte / admin : email patient optionnel → email technique stable
-        if ($role === 'patient' && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true)) {
+        // Pro / infirmier / lab / sous-compte / préleveur / admin : email patient optionnel → email technique stable
+        if ($role === 'patient' && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'], true)) {
             $emailRaw = isset($data['email']) ? trim((string) $data['email']) : '';
             if ($emailRaw === '') {
                 $data['email'] = $this->buildStableDelegatedPatientEmail($actorId, $data);
@@ -175,7 +175,7 @@ class User
 
         // Patient créé par un pro, nurse ou super_admin : lien created_by
         $createdBy = null;
-        if (($role === 'patient') && !empty($data['created_by']) && in_array($actorRole, ['pro', 'nurse', 'super_admin', 'lab', 'subaccount'], true)) {
+        if (($role === 'patient') && !empty($data['created_by']) && in_array($actorRole, ['pro', 'nurse', 'super_admin', 'lab', 'subaccount', 'preleveur'], true)) {
             $createdBy = $data['created_by'];
         }
         if ($this->hasCreatedByColumn() && $createdBy) {
@@ -312,7 +312,7 @@ class User
             throw new Exception('Erreur lors de la création de l\'utilisateur: ' . $e->getMessage());
         }
 
-        if ($role === 'patient' && $this->hasPatientProfessionalAccessTable() && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+        if ($role === 'patient' && $this->hasPatientProfessionalAccessTable() && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
             try {
                 $this->patientAccess()->linkPatientProfessional($id, $actorId, null, 'created');
             } catch (Throwable $e) {
@@ -1331,7 +1331,50 @@ class User
 
     public static function canListPatients(string $role): bool
     {
-        return $role === 'super_admin' || in_array($role, self::patientListStaffRoles(), true);
+        return $role === 'super_admin'
+            || $role === 'preleveur'
+            || in_array($role, self::patientListStaffRoles(), true);
+    }
+
+    /**
+     * Patient créé par un préleveur : visible par lui (created_by) et rattaché à son labo (PPA lab_assignment).
+     * Les deux écritures sont atomiques.
+     */
+    public function createPatientForPreleveur(array $patientData, string $preleveurId, string $labId): string
+    {
+        require_once __DIR__ . '/../lib/DatabaseTransaction.php';
+
+        return DatabaseTransaction::run($this->db, function () use ($patientData, $preleveurId, $labId): string {
+            $patientId = (string) $this->create($patientData, $preleveurId, 'preleveur');
+            $this->patientAccess()->linkPatientProfessional($patientId, $labId, null, 'lab_assignment', true);
+
+            return $patientId;
+        });
+    }
+
+    public function getPreleveurLabId(string $preleveurId): ?string
+    {
+        $stmt = $this->db->prepare('SELECT lab_id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $stmt->execute([$preleveurId, 'preleveur']);
+        $labId = trim((string) ($stmt->fetchColumn() ?: ''));
+
+        return $labId !== '' ? $labId : null;
+    }
+
+    /** @return list<array{patient_id: string, source: string, created_at: string}> */
+    public function listPreleveurAssignments(string $preleveurId): array
+    {
+        return $this->patientAccess()->listPreleveurAssignments($preleveurId);
+    }
+
+    public function assignPatientToPreleveur(string $patientId, string $preleveurId): void
+    {
+        $this->patientAccess()->linkPatientProfessional($patientId, $preleveurId, null, 'lab_assignment', true);
+    }
+
+    public function removePreleveurAssignment(string $preleveurId, string $patientId): bool
+    {
+        return $this->patientAccess()->removePreleveurAssignment($preleveurId, $patientId);
     }
 
     /**

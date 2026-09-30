@@ -578,15 +578,26 @@ final class AppointmentStatusService
                 $delOffersAdmin = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
                 $delOffersAdmin->execute([$id]);
             }
-            $this->dispatchService->dispatchGeographic(
-                $id,
-                $appointment['type'],
-                (float) $appointment['location_lat'],
-                (float) $appointment['location_lng'],
-                $appointment['scheduled_at'] ?? null,
-                $formDataForDispatch,
-                $excludeProfileId
-            );
+            $brandRedispatched = $appointment['type'] === 'blood_test'
+                && $this->appointmentNotificationService->redispatchBrandChoiceIfAny(
+                    $id,
+                    (float) $appointment['location_lat'],
+                    (float) $appointment['location_lng'],
+                    $appointment['scheduled_at'] ?? null,
+                    $formDataForDispatch,
+                    $excludeProfileId
+                );
+            if (!$brandRedispatched) {
+                $this->dispatchService->dispatchGeographic(
+                    $id,
+                    $appointment['type'],
+                    (float) $appointment['location_lat'],
+                    (float) $appointment['location_lng'],
+                    $appointment['scheduled_at'] ?? null,
+                    $formDataForDispatch,
+                    $excludeProfileId
+                );
+            }
             if ($actorRole !== 'super_admin') {
                 $this->appointmentNotificationService->notifyActorAppointmentRedispatched($id, $appointment, $actorId, $actorRole);
             }

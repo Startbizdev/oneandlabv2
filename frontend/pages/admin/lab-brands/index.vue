@@ -4,7 +4,7 @@
       <AppPageHeader
         :edge-bleed="false"
         title="Marques laboratoire"
-        description="Gérez les réseaux proposés aux patients lors d’un prélèvement (nom, logo, site, ordre)."
+        description="Gérez les réseaux proposés lors d’un prélèvement (nom, logo, site, ordre) et les comptes labo qui reçoivent leurs RDV."
       >
         <template #actions>
           <UButton color="primary" icon="i-lucide-plus" size="md" :on-click="openCreate">
@@ -48,6 +48,9 @@
             <UBadge variant="subtle" size="xs">{{ brand.slug }}</UBadge>
           </div>
           <p v-if="brand.website_url" class="truncate text-xs text-muted">{{ brand.website_url }}</p>
+          <p class="text-xs" :class="brandLabCount(brand) ? 'text-muted' : 'text-warning'" :data-testid="`brand-labs-${brand.slug}`">
+            {{ brandLabsSummary(brand) }}
+          </p>
         </div>
         <span class="text-xs text-muted">Ordre {{ brand.sort_order }}</span>
         <USwitch
@@ -92,6 +95,28 @@
             <UFormField label="Site web">
               <UInput v-model="form.website_url" placeholder="https://..." class="w-full" />
             </UFormField>
+            <UFormField
+              label="Comptes labo qui reçoivent les RDV"
+              help="Les labos choisis reçoivent les RDV de ce réseau si l’adresse du patient est dans leur zone. Sans labo, le RDV part à l’administration."
+            >
+              <USelectMenu
+                v-model="form.lab_ids"
+                :items="labSelectItems"
+                value-key="value"
+                multiple
+                :loading="labsLoading"
+                :disabled="labsLoading || labsError"
+                placeholder="Aucun compte labo"
+                class="w-full"
+                :filter-fields="['label', 'description']"
+                :search-input="{ placeholder: 'Filtrer…' }"
+                data-testid="brand-lab-select"
+              />
+              <div v-if="labsError" role="alert" class="mt-2 flex items-center gap-2">
+                <p class="text-sm text-error">Liste des laboratoires indisponible.</p>
+                <UButton size="xs" variant="outline" color="neutral" @click="loadLabs">Réessayer</UButton>
+              </div>
+            </UFormField>
             <UFormField label="Ordre d’affichage">
               <UInput v-model.number="form.sort_order" type="number" min="0" class="w-full" />
             </UFormField>
@@ -114,6 +139,7 @@
 <script setup lang="ts">
 import type { LabBrandAdmin } from '@oneandlab/shared-types';
 import { apiFetch } from '~/utils/api';
+import { fetchAllUsers, sortUsersByLabel, userDisplayLabel } from '~/utils/fetch-all-users';
 
 definePageMeta({
   layout: 'dashboard',
@@ -139,7 +165,55 @@ const form = reactive({
   website_url: '',
   sort_order: 0,
   is_active: true,
+  lab_ids: [] as string[],
 });
+
+type LabOption = { value: string; label: string; description?: string };
+const labOptions = ref<LabOption[]>([]);
+const labsLoading = ref(false);
+const labsError = ref(false);
+const labsLoaded = ref(false);
+
+const labLabelById = computed(() => new Map(labOptions.value.map(lab => [lab.value, lab.label])));
+
+const labSelectItems = computed<LabOption[]>(() => {
+  const items = [...labOptions.value];
+  for (const id of form.lab_ids) {
+    if (!items.some(item => item.value === id)) items.unshift({ value: id, label: 'Compte labo inactif ou introuvable' });
+  }
+  return items;
+});
+
+function brandLabCount(brand: LabBrandAdmin): number {
+  return brand.lab_ids?.length ?? 0;
+}
+
+function brandLabsSummary(brand: LabBrandAdmin): string {
+  const ids = brand.lab_ids ?? [];
+  if (ids.length === 0) return 'Aucun compte labo : RDV traités par l’administration';
+  const names = ids.map(id => labLabelById.value.get(id)).filter((name): name is string => !!name);
+  if (names.length === 0) return `${ids.length} compte(s) labo`;
+  return `Reçoivent les RDV : ${names.join(', ')}${names.length < ids.length ? ` (+${ids.length - names.length})` : ''}`;
+}
+
+async function loadLabs() {
+  labsLoading.value = true;
+  labsError.value = false;
+  try {
+    const rows = await fetchAllUsers({ role: 'lab', status: 'active' });
+    labOptions.value = sortUsersByLabel(rows).map(lab => ({
+      value: String(lab.id),
+      label: userDisplayLabel(lab),
+      description: lab.email ? String(lab.email) : undefined,
+    }));
+    labsLoaded.value = true;
+  } catch (error) {
+    console.error('Chargement des laboratoires (marques):', error);
+    labsError.value = true;
+  } finally {
+    labsLoading.value = false;
+  }
+}
 
 async function loadBrands() {
   loading.value = true;
@@ -169,6 +243,7 @@ function resetForm() {
   form.website_url = '';
   form.sort_order = brands.value.length + 1;
   form.is_active = true;
+  form.lab_ids = [];
   formError.value = '';
 }
 
@@ -186,6 +261,7 @@ function editBrand(brand: LabBrandAdmin) {
   form.website_url = brand.website_url ?? '';
   form.sort_order = brand.sort_order;
   form.is_active = !!brand.is_active;
+  form.lab_ids = [...(brand.lab_ids ?? [])];
   formError.value = '';
   modalOpen.value = true;
 }
@@ -205,6 +281,8 @@ async function saveBrand() {
     website_url: form.website_url.trim() || null,
     sort_order: Number(form.sort_order) || 0,
     is_active: form.is_active ? 1 : 0,
+    // Sans liste de labos chargée, ne pas envoyer lab_ids : le serveur conserve les rattachements existants.
+    ...(labsLoaded.value ? { lab_ids: [...form.lab_ids] } : {}),
   };
   try {
     const res = editingId.value
@@ -263,5 +341,8 @@ async function removeBrand(brand: LabBrandAdmin) {
   }
 }
 
-onMounted(loadBrands);
+onMounted(() => {
+  void loadBrands();
+  void loadLabs();
+});
 </script>

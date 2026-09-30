@@ -66,12 +66,16 @@ final class PatientProfessionalAccessService
         string $patientId,
         string $professionalId,
         ?string $appointmentId,
-        string $source
+        string $source,
+        bool $strict = false
     ): void {
         if (!$this->hasPatientProfessionalAccessTable()) {
+            if ($strict) {
+                throw new RuntimeException('Table patient_professional_access absente');
+            }
             return;
         }
-        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'qr_booking'];
+        $allowed = ['created', 'appointment_accepted', 'appointment_linked', 'manual_link', 'qr_booking', 'lab_assignment'];
         if (!in_array($source, $allowed, true)) {
             $source = 'created';
         }
@@ -83,8 +87,51 @@ final class PatientProfessionalAccessService
             ');
             $ins->execute([$linkId, $patientId, $professionalId, $source, $appointmentId]);
         } catch (PDOException $e) {
+            if ($strict) {
+                throw $e;
+            }
             error_log('linkPatientProfessional: ' . $e->getMessage());
+            return;
         }
+        // INSERT IGNORE convertit une violation de clé étrangère en simple avertissement.
+        if ($strict && $ins->rowCount() === 0 && !$this->hasProfessionalAccessToPatient($professionalId, $patientId)) {
+            throw new RuntimeException('Lien patient ↔ professionnel impossible (profil introuvable)');
+        }
+    }
+
+    /**
+     * Patients assignés par un labo à l'un de ses préleveurs (lien PPA `lab_assignment`).
+     *
+     * @return list<array{patient_id: string, source: string, created_at: string}>
+     */
+    public function listPreleveurAssignments(string $preleveurId): array
+    {
+        if (!$this->hasPatientProfessionalAccessTable()) {
+            return [];
+        }
+        $stmt = $this->db->prepare('
+            SELECT patient_id, source, created_at FROM patient_professional_access
+            WHERE professional_id = ? AND source = ?
+            ORDER BY created_at DESC
+        ');
+        $stmt->execute([$preleveurId, 'lab_assignment']);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /** Retire une assignation labo → préleveur ; le patient reste visible s'il a été créé par ce préleveur. */
+    public function removePreleveurAssignment(string $preleveurId, string $patientId): bool
+    {
+        if (!$this->hasPatientProfessionalAccessTable()) {
+            return false;
+        }
+        $del = $this->db->prepare('
+            DELETE FROM patient_professional_access
+            WHERE professional_id = ? AND patient_id = ? AND source = ?
+        ');
+        $del->execute([$preleveurId, $patientId, 'lab_assignment']);
+
+        return $del->rowCount() > 0;
     }
 
     /**
@@ -138,7 +185,7 @@ final class PatientProfessionalAccessService
         if ($requesterRole === 'super_admin') {
             return $this->getRoleById($patientId) === 'patient';
         }
-        if (!in_array($requesterRole, ['pro', 'nurse', 'lab', 'subaccount'], true)) {
+        if (!in_array($requesterRole, ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
             return false;
         }
 

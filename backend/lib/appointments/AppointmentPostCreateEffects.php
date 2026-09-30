@@ -103,7 +103,11 @@ final class AppointmentPostCreateEffects
             $dispatchLogger->setDispatchMode($appointmentId, 'external_invite');
         }
 
-        if (StaffPatientConsent::requiresConsent((string) ($user['role'] ?? ''))) {
+        $creatorRole = (string) ($user['role'] ?? '');
+        if (
+            StaffPatientConsent::requiresConsent($creatorRole)
+            || ($creatorRole === 'preleveur' && StaffPatientConsent::isConsentGiven($input))
+        ) {
             $consentPatientId = isset($input['patient_id']) ? (string) $input['patient_id'] : null;
             StaffPatientConsent::logRecorded($user, $consentPatientId, 'appointment_create');
         }
@@ -179,15 +183,15 @@ final class AppointmentPostCreateEffects
             $dispatchMode = 'direct_assign';
         } elseif (($user['role'] ?? '') === 'nurse' && ($inputForCreate['type'] ?? '') === 'nursing') {
             $dispatchMode = 'direct_assign';
-        } elseif (in_array($user['role'] ?? '', ['lab', 'subaccount'], true) && ($inputForCreate['type'] ?? '') === 'blood_test') {
-            $dispatchMode = 'direct_assign';
-        } elseif (!empty($inputForCreate['skip_zone_dispatch'])) {
-            $dispatchMode = 'direct_assign';
         } elseif (
             ($inputForCreate['type'] ?? '') === 'blood_test'
             && ($inputForCreate['lab_preference_mode'] ?? '') === 'brand_choice'
         ) {
             $dispatchMode = 'patient_brand_choice';
+        } elseif (in_array($user['role'] ?? '', ['lab', 'subaccount'], true) && ($inputForCreate['type'] ?? '') === 'blood_test') {
+            $dispatchMode = 'direct_assign';
+        } elseif (!empty($inputForCreate['skip_zone_dispatch'])) {
+            $dispatchMode = 'direct_assign';
         } elseif (($user['role'] ?? '') === 'super_admin' && $createUserRole === 'super_admin') {
             $dispatchMode = 'manual';
         }

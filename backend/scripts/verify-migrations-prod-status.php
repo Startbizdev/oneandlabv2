@@ -36,6 +36,12 @@ $checks = [
     '101 appointments.preferred_lab_brand_id' => "SHOW COLUMNS FROM appointments LIKE 'preferred_lab_brand_id'",
     '104 coverage_zones.zone_type polygon' => "SHOW COLUMNS FROM coverage_zones LIKE 'zone_type'",
     '103 coverage_zones.bounds_json' => "SHOW COLUMNS FROM coverage_zones LIKE 'bounds_json'",
+    '116 lab_brand_labs' => "SHOW TABLES LIKE 'lab_brand_labs'",
+    '117 patient_professional_access.source lab_assignment' => "
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'patient_professional_access'
+          AND COLUMN_NAME = 'source' AND COLUMN_TYPE LIKE '%''lab_assignment''%'
+    ",
     '109 Pansement-plaie wound_type lourd' => "
         SELECT 1
         FROM care_category_options cco

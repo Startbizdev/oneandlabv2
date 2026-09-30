@@ -367,7 +367,7 @@ const dispatchModeOptions = [
   { label: 'Invitation SMS', value: 'external_invite' },
   { label: 'Assignation directe', value: 'direct_assign' },
   { label: 'Manuel (admin)', value: 'manual' },
-  { label: 'Marque patient', value: 'patient_brand_choice' },
+  { label: 'Réseau labo choisi', value: 'patient_brand_choice' },
 ]
 
 const tableRows = computed(() => dashboardData.value?.rows ?? [])
@@ -508,7 +508,7 @@ function dispatchModeLabel(mode: string | null | undefined): string {
     external_invite: 'Invitation SMS',
     direct_assign: 'Assignation directe',
     manual: 'Manuel (admin)',
-    patient_brand_choice: 'Marque patient (sans dispatch)',
+    patient_brand_choice: 'Réseau labo choisi',
   }
   return map[mode] ?? mode
 }

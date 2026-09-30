@@ -11,6 +11,8 @@ export interface LabBrandPublic {
 
 export interface LabBrandAdmin extends LabBrandPublic {
   is_active: boolean;
+  /** Comptes labo qui reçoivent les RDV « réseau choisi » (dans leur zone). */
+  lab_ids?: string[];
   created_at?: string;
   updated_at?: string;
 }

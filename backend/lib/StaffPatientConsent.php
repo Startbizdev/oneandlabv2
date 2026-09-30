@@ -36,6 +36,14 @@ class StaffPatientConsent
     if (!self::requiresConsent($role)) {
       return;
     }
+    self::requireGiven($input);
+  }
+
+  /**
+   * Consentement exigé quel que soit le rôle (ex. préleveur hors reprise : création patient ou RDV libre).
+   */
+  public static function requireGiven(array $input): void
+  {
     if (!self::isConsentGiven($input)) {
       http_response_code(400);
       echo json_encode([

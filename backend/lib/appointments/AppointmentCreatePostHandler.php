@@ -90,74 +90,9 @@ final class AppointmentCreatePostHandler
                 exit;
             }
             $fromId = isset($input['reschedule_from_appointment_id']) ? trim((string) $input['reschedule_from_appointment_id']) : '';
-            if ($fromId === '' || !Validation::uuid($fromId)) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Identifiant du rendez-vous source requis pour cette action.',
-                    'code' => 'VALIDATION_ERROR',
-                ]);
-                exit;
-            }
-            $stmtSrc = $db->prepare('SELECT type, assigned_lab_id, assigned_to, patient_id FROM appointments WHERE id = ? LIMIT 1');
-            $stmtSrc->execute([$fromId]);
-            $srcApt = $stmtSrc->fetch(PDO::FETCH_ASSOC);
-            if (!$srcApt || ($srcApt['type'] ?? '') !== 'blood_test') {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Rendez-vous source introuvable ou non autorisé.',
-                    'code' => 'FORBIDDEN',
-                ]);
-                exit;
-            }
-            $stmtPrelLab = $db->prepare('SELECT lab_id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
-            $stmtPrelLab->execute([$user['user_id'], 'preleveur']);
-            $prelProfile = $stmtPrelLab->fetch(PDO::FETCH_ASSOC);
-            $prelLabId = $prelProfile['lab_id'] ?? null;
-            $uidPrel = (string) $user['user_id'];
-            $assignedToSrc = isset($srcApt['assigned_to']) && $srcApt['assigned_to'] !== null && $srcApt['assigned_to'] !== ''
-                ? (string) $srcApt['assigned_to'] : '';
-            $assignedLabSrc = isset($srcApt['assigned_lab_id']) && $srcApt['assigned_lab_id'] !== null && $srcApt['assigned_lab_id'] !== ''
-                ? (string) $srcApt['assigned_lab_id'] : '';
-            $allowedPrel = ($assignedToSrc !== '' && $assignedToSrc === $uidPrel)
-                || ($prelLabId !== null && $prelLabId !== '' && $assignedLabSrc !== '' && $assignedLabSrc === (string) $prelLabId);
-            if (!$allowedPrel) {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Vous ne pouvez reprendre ce rendez-vous que pour un patient dont le RDV vous est attribué ou appartient à votre laboratoire.',
-                    'code' => 'FORBIDDEN',
-                ]);
-                exit;
-            }
-            // Sécurité serveur : une reprise créée par un préleveur doit rester rattachée
-            // au préleveur et à son labo/sous-labo, même si le frontend n'envoie pas lab_id.
-            $effectiveAssignedLabId = $prelLabId ?: $assignedLabSrc;
-            if ($effectiveAssignedLabId === '') {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Aucun laboratoire associé au préleveur pour rattacher le nouveau rendez-vous.',
-                    'code' => 'VALIDATION_ERROR',
-                ]);
-                exit;
-            }
-            $input['assigned_to'] = $uidPrel;
-            $input['assigned_lab_id'] = $effectiveAssignedLabId;
-            $input['status'] = 'confirmed';
-
-            $patientSrc = isset($srcApt['patient_id']) ? (string) $srcApt['patient_id'] : '';
-            $patientBody = isset($input['patient_id']) ? (string) $input['patient_id'] : '';
-            if ($patientSrc !== '' && $patientBody !== '' && $patientSrc !== $patientBody) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Le patient ne correspond pas au rendez-vous repris.',
-                    'code' => 'VALIDATION_ERROR',
-                ]);
-                exit;
-            }
+            $input = $fromId === ''
+                ? self::applyPreleveurLabRequest($db, $user, $input)
+                : self::applyPreleveurReprise($db, $user, $input, $fromId);
         }
 
         $inputForCreate = $input;
@@ -314,5 +249,106 @@ final class AppointmentCreatePostHandler
                 'code' => $e instanceof AppointmentCreationConflict ? 'CREATION_REQUEST_CONFLICT' : 'VALIDATION_ERROR',
             ]);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private static function applyPreleveurLabRequest(PDO $db, array $user, array $input): array
+    {
+        try {
+            return PreleveurLabRequestPolicy::apply($db, (string) $user['user_id'], $input);
+        } catch (PreleveurLabRequestDenied $e) {
+            http_response_code($e->httpStatus);
+            echo json_encode([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'code' => $e->errorCode,
+            ]);
+            exit;
+        }
+    }
+
+    /**
+     * Reprise d'un RDV prise de sang par un préleveur (RDV source attribué à lui ou à son labo).
+     *
+     * @param array<string, mixed> $user
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private static function applyPreleveurReprise(PDO $db, array $user, array $input, string $fromId): array
+    {
+        if (!Validation::uuid($fromId)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Identifiant du rendez-vous source requis pour cette action.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+        $stmtSrc = $db->prepare('SELECT type, assigned_lab_id, assigned_to, patient_id FROM appointments WHERE id = ? LIMIT 1');
+        $stmtSrc->execute([$fromId]);
+        $srcApt = $stmtSrc->fetch(PDO::FETCH_ASSOC);
+        if (!$srcApt || ($srcApt['type'] ?? '') !== 'blood_test') {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Rendez-vous source introuvable ou non autorisé.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+        $stmtPrelLab = $db->prepare('SELECT lab_id FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $stmtPrelLab->execute([$user['user_id'], 'preleveur']);
+        $prelProfile = $stmtPrelLab->fetch(PDO::FETCH_ASSOC);
+        $prelLabId = $prelProfile['lab_id'] ?? null;
+        $uidPrel = (string) $user['user_id'];
+        $assignedToSrc = isset($srcApt['assigned_to']) && $srcApt['assigned_to'] !== null && $srcApt['assigned_to'] !== ''
+            ? (string) $srcApt['assigned_to'] : '';
+        $assignedLabSrc = isset($srcApt['assigned_lab_id']) && $srcApt['assigned_lab_id'] !== null && $srcApt['assigned_lab_id'] !== ''
+            ? (string) $srcApt['assigned_lab_id'] : '';
+        $allowedPrel = ($assignedToSrc !== '' && $assignedToSrc === $uidPrel)
+            || ($prelLabId !== null && $prelLabId !== '' && $assignedLabSrc !== '' && $assignedLabSrc === (string) $prelLabId);
+        if (!$allowedPrel) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Vous ne pouvez reprendre ce rendez-vous que pour un patient dont le RDV vous est attribué ou appartient à votre laboratoire.',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+        // Sécurité serveur : une reprise créée par un préleveur doit rester rattachée
+        // au préleveur et à son labo/sous-labo, même si le frontend n'envoie pas lab_id.
+        $effectiveAssignedLabId = $prelLabId ?: $assignedLabSrc;
+        if ($effectiveAssignedLabId === '') {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Aucun laboratoire associé au préleveur pour rattacher le nouveau rendez-vous.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+        $input['assigned_to'] = $uidPrel;
+        $input['assigned_lab_id'] = $effectiveAssignedLabId;
+        $input['status'] = 'confirmed';
+
+        $patientSrc = isset($srcApt['patient_id']) ? (string) $srcApt['patient_id'] : '';
+        $patientBody = isset($input['patient_id']) ? (string) $input['patient_id'] : '';
+        if ($patientSrc !== '' && $patientBody !== '' && $patientSrc !== $patientBody) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Le patient ne correspond pas au rendez-vous repris.',
+                'code' => 'VALIDATION_ERROR',
+            ]);
+            exit;
+        }
+
+        return $input;
     }
 }

@@ -11,7 +11,21 @@ final class PatientListAccessTest extends TestCase
     public function testPatientCannotListPatients(): void
     {
         $this->assertFalse(User::canListPatients('patient'));
-        $this->assertFalse(User::canListPatients('preleveur'));
+    }
+
+    public function testPreleveurCanListPatientsWithoutJoiningStaffOnBehalfRoles(): void
+    {
+        $this->assertTrue(User::canListPatients('preleveur'));
+        $this->assertNotContains('preleveur', User::patientListStaffRoles());
+    }
+
+    public function testGetAllReturnsEmptyWhenPreleveurScopeIsMissing(): void
+    {
+        $user = $this->userOrSkip();
+        $result = $user->getAll(['role' => 'patient'], 1, 50, 'prel-1', 'preleveur');
+
+        $this->assertSame([], $result['data']);
+        $this->assertSame(0, $result['total']);
     }
 
     public function testStaffAndAdminCanListPatients(): void

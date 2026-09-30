@@ -103,12 +103,14 @@ final class AdminDispatchService
         $total = (int) $countStmt->fetchColumn();
 
         $dispatchModeCol = $this->dispatchModeColumnExists ? 'a.dispatch_mode,' : 'NULL AS dispatch_mode,';
+        $labPreferenceCol = $this->columnExists('appointments', 'lab_preference_mode') ? 'a.lab_preference_mode,' : 'NULL AS lab_preference_mode,';
 
         $sql = "
             SELECT a.id, a.type, a.status, a.scheduled_at, a.created_at, a.updated_at,
                    a.patient_id, a.created_by, a.created_by_role,
                    a.assigned_nurse_id, a.assigned_lab_id, a.assigned_to, a.assigned_pro_id,
                    {$dispatchModeCol}
+                   {$labPreferenceCol}
                    a.form_data_encrypted, a.form_data_dek,
                    a.address_encrypted, a.address_dek,
                    a.started_at, a.completed_at, a.nurse_share_released_at,

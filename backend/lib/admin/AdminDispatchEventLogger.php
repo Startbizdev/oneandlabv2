@@ -82,7 +82,7 @@ final class AdminDispatchEventLogger
 
     public function setDispatchMode(string $appointmentId, string $mode): void
     {
-        if (!in_array($mode, ['zone', 'external_invite', 'direct_assign', 'manual'], true)) {
+        if (!in_array($mode, ['zone', 'external_invite', 'direct_assign', 'manual', 'patient_brand_choice'], true)) {
             return;
         }
         try {

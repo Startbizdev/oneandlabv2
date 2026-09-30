@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $filters = ['role' => 'patient'];
 
     // Périmètre imposé par rôle (ignore created_by en query pour éviter l'escalade)
-    if ($actorRole === 'pro' || $actorRole === 'nurse' || $actorRole === 'subaccount') {
+    if ($actorRole === 'pro' || $actorRole === 'nurse' || $actorRole === 'subaccount' || $actorRole === 'preleveur') {
         $filters['created_by'] = $user['user_id'];
     } elseif ($actorRole === 'lab') {
         $filters['for_lab_owner_id'] = $user['user_id'];
@@ -89,16 +89,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Créer un nouveau patient
-    // Pros, nurses, lab, sous-comptes et super_admin
-    if (!in_array($user['role'], ['pro', 'nurse', 'super_admin', 'lab', 'subaccount'], true)) {
+    // Pros, nurses, lab, sous-comptes, préleveurs et super_admin
+    if (!in_array($user['role'], ['pro', 'nurse', 'super_admin', 'lab', 'subaccount', 'preleveur'], true)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
         exit;
     }
     
     $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Données invalides']);
+        exit;
+    }
+
+    $preleveurLabId = null;
+    if ($user['role'] === 'preleveur') {
+        $preleveurLabId = $userModel->getPreleveurLabId((string) $user['user_id']);
+        if ($preleveurLabId === null) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Aucun laboratoire associé à votre compte préleveur.']);
+            exit;
+        }
+    }
     
-    $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true);
+    $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'], true);
     $phoneOptional = $user['role'] === 'super_admin';
     $required = ['first_name', 'last_name'];
     if (!$phoneOptional) {
@@ -121,6 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     StaffPatientConsent::validateOrFail($input, $user);
+    if ($user['role'] === 'preleveur') {
+        StaffPatientConsent::requireGiven($input);
+    }
 
     $emailTrim = isset($input['email']) ? trim((string) $input['email']) : '';
     if ($emailTrim !== '') {
@@ -166,7 +184,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'created_by' => $patientOwnerId,
         ];
         
-        $patientId = $userModel->create($patientData, $user['user_id'], $user['role']);
+        $patientId = $preleveurLabId !== null
+            ? $userModel->createPatientForPreleveur($patientData, (string) $user['user_id'], $preleveurLabId)
+            : $userModel->create($patientData, $user['user_id'], $user['role']);
 
         if (
             $user['role'] === 'super_admin'

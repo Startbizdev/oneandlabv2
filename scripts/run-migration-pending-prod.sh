@@ -68,6 +68,12 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 echo "==> Migration 109 (type de plaie Lourd)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-109.php"
 
+echo "==> Migration 116 (comptes labo par marque)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-116.php"
+
+echo "==> Migration 117 (origine lab_assignment patients)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-117.php"
+
 echo "==> Vérification finale..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php"
 

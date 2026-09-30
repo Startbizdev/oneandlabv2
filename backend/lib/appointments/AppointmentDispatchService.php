@@ -168,6 +168,88 @@ final class AppointmentDispatchService
             $appointmentCategoryId = (string) $catRow['category_id'];
         }
 
+        $professionals = $this->professionalsInZones($this->fetchCoverageZones($type, null), $type, $lat, $lng);
+
+        if ($type === 'nursing') {
+            $pref = $this->extractPreferredNurseGender($formData);
+            if ($pref === 'female' || $pref === 'male') {
+                $professionals = array_values(array_filter($professionals, function ($p) use ($pref) {
+                    $g = $p['gender'] ?? null;
+                    if ($g === null || $g === '') {
+                        return false;
+                    }
+                    return $pref === 'female' ? $g === 'female' : $g === 'male';
+                }));
+            }
+        }
+
+        if ($type === 'nursing') {
+            $professionals = array_values(array_filter($professionals, function ($p) use ($appointmentCategoryId) {
+                return $this->nurseAcceptsCategoryForDispatch((string) $p['id'], $appointmentCategoryId);
+            }));
+        }
+        
+        $professionals = $this->applyLabDispatchFilters($professionals, $type, $scheduledAt, $appointmentCategoryId);
+
+        $this->publishDispatch($appointmentId, $type, $professionals, $scheduledAt, $formData, $excludeProfileId, $creationBatchId, [], 'Dans votre zone');
+    }
+
+    /**
+     * RDV prise de sang « réseau choisi » : offres uniquement aux labos rattachés à la marque
+     * dont la zone couvre l'adresse, avec les mêmes filtres que le dispatch zone.
+     * Retourne le nombre de labos notifiés (0 = repli admin à la charge de l'appelant).
+     */
+    public function dispatchBrandLabs(string $appointmentId, string $brandId, float $lat, float $lng, ?string $scheduledAt = null, ?array $formData = null, ?string $excludeProfileId = null): int
+    {
+        if ($excludeProfileId !== null) {
+            $delStmt = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ?');
+            $delStmt->execute([$appointmentId]);
+        }
+
+        require_once __DIR__ . '/../../models/LabBrand.php';
+        $labIds = (new LabBrand($this->db))->listLabIds($brandId);
+        if ($labIds === []) {
+            return 0;
+        }
+
+        $catStmt = $this->db->prepare('SELECT category_id FROM appointments WHERE id = ?');
+        $catStmt->execute([$appointmentId]);
+        $categoryId = $catStmt->fetchColumn();
+        $categoryId = ($categoryId !== false && $categoryId !== null && $categoryId !== '') ? (string) $categoryId : null;
+
+        $professionals = $this->professionalsInZones($this->fetchCoverageZones('blood_test', $labIds), 'blood_test', $lat, $lng);
+        $professionals = $this->applyLabDispatchFilters($professionals, 'blood_test', $scheduledAt, $categoryId);
+        if ($excludeProfileId !== null) {
+            $professionals = array_values(array_filter($professionals, static fn (array $p): bool => ($p['id'] ?? '') !== $excludeProfileId));
+        }
+        if ($professionals === []) {
+            return 0;
+        }
+
+        return $this->publishDispatch(
+            $appointmentId,
+            'blood_test',
+            $professionals,
+            $scheduledAt,
+            $formData,
+            $excludeProfileId,
+            null,
+            ['source' => 'lab_brand', 'brand_id' => $brandId],
+            'Réseau de laboratoires choisi'
+        );
+    }
+
+    /**
+     * Zones de couverture actives (infirmiers ou labs/sous-comptes). $restrictLabIds limite aux profils lab listés.
+     *
+     * @param list<string>|null $restrictLabIds
+     * @return list<array<string, mixed>>
+     */
+    private function fetchCoverageZones(string $type, ?array $restrictLabIds): array
+    {
+        if ($restrictLabIds !== null && $restrictLabIds === []) {
+            return [];
+        }
         if ($type === 'nursing') {
             $roleFilter = 'nurse';
         } else {
@@ -209,12 +291,25 @@ final class AppointmentDispatchService
                 AND (cz.center_lat IS NOT NULL AND cz.center_lng IS NOT NULL
                      OR (p.address_encrypted IS NOT NULL AND p.address_dek IS NOT NULL))
             ";
+            $params = [];
+            if ($restrictLabIds !== null) {
+                $sql .= " AND p.role = 'lab' AND p.id IN (" . implode(',', array_fill(0, count($restrictLabIds), '?')) . ')';
+                $params = array_values($restrictLabIds);
+            }
             $stmt = $this->db->prepare($sql);
-            $stmt->execute();
+            $stmt->execute($params);
         }
         
         $zones = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+        return $zones;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $zones
+     * @return list<array<string, mixed>>
+     */
+    private function professionalsInZones(array $zones, string $type, float $lat, float $lng): array
+    {
         $professionals = [];
         
         foreach ($zones as $zone) {
@@ -288,26 +383,17 @@ final class AppointmentDispatchService
                 $professionals[] = $entry;
             }
         }
+        return $professionals;
+    }
 
-        if ($type === 'nursing') {
-            $pref = $this->extractPreferredNurseGender($formData);
-            if ($pref === 'female' || $pref === 'male') {
-                $professionals = array_values(array_filter($professionals, function ($p) use ($pref) {
-                    $g = $p['gender'] ?? null;
-                    if ($g === null || $g === '') {
-                        return false;
-                    }
-                    return $pref === 'female' ? $g === 'female' : $g === 'male';
-                }));
-            }
-        }
-
-        if ($type === 'nursing') {
-            $professionals = array_values(array_filter($professionals, function ($p) use ($appointmentCategoryId) {
-                return $this->nurseAcceptsCategoryForDispatch((string) $p['id'], $appointmentCategoryId);
-            }));
-        }
-        
+    /**
+     * Filtres labo (disponibilité, week-end, délai min, lab parent des sous-comptes, catégorie). Sans effet pour nursing.
+     *
+     * @param list<array<string, mixed>> $professionals
+     * @return list<array<string, mixed>>
+     */
+    private function applyLabDispatchFilters(array $professionals, string $type, ?string $scheduledAt, ?string $appointmentCategoryId): array
+    {
         // Pour blood_test sans lab assigné : exclure les labs qui n'acceptent pas les RDV, dont le délai min n'est pas respecté, ou qui n'acceptent pas samedi/dimanche
         if ($type === 'blood_test' && $scheduledAt !== null && $scheduledAt !== '') {
             $scheduledTs = strtotime($scheduledAt);
@@ -360,7 +446,16 @@ final class AppointmentDispatchService
                 return $this->labAcceptsCategoryForDispatch((string) $p['id'], $appointmentCategoryId);
             }));
         }
-        
+        return array_values($professionals);
+    }
+
+    /**
+     * Offres + journal dispatch + cloche/e-mail + SMS (10 plus proches). Retourne le nombre de professionnels notifiés.
+     *
+     * @param list<array<string, mixed>> $professionals
+     */
+    private function publishDispatch(string $appointmentId, string $type, array $professionals, ?string $scheduledAt, ?array $formData, ?string $excludeProfileId, ?string $creationBatchId, array $eventMetadata, string $originLabel): int
+    {
         if ($excludeProfileId !== null) {
             $professionals = array_values(array_filter($professionals, function ($p) use ($excludeProfileId) {
                 return ($p['id'] ?? '') !== $excludeProfileId;
@@ -388,13 +483,13 @@ final class AppointmentDispatchService
             null,
             null,
             null,
-            [
+            array_merge([
                 'recipient_count' => count($professionals),
                 'professionals' => $profMeta,
                 'excluded_profile_id' => $excludeProfileId,
                 'appointment_type' => $type,
                 'is_redispatch_wave' => $excludeProfileId !== null,
-            ]
+            ], $eventMetadata)
         );
         
         // Pour un lot multi-soins : identifier les professionnels déjà notifiés pour ce lot (1 notif/lot/pro)
@@ -429,7 +524,7 @@ final class AppointmentDispatchService
                     'new_appointment_available',
                     'Nouveau RDV',
                     NotificationMessageFormatter::joinParts([
-                        'Dans votre zone',
+                        $originLabel,
                         $typeLabel,
                         $when ?: null,
                     ]),
@@ -458,6 +553,7 @@ final class AppointmentDispatchService
                 $type
             );
         }
+        return count($professionals);
     }
 
 
@@ -577,6 +673,62 @@ final class AppointmentDispatchService
                 'nursing'
             );
         }
+    }
+
+    /**
+     * Demande de prélèvement créée par un préleveur : offre + notifications pour son seul laboratoire,
+     * qui valide puis réassigne. Pas de dispatch géographique.
+     */
+    public function dispatchDirectedLabOnly(
+        string $appointmentId,
+        string $labId,
+        ?string $scheduledAt,
+        ?array $formData
+    ): void {
+        try {
+            $stmt = $this->db->prepare('SELECT role FROM profiles WHERE id = ? AND role IN (\'lab\', \'subaccount\') LIMIT 1');
+            $stmt->execute([$labId]);
+            $labRole = (string) ($stmt->fetchColumn() ?: '');
+            if ($labRole === '') {
+                error_log('dispatchDirectedLabOnly: profil laboratoire invalide ou absent — id=' . $labId);
+
+                return;
+            }
+        } catch (Throwable $e) {
+            error_log('dispatchDirectedLabOnly: ' . $e->getMessage());
+
+            return;
+        }
+
+        $this->insertAppointmentOffers($appointmentId, [['id' => $labId, 'role' => $labRole]]);
+        $this->dispatchEventLogger->log(
+            $appointmentId,
+            'direct_assign',
+            null,
+            null,
+            $labId,
+            ['target_role' => $labRole, 'source' => 'preleveur_request']
+        );
+
+        try {
+            $this->notificationService->createNotification(
+                $labId,
+                'new_appointment_available',
+                'Demande de prélèvement d\'un préleveur',
+                'Un de vos préleveurs a créé une demande de prélèvement. Validez-la puis attribuez-la.',
+                ['appointment_id' => $appointmentId]
+            );
+            EmailQueue::add('new_appointment_pro', null, [
+                'appointment_id' => $appointmentId,
+                'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
+                'role' => $labRole,
+                'form_data' => $formData,
+            ], $labId);
+        } catch (Exception $e) {
+            error_log('dispatchDirectedLabOnly notify: ' . $e->getMessage());
+        }
+
+        SmsQueue::addNewAppointment($labId, $appointmentId, $scheduledAt ?? date('Y-m-d H:i:s'), $labRole, 'blood_test');
     }
 
     /**
