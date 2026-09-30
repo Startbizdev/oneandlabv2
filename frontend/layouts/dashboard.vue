@@ -694,6 +694,8 @@ const breadcrumbItems = computed(() => {
     "/preleveur": { label: "Mes rendez-vous", icon: "i-lucide-calendar" },
     "/preleveur/tournee": { label: "Ma tournée", icon: "i-lucide-list-ordered" },
     "/preleveur/appointments": { label: "Rendez-vous", icon: "i-lucide-calendar" },
+    "/preleveur/appointments/new": { label: "Nouveau RDV", icon: "i-lucide-calendar-plus" },
+    "/preleveur/patients": { label: "Mes patients", icon: "i-lucide-users" },
     "/preleveur/calendar": { label: "Calendrier", icon: "i-lucide-calendar-days" },
     
     // Routes pro
@@ -1105,6 +1107,18 @@ const navigationItems = computed(() => {
           icon: "i-lucide-calendar",
           to: "/preleveur",
           active: p === "/preleveur" || p === "/preleveur/",
+        },
+        {
+          label: "Mes patients",
+          icon: "i-lucide-users",
+          to: "/preleveur/patients",
+          active: active("/preleveur/patients"),
+        },
+        {
+          label: "Nouveau RDV",
+          icon: "i-lucide-calendar-plus",
+          to: "/preleveur/appointments/new",
+          active: active("/preleveur/appointments/new"),
         },
         {
           label: "Ma tournée",

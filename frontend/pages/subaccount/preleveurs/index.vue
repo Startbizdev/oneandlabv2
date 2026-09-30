@@ -10,9 +10,18 @@
         <h2 class="break-words text-base font-semibold text-gray-950 dark:text-white">{{ [member.first_name, member.last_name].filter(Boolean).join(' ') || 'Préleveur' }}</h2>
         <p class="mt-1 break-all text-sm text-gray-500">{{ member.email || 'E-mail non renseigné' }}</p>
         <p class="my-5 text-sm text-gray-600 dark:text-gray-300">{{ member.stats?.totalAppointments ?? 0 }} rendez-vous · {{ member.stats?.todayAppointments ?? 0 }} aujourd’hui</p>
-        <UButton class="mt-auto" color="neutral" variant="outline" icon="i-lucide-calendar-days" :to="`/subaccount/calendar?assigned_to=${encodeURIComponent(member.id)}`">Voir le calendrier</UButton>
+        <div class="mt-auto flex flex-wrap gap-2">
+          <UButton color="neutral" variant="outline" icon="i-lucide-calendar-days" :to="`/subaccount/calendar?assigned_to=${encodeURIComponent(member.id)}`">Voir le calendrier</UButton>
+          <UButton color="neutral" variant="outline" icon="i-lucide-users" @click="openPatients(member)">Patients</UButton>
+        </div>
       </article>
     </div>
+    <PreleveurAssignedPatientsModal
+      v-if="patientsPreleveur"
+      v-model:open="patientsModalOpen"
+      :preleveur-id="patientsPreleveur.id"
+      :preleveur-name="[patientsPreleveur.first_name, patientsPreleveur.last_name].filter(Boolean).join(' ') || 'Préleveur'"
+    />
   </AppPageShell>
 </template>
 
@@ -29,6 +38,12 @@ const preleveurs = ref<any[]>([]);
 const loading = ref(true);
 const loadError = ref(false);
 const searchQuery = ref('');
+const patientsPreleveur = ref<any>(null);
+const patientsModalOpen = ref(false);
+function openPatients(member: any) {
+  patientsPreleveur.value = member;
+  patientsModalOpen.value = true;
+}
 
 
 const filteredPreleveurs = computed(() => {

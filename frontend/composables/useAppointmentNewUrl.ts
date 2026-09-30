@@ -1,7 +1,7 @@
 /**
  * URL pour "Prendre rendez-vous" / "Créer un RDV" selon le rôle.
  * Patient ou non connecté → formulaire public /rendez-vous/nouveau
- * Pros (lab, nurse, subaccount, pro, admin…) → leur /appointments/new (ou liste préleveur)
+ * Pros (lab, nurse, subaccount, préleveur, pro, admin…) → leur /appointments/new
  */
 export function getDashboardNewAppointmentPath(role: string | undefined | null): string | null {
   if (!role || role === 'patient') return null;
@@ -18,7 +18,7 @@ export function getDashboardNewAppointmentPath(role: string | undefined | null):
     case 'super_admin':
       return '/admin/appointments/new';
     case 'preleveur':
-      return '/preleveur/appointments';
+      return '/preleveur/appointments/new';
     default:
       return null;
   }

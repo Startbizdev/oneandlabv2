@@ -572,6 +572,8 @@ const { createMultipleAppointments } = useAppointments();
 const isNurseDashboard = computed(() => props.basePath === '/nurse');
 const isAdminDashboard = computed(() => props.basePath === '/admin');
 const isProDashboard = computed(() => props.basePath === '/pro');
+/** Préleveur : la demande part vers son propre labo (serveur), pas de choix de réseau. */
+const isPreleveurDashboard = computed(() => props.basePath === '/preleveur');
 
 const hasNursingInSelection = computed(() =>
   selectedServices.value.some((s) => isNursingAppointment(s.type)),
@@ -652,7 +654,7 @@ const labPreferenceMode = ref<LabPreferenceMode | ''>('platform_match');
 const preferredLabBrandId = ref<string | null>(null);
 
 const staffNeedsLabPreferenceStep = computed(() =>
-  bloodTestNeedsLabPreferenceStep(selectedServices.value),
+  bloodTestNeedsLabPreferenceStep(selectedServices.value, { skipForProviderBooking: isPreleveurDashboard.value }),
 );
 const staffFormWizardStep = computed(() => (staffNeedsLabPreferenceStep.value ? 2 : 1));
 const saving = ref(false);
@@ -1008,11 +1010,11 @@ async function onStaffRelativeSaved() {
   if (newest) await selectStaffRelative(newest);
 }
 
-/** Nouveau patient (wizard) : email patient facultatif pour pro, infirmier, lab, sous-compte, admin. */
+/** Nouveau patient (wizard) : email patient facultatif pour pro, infirmier, lab, sous-compte, préleveur, admin. */
 const patientEmailOptional = computed(() => {
   if (patientMode.value !== 'new') return false;
   const r = user.value?.role ?? '';
-  return r === 'nurse' || r === 'pro' || r === 'lab' || r === 'subaccount' || r === 'super_admin';
+  return r === 'nurse' || r === 'pro' || r === 'lab' || r === 'subaccount' || r === 'preleveur' || r === 'super_admin';
 });
 
 /** Admin : téléphone patient facultatif à la création. */
@@ -1793,6 +1795,7 @@ async function onUnifiedSubmit(payload: any) {
     selectedServices.value,
     (payload.lab_preference_mode as LabPreferenceMode | '') || labPreferenceMode.value,
     (payload.preferred_lab_brand_id as string | null) ?? preferredLabBrandId.value,
+    { skipForProviderBooking: isPreleveurDashboard.value },
   );
   if (labErr) {
     validationError.value = labErr;

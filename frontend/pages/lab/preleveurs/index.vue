@@ -43,6 +43,9 @@
         <UButton size="xs" variant="soft" color="primary" icon="i-lucide-calendar" :to="`/lab/appointments?assigned_to=${item.id}`">
           RDV
         </UButton>
+        <UButton size="xs" variant="soft" icon="i-lucide-users" :data-testid="`preleveur-patients-${item.id}`" @click="openPatients(item)">
+          Patients
+        </UButton>
         <UButton size="xs" variant="soft" color="error" icon="i-lucide-trash-2" :on-click="() => confirmDelete(item)">
           Supprimer
         </UButton>
@@ -61,6 +64,13 @@
         <UButton color="error" :loading="deleting" :on-click="deletePreleveur">Supprimer</UButton>
       </template>
     </UModal>
+
+    <PreleveurAssignedPatientsModal
+      v-if="patientsPreleveur"
+      v-model:open="patientsModalOpen"
+      :preleveur-id="patientsPreleveur.id"
+      :preleveur-name="preleveurDisplayName(patientsPreleveur)"
+    />
   </AppPageShell>
 </template>
 
@@ -106,6 +116,13 @@ const formatDateShort = (date: string) => {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const patientsPreleveur = ref<any>(null);
+const patientsModalOpen = ref(false);
+const openPatients = (preleveur: any) => {
+  patientsPreleveur.value = preleveur;
+  patientsModalOpen.value = true;
 };
 
 const confirmDelete = (preleveur: any) => {

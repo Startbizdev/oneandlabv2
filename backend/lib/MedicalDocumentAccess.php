@@ -166,7 +166,7 @@ class MedicalDocumentAccess
         $role = (string) ($user['role'] ?? '');
         $userId = (string) ($user['user_id'] ?? '');
 
-        if (in_array($role, ['pro', 'subaccount', 'nurse'], true)) {
+        if (in_array($role, ['pro', 'subaccount', 'nurse', 'preleveur'], true)) {
             if (self::userHasProfessionalPatientAccess($db, $user, $docPatientId)) {
                 return true;
             }

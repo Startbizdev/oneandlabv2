@@ -18,7 +18,7 @@
             Retour aux utilisateurs
           </UButton>
           <UButton
-            v-else-if="(newPatientMode || (editingUserId && (user?.role === 'pro' || user?.role === 'nurse' || user?.role === 'lab' || user?.role === 'subaccount')))"
+            v-else-if="(newPatientMode || (editingUserId && staffManagesPatients))"
             variant="ghost"
             size="sm"
             :to="patientsListPath"
@@ -1121,12 +1121,17 @@ const preleveurLabId = ref('')
 const newPatientMode = ref(false)
 const createdPatientId = ref<string | null>(null)
 const newPatientBookingConsent = ref(false)
+/** Rôles staff avec une liste « Mes patients » (création et fiche patient). */
+const staffManagesPatients = computed(() =>
+  ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? ''),
+)
 const patientsListPath = computed(() => {
   const r = user.value?.role
   if (r === 'nurse') return '/nurse/patients'
   if (r === 'pro') return '/pro/patients'
   if (r === 'lab') return '/lab/patients'
   if (r === 'subaccount') return '/subaccount/patients'
+  if (r === 'preleveur') return '/preleveur/patients'
   return '/pro/patients'
 })
 const effectiveUserId = computed(() => editingUserId.value || user.value?.id || '')
@@ -1139,29 +1144,21 @@ const proCanSubmitCreatePatient = computed(() => {
   const f = profileForm.value
   const base = !!(f.first_name?.trim() && f.last_name?.trim() && f.phone?.trim())
   if (!base) return false
-  const emailOptional =
-    user.value?.role === 'pro' ||
-    user.value?.role === 'nurse' ||
-    user.value?.role === 'lab' ||
-    user.value?.role === 'subaccount'
-  if (emailOptional) return newPatientBookingConsent.value
+  if (staffManagesPatients.value) return newPatientBookingConsent.value
   return !!(f.email?.trim() && newPatientBookingConsent.value)
 })
 const isEditingRelativeProfile = computed(
   () =>
     !!editingRelativeId.value &&
     !!editingUserId.value &&
-    (user.value?.role === 'pro' ||
-      user.value?.role === 'nurse' ||
-      user.value?.role === 'lab' ||
-      user.value?.role === 'subaccount'),
+    staffManagesPatients.value,
 )
 const profilePageTitle = computed(() => {
   if (newPatientMode.value) return 'Créer un patient'
   if (newPreleveurMode.value) return 'Créer un préleveur'
   if (isEditingRelativeProfile.value) return 'Profil du proche'
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Profil utilisateur'
-  if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Profil du patient'
+  if (editingUserId.value && staffManagesPatients.value) return 'Profil du patient'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Profil du sous-compte'
   if (editingUserId.value) return 'Profil du préleveur'
   return 'Mon profil'
@@ -1177,7 +1174,7 @@ const profilePageDescription = computed(() => {
       : 'Proche rattaché au titulaire du compte patient.'
   }
   if (editingUserId.value && user.value?.role === 'super_admin') return 'Consultez et modifiez les informations de cet utilisateur.'
-  if (editingUserId.value && (user.value?.role === 'pro' || user.value?.role === 'nurse' || user.value?.role === 'lab' || user.value?.role === 'subaccount')) return 'Consultez et modifiez les informations de ce patient.'
+  if (editingUserId.value && staffManagesPatients.value) return 'Consultez et modifiez les informations de ce patient.'
   if (editingUserId.value && effectiveRole.value === 'subaccount') return 'Consultez et modifiez les informations de ce sous-compte.'
   if (editingUserId.value) return 'Consultez et modifiez les informations de ce préleveur'
   return 'Consultez et modifiez vos informations personnelles'
@@ -1455,10 +1452,7 @@ const canManagePrescriptionSignature = computed(
 /** Pro/Nurse en édition d'un patient : documents à droite, bouton Enregistrer en dessous */
 const isProEditingPatient = computed(
   () =>
-    (user.value?.role === 'pro' ||
-      user.value?.role === 'nurse' ||
-      user.value?.role === 'lab' ||
-      user.value?.role === 'subaccount') &&
+    staffManagesPatients.value &&
     !!editingUserId.value &&
     role.value === 'patient'
 )
@@ -1928,10 +1922,7 @@ const initializeProfileFromRoute = async () => {
     publicProfileForm.value.profile_image_url = ''
     loading.value = false
   } else if (
-    (user.value?.role === 'pro' ||
-      user.value?.role === 'nurse' ||
-      user.value?.role === 'lab' ||
-      user.value?.role === 'subaccount') &&
+    staffManagesPatients.value &&
     (route.query.newPatient === '1' || route.query.newPatient === 'true')
   ) {
     newPreleveurMode.value = false
@@ -1949,14 +1940,7 @@ const initializeProfileFromRoute = async () => {
   } else {
     newPreleveurMode.value = false
     newPatientMode.value = false
-    if (
-      (user.value?.role === 'lab' ||
-        user.value?.role === 'super_admin' ||
-        user.value?.role === 'pro' ||
-        user.value?.role === 'nurse' ||
-        user.value?.role === 'subaccount') &&
-      uid
-    ) {
+    if ((user.value?.role === 'super_admin' || staffManagesPatients.value) && uid) {
       editingUserId.value = uid
     } else {
       editingUserId.value = null
@@ -2033,14 +2017,7 @@ const loadProfile = async () => {
   profileLoadError.value = ''
   try {
     let userData: any
-    if (
-      editingUserId.value &&
-      (user.value?.role === 'lab' ||
-        user.value?.role === 'super_admin' ||
-        user.value?.role === 'pro' ||
-        user.value?.role === 'nurse' ||
-        user.value?.role === 'subaccount')
-    ) {
+    if (editingUserId.value && (user.value?.role === 'super_admin' || staffManagesPatients.value)) {
       const res = await apiFetch(`/users/${encodeURIComponent(targetId)}`, { method: 'GET' })
       userData = res?.success ? res.data : null
     } else {
@@ -2221,12 +2198,7 @@ const saveProfile = async (fromSaveAll = false) => {
         toast.add({ title: 'Champs requis', description: 'Prénom, nom et téléphone sont obligatoires.', color: 'red' })
         return
       }
-      const emailOptional =
-        user.value?.role === 'pro' ||
-        user.value?.role === 'nurse' ||
-        user.value?.role === 'lab' ||
-        user.value?.role === 'subaccount'
-      if (!emailOptional && !email?.trim()) {
+      if (!staffManagesPatients.value && !email?.trim()) {
         toast.add({ title: 'Champs requis', description: 'Email, prénom, nom et téléphone sont obligatoires.', color: 'red' })
         return
       }
@@ -2284,7 +2256,7 @@ const saveProfile = async (fromSaveAll = false) => {
       }
       toast.add({ title: 'Patient créé', color: 'green' })
       const r = user.value?.role
-      const base = r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : '/subaccount'
+      const base = r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : r === 'preleveur' ? '/preleveur' : '/subaccount'
       await navigateTo(`${base}/appointments/new?patient_id=${encodeURIComponent(newPatientId)}`)
       return
     }

@@ -92,7 +92,10 @@ if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], 
     }
 }
 
-if ($user['role'] === 'preleveur') {
+if (
+    $user['role'] === 'preleveur'
+    && !$userModel->isPatientVisibleInStaffList((string) $user['user_id'], 'preleveur', $targetPatientId)
+) {
     if ($relativeId) {
         $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? AND relative_id = ? LIMIT 1');
         $chk->execute([$targetPatientId, 'blood_test', $user['user_id'], $relativeId]);

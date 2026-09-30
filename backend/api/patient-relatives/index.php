@@ -31,7 +31,7 @@ $user = $authMiddleware->handle();
 
 $role = (string) ($user['role'] ?? '');
 $isPatient = $role === 'patient';
-$staffRoles = ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'];
+$staffRoles = ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'];
 if (!$isPatient && !in_array($role, $staffRoles, true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
