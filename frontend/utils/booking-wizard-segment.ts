@@ -41,7 +41,7 @@ export function buildBookingWizardSegmentIntro(
       icon: svc.icon ?? null,
       type: typeStr,
     });
-    const imageSrc = resolveCareCategoryImageSrc(svc.category_image_url ?? null, apiBase, svc.icon);
+    const imageSrc = resolveCareCategoryImageSrc(svc.category_image_url ?? null, apiBase, svc.icon, { name: svc.name, type: typeStr });
     return { emoji, imageSrc };
   };
 

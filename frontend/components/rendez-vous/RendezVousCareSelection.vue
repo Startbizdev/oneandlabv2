@@ -518,7 +518,6 @@ const allItems = computed((): CareItem[] => {
       label: string;
       catalogGroup: string;
       iconName: string;
-      imageSrc: null;
       type: string;
     }> = [
       {
@@ -526,7 +525,6 @@ const allItems = computed((): CareItem[] => {
         label: 'Prélèvement',
         catalogGroup: 'examens',
         iconName: 'i-lucide-droplet',
-        imageSrc: null,
         type: 'blood_test',
       },
       {
@@ -534,7 +532,6 @@ const allItems = computed((): CareItem[] => {
         label: 'Soins infirmiers',
         catalogGroup: 'soins',
         iconName: 'i-lucide-heart-pulse',
-        imageSrc: null,
         type: 'nursing',
       },
     ];
@@ -546,7 +543,7 @@ const allItems = computed((): CareItem[] => {
         catalogGroup: row.catalogGroup,
         emoji: careCategoryEmojiForCategory({ name: row.label, icon: row.iconName, type: row.type }),
         iconName: row.iconName,
-        imageSrc: row.imageSrc,
+        imageSrc: resolveCareCategoryImageSrc(null, config.public.apiBase, null, { name: row.label, type: row.type }),
         iconColor: accent.iconColor,
         appointmentCount: mockCounts[i] ?? 0,
         raw: {
@@ -568,7 +565,7 @@ const allItems = computed((): CareItem[] => {
       catalogGroup,
       emoji: careCategoryEmojiForCategory({ name: cat.name, icon: cat.icon, type: cat.type }),
       iconName: resolveCareIconFromCategory(cat),
-      imageSrc: resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat.icon),
+      imageSrc: resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat.icon, cat),
       iconColor: accent.iconColor,
       appointmentCount: Number(cat.appointment_count ?? 0),
       raw: cat,

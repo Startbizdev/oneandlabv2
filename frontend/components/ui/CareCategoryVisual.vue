@@ -3,6 +3,7 @@
     v-if="imageSrc && !imageFailed"
     :src="imageSrc"
     alt=""
+    decoding="async"
     :class="imgClass"
     @error="imageFailed = true"
   />

@@ -11,7 +11,8 @@ function compile(relative, dependencies = {}) {
   return mod.exports;
 }
 const symbols = compile('packages/shared-utils/src/care-symbol.ts');
-const icons = compile('frontend/utils/care-icons.ts', { '@oneandlab/shared-utils': symbols });
+const artwork = compile('packages/shared-utils/src/care-artwork.ts');
+const icons = compile('frontend/utils/care-icons.ts', { '@oneandlab/shared-utils': { ...symbols, ...artwork } });
 for (const [icon, expected] of [
   ['syringe', 'i-lucide-syringe'], ['lucide:syringe', 'i-lucide-syringe'],
   ['i-lucide-bandage', 'i-lucide-bandage'], ['medical-icon:cardiology', 'i-medical-icon-cardiology'],
@@ -33,6 +34,29 @@ assert.equal(intro.lines[0].iconName, 'i-lucide-syringe');
 assert.equal(intro.lines[0].imageSrc, null, 'A selected icon takes precedence over stale artwork');
 assert.equal(icons.resolveCareCategoryImageSrc('/api/custom.png', '/api'), '/api/custom.png');
 assert.equal(icons.resolveCareCategoryImageSrc('/api/custom.png', '/api', 'medical-icon:cardiology'), null);
+
+for (const key of artwork.CARE_ARTWORK_KEYS) {
+  assert.equal(artwork.careArtworkKey({ name: key, type: 'nursing' }), key);
+  assert.ok(fs.statSync(path.resolve(__dirname, '../frontend/public/images/care', `${key}.webp`)).size > 0, `web ${key}`);
+  assert.ok(fs.statSync(path.resolve(__dirname, '../apps/mobile/src/assets/care-art', `${key}.png`)).size > 0, `mobile ${key}`);
+}
+const nativeArtworkMap = fs.readFileSync(path.resolve(__dirname, '../apps/mobile/src/constants/care-artwork-images.ts'), 'utf8');
+for (const key of artwork.CARE_ARTWORK_KEYS) assert.ok(nativeArtworkMap.includes(`care-art/${key}.png`), `native map ${key}`);
+for (const [name, type, expected] of [
+  ['Prise de sang', 'blood_test', 'prise-de-sang'], ['Soins d’hygiène', 'nursing', 'soins-d-hygiene'],
+  ['Retrait de points / agrafes', 'nursing', 'retrait-de-points-agrafes'], ['Suivi diabète', 'nursing', 'suivi-diabete'],
+  ['Examen des urines', 'blood_test', 'examen-des-urines'], ['Pansement complexe', 'nursing', 'pansement-plaie'],
+  ['Prélèvement', 'blood_test', 'prise-de-sang'], ['Analyse inconnue', 'blood_test', 'prise-de-sang'],
+  ['Soin inconnu', 'nursing', 'soins-infirmiers'], ['', null, 'soins-infirmiers'],
+]) assert.equal(artwork.careArtworkKey({ name, type }), expected, name);
+const vaccination = { name: 'Vaccination', type: 'nursing' };
+assert.equal(icons.resolveCareCategoryImageSrc(null, '/api', '💉', vaccination), '/images/care/vaccination.webp', 'Legacy emoji shows the 3D artwork');
+assert.equal(icons.resolveCareCategoryImageSrc(null, '/api', 'syringe', vaccination), null, 'An admin-selected icon wins over the artwork');
+assert.equal(icons.resolveCareCategoryImageSrc('/api/custom.png', '/api', '💉', vaccination), '/api/custom.png', 'An uploaded image wins over the artwork');
+assert.equal(icons.resolveCareCategoryImageSrc(null, '/api'), null);
+const artworkBadge = icons.careListBadgeDisplay({ category_id: 'v', type: 'nursing' }, [{ id: 'v', name: 'Vaccination', type: 'nursing', icon: '💉' }], undefined, '/api');
+assert.equal(artworkBadge.imageSrc, '/images/care/vaccination.webp');
+console.log(`${artwork.CARE_ARTWORK_KEYS.length} 3D care artworks (web + mobile), name aliases and display priority passed.`);
 const assets = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../apps/mobile/src/assets/care-icons.json'), 'utf8'));
 for (const name of Object.keys(assets)) {
   assert.equal(symbols.resolveCareCategoryIcon({icon: name}), name);

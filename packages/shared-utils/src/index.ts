@@ -28,6 +28,7 @@ export * from './lab-preference';
 export * from './nurse-prescription-scope';
 export * from './coverage-zone-geo';
 export * from './care-symbol';
+export * from './care-artwork';
 
 export * from './resumable-appointment-batch';
 export * from './booking-submit-navigation';

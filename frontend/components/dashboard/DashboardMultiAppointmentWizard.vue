@@ -759,7 +759,7 @@ function buildDashboardWizardSegmentIntro(activeServiceId: string | null): {
 
   const base = String(runtimeConfig.public.apiBase ?? '');
   const img = (svc: SelectedServiceInput) =>
-    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base, svc.icon);
+    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base, svc.icon, svc);
 
   if (isNursingAppointment(rep.type)) {
     const nurs = selectedServices.value.filter((s) => isNursingAppointment(s.type));
@@ -832,8 +832,8 @@ const bookingCelebrationImageUrls = computed(() => {
   const seen = new Set<string>();
   const urls: string[] = [];
 
-  function pushSrc(raw: string | null | undefined) {
-    const resolved = resolveCareCategoryImageSrc(raw ?? null, base);
+  function pushSrc(raw: string | null | undefined, category: { name?: string | null; type?: string | null }) {
+    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, null, category);
     if (resolved && !seen.has(resolved)) {
       seen.add(resolved);
       urls.push(resolved);
@@ -841,7 +841,7 @@ const bookingCelebrationImageUrls = computed(() => {
   }
 
   for (const svc of selectedServices.value) {
-    pushSrc(svc.category_image_url ?? null);
+    pushSrc(svc.category_image_url ?? null, svc);
   }
 
   const selectedCatIds = new Set(
@@ -853,7 +853,7 @@ const bookingCelebrationImageUrls = computed(() => {
   const collectFromCategories = (filterBySelection: boolean) => {
     for (const c of careCategoriesList.value) {
       if (filterBySelection && selectedCatIds.size > 0 && !selectedCatIds.has(c.id)) continue;
-      pushSrc(c.image_url ?? null);
+      pushSrc(c.image_url ?? null, c);
     }
   };
 

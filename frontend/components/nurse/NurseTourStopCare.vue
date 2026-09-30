@@ -120,7 +120,7 @@ function lineBadge(line: PatientRdvCatalogLine) {
   const apt = tourStopAsAppointment(props.stop);
   return careListBadgeForCatalogItem(
     String(apt.type ?? 'nursing'),
-    { category_id: line.category_id, category_image_url: line.category_image_url },
+    { category_id: line.category_id, category_name: line.label, category_image_url: line.category_image_url },
     props.categories,
     categoryAccentMap.value,
     config.public.apiBase,

@@ -1,17 +1,19 @@
-import { explicitCareIcon, resolveCareCategoryIcon } from '@oneandlab/shared-utils'
+import { careArtworkKey, careArtworkWebPath, explicitCareIcon, resolveCareCategoryIcon } from '@oneandlab/shared-utils'
 
 /**
- * URL affichable pour une image de catégorie (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`).
+ * Image affichée pour une catégorie : image importée par l’admin (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`),
+ * sinon illustration 3D livrée avec le front si `category` est fourni. Une icône choisie explicitement par l’admin reste prioritaire.
  * Avec `apiBase` relatif (`/api`), renvoie le chemin tel quel pour que le navigateur reste sur l’origine du front (proxy Nitro).
  */
 export function resolveCareCategoryImageSrc(
   imageUrl: string | null | undefined,
   apiBase?: string | null,
   icon?: string | null,
+  category?: { name?: string | null; type?: string | null },
 ): string | null {
   if (explicitCareIcon(icon)) return null;
   const raw = imageUrl != null && String(imageUrl).trim() !== '' ? String(imageUrl).trim() : '';
-  if (!raw) return null;
+  if (!raw) return category ? careArtworkWebPath(careArtworkKey(category)) : null;
   if (/^https?:\/\//i.test(raw)) return raw;
   const path = raw.startsWith('/') ? raw : `/${raw}`;
   const base = apiBase != null && String(apiBase).trim() !== '' ? String(apiBase).trim() : '';
@@ -51,9 +53,10 @@ export type CareCategoryBadgeVisual = {
 function careCategoryImageSrcForDisplay(
   imageUrl: string | null | undefined,
   icon: string | null | undefined,
-  apiBase?: string | null,
+  apiBase: string | null | undefined,
+  category: { name?: string | null; type: string },
 ): string | null {
-  return resolveCareCategoryImageSrc(imageUrl, apiBase, icon)
+  return resolveCareCategoryImageSrc(imageUrl, apiBase, icon, category)
 }
 
 const ACCENT_FALLBACK: CareAccent = {
@@ -93,6 +96,7 @@ export type CareCategoryRowMinimal = {
 export type AppointmentCareBadgeInput = {
   type?: string | null
   category_id?: string | null
+  category_name?: string | null
   category_icon?: string | null
   category_image_url?: string | null
   form_data?: { category_id?: string | null }
@@ -196,7 +200,10 @@ export function careListBadgeDisplay(
   })
 
 
-  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
+  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase, {
+    name: categoryRow?.name ?? apt?.category_name,
+    type: typeStr,
+  })
 
   return { emoji: '', iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }
@@ -208,6 +215,7 @@ export function careListBadgeForCatalogItem(
   appointmentType: string | null | undefined,
   item: {
     category_id?: string | null
+    category_name?: string | null
     category_image_url?: string | null
   } | null | undefined,
   categories: CareCategoryRowMinimal[],
@@ -261,7 +269,10 @@ export function careListBadgeForCatalogItem(
     type: typeStr,
   })
 
-  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase)
+  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase, {
+    name: row?.name ?? item?.category_name,
+    type: typeStr,
+  })
 
   return { emoji: '', iconName, iconColor: accent.iconColor, tileBg: accent.tileBg, imageSrc }
 }

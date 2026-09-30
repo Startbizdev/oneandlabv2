@@ -78,6 +78,42 @@ for (const width of [360, 1440]) {
   });
 }
 
+async function expectLoadedArtwork(scope: ReturnType<Page['locator']>, key: string) {
+  const img = scope.locator(`img[src="/images/care/${key}.webp"]`).first();
+  await expect(img).toBeVisible();
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+}
+
+test('care without uploaded image or chosen icon shows its 3D artwork in the wizard and the nurse settings', async ({ page }) => {
+  const user = { id: 'fixture-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple', email: 'fixture@example.invalid' };
+  await page.addInitScript(user => {
+    localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ nurse: true }));
+    if (location.pathname === '/profile') {
+      localStorage.setItem('auth_token', 'local-ui-fixture');
+      localStorage.setItem('auth_user', JSON.stringify(user));
+    }
+  }, user);
+  const vaccination = { id: 'fixture-vaccination', name: 'Vaccination', type: 'nursing', icon: '💉', image_url: null, is_active: 1, options: [] };
+  const bloodTest = { id: 'fixture-blood', name: 'Bilan sanguin', type: 'blood_test', icon: '🩸', image_url: null, is_active: 1, options: [] };
+  await page.route(apiRoutePattern(), route => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (url.searchParams.has('category_options_for')) return route.fulfill({ json: { success: true, data: [] } });
+    if (path === '/api/nurse-category-preferences') {
+      return route.fulfill({ json: { success: true, data: [{ category_id: vaccination.id, name: vaccination.name, type: 'nursing', icon: '💉', image_url: null, is_enabled: true }] } });
+    }
+    return route.fulfill({ json: { success: true, user, data: path.endsWith('/auth/me') ? user : path.startsWith('/api/categories') ? [vaccination, bloodTest] : [], pagination: { pages: 1 } } });
+  });
+  await page.setViewportSize({ width: 360, height: 900 });
+  await page.goto('/rendez-vous/nouveau');
+  const add = page.getByRole('button', { name: 'Configurer et ajouter Vaccination', exact: true });
+  await expectLoadedArtwork(add.locator('xpath=ancestor::li'), 'vaccination');
+  await page.screenshot({ path: 'test-results/care-artwork-wizard-360.png', animations: 'disabled' });
+  await page.goto('/profile');
+  await expectLoadedArtwork(page.getByRole('button', { name: /Vaccination/ }), 'vaccination');
+  await page.getByRole('button', { name: /Vaccination/ }).screenshot({ path: 'test-results/care-artwork-nurse-settings.png', animations: 'disabled' });
+});
+
 test('nurse care preferences retain the admin icon when toggled', async ({ page }) => {
   const user = { id: 'fixture-nurse', role: 'nurse', first_name: 'Camille', last_name: 'Exemple', email: 'fixture@example.invalid' };
   await page.addInitScript(user => {

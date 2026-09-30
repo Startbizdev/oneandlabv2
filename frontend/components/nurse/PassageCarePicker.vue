@@ -48,7 +48,12 @@
               :disabled="isTaken(cat.id) || selecting"
               @click="pickCategory(cat)"
             >
-              <CareCategoryVisual :image-src="null" :icon-name="resolveCareIconFromCategory(cat)" icon-class="size-5 shrink-0 text-primary-700" />
+              <CareCategoryVisual
+                :image-src="resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat.icon, cat)"
+                :icon-name="resolveCareIconFromCategory(cat)"
+                img-class="size-8 shrink-0 object-contain"
+                icon-class="size-5 shrink-0 text-primary-700"
+              />
               <span class="font-medium">{{ cat.name }}</span>
             </button>
           </div>
@@ -73,7 +78,7 @@ import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { isCareCategoryWithoutBookingOptions } from '@oneandlab/shared-utils';
 import type { BookingServiceFormSlice } from '~/utils/booking-service-form-slice';
 import { buildPassageNursingItemLabel } from '~/utils/passage-nursing-item-label';
-import { resolveCareIconFromCategory } from '~/utils/care-icons';
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import CareServiceQuickOptionsModal from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import type { QuickModalCategoryRow } from '~/components/rendez-vous/CareServiceQuickOptionsModal.vue';
 import { apiFetch } from '~/utils/api';
@@ -88,6 +93,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: NursePassageNursingItem[]];
 }>();
 
+const config = useRuntimeConfig();
 const categories = ref<CareCategoryRow[]>([]);
 const loading = ref(false);
 const loadError = ref('');

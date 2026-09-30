@@ -432,7 +432,7 @@ function catalogLineBadge(
 ): ReturnType<typeof careListBadgeForCatalogItem> {
   return careListBadgeForCatalogItem(
     appointmentType,
-    { category_id: line.category_id, category_image_url: line.category_image_url },
+    { category_id: line.category_id, category_name: line.label, category_image_url: line.category_image_url },
     props.categories ?? [],
     categoryAccentMap.value,
     config.public.apiBase,

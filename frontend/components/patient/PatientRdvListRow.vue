@@ -118,7 +118,7 @@ const catalogLines = computed(() =>
 function lineBadge(line: PatientRdvCatalogLine) {
   return careListBadgeForCatalogItem(
     props.appointment?.type,
-    { category_id: line.category_id, category_image_url: line.category_image_url },
+    { category_id: line.category_id, category_name: line.label, category_image_url: line.category_image_url },
     props.categories ?? [],
     accentMap.value,
     config.public.apiBase,

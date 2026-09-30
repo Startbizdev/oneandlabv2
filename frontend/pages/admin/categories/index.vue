@@ -219,7 +219,7 @@
                     <UFormField
                       name="icon"
                       label="Icône du soin"
-                      description="La même icône dans le catalogue, le panier et les étapes du rendez-vous."
+                      description="Facultatif : sans icône ni image personnalisée, l’illustration 3D du soin s’affiche dans le catalogue, le panier et les étapes du rendez-vous."
                       class="w-full"
                       :ui="{ label: 'text-xs font-medium text-muted', description: 'text-xs text-muted leading-snug' }"
                     >
@@ -253,7 +253,7 @@
                     <UFormField
                       label="Image personnalisée"
                       name="category_image"
-                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — remplace l’icône si vous choisissez une nouvelle image."
+                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — remplace l’illustration 3D et l’icône."
                       class="w-full"
                       :ui="{
                         label: 'text-xs font-medium text-muted',
@@ -664,7 +664,7 @@ function categoryListEmoji(cat: { name?: string; icon?: string | null; type?: st
 }
 
 function categoryListImageSrc(cat: any): string | null {
-  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase, cat?.icon);
+  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase, cat?.icon, cat);
 }
 
 const modalCategoryEmoji = computed((): string | null => {
@@ -683,7 +683,7 @@ watch(() => categoryForm.value.icon, (icon) => {
 
 const modalCategoryImageSrc = computed(() => {
   if (pendingImageObjectUrl.value) return pendingImageObjectUrl.value;
-  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase, categoryForm.value.icon);
+  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase, categoryForm.value.icon, categoryForm.value);
 });
 
 function onCategoryImageFileChange(e: Event) {

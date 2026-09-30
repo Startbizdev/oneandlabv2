@@ -43,6 +43,7 @@ export interface NurseCategoryPreference {
   name?: string;
   description?: string;
   icon?: string;
+  image_url?: string | null;
   type?: string;
   is_enabled: boolean | number;
 }

@@ -620,9 +620,11 @@
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
                 ]"
               >
-                <UIcon
-                  :name="careCategoryIconName(pref.icon)"
-                  class="h-6 w-6"
+                <CareCategoryVisual
+                  :image-src="resolveCareCategoryImageSrc(pref.image_url ?? null, config.public.apiBase, pref.icon, pref)"
+                  :icon-name="resolveCareIconFromCategory(pref)"
+                  img-class="h-10 w-10 object-contain"
+                  icon-class="h-6 w-6"
                 />
               </div>
               <div class="min-w-0 flex-1">
@@ -1087,7 +1089,7 @@
 </template>
 
 <script setup lang="ts">
-import { resolveCareIconFromCategory } from "~/utils/care-icons";
+import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from "~/utils/care-icons";
 import type { ProfilePersonalInfo } from '#components';
 import { nextTick } from 'vue'
 import { splitProfessionalId, validateProfessionalId, isProIpaEmploi } from '@oneandlab/shared-types'
@@ -1817,6 +1819,7 @@ const hasValidAddress = computed(() => {
 })
 
 // -- Catégories nurse --
+const config = useRuntimeConfig()
 const categoryPreferences = ref<any[]>([])
 const loadingCategories = ref(false)
 const updatingCategories = ref(new Set<string>())
@@ -2688,11 +2691,6 @@ async function savePublicProfile(fromSaveAll = false) {
 // ============================
 // Catégories nurse
 // ============================
-
-/** Convertit l’icône stockée en admin (care_categories.icon) en nom UIcon */
-function careCategoryIconName(icon: string | null | undefined): string {
-  return resolveCareIconFromCategory({ icon, type: 'nursing' });
-}
 
 const loadCategoryPreferences = async () => {
   loadingCategories.value = true

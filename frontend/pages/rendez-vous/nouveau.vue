@@ -396,8 +396,8 @@ const bookingCelebrationImageUrls = computed(() => {
   const seen = new Set<string>();
   const urls: string[] = [];
 
-  function pushSrc(raw: string | null | undefined) {
-    const resolved = resolveCareCategoryImageSrc(raw ?? null, base);
+  function pushSrc(raw: string | null | undefined, category: { name?: string | null; type?: string | null }) {
+    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, null, category);
     if (resolved && !seen.has(resolved)) {
       seen.add(resolved);
       urls.push(resolved);
@@ -406,7 +406,7 @@ const bookingCelebrationImageUrls = computed(() => {
 
   /** Images déjà connues sur les lignes sélectionnées (souvent présentes alors que la liste catégories n’a pas image_url). */
   for (const svc of selectedServices.value) {
-    pushSrc(svc.category_image_url ?? null);
+    pushSrc(svc.category_image_url ?? null, svc);
   }
 
   const selectedCatIds = new Set(
@@ -418,7 +418,7 @@ const bookingCelebrationImageUrls = computed(() => {
   const collectFromCategories = (filterBySelection: boolean) => {
     for (const c of careCategoriesList.value) {
       if (filterBySelection && selectedCatIds.size > 0 && !selectedCatIds.has(c.id)) continue;
-      pushSrc(c.image_url ?? null);
+      pushSrc(c.image_url ?? null, c);
     }
   };
 
@@ -498,8 +498,8 @@ const relativesOptions = computed(() => {
 });
 
 const serviceItems = [
-  { label: 'Prélèvement', value: 'blood_test', icon: 'i-lucide-droplet', description: 'À domicile' },
-  { label: 'Soins infirmiers', value: 'nursing', icon: 'i-lucide-heart-pulse', description: 'Soins à domicile par des professionnels' },
+  { label: 'Prélèvement', value: 'blood_test' },
+  { label: 'Soins infirmiers', value: 'nursing' },
 ];
 
 function confirmStep0AndNext() {
@@ -1815,10 +1815,7 @@ onMounted(async () => {
         if (state.labPreferenceMode) labPreferenceMode.value = state.labPreferenceMode;
         if ('preferredLabBrandId' in state) preferredLabBrandId.value = state.preferredLabBrandId ?? null;
         if (state.selectedServices?.length) {
-          selectedServices.value = state.selectedServices.map((s: any) => ({
-            ...s,
-            icon: s.icon || (s.type === 'blood_test' ? 'i-lucide-droplet' : 'i-lucide-heart-pulse'),
-          }));
+          selectedServices.value = state.selectedServices;
         }
         if (typeof state.bookingWizardIndex === 'number' && Number.isFinite(state.bookingWizardIndex)) {
           bookingWizardIndex.value = state.bookingWizardIndex;
@@ -1897,7 +1894,7 @@ onMounted(async () => {
     } else if (careCategoriesList.value.length === 0) {
       const fallback = serviceItems.find((i: any) => i.value === typeFromUrl);
       if (fallback) {
-        selectedServices.value = [{ id: fallback.value, type: fallback.value, name: fallback.label, category_id: null, icon: fallback.icon }];
+        selectedServices.value = [{ id: fallback.value, type: fallback.value, name: fallback.label, category_id: null }];
         step.value = firstStepAfterCareSelection();
         bookingWizardIndex.value = 0;
       }

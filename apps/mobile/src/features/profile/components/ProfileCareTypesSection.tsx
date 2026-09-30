@@ -79,7 +79,7 @@ export function ProfileCareTypesSection({ bare }: Props) {
             gap={spacing[3]}
             leading={
               <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
-                <CarePictogram label={p.name ?? ''} type={p.type} icon={p.icon} size={24} />
+                <CarePictogram label={p.name ?? ''} type={p.type} icon={p.icon} imageUrl={p.image_url} size={24} />
               </View>
             }
             actions={

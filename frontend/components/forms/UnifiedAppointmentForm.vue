@@ -905,8 +905,8 @@ function serviceHeaderEmoji(svc: { type: string; name: string; icon?: string | n
   });
 }
 
-function serviceHeaderImageSrc(svc: { category_image_url?: string | null; icon?: string | null }) {
-  return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase, svc.icon);
+function serviceHeaderImageSrc(svc: { type: string; name: string; category_image_url?: string | null; icon?: string | null }) {
+  return resolveCareCategoryImageSrc(svc.category_image_url ?? null, config.public.apiBase, svc.icon, svc);
 }
 
 const emit = defineEmits<{

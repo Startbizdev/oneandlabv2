@@ -89,7 +89,7 @@ const serviceRows = computed((): ServiceRow[] =>
 
     return {
       ...spec,
-      imageSrc: resolveCareCategoryImageSrc(spec.image_url, config.public.apiBase, spec.icon),
+      imageSrc: resolveCareCategoryImageSrc(spec.image_url, config.public.apiBase, spec.icon, { name: spec.name, type }),
       iconName: resolveCareIconFromCategory({ icon: spec.icon ?? null, name: spec.name, type }),
     };
   }),

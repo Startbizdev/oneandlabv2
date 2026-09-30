@@ -168,7 +168,7 @@ const catalogLines = computed(() => patientRdvCatalogDisplayLines(props.appointm
 function catalogLineBadge(line: PatientRdvCatalogLine) {
   return careListBadgeForCatalogItem(
     props.appointment?.type,
-    { category_id: line.category_id, category_image_url: line.category_image_url },
+    { category_id: line.category_id, category_name: line.label, category_image_url: line.category_image_url },
     props.categories ?? [],
     categoryAccentMap.value,
     config.public.apiBase,
@@ -184,7 +184,10 @@ const headerCareBadge = computed(() => {
     iconColor: '',
     emoji: undefined,
     tileBg: '',
-    imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase, props.appointment?.category_icon),
+    imageSrc: resolveCareCategoryImageSrc(props.appointment?.category_image_url ?? null, config.public.apiBase, props.appointment?.category_icon, {
+      name: props.appointment?.category_name,
+      type: t,
+    }),
   };
 });
 
