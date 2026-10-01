@@ -84,7 +84,7 @@ class Notification
         $stmt = $this->db->prepare('
             SELECT * FROM notifications
             WHERE user_id = ? AND read_at IS NULL
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             LIMIT ?
         ');
         
@@ -109,7 +109,7 @@ class Notification
         $stmt = $this->db->prepare('
             SELECT * FROM notifications
             WHERE user_id = ?
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, id DESC
             LIMIT ? OFFSET ?
         ');
         

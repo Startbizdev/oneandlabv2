@@ -9,6 +9,26 @@ require_once __DIR__ . '/../models/User.php';
  */
 final class PatientLinkedNurses
 {
+    /** Même périmètre que listForPatient : lien d'accès ou soin déjà assigné à cet infirmier. */
+    public static function isLinked(PDO $db, string $patientId, string $nurseId): bool
+    {
+        $stmt = $db->prepare("
+            SELECT 1 FROM profiles p
+            WHERE p.id = ? AND p.role = 'nurse'
+              AND (
+                EXISTS (SELECT 1 FROM patient_professional_access ppa WHERE ppa.patient_id = ? AND ppa.professional_id = p.id)
+                OR EXISTS (
+                    SELECT 1 FROM appointments a
+                    WHERE a.patient_id = ? AND a.type = 'nursing' AND a.assigned_nurse_id = p.id
+                )
+              )
+            LIMIT 1
+        ");
+        $stmt->execute([$nurseId, $patientId, $patientId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
     /**
      * @return list<array{id: string, display_name: string, phone: string|null, source: string, last_at: string|null}>
      */

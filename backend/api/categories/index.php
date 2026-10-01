@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/Uuid.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -154,8 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'data' => $withOpts[0]['options'] ?? [],
             ]);
         } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => 'SERVER_ERROR']);
+            ApiServerError::respond('options catégorie ' . ($catId ?? ''), $e, 'Impossible de charger les options de ce soin. Réessayez plus tard.');
         }
         exit;
     }
@@ -265,12 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $categories,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('liste catégories', $e, 'Impossible de charger les soins. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Authentification requise pour créer
@@ -381,12 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $created,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('création catégorie user=' . $user['user_id'], $e, 'La création de la catégorie a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

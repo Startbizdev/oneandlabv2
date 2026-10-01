@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/medical-documents/bootstrap.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 require_once __DIR__ . '/../../lib/AppTimezone.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -57,8 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $logger->log($user['user_id'], 'patient', 'read', 'medical_document', null, ['scope' => 'own_document_library', 'count' => count($documents)]);
                 echo json_encode(['success' => true, 'data' => $documents]);
             } catch (Throwable $error) {
-                http_response_code(500);
-                echo json_encode(['success' => false, 'error' => 'Chargement des documents impossible']);
+                ApiServerError::respond('bibliothèque documents patient user=' . $user['user_id'], $error, 'Chargement des documents impossible. Réessayez plus tard.');
             }
             exit;
         }
@@ -112,12 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $documents,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('documents du RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'Chargement des documents impossible. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Vérifier CSRF pour les requêtes modifiantes
@@ -175,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } else {
             // Vérifier les permissions (inclure relative_id pour documents proche)
             $stmt = $db->prepare('
-                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, created_by, created_by_role
+                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, assigned_pro_id, created_by, created_by_role
                 FROM appointments
                 WHERE id = ?
             ');
@@ -421,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         $patientId,
                         'results_ready',
                         'Vos résultats sont disponibles',
-                        'Les résultats d’analyses de votre rendez-vous sont en ligne. Ouvrez le rendez-vous pour les consulter ou les télécharger (onglet Résultats).',
+                        'Les résultats d’analyses de votre rendez-vous sont en ligne.',
                         ['appointment_id' => $appointmentId]
                     );
                     $patientEmail = null;
@@ -500,39 +495,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
 
-            $proIds = [];
-            if ($aptCreatorId !== '' && $aptCreatorRole === 'pro') {
-                $proIds[$aptCreatorId] = true;
-            }
-            if ($patientId) {
-                $patCreatorStmt = $db->prepare('
-                    SELECT p.created_by, pr.role AS creator_role
-                    FROM profiles p
-                    LEFT JOIN profiles pr ON pr.id = p.created_by
-                    WHERE p.id = ?
-                    LIMIT 1
-                ');
-                $patCreatorStmt->execute([$patientId]);
-                $patCreatorRow = $patCreatorStmt->fetch(PDO::FETCH_ASSOC);
-                if ($patCreatorRow && ($patCreatorRow['creator_role'] ?? '') === 'pro' && !empty($patCreatorRow['created_by'])) {
-                    $proIds[(string) $patCreatorRow['created_by']] = true;
-                }
-                try {
-                    $ppaStmt = $db->prepare('
-                        SELECT ppa.professional_id
-                        FROM patient_professional_access ppa
-                        INNER JOIN profiles pr ON pr.id = ppa.professional_id AND pr.role = ?
-                        WHERE ppa.patient_id = ?
-                    ');
-                    $ppaStmt->execute(['pro', $patientId]);
-                    foreach ($ppaStmt->fetchAll(PDO::FETCH_ASSOC) as $ppaRow) {
-                        if (!empty($ppaRow['professional_id'])) {
-                            $proIds[(string) $ppaRow['professional_id']] = true;
-                        }
-                    }
-                } catch (Exception $e) {
-                    error_log('Erreur lookup PPA pro résultats: ' . $e->getMessage());
-                }
+            try {
+                $proIds = ResultsNotificationRecipients::proIds($db, $appointment);
+            } catch (PDOException $e) {
+                $proIds = [];
+                error_log('Erreur destinataires pro résultats: ' . $e->getMessage());
             }
             if ($proIds !== []) {
                 try {
@@ -550,7 +517,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                             $patientLabel = trim($fn . ' ' . $ln) ?: 'Patient';
                         }
                     }
-                    foreach (array_keys($proIds) as $proId) {
+                    foreach ($proIds as $proId) {
                         if ($proId === (string) ($user['user_id'] ?? '')) {
                             continue;
                         }
@@ -595,12 +562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ],
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('upload document médical user=' . $user['user_id'], $e, 'L’envoi du document a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

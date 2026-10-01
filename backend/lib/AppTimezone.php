@@ -36,6 +36,43 @@ class AppTimezone
         return self::format('Y-m-d H:i:s', $instant);
     }
 
+    /**
+     * Minuit aujourd'hui, heure de Paris, au format SQL. Les colonnes métier (scheduled_at…)
+     * stockent l'heure murale de Paris sans fuseau : on les compare à cette valeur sans conversion.
+     */
+    public static function sqlStartOfToday(): string
+    {
+        return self::now()->setTime(0, 0)->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Date saisie par un client : sans fuseau = heure murale de Paris, fuseau explicite (Z, +02:00) respecté.
+     *
+     * @throws Exception si la chaîne n'est pas une date
+     */
+    public static function parseClientDateTime(string $raw): DateTimeImmutable
+    {
+        $tz = new DateTimeZone(self::TZ);
+
+        return (new DateTimeImmutable(trim($raw), $tz))->setTimezone($tz);
+    }
+
+    /** Relit une heure murale de Paris stockée en base (Y-m-d H:i:s, sans fuseau). */
+    public static function parseSqlDateTime(string $raw): ?DateTimeImmutable
+    {
+        $raw = trim($raw);
+        $tz = new DateTimeZone(self::TZ);
+        foreach (['!Y-m-d H:i:s' => $raw, '!Y-m-d H:i' => substr($raw, 0, 16)] as $format => $value) {
+            $dt = DateTimeImmutable::createFromFormat($format, $value, $tz);
+            $errors = DateTimeImmutable::getLastErrors();
+            if ($dt !== false && ($errors['warning_count'] ?? 0) === 0 && ($errors['error_count'] ?? 0) === 0) {
+                return $dt;
+            }
+        }
+
+        return null;
+    }
+
     public static function displayDate(?DateTimeInterface $instant = null): string
     {
         return self::format('d/m/Y', $instant);

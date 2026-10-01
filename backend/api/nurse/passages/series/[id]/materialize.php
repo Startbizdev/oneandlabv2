@@ -31,8 +31,10 @@ try {
         'success' => true,
         'data' => $service->materialize($id, $nurseId),
     ]);
-} catch (RuntimeException $e) {
-    nurse_passage_json_error($e->getMessage(), 404);
+} catch (InvalidArgumentException $e) {
+    nurse_passage_json_error($e->getMessage(), 400);
+} catch (HttpStatusException $e) {
+    nurse_passage_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[nurse/passages/series/materialize] ' . $e->getMessage());
     nurse_passage_json_error('Materialize impossible', 500);

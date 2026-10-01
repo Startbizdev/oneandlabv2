@@ -20,6 +20,8 @@ try {
     health_json_response(['success' => true, 'data' => $device], 201);
 } catch (InvalidArgumentException $e) {
     health_json_error($e->getMessage(), 400);
+} catch (HttpStatusException $e) {
+    health_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('health/devices/pair: ' . $e->getMessage());
     health_json_error('Appairage impossible', 500);

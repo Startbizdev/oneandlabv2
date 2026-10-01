@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/Email.php';
 require_once __DIR__ . '/../../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -168,12 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             ],
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('sanction ' . $action . ' profil ' . $id . ' user=' . $user['user_id'], $e, 'L’application de la sanction a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

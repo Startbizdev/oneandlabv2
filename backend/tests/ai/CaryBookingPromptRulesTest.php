@@ -24,6 +24,14 @@ final class CaryBookingPromptRulesTest extends TestCase
         $this->assertStringNotContainsString('booking_step=beneficiary', $block);
     }
 
+    public function testPreleveurWorkflowForbidsDraftTool(): void
+    {
+        $block = CaryBookingPromptRules::workflowBlock('preleveur');
+        $this->assertStringContainsString('N\'appelle jamais update_booking_draft', $block);
+        $this->assertStringContainsString('Demander un prélèvement', $block);
+        $this->assertStringNotContainsString('booking_step=', $block);
+    }
+
     public function testStaffRolesDetected(): void
     {
         $this->assertTrue(CaryBookingPromptRules::isStaffRole('nurse'));

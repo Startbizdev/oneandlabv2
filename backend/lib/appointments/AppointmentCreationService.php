@@ -26,29 +26,29 @@ final class AppointmentCreationService
     {
         // Validation des champs requis
         if (empty($data['type']) || !Validation::appointmentType($data['type'])) {
-            throw new Exception('Type de rendez-vous invalide. Doit être "blood_test" ou "nursing".');
+            throw new InvalidArgumentException('Type de rendez-vous invalide. Doit être "blood_test" ou "nursing".');
         }
         
         if (empty($data['form_type']) || !Validation::appointmentType($data['form_type'])) {
-            throw new Exception('Type de formulaire invalide. Doit être "blood_test" ou "nursing".');
+            throw new InvalidArgumentException('Type de formulaire invalide. Doit être "blood_test" ou "nursing".');
         }
         
         if (empty($data['address']) || !is_array($data['address'])) {
-            throw new Exception('Adresse requise et doit être un tableau.');
+            throw new InvalidArgumentException('Adresse requise et doit être un tableau.');
         }
 
         $addr = $data['address'];
         $addrLabel = isset($addr['label']) ? trim((string) $addr['label']) : '';
         if ($addrLabel === '') {
-            throw new Exception('Adresse incomplète. Le libellé est requis.');
+            throw new InvalidArgumentException('Adresse incomplète. Le libellé est requis.');
         }
 
         // Ne pas utiliser empty() sur lat/lng : empty(0) est vrai en PHP alors que 0 est une coordonnée valide.
         if (!array_key_exists('lat', $addr) || !array_key_exists('lng', $addr)) {
-            throw new Exception('Adresse incomplète. Requis: label, lat, lng.');
+            throw new InvalidArgumentException('Adresse incomplète. Requis: label, lat, lng.');
         }
         if (!is_numeric($addr['lat']) || !is_numeric($addr['lng'])) {
-            throw new Exception('Adresse incomplète. lat et lng doivent être numériques.');
+            throw new InvalidArgumentException('Adresse incomplète. lat et lng doivent être numériques.');
         }
 
         // Validation des coordonnées géographiques
@@ -56,15 +56,15 @@ final class AppointmentCreationService
         $lng = floatval($addr['lng']);
         
         if (!Validation::latitude($lat)) {
-            throw new Exception('Latitude invalide. Doit être entre -90 et 90.');
+            throw new InvalidArgumentException('Latitude invalide. Doit être entre -90 et 90.');
         }
         
         if (!Validation::longitude($lng)) {
-            throw new Exception('Longitude invalide. Doit être entre -180 et 180.');
+            throw new InvalidArgumentException('Longitude invalide. Doit être entre -180 et 180.');
         }
         
         if (empty($data['scheduled_at'])) {
-            throw new Exception('Date de rendez-vous requise.');
+            throw new InvalidArgumentException('Date de rendez-vous requise.');
         }
         
         // Fuseau métier : le front envoie des dates « locales France » sans offset (formulaire public /dashboard).
@@ -101,7 +101,7 @@ final class AppointmentCreationService
                     $scheduledDate = new DateTime($raw, $tzParis);
                 }
             } catch (Exception $e) {
-                throw new Exception('Format de date invalide. Formats acceptés: Y-m-d H:i:s, Y-m-dTH:i, d/m/Y H:i');
+                throw new InvalidArgumentException('Format de date invalide. Formats acceptés: Y-m-d H:i:s, Y-m-dTH:i, d/m/Y H:i');
             }
         }
         
@@ -123,39 +123,39 @@ final class AppointmentCreationService
             $isStartOfCalendarDay = $scheduledDate->format('H:i:s') === '00:00:00';
             $sameLocalCalendarDay = $scheduledDate->format('Y-m-d') === $now->format('Y-m-d');
             if (!($isStartOfCalendarDay && $sameLocalCalendarDay)) {
-                throw new Exception('La date du rendez-vous ne peut pas être dans le passé.');
+                throw new InvalidArgumentException('La date du rendez-vous ne peut pas être dans le passé.');
             }
         }
         
         // Validation patient_id ou guest_email
         if (empty($data['patient_id']) && empty($data['guest_email'])) {
-            throw new Exception('patient_id ou guest_email requis.');
+            throw new InvalidArgumentException('patient_id ou guest_email requis.');
         }
         
         if (!empty($data['guest_email']) && !Validation::email($data['guest_email'])) {
-            throw new Exception('Email invité invalide.');
+            throw new InvalidArgumentException('Email invité invalide.');
         }
 
         PatientUrgencyGuard::assertPaidOrNotRequired($data, $createdByRole, $verifiedPatientPayment);
         
         // Validation category_id si présent
         if (!empty($data['category_id']) && !Validation::uuid($data['category_id'])) {
-            throw new Exception('ID de catégorie invalide (format UUID requis).');
+            throw new InvalidArgumentException('ID de catégorie invalide (format UUID requis).');
         }
         
         // Validation relative_id si présent
         if (!empty($data['relative_id']) && !Validation::uuid($data['relative_id'])) {
-            throw new Exception('ID de proche invalide (format UUID requis).');
+            throw new InvalidArgumentException('ID de proche invalide (format UUID requis).');
         }
         if (!empty($data['relative_id'])) {
             if (empty($data['patient_id'])) {
-                throw new Exception('patient_id requis lorsque relative_id est renseigné.');
+                throw new InvalidArgumentException('patient_id requis lorsque relative_id est renseigné.');
             }
             require_once __DIR__ . '/../../models/PatientRelative.php';
             $relativeModel = new PatientRelative();
             $relativeRow = $relativeModel->getById((string) $data['relative_id'], (string) $data['patient_id']);
             if ($relativeRow === null) {
-                throw new Exception('Proche introuvable ou non rattaché à ce patient.');
+                throw new DomainException('Proche introuvable ou non rattaché à ce patient.');
             }
         }
         
@@ -445,7 +445,7 @@ final class AppointmentCreationService
 
         $mode = $data['lab_preference_mode'] ?? ($data['form_data']['lab_preference_mode'] ?? 'platform_match');
         if (!in_array($mode, ['platform_match', 'brand_choice'], true)) {
-            throw new Exception('Mode de préférence laboratoire invalide.');
+            throw new InvalidArgumentException('Mode de préférence laboratoire invalide.');
         }
 
         $data['lab_preference_mode'] = $mode;
@@ -459,13 +459,13 @@ final class AppointmentCreationService
 
         $brandId = $data['preferred_lab_brand_id'] ?? ($data['form_data']['preferred_lab_brand_id'] ?? null);
         if (empty($brandId) || !Validation::uuid((string) $brandId)) {
-            throw new Exception('Veuillez choisir une marque de laboratoire.');
+            throw new InvalidArgumentException('Veuillez choisir une marque de laboratoire.');
         }
 
         require_once __DIR__ . '/../../models/LabBrand.php';
         $brand = (new LabBrand($this->db))->getActiveById((string) $brandId);
         if ($brand === null) {
-            throw new Exception('Marque de laboratoire invalide ou inactive.');
+            throw new InvalidArgumentException('Marque de laboratoire invalide ou inactive.');
         }
 
         $data['preferred_lab_brand_id'] = (string) $brandId;

@@ -243,13 +243,11 @@ final class AppointmentListGetHandler
                 ]);
             }
         } catch (PDOException $e) {
-            http_response_code(500);
             $errorMessage = $e->getMessage();
-            $errorCode = $e->getCode();
 
             AppointmentApiLogging::logAppointment('ERREUR FATALE lors de la récupération des rendez-vous', [
                 'error' => $errorMessage,
-                'code' => $errorCode,
+                'code' => $e->getCode(),
                 'sql' => $sql,
                 'params' => $params,
                 'trace' => $e->getTraceAsString(),
@@ -261,28 +259,7 @@ final class AppointmentListGetHandler
                 'page' => $page,
             ]);
 
-            // Retourner plus de détails en mode développement
-            $response = [
-                'success' => false,
-                'error' => 'Erreur lors de la récupération des rendez-vous: ' . $errorMessage,
-                'code' => 'DATABASE_ERROR',
-            ];
-
-            // En développement ou localhost, inclure plus de détails
-            $isDevelopment = (isset($_ENV['APP_ENV']) && $_ENV['APP_ENV'] === 'development')
-                          || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false);
-
-            if ($isDevelopment) {
-                $response['debug'] = [
-                    'message' => $errorMessage,
-                    'code' => $errorCode,
-                    'sql' => $sql,
-                    'params_count' => count($params),
-                    'params' => $params,
-                ];
-            }
-
-            echo json_encode($response);
+            ApiServerError::respond('liste RDV user=' . ($user['user_id'] ?? 'inconnu'), $e, 'Erreur lors de la récupération des rendez-vous. Réessayez plus tard.');
             exit;
         }
 

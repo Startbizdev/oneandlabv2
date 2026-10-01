@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentSubject.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -302,12 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Length: ' . strlen($payloadJson));
         echo $payloadJson;
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('copie document médical user=' . $user['user_id'], $e, 'La copie du document a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

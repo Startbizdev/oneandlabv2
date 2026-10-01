@@ -23,6 +23,15 @@ class User
     // Rôles autorisés (doit correspondre à l'ENUM de la base de données)
     private const ALLOWED_ROLES = ['super_admin', 'lab', 'subaccount', 'preleveur', 'nurse', 'pro', 'patient'];
 
+    // Réglages d'officine modifiables uniquement par la pharmacie elle-même (ou un super admin)
+    private const PHARMACY_OPERATION_FIELDS = [
+        'pharmacy_accepts_click_collect',
+        'pharmacy_accepts_home_delivery',
+        'pharmacy_orders_paused',
+        'pharmacy_click_collect_days_json',
+        'pharmacy_home_delivery_days_json',
+    ];
+
     public function __construct(?PDO $db = null)
     {
         $config = require __DIR__ . '/../config/database.php';
@@ -309,7 +318,10 @@ class User
         try {
             $stmt->execute($insertParams);
         } catch (PDOException $e) {
-            throw new Exception('Erreur lors de la création de l\'utilisateur: ' . $e->getMessage());
+            if (($e->errorInfo[1] ?? null) === 1062 && str_contains((string) ($e->errorInfo[2] ?? ''), 'uq_profiles_email_hash')) {
+                throw new EmailAlreadyUsed($e);
+            }
+            throw $e;
         }
 
         if ($role === 'patient' && $this->hasPatientProfessionalAccessTable() && in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
@@ -1238,12 +1250,15 @@ class User
     /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>
+     * @throws DomainException champ pharmacie envoyé sans droit
      */
     private function stripUnauthorizedPrivilegeFields(string $id, array $data, string $actorId, string $actorRole): array
     {
         $isAdmin = $actorRole === 'super_admin';
         if (!$isAdmin) {
-            unset($data['pharmacy_orders_enabled']);
+            if (array_key_exists('pharmacy_orders_enabled', $data)) {
+                throw new DomainException('Seul un administrateur peut activer ou désactiver le module de commandes pharmacie.');
+            }
             if (array_key_exists('emploi', $data)) {
                 $currentEmploi = '';
                 if ($this->hasEmploiColumn()) {
@@ -1257,16 +1272,9 @@ class User
             }
         }
 
-        if (!$isAdmin && !$this->actorMayManagePharmacyOperations($id, $actorId, $actorRole)) {
-            foreach ([
-                'pharmacy_accepts_click_collect',
-                'pharmacy_accepts_home_delivery',
-                'pharmacy_orders_paused',
-                'pharmacy_click_collect_days_json',
-                'pharmacy_home_delivery_days_json',
-            ] as $pharmacyCol) {
-                unset($data[$pharmacyCol]);
-            }
+        $sentPharmacyFields = array_intersect(self::PHARMACY_OPERATION_FIELDS, array_keys($data));
+        if ($sentPharmacyFields !== [] && !$isAdmin && !$this->actorMayManagePharmacyOperations($id, $actorId, $actorRole)) {
+            throw new DomainException('Seule l’officine elle-même peut modifier ses réglages de commandes pharmacie.');
         }
 
         return $data;
@@ -1317,7 +1325,8 @@ class User
                     }
                 }
             }
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log('[User] pharmacy_module_config illisible, repli sur « Pharmacien » : ' . $e->getMessage());
         }
 
         return ['Pharmacien'];
@@ -1390,16 +1399,16 @@ class User
         require_once __DIR__ . '/../lib/Validation.php';
         $onBehalfId = trim($onBehalfId);
         if ($onBehalfId === '' || !Validation::uuid($onBehalfId)) {
-            throw new Exception('Identifiant créateur invalide');
+            throw new InvalidArgumentException('Identifiant créateur invalide');
         }
         $stmt = $this->db->prepare('SELECT id, role, banned_until FROM profiles WHERE id = ? LIMIT 1');
         $stmt->execute([$onBehalfId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row || !in_array($row['role'] ?? '', self::patientListStaffRoles(), true)) {
-            throw new Exception('Le créateur doit être un professionnel, infirmier ou laboratoire actif');
+            throw new DomainException('Le créateur doit être un professionnel, infirmier ou laboratoire actif');
         }
         if (!empty($row['banned_until']) && strtotime((string) $row['banned_until']) > time()) {
-            throw new Exception('Le profil sélectionné est suspendu ou banni');
+            throw new DomainException('Le profil sélectionné est suspendu ou banni');
         }
 
         return [
@@ -1438,10 +1447,23 @@ class User
         $this->patientAccess()->linkPatientProfessional($patientId, $professionalId, $appointmentId, $source);
     }
 
-    /** @return array{ok: bool, http?: int, error?: string} */
-    public function adoptPatientForStaff(string $requesterId, string $requesterRole, string $patientId): array
-    {
-        return $this->patientAccess()->adoptPatientForStaff($requesterId, $requesterRole, $patientId);
+    /** @return array{ok: bool, http?: int, error?: string, code?: string, consent_recorded?: bool} */
+    public function adoptPatientForStaff(
+        string $requesterId,
+        string $requesterRole,
+        string $patientId,
+        string $lookupEmail = '',
+        string $lookupPhone = '',
+        bool $consentGiven = false,
+    ): array {
+        return $this->patientAccess()->adoptPatientForStaff(
+            $requesterId,
+            $requesterRole,
+            $patientId,
+            $lookupEmail,
+            $lookupPhone,
+            $consentGiven
+        );
     }
 
     public function findNurseIdByPhone(string $phoneRaw): ?string
@@ -1739,10 +1761,10 @@ class User
             if ($actorRole === 'lab') {
                 $targetLabId = $this->getLabId($id);
                 if ($targetLabId !== $actorId) {
-                    throw new Exception('Accès refusé : vous ne pouvez supprimer que les membres de votre laboratoire');
+                    throw new DomainException('Accès refusé : vous ne pouvez supprimer que les membres de votre laboratoire');
                 }
             } else {
-                throw new Exception('Accès refusé');
+                throw new DomainException('Accès refusé');
             }
         }
 
@@ -1760,28 +1782,34 @@ class User
     /**
      * Supprime un patient créé par le professionnel (pro, nurse, lab, subaccount) ou super_admin.
      * Refuse si des rendez-vous sont encore en attente / confirmés / en cours.
+     *
+     * @throws PatientDeletionDenied refus métier (statut HTTP et code d'erreur portés par l'exception)
      */
     public function deletePatientCreatedBy(string $patientId, string $actorId, string $actorRole): bool
     {
         if (!in_array($actorRole, ['pro', 'nurse', 'lab', 'subaccount', 'super_admin'], true)) {
-            throw new Exception('Accès refusé');
+            throw new PatientDeletionDenied('Accès refusé', 403, 'FORBIDDEN');
         }
         $stmt = $this->db->prepare('SELECT id, role, created_by FROM profiles WHERE id = ?');
         $stmt->execute([$patientId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
-            throw new Exception('Patient introuvable');
+            throw new PatientDeletionDenied('Patient introuvable', 404, 'NOT_FOUND');
         }
         if (($row['role'] ?? '') !== 'patient') {
-            throw new Exception('Ce compte n’est pas un patient');
+            throw new PatientDeletionDenied('Ce compte n’est pas un patient', 400, 'NOT_A_PATIENT');
         }
         if ($actorRole !== 'super_admin') {
             if (($row['created_by'] ?? '') !== $actorId) {
-                throw new Exception('Vous ne pouvez supprimer que les patients que vous avez créés');
+                throw new PatientDeletionDenied('Vous ne pouvez supprimer que les patients que vous avez créés', 403, 'FORBIDDEN');
             }
         }
         if (ProfileReferences::countActiveAppointments($this->db, $patientId) > 0) {
-            throw new Exception('Impossible de supprimer : rendez-vous en attente ou en cours pour ce patient');
+            throw new PatientDeletionDenied(
+                'Impossible de supprimer : rendez-vous en attente ou en cours pour ce patient',
+                409,
+                'PATIENT_HAS_ACTIVE_APPOINTMENTS'
+            );
         }
 
         ProfileReferences::reassign($this->db, $patientId, $actorId);

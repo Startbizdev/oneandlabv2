@@ -23,7 +23,7 @@ class Email
 
     public function __construct()
     {
-        $this->smtpHost = $_ENV['SMTP_HOST'] ?? 'ssl0.ovh.net';
+        $this->smtpHost = trim((string) ($_ENV['SMTP_HOST'] ?? ''));
         $this->smtpPort = (int) ($_ENV['SMTP_PORT'] ?? 465);
         $this->smtpUser = $_ENV['SMTP_USER'] ?? '';
         $this->smtpPass = $_ENV['SMTP_PASS'] ?? '';
@@ -45,6 +45,10 @@ class Email
         ?string $replyToEmail = null,
         ?string $replyToName = null
     ): bool {
+        if ($this->smtpHost === '') {
+            error_log('Email::send refused to=' . $to . ' subject=' . $subject . ' error=SMTP_HOST not configured');
+            return false;
+        }
         try {
             $mail = new PHPMailer(true);
             

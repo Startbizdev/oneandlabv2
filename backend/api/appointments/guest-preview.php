@@ -30,19 +30,19 @@ try {
     
     // Validation des données sans stockage
     if (!isset($input['type']) || !Validation::appointmentType($input['type'])) {
-        throw new Exception('Type de rendez-vous invalide');
+        throw new InvalidArgumentException('Type de rendez-vous invalide');
     }
     
     if (!isset($input['scheduled_at']) || !Validation::datetime($input['scheduled_at'])) {
-        throw new Exception('Date et heure invalides');
+        throw new InvalidArgumentException('Date et heure invalides');
     }
     
     if (!isset($input['address']['lat'], $input['address']['lng'])) {
-        throw new Exception('Adresse invalide');
+        throw new InvalidArgumentException('Adresse invalide');
     }
     
     if (!Validation::latitude($input['address']['lat']) || !Validation::longitude($input['address']['lng'])) {
-        throw new Exception('Coordonnées géographiques invalides');
+        throw new InvalidArgumentException('Coordonnées géographiques invalides');
     }
     
     // Validation réussie
@@ -50,7 +50,7 @@ try {
         'success' => true,
         'message' => 'Données valides',
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,

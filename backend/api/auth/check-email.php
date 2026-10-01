@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
@@ -32,7 +33,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
 
     if (!isset($input['email'])) {
-        throw new Exception('Email requis');
+        throw new InvalidArgumentException('Email requis');
     }
 
     $auth = new Auth();
@@ -44,10 +45,12 @@ try {
         'role' => $result['role'] ?? null,
         'has_password' => $result['has_password'] ?? false,
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('vérification email', $e);
 }

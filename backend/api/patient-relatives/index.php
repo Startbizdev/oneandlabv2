@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -86,12 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $relatives,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('liste des proches user=' . $user['user_id'], $e, 'Impossible de charger les proches. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Créer un nouveau proche
@@ -154,12 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $relative
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('création proche user=' . $user['user_id'], $e, 'Impossible d’ajouter ce proche. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

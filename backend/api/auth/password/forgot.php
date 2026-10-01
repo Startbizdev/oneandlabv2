@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../lib/Auth.php';
 require_once __DIR__ . '/../../../lib/Email.php';
 require_once __DIR__ . '/../../../lib/RateLimit.php';
 require_once __DIR__ . '/../../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 authPublicCors('POST, OPTIONS');
 
@@ -31,7 +32,7 @@ try {
     $email = trim((string) ($input['email'] ?? ''));
 
     if ($email === '') {
-        throw new Exception('Email requis');
+        throw new InvalidArgumentException('Email requis');
     }
 
     $auth = new Auth();
@@ -46,10 +47,12 @@ try {
         'success' => true,
         'message' => 'Si un compte existe avec cet email, vous recevrez les instructions de réinitialisation.',
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('mot de passe oublié', $e, 'La demande de réinitialisation a échoué. Réessayez plus tard.');
 }

@@ -8,6 +8,8 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/CoverageZoneGeo.php';
+require_once __DIR__ . '/../../lib/CoverageZoneWritePolicy.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -53,6 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt->execute([$id]);
     $zone = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$zone) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Zone non trouvée']);
+        exit;
+    }
+    try {
+        CoverageZoneWritePolicy::resolveReadableOwnerId($db, $user, (string) $zone['owner_id']);
+    } catch (HttpStatusException $e) {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Zone non trouvée']);
         exit;
@@ -163,8 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         ]);
         echo json_encode(['success' => true, 'data' => ['id' => $id]]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('mise à jour zone de couverture ' . $id . ' user=' . $user['user_id'], $e, 'Erreur lors de la sauvegarde de la zone de couverture. Réessayez plus tard.');
     }
     exit;
 }
@@ -184,8 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
             echo json_encode(['success' => false, 'error' => 'Zone non trouvée']);
         }
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('suppression zone de couverture ' . $id . ' user=' . $user['user_id'], $e, 'La suppression de la zone de couverture a échoué. Réessayez plus tard.');
     }
     exit;
 }

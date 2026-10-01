@@ -36,5 +36,5 @@ try {
 } catch (InvalidArgumentException $e) {
     ai_json_error($e->getMessage(), 400);
 } catch (Throwable $e) {
-    ai_json_error($e->getMessage(), 500);
+    ApiServerError::respond('ai/voice/turn user=' . $user['user_id'], $e);
 }

@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/CoverageZoneGeo.php';
+require_once __DIR__ . '/../../lib/CoverageZoneWritePolicy.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -61,19 +63,6 @@ function enrichCoverageZoneRow(array $zone): array
         $zone['zone_metadata'] = json_decode($zone['zone_metadata'], true);
     }
     return $zone;
-}
-
-function maxHalfSideKmForRole(string $role, string $ownerId, PDO $db): float
-{
-    if ($role === 'nurse') {
-        require_once __DIR__ . '/../../lib/SubscriptionService.php';
-        $subscriptionService = new SubscriptionService($db);
-        $planSlug = $subscriptionService->getActiveNursePlan($ownerId);
-        $limits = require __DIR__ . '/../../config/plan-limits.php';
-        $nurseLimits = $limits['nurse'][$planSlug] ?? $limits['nurse']['discovery'];
-        return (float) ($nurseLimits['max_radius_km'] ?? 20);
-    }
-    return CoverageZoneGeo::MAX_HALF_SIDE_KM_LAB;
 }
 
 $authMiddleware = new AuthMiddleware();
@@ -131,7 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
 
-    $ownerId = $_GET['owner_id'] ?? $user['user_id'];
+    try {
+        $ownerId = CoverageZoneWritePolicy::resolveReadableOwnerId($db, $user, $_GET['owner_id'] ?? null);
+    } catch (HttpStatusException $e) {
+        http_response_code($e->httpStatus);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
+        exit;
+    }
     $role = $_GET['role'] ?? null;
 
     $sql = 'SELECT * FROM coverage_zones WHERE owner_id = ?';
@@ -160,19 +155,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     CSRFMiddleware::handle();
 
     $input = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($input)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Données invalides', 'code' => 'VALIDATION_ERROR']);
+        exit;
+    }
 
-    $role = $input['role'] ?? $user['role'];
-    $ownerId = $user['user_id'];
-    if (!empty($input['owner_id'])) {
-        if ($isAdmin) {
-            $ownerId = $input['owner_id'];
-        } elseif ($user['role'] === 'lab') {
-            $userModel = new User();
-            $targetLabId = $userModel->getLabId($input['owner_id']);
-            if ($targetLabId === $user['user_id']) {
-                $ownerId = $input['owner_id'];
-            }
-        }
+    try {
+        ['owner_id' => $ownerId, 'role' => $role] = CoverageZoneWritePolicy::resolveOwnerAndRole($db, $user, $input);
+    } catch (HttpStatusException $e) {
+        http_response_code($e->httpStatus);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
+        exit;
     }
 
     if (!isset($input['center_lat'], $input['center_lng'])) {
@@ -193,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
     $isActive = !array_key_exists('is_active', $input) || $input['is_active'];
 
-    $maxHalfSide = maxHalfSideKmForRole($role, $ownerId, $db);
+    $maxHalfSide = CoverageZoneWritePolicy::maxHalfSideKm($db, $role, $ownerId);
     $boundsJson = null;
     $radiusKm = null;
 
@@ -334,13 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode(['success' => true, 'data' => ['id' => $id]]);
         }
     } catch (PDOException $e) {
-        error_log('coverage-zones: Erreur PDO: ' . $e->getMessage());
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => 'Erreur lors de la sauvegarde de la zone de couverture: ' . $e->getMessage(),
-            'code' => 'DATABASE_ERROR',
-        ]);
+        ApiServerError::respond('sauvegarde zone de couverture user=' . $user['user_id'], $e, 'Erreur lors de la sauvegarde de la zone de couverture. Réessayez plus tard.');
         exit;
     }
 } else {

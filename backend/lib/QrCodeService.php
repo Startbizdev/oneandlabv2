@@ -221,12 +221,17 @@ class QrCodeService
         if ($utmQr === null || trim($utmQr) === '') {
             return null;
         }
-        $row = $this->findByToken($utmQr);
-        if (!$row) {
-            return null;
-        }
+        $stmt = $this->db->prepare('
+            SELECT q.id FROM qr_codes q
+            INNER JOIN profiles p ON p.id = q.profile_id
+            WHERE q.token = ? AND q.is_active = 1
+              AND (p.banned_until IS NULL OR p.banned_until <= NOW())
+            LIMIT 1
+        ');
+        $stmt->execute([trim($utmQr)]);
+        $id = $stmt->fetchColumn();
 
-        return (string) $row['id'];
+        return $id !== false ? (string) $id : null;
     }
 
     public function updateMarketingTagline(string $profileId, ?string $tagline): array

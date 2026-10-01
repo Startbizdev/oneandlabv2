@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../../config/database.php';
 require_once __DIR__ . '/../../../../config/cors.php';
 require_once __DIR__ . '/../../../../lib/AppointmentOfferSnooze.php';
+require_once __DIR__ . '/../../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -97,6 +98,5 @@ try {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('report proposition RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'Impossible de reporter cette proposition. Réessayez plus tard.');
 }

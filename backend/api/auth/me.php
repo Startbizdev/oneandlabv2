@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS - Fonction pour obtenir et valider l'origine
@@ -90,15 +91,8 @@ try {
         'data' => $user,
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
-    error_log('Error in /api/auth/me: ' . $e->getMessage());
+    ApiServerError::respond('profil courant user=' . ($authUser['user_id'] ?? 'inconnu'), $e, 'Impossible de charger votre profil. Réessayez plus tard.');
     error_log('Stack trace: ' . $e->getTraceAsString());
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-    ]);
 }
 
 

@@ -46,8 +46,8 @@ try {
     nurse_tour_json_error('Méthode non autorisée', 405);
 } catch (InvalidArgumentException $e) {
     nurse_tour_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    nurse_tour_json_error($e->getMessage(), 403);
+} catch (HttpStatusException $e) {
+    nurse_tour_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[nurse/patients/absences] ' . $e->getMessage());
     nurse_tour_json_error('Absence patient indisponible', 500);

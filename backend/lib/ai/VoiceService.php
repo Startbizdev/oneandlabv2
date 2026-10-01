@@ -271,6 +271,9 @@ final class VoiceService
 
     private function applyVoiceSignalsToDraft(array $user, string $conversationId, string $transcript): void
     {
+        if (!AiBookingAccess::allows($user)) {
+            return;
+        }
         $userId = (string) $user['user_id'];
         $draft = $this->booking->getLatestDraftForConversation($conversationId, $userId);
         $patch = AiVoiceMessageSignals::buildDraftPatch($transcript, $user, $draft);

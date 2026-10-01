@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../lib/Email.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
 require_once __DIR__ . '/../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -49,7 +50,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['email'])) {
-        throw new Exception('Email requis');
+        throw new InvalidArgumentException('Email requis');
     }
     
     $auth = new Auth();
@@ -109,7 +110,7 @@ try {
     }
 
     echo json_encode($payload);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     // Logger l'échec de demande OTP (HDS)
     require_once __DIR__ . '/../../lib/Logger.php';
     $logger = new Logger();
@@ -127,6 +128,10 @@ try {
         ]
     );
 
+    if (!($e instanceof InvalidArgumentException || $e instanceof DomainException)) {
+        ApiServerError::respond('demande OTP', $e, 'Impossible d\'envoyer le code pour le moment. Réessayez dans un instant.');
+        exit;
+    }
     http_response_code(400);
     echo json_encode([
         'success' => false,

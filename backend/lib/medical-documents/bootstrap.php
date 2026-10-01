@@ -4,3 +4,4 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/MedicalDocumentAppointmentAccess.php';
 require_once __DIR__ . '/MedicalDocumentListQuery.php';
+require_once __DIR__ . '/ResultsNotificationRecipients.php';

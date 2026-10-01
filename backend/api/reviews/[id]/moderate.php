@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../models/Review.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../../config/cors.php';
 
 // CORS
@@ -73,12 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'VALIDATION_ERROR',
-        ]);
+        ApiServerError::respond('modération avis ' . $id . ' user=' . $user['user_id'], $e, 'La modération de l’avis a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

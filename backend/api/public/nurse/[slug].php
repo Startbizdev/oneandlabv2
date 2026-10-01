@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../models/Review.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -274,11 +275,7 @@ try {
         ],
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Erreur serveur: ' . $e->getMessage(),
-    ]);
+    ApiServerError::respond('profil public infirmier ' . (string) $slug, $e, 'Impossible de charger ce profil. Réessayez plus tard.');
 }
 
 

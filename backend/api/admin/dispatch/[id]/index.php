@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../../config/cors.php';
 require_once __DIR__ . '/../../../../lib/admin/AdminDispatchService.php';
+require_once __DIR__ . '/../../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -52,6 +53,8 @@ try {
     $service = new AdminDispatchService();
     $data = $service->getDetail($appointmentId, $user['user_id']);
     echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+} catch (PDOException $e) {
+    ApiServerError::respond('détail dispatch RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'Erreur serveur');
 } catch (RuntimeException $e) {
     http_response_code(404);
     echo json_encode(['success' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);

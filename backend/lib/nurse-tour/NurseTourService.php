@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/TourOrderEngine.php';
 require_once __DIR__ . '/TourProximity.php';
 require_once __DIR__ . '/PatientAbsenceService.php';
@@ -140,7 +141,7 @@ final class NurseTourService
     {
         $plan = $this->ensurePlan($nurseId, $tourDate);
         if ((bool) ($plan['manual_order_locked'] ?? false) && !$force) {
-            throw new RuntimeException('Ordre manuel verrouillé — confirmez force=true pour remplacer');
+            throw HttpStatusException::conflict('Ordre manuel verrouillé — confirmez force=true pour remplacer', 'manual_order_locked');
         }
 
         $appointments = $this->loadAppointmentsForDate($nurseId, $tourDate);

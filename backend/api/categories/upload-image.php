@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/CareCategoryImage.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $corsConfig['allowed_origins'], true)) {
@@ -131,6 +132,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('image catégorie ' . $categoryId . ' user=' . $user['user_id'], $e, 'L’image n’a pas pu être enregistrée. Réessayez plus tard.');
 }

@@ -59,6 +59,14 @@ final class AppointmentCreatePostHandler
 
         StaffPatientConsent::validateOrFail($input, $user);
 
+        try {
+            $input = AppointmentCreateInputPolicy::apply($db, $user, $input);
+        } catch (AppointmentCreateInputDenied $e) {
+            http_response_code($e->httpStatus);
+            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
+            exit;
+        }
+
         if (!empty($input['relative_id'])) {
             $patientId = trim((string) ($input['patient_id'] ?? ''));
             $relativeId = trim((string) $input['relative_id']);
@@ -96,28 +104,27 @@ final class AppointmentCreatePostHandler
         if (!empty($inputForCreate['external_nurse_invite']) && is_array($inputForCreate['external_nurse_invite'])) {
             $externalNurseInvite = $inputForCreate['external_nurse_invite'];
             unset($inputForCreate['external_nurse_invite']);
+            if (!NurseInviteService::consumeSmsQuota((string) $user['user_id'], (string) $externalNurseInvite['phone'])) {
+                http_response_code(429);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Trop d\'invitations SMS envoyées aujourd\'hui. Réessayez demain ou choisissez un infirmier dans la liste.',
+                    'code' => 'NURSE_INVITE_RATE_LIMITED',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
         }
         if (!empty($inputForCreate['skip_zone_dispatch'])) {
             $inputForCreate['skip_zone_dispatch'] = true;
         }
 
-        $postCreateEffects->resolveAttributionQrFromUtm($inputForCreate);
+        $postCreateEffects->resolveAttributionQrFromUtm($inputForCreate, (string) $user['role']);
 
         if (!empty($inputForCreate['assigned_pro_id']) && !Validation::uuid((string) $inputForCreate['assigned_pro_id'])) {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
                 'error' => 'assigned_pro_id invalide',
-                'code' => 'VALIDATION_ERROR',
-            ]);
-            exit;
-        }
-
-        if (!empty($inputForCreate['attribution_qr_id']) && !Validation::uuid((string) $inputForCreate['attribution_qr_id'])) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'error' => 'attribution_qr_id invalide',
                 'code' => 'VALIDATION_ERROR',
             ]);
             exit;
@@ -157,7 +164,7 @@ final class AppointmentCreatePostHandler
             AppointmentApiLogging::logAppointment('Appel à appointmentModel->create', ['user_id' => $user['user_id'], 'role' => $user['role']]);
             try {
                 $createActor = $postCreateEffects->resolveCreateActor($user, $input);
-            } catch (Exception $e) {
+            } catch (InvalidArgumentException | DomainException $e) {
                 http_response_code(400);
                 echo json_encode([
                     'success' => false,
@@ -193,7 +200,9 @@ final class AppointmentCreatePostHandler
                     http_response_code(503);
                     echo json_encode([
                         'success' => false,
-                        'error' => $e->getMessage(),
+                        'error' => $e instanceof InvalidArgumentException
+                            ? $e->getMessage()
+                            : 'Le rendez-vous est créé, mais l’invitation de l’infirmier n’a pas pu être envoyée. Réessayez plus tard.',
                         'code' => 'NURSE_INVITE_FAILED',
                         'data' => ['id' => $id],
                     ], JSON_UNESCAPED_UNICODE);
@@ -236,12 +245,15 @@ final class AppointmentCreatePostHandler
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            http_response_code($e instanceof AppointmentCreationConflict ? 409 : 400);
-            echo json_encode([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'code' => $e instanceof AppointmentCreationConflict ? 'CREATION_REQUEST_CONFLICT' : 'VALIDATION_ERROR',
-            ]);
+            if ($e instanceof AppointmentCreationConflict) {
+                http_response_code(409);
+                echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => 'CREATION_REQUEST_CONFLICT']);
+            } elseif ($e instanceof InvalidArgumentException || $e instanceof DomainException) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => 'VALIDATION_ERROR']);
+            } else {
+                ApiServerError::respond('création RDV user=' . $user['user_id'], $e, 'La création du rendez-vous a échoué. Réessayez plus tard.');
+            }
         }
     }
 

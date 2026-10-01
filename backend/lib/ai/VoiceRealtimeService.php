@@ -349,6 +349,9 @@ final class VoiceRealtimeService
      */
     private function applyVoiceSignalsToDraft(array $user, string $conversationId, string $transcript): void
     {
+        if (!AiBookingAccess::allows($user)) {
+            return;
+        }
         $booking = new AiBookingService($this->db);
         $userId = (string) $user['user_id'];
         $draft = $booking->getLatestDraftForConversation($conversationId, $userId);

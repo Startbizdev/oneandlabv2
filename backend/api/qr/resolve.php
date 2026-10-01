@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/QrCodeService.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -39,6 +40,8 @@ try {
         'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     ]);
     echo json_encode(['success' => true, 'data' => $data]);
+} catch (PDOException $e) {
+    ApiServerError::respond('résolution QR', $e, 'Erreur serveur');
 } catch (RuntimeException $e) {
     $code = (int) $e->getCode();
     if ($code < 400 || $code >= 600) {

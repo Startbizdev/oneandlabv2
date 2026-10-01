@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -41,11 +42,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     try {
         $userModel->deletePatientCreatedBy($id, $user['user_id'], $user['role']);
         echo json_encode(['success' => true]);
+    } catch (PatientDeletionDenied $e) {
+        http_response_code($e->httpStatus);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
     } catch (Exception $e) {
-        $msg = $e->getMessage();
-        $code = (strpos($msg, 'rendez-vous') !== false || strpos($msg, 'RDV') !== false) ? 409 : 400;
-        http_response_code($code);
-        echo json_encode(['success' => false, 'error' => $msg]);
+        ApiServerError::respond('suppression patient ' . $id . ' user=' . $user['user_id'], $e, 'La suppression du patient a échoué. Réessayez plus tard.');
     }
     exit;
 }

@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../models/PatientRelative.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../../config/cors.php';
 
 // CORS
@@ -115,12 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $relative,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('détail proche ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de charger ce proche. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     // Mettre à jour un proche
@@ -169,12 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $relative
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('mise à jour proche ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de modifier ce proche. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     if (!$isPatient) {
@@ -203,12 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'message' => 'Proche supprimé avec succès'
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('suppression proche ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de supprimer ce proche. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

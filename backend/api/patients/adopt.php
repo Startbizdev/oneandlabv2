@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -62,14 +63,25 @@ $userModel = new User();
 $result = $userModel->adoptPatientForStaff(
     (string) $user['user_id'],
     (string) $user['role'],
-    $patientId
+    $patientId,
+    trim((string) ($input['email'] ?? '')),
+    trim((string) ($input['phone'] ?? '')),
+    StaffPatientConsent::isConsentGiven(is_array($input) ? $input : [])
 );
 
 if (!$result['ok']) {
     $http = (int) ($result['http'] ?? 403);
     http_response_code($http);
-    echo json_encode(['success' => false, 'error' => $result['error'] ?? 'Accès refusé']);
+    $body = ['success' => false, 'error' => $result['error'] ?? 'Accès refusé'];
+    if (!empty($result['code'])) {
+        $body['code'] = $result['code'];
+    }
+    echo json_encode($body);
     exit;
+}
+
+if (!empty($result['consent_recorded'])) {
+    StaffPatientConsent::logRecorded($user, $patientId, 'patient_adopt');
 }
 
 echo json_encode(['success' => true, 'data' => ['patient_id' => $patientId]]);

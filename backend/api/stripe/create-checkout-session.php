@@ -8,6 +8,8 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/SubscriptionCheckoutPolicy.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
+require_once __DIR__ . '/../../lib/StripeErrorResponse.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -35,8 +37,7 @@ try {
     $roleMiddleware = new RoleMiddleware();
     $roleMiddleware->handle($authUser, ['nurse', 'lab']);
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('authentification', $e);
     exit;
 }
 
@@ -145,6 +146,5 @@ try {
     $session = \Stripe\Checkout\Session::create($sessionParams, ['idempotency_key' => $idempotencyKey]);
     echo json_encode(['success' => true, 'url' => $session->url]);
 } catch (\Stripe\Exception\ApiErrorException $e) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    StripeErrorResponse::respond('checkout abonnement user=' . $userId, $e);
 }

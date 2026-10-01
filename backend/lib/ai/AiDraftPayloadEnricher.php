@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
 require_once __DIR__ . '/../PatientDossierDocuments.php';
 require_once __DIR__ . '/../Uuid.php';
+require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/AiStaffPatientResolver.php';
 require_once __DIR__ . '/AiAddressFromMessageResolver.php';
 
@@ -1031,13 +1032,7 @@ final class AiDraftPayloadEnricher
             return null;
         }
         try {
-            $raw = trim((string) $scheduledAt);
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-                $paris = new DateTimeImmutable($raw, new DateTimeZone('Europe/Paris'));
-            } else {
-                $dt = new DateTimeImmutable($raw, new DateTimeZone('UTC'));
-                $paris = $dt->setTimezone(new DateTimeZone('Europe/Paris'));
-            }
+            $paris = AppTimezone::parseClientDateTime((string) $scheduledAt);
             $days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
             $months = [
                 1 => 'janvier', 2 => 'février', 3 => 'mars', 4 => 'avril',
@@ -1079,8 +1074,7 @@ final class AiDraftPayloadEnricher
         }
 
         try {
-            $dt = new DateTimeImmutable((string) $scheduledAt, new DateTimeZone('UTC'));
-            $paris = $dt->setTimezone(new DateTimeZone('Europe/Paris'));
+            $paris = AppTimezone::parseClientDateTime((string) $scheduledAt);
 
             return $paris->format('H') . 'h' . $paris->format('i');
         } catch (Throwable $e) {

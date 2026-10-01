@@ -24,9 +24,9 @@ function nurse_passage_json_response(array $payload, int $code = 200): void
     nurse_tour_json_response($payload, $code);
 }
 
-function nurse_passage_json_error(string $message, int $code = 400): void
+function nurse_passage_json_error(string $message, int $code = 400, ?string $errorCode = null): void
 {
-    nurse_tour_json_error($message, $code);
+    nurse_tour_json_error($message, $code, $errorCode);
 }
 
 function nurse_passage_read_json_body(): array

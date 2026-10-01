@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/StaffPatientConsent.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -149,6 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode([
                 'success' => false,
                 'error' => 'Un patient existe déjà avec cet email',
+                'code' => EmailAlreadyUsed::CODE,
                 'existing_patient_id' => $existingId,
             ]);
             exit;
@@ -164,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $onBehalf = $userModel->resolveAdminOnBehalfStaffProfile((string) $input['on_behalf_of_user_id']);
                 $patientOwnerId = $onBehalf['id'];
                 $patientOwnerRole = $onBehalf['role'];
-            } catch (Exception $e) {
+            } catch (InvalidArgumentException | DomainException $e) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'error' => $e->getMessage()]);
                 exit;
@@ -206,12 +208,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $newPatient,
         ]);
         
+    } catch (EmailAlreadyUsed $e) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => EmailAlreadyUsed::CODE]);
+    } catch (DomainException $e) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-        ]);
+        ApiServerError::respond('création patient user=' . $user['user_id'], $e, 'La création du patient a échoué. Réessayez plus tard.');
     }
     
 } else {

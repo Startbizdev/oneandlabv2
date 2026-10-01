@@ -9,6 +9,7 @@
       <directory>tests/qr</directory>
       <directory>tests/mobile</directory>
       <directory>tests/nurse-tour</directory>
+      <directory>tests/nurse-passage</directory>
       <directory>tests/coverage</directory>
       <directory>tests/admin</directory>
       <directory>tests/appointments</directory>

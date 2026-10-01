@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../nurse-tour/TourOrderEngine.php';
 require_once __DIR__ . '/../nurse-tour/TourProximity.php';
 require_once __DIR__ . '/../../models/Appointment.php';
@@ -133,7 +134,7 @@ final class PreleveurTourService
     {
         $plan = $this->ensurePlan($preleveurId, $tourDate);
         if ((bool) ($plan['manual_order_locked'] ?? false) && !$force) {
-            throw new RuntimeException('Ordre manuel verrouillé — confirmez force=true pour remplacer');
+            throw HttpStatusException::conflict('Ordre manuel verrouillé — confirmez force=true pour remplacer', 'manual_order_locked');
         }
 
         $appointments = $this->loadAppointmentsForDate($preleveurId, $tourDate);
@@ -357,6 +358,8 @@ final class PreleveurTourService
                 'skip_reason' => $meta['skip_reason'] ?? null,
                 'patient_name' => $patientName,
                 'patient_id' => !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null,
+                'patient_gender' => $apt['beneficiary_gender'] ?? null,
+                'profile_image_url' => $apt['beneficiary_profile_image_url'] ?? null,
                 'type' => 'blood_test',
                 'category_name' => (string) ($apt['category_name'] ?? ''),
                 'category_icon' => $apt['category_icon'] ?? null,

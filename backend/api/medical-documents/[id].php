@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -92,12 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $document,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('détail document médical ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de charger ce document. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     // Vérifier CSRF pour les requêtes modifiantes
@@ -161,12 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('suppression document médical ' . $id . ' user=' . $user['user_id'], $e, 'La suppression du document a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

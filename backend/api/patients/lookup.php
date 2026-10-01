@@ -9,7 +9,9 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/Validation.php';
+require_once __DIR__ . '/../../lib/users/UserIdentityLookup.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -100,13 +102,8 @@ if (!$patientId) {
 }
 
 try {
-    $data = $userModel->getById($patientId, $user['user_id'], $user['role']);
-    if (!$data || ($data['role'] ?? '') !== 'patient') {
-        echo json_encode(['success' => true, 'data' => null]);
-        exit;
-    }
-    echo json_encode(['success' => true, 'data' => $data]);
+    $profile = $userModel->getById($patientId, $user['user_id'], $user['role']);
+    echo json_encode(['success' => true, 'data' => UserIdentityLookup::patientLookupMatch($profile)]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('recherche patient ' . $patientId . ' user=' . $user['user_id'], $e, 'La recherche du patient a échoué. Réessayez plus tard.');
 }

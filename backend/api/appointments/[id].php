@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/AppointmentCancellationPolicy.php';
 require_once __DIR__ . '/../../lib/appointments/bootstrap.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -128,12 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $appointment,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('détail RDV ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de charger ce rendez-vous. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $input = json_decode(file_get_contents('php://input'), true);
@@ -235,10 +231,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $redispatch = isset($input['redispatch']) && $input['redispatch'] === true;
             $acceptedViaShareToken = null;
             if ($redispatch && $input['status'] !== 'pending') {
-                throw new Exception('Le redispatch nécessite un statut "pending"');
+                throw new InvalidArgumentException('Le redispatch nécessite un statut "pending"');
             }
             if ($redispatch && !in_array($user['role'], ['nurse', 'lab', 'subaccount', 'super_admin'], true)) {
-                throw new Exception('Seuls les professionnels de santé assignés ou l\'administration peuvent redispatcher un rendez-vous');
+                throw new DomainException('Seuls les professionnels de santé assignés ou l\'administration peuvent redispatcher un rendez-vous');
             }
 
             // Pour completed / inProgress : vérifier que l'utilisateur est assigné, créateur, ou (pour lab) dans l'équipe du RDV
@@ -495,13 +491,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } else {
             flush();
         }
-    } catch (Exception $e) {
+    } catch (InvalidArgumentException | DomainException $e) {
         http_response_code($e instanceof NurseQuotaExceeded ? 403 : 400);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
             'code' => $e instanceof NurseQuotaExceeded ? 'PLAN_LIMIT' : 'VALIDATION_ERROR',
         ]);
+    } catch (Exception $e) {
+        ApiServerError::respond('mise à jour RDV ' . $id . ' user=' . $user['user_id'], $e, 'La mise à jour du rendez-vous a échoué. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     // Suppression réservée au super_admin (liste admin rendez-vous)

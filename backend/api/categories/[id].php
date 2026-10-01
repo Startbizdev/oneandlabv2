@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/CareCategoryImage.php';
 require_once __DIR__ . '/../../lib/Uuid.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -95,12 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $category,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('détail catégorie ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de charger cette catégorie. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     // Modifier une catégorie
@@ -275,12 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $updated,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('mise à jour catégorie ' . $id . ' user=' . $user['user_id'], $e, 'La mise à jour de la catégorie a échoué. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     // Supprimer une catégorie
@@ -309,12 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('suppression catégorie ' . $id . ' user=' . $user['user_id'], $e, 'La suppression de la catégorie a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

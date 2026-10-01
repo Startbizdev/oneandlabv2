@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/NurseTourService.php';
+require_once __DIR__ . '/../AppTimezone.php';
 
 final class TourIcsExporter
 {
@@ -11,16 +12,24 @@ final class TourIcsExporter
     {
         $service = new NurseTourService();
         $tour = $service->getTour($nurseId, $tourDate);
+
+        return $this->exportStops(is_array($tour['stops'] ?? null) ? $tour['stops'] : []);
+    }
+
+    /**
+     * @param array<int, mixed> $stops arrêts de tournée (scheduled_at = heure murale de Paris)
+     */
+    public function exportStops(array $stops): string
+    {
         $events = [];
-        foreach ($tour['stops'] ?? [] as $stop) {
+        foreach ($stops as $stop) {
             if (!is_array($stop)) {
                 continue;
             }
-            $startRaw = (string) ($stop['scheduled_at'] ?? '');
-            if ($startRaw === '') {
+            $start = AppTimezone::parseSqlDateTime((string) ($stop['scheduled_at'] ?? ''));
+            if ($start === null) {
                 continue;
             }
-            $start = new DateTimeImmutable($startRaw, new DateTimeZone('UTC'));
             $end = $start->modify('+45 minutes');
             $title = trim((string) ($stop['patient_name'] ?? 'Soin'));
             $cat = trim((string) ($stop['category_name'] ?? ''));

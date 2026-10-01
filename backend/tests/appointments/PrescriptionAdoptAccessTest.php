@@ -5,6 +5,7 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../fixtures/TestFixtures.php';
 
 /**
  * Adoption lookup + génération d'ordonnance (skip si PDO / fixtures absents).
@@ -13,6 +14,21 @@ final class PrescriptionAdoptAccessTest extends TestCase
 {
     private ?PDO $db = null;
     private ?User $userModel = null;
+    /** @var list<string> */
+    private array $profileIds = [];
+
+    protected function tearDown(): void
+    {
+        if ($this->db !== null) {
+            foreach ($this->profileIds as $id) {
+                $this->db->prepare('DELETE FROM patient_professional_access WHERE patient_id = ? OR professional_id = ?')->execute([$id, $id]);
+                $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$id]);
+            }
+        }
+        $this->db = null;
+        $this->userModel = null;
+        parent::tearDown();
+    }
 
     protected function setUp(): void
     {
@@ -64,55 +80,102 @@ final class PrescriptionAdoptAccessTest extends TestCase
         $this->assertSame(403, $result['http'] ?? 0);
     }
 
-    public function testAdoptCreatesPpaAndAllowsPrescriptionGenerate(): void
+    /**
+     * Règle d'adoption : un id seul ne suffit plus (n'importe quel professionnel pouvait rattacher
+     * n'importe quel dossier). Il faut rejouer la recherche exacte par contact et le consentement.
+     */
+    public function testAdoptByBareIdIsRefusedWithoutPriorLink(): void
     {
-        $nurseStmt = $this->db->query("SELECT id FROM profiles WHERE role = 'nurse' LIMIT 1");
-        $nurseId = (string) ($nurseStmt->fetchColumn() ?: '');
-        $patientStmt = $this->db->query("SELECT id FROM profiles WHERE role = 'patient' LIMIT 1");
-        $patientId = (string) ($patientStmt->fetchColumn() ?: '');
-        if ($nurseId === '' || $patientId === '') {
-            $this->markTestSkipped('No nurse/patient profile');
-        }
+        [$nurseId, $patientId] = $this->freshNurseAndPatient();
 
-        $otherNurseStmt = $this->db->prepare(
-            "SELECT id FROM profiles WHERE role = 'nurse' AND id <> ? LIMIT 1"
+        $result = $this->userModel->adoptPatientForStaff($nurseId, 'nurse', $patientId);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(403, $result['http'] ?? 0);
+        $this->assertSame('PATIENT_LOOKUP_MISMATCH', $result['code'] ?? '');
+        $this->assertFalse($this->userModel->hasProfessionalAccessToPatient($nurseId, $patientId));
+    }
+
+    public function testAdoptRefusesContactOfAnotherPatient(): void
+    {
+        [$nurseId, $patientId] = $this->freshNurseAndPatient();
+        $otherPatientId = TestFixtures::insertProfile($this->db, 'patient');
+        $this->profileIds[] = $otherPatientId;
+
+        $result = $this->userModel->adoptPatientForStaff(
+            $nurseId,
+            'nurse',
+            $patientId,
+            'patient-' . $otherPatientId . '@test.invalid',
+            '',
+            true
         );
-        $otherNurseStmt->execute([$nurseId]);
-        $otherNurseId = (string) ($otherNurseStmt->fetchColumn() ?: '');
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('PATIENT_LOOKUP_MISMATCH', $result['code'] ?? '');
+        $this->assertFalse($this->userModel->hasProfessionalAccessToPatient($nurseId, $patientId));
+    }
+
+    public function testAdoptRequiresPatientConsent(): void
+    {
+        [$nurseId, $patientId] = $this->freshNurseAndPatient();
+
+        $result = $this->userModel->adoptPatientForStaff($nurseId, 'nurse', $patientId, $this->emailOf($patientId), '', false);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame(400, $result['http'] ?? 0);
+        $this->assertSame('PATIENT_BOOKING_CONSENT_REQUIRED', $result['code'] ?? '');
+        $this->assertFalse($this->userModel->hasProfessionalAccessToPatient($nurseId, $patientId));
+    }
+
+    public function testAdoptWithMatchingLookupCreatesPpaAndAllowsPrescriptionGenerate(): void
+    {
+        [$nurseId, $patientId] = $this->freshNurseAndPatient();
+        $otherNurseId = TestFixtures::insertProfile($this->db, 'nurse');
+        $this->profileIds[] = $otherNurseId;
 
         require_once __DIR__ . '/../../lib/PrescriptionService.php';
 
-        $hadAccess = $this->userModel->hasProfessionalAccessToPatient($nurseId, $patientId);
-        $result = $this->userModel->adoptPatientForStaff($nurseId, 'nurse', $patientId);
+        $result = $this->userModel->adoptPatientForStaff($nurseId, 'nurse', $patientId, $this->emailOf($patientId), '', true);
         $this->assertTrue($result['ok']);
+        $this->assertTrue($result['consent_recorded'] ?? false);
         $this->assertTrue($this->userModel->hasProfessionalAccessToPatient($nurseId, $patientId));
         $this->assertTrue(PrescriptionService::canGenerateForPatient(
             ['user_id' => $nurseId, 'role' => 'nurse'],
             $patientId,
             $this->db
         ));
+        $this->assertFalse(PrescriptionService::canGenerateForPatient(
+            ['user_id' => $otherNurseId, 'role' => 'nurse'],
+            $patientId,
+            $this->db
+        ));
+    }
 
-        if ($otherNurseId !== '') {
-            $otherVisible = $this->userModel->isPatientVisibleInStaffList($otherNurseId, 'nurse', $patientId)
-                || $this->userModel->hasProfessionalAccessToPatient($otherNurseId, $patientId);
-            if (!$otherVisible) {
-                $this->assertFalse(PrescriptionService::canGenerateForPatient(
-                    ['user_id' => $otherNurseId, 'role' => 'nurse'],
-                    $patientId,
-                    $this->db
-                ));
-            }
-        }
+    public function testAdoptIsIdempotentForAlreadyLinkedProfessional(): void
+    {
+        [$nurseId, $patientId] = $this->freshNurseAndPatient();
+        $this->userModel->linkPatientProfessional($patientId, $nurseId, null, 'created');
 
-        if (!$hadAccess) {
-            try {
-                $del = $this->db->prepare(
-                    'DELETE FROM patient_professional_access WHERE patient_id = ? AND professional_id = ? AND source = ?'
-                );
-                $del->execute([$patientId, $nurseId, 'manual_link']);
-            } catch (Throwable $e) {
-                /* cleanup best-effort */
-            }
-        }
+        $result = $this->userModel->adoptPatientForStaff($nurseId, 'nurse', $patientId);
+
+        $this->assertTrue($result['ok']);
+        $this->assertArrayNotHasKey('consent_recorded', $result);
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function freshNurseAndPatient(): array
+    {
+        $nurseId = TestFixtures::insertProfile($this->db, 'nurse');
+        $patientId = TestFixtures::insertProfile($this->db, 'patient');
+        $this->profileIds[] = $nurseId;
+        $this->profileIds[] = $patientId;
+
+        return [$nurseId, $patientId];
+    }
+
+    private function emailOf(string $profileId): string
+    {
+        return 'patient-' . $profileId . '@test.invalid';
     }
 }

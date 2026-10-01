@@ -12,6 +12,7 @@ function iapBootstrap(): array
     require_once __DIR__ . '/../../lib/SubscriptionService.php';
     require_once __DIR__ . '/../../lib/AppleIapVerifier.php';
     require_once __DIR__ . '/../../lib/GoogleIapVerifier.php';
+    require_once __DIR__ . '/../../lib/ApiServerError.php';
 
     $corsConfig = require __DIR__ . '/../../config/cors.php';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -57,8 +58,7 @@ function iapRequireNurseAuth(): array
         $roleMiddleware = new RoleMiddleware();
         $roleMiddleware->handle($authUser, ['nurse']);
     } catch (Exception $e) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('authentification', $e);
         exit;
     }
 
@@ -76,8 +76,7 @@ function iapRequirePatientAuth(): array
             exit;
         }
     } catch (Exception $e) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('authentification', $e);
         exit;
     }
 

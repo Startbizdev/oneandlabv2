@@ -8,3 +8,5 @@ require_once __DIR__ . '/UserIdentityLookup.php';
 require_once __DIR__ . '/PatientProfessionalAccessService.php';
 require_once __DIR__ . '/UserDirectoryQuery.php';
 require_once __DIR__ . '/ProfileReferences.php';
+require_once __DIR__ . '/PatientDeletionDenied.php';
+require_once __DIR__ . '/EmailAlreadyUsed.php';

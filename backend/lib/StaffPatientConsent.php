@@ -71,6 +71,7 @@ class StaffPatientConsent
       );
     } catch (Throwable $e) {
       // Ne pas bloquer la création si le journal échoue
+      error_log('[StaffPatientConsent] journal du consentement non enregistré (' . $context . ') : ' . $e->getMessage());
     }
   }
 }

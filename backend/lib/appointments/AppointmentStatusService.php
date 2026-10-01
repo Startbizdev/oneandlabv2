@@ -71,13 +71,13 @@ final class AppointmentStatusService
         $appointment = $stmt->fetch();
         
         if (!$appointment) {
-            throw new Exception('Rendez-vous introuvable');
+            throw new DomainException('Rendez-vous introuvable');
         }
         
         $oldStatus = $appointment['status'];
 
         if ($appointment['type'] === 'blood_test' && $actorRole === 'nurse' && in_array($newStatus, ['confirmed', 'refused'], true)) {
-            throw new Exception('Les demandes de prise de sang sont acceptées ou refusées par les laboratoires, pas par l\'infirmier.');
+            throw new DomainException('Les demandes de prise de sang sont acceptées ou refusées par les laboratoires, pas par l\'infirmier.');
         }
 
         /**
@@ -104,7 +104,7 @@ final class AppointmentStatusService
                 $delOffer = $this->db->prepare('DELETE FROM appointment_offers WHERE appointment_id = ? AND profile_id = ?');
                 $delOffer->execute([$id, $actorId]);
                 if ($delOffer->rowCount() === 0) {
-                    throw new Exception('Ce rendez-vous ne vous est pas proposé ou n\'est plus disponible.');
+                    throw new DomainException('Ce rendez-vous ne vous est pas proposé ou n\'est plus disponible.');
                 }
                 $this->logger->log($actorId, $actorRole, 'update', 'appointment', $id, [
                     'action' => 'decline_offer',
@@ -171,7 +171,7 @@ final class AppointmentStatusService
                 $allowedRedispatchFrom[] = 'cancelled';
             }
             if (!in_array($oldStatus, $allowedRedispatchFrom, true)) {
-                throw new Exception('Seuls les rendez-vous confirmés, planifiés, en cours ou annulés peuvent être redispatchés.');
+                throw new DomainException('Seuls les rendez-vous confirmés, planifiés, en cours ou annulés peuvent être redispatchés.');
             }
 
             if ($actorRole === 'super_admin') {
@@ -203,13 +203,13 @@ final class AppointmentStatusService
                 $updateFields[] = 'created_at = NOW()';
             } elseif ($appointment['type'] === 'nursing') {
                 if ((string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
-                    throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
+                    throw new DomainException('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
                 $updateFields[] = 'assigned_nurse_id = NULL';
                 $updateFields[] = 'nurse_share_released_at = NULL';
             } else if ($appointment['type'] === 'blood_test') {
                 if ((string) $appointment['assigned_lab_id'] !== (string) $actorId) {
-                    throw new Exception('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
+                    throw new DomainException('Vous ne pouvez redispatcher que les rendez-vous qui vous sont assignés');
                 }
                 $updateFields[] = 'assigned_lab_id = NULL';
             }
@@ -233,7 +233,7 @@ final class AppointmentStatusService
             $prelStmt->execute([$actorId]);
             $preleveurLabId = (string) ($prelStmt->fetch(PDO::FETCH_ASSOC)['lab_id'] ?? '');
             if ($preleveurLabId === '') {
-                throw new Exception('Préleveur sans laboratoire rattaché.');
+                throw new DomainException('Préleveur sans laboratoire rattaché.');
             }
             $updateFields[] = 'assigned_to = ?';
             $params[] = $actorId;
@@ -264,31 +264,31 @@ final class AppointmentStatusService
         $whereParams = [$id];
         if ($atomicNurseConfirm) {
             if ($oldStatus !== 'pending') {
-                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+                throw new DomainException('Ce rendez-vous ne peut plus être accepté.');
             }
             if (!empty($appointment['assigned_nurse_id']) && (string) $appointment['assigned_nurse_id'] !== (string) $actorId) {
-                throw new Exception('Ce rendez-vous a déjà été accepté par un autre infirmier.');
+                throw new DomainException('Ce rendez-vous a déjà été accepté par un autre infirmier.');
             }
             $whereSql = 'WHERE id = ? AND status = ? AND (assigned_nurse_id IS NULL OR assigned_nurse_id = ?)';
             $whereParams = [$id, 'pending', $actorId];
         } elseif ($atomicLabConfirm) {
             if ($oldStatus !== 'pending') {
-                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+                throw new DomainException('Ce rendez-vous ne peut plus être accepté.');
             }
             if (!empty($appointment['assigned_lab_id']) && (string) $appointment['assigned_lab_id'] !== (string) $actorId) {
-                throw new Exception('Ce rendez-vous a déjà été accepté par un autre professionnel.');
+                throw new DomainException('Ce rendez-vous a déjà été accepté par un autre professionnel.');
             }
             $whereSql = 'WHERE id = ? AND status = ? AND (assigned_lab_id IS NULL OR assigned_lab_id = ?)';
             $whereParams = [$id, 'pending', $actorId];
         } elseif ($atomicPreleveurConfirm) {
             if ($oldStatus !== 'pending') {
-                throw new Exception('Ce rendez-vous ne peut plus être accepté.');
+                throw new DomainException('Ce rendez-vous ne peut plus être accepté.');
             }
             if (!empty($appointment['assigned_to']) && (string) $appointment['assigned_to'] !== (string) $actorId) {
-                throw new Exception('Ce rendez-vous a déjà été accepté par un autre préleveur.');
+                throw new DomainException('Ce rendez-vous a déjà été accepté par un autre préleveur.');
             }
             if (!empty($appointment['assigned_lab_id']) && (string) $appointment['assigned_lab_id'] !== (string) $preleveurLabId) {
-                throw new Exception('Ce rendez-vous appartient à un autre laboratoire.');
+                throw new DomainException('Ce rendez-vous appartient à un autre laboratoire.');
             }
             $whereSql = 'WHERE id = ? AND status = ? AND (assigned_to IS NULL OR assigned_to = ? OR assigned_to = \'\') AND (assigned_lab_id IS NULL OR assigned_lab_id = ? OR assigned_lab_id = \'\')';
             $whereParams = [$id, 'pending', $actorId, $preleveurLabId];
@@ -305,7 +305,7 @@ final class AppointmentStatusService
         $mainUpdateAffected = $stmt->rowCount();
 
         if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected === 0) {
-            throw new Exception('Ce rendez-vous n\'est plus disponible (déjà accepté par un autre professionnel).');
+            throw new DomainException('Ce rendez-vous n\'est plus disponible (déjà accepté par un autre professionnel).');
         }
 
         if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected > 0) {

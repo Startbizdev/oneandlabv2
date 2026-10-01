@@ -2,6 +2,7 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 
@@ -29,8 +30,7 @@ try {
     $authMiddleware = new AuthMiddleware();
     $user = $authMiddleware->handle();
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('authentification', $e);
     exit;
 }
 

@@ -39,7 +39,7 @@ class Auth
 
         $this->jwtSecret = $_ENV['JWT_SECRET'] ?? (getenv('JWT_SECRET') ?: '');
         if (empty($this->jwtSecret)) {
-            throw new Exception('JWT_SECRET non configuré');
+            throw new RuntimeException('JWT_SECRET non configuré');
         }
     }
 
@@ -60,7 +60,7 @@ class Auth
     public function checkEmail(string $email): array
     {
         if (!Validation::email($email)) {
-            throw new Exception('Email invalide');
+            throw new InvalidArgumentException('Email invalide');
         }
 
         $emailHash = hash('sha256', strtolower($email));
@@ -77,7 +77,7 @@ class Auth
             $stmt->execute([$existingUser['id']]);
             $profile = $stmt->fetch();
             $bannedUntil = new DateTime($profile['banned_until']);
-            throw new Exception('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
+            throw new DomainException('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
         }
 
         return ['exists' => true, 'role' => $existingUser['role'], 'has_password' => $this->userHasPassword($existingUser['id'])];
@@ -90,7 +90,7 @@ class Auth
     public function requestOTP(string $email, bool $autoCreate = false): array
     {
         if (!Validation::email($email)) {
-            throw new Exception('Email invalide');
+            throw new InvalidArgumentException('Email invalide');
         }
 
         // Générer le code OTP
@@ -108,7 +108,7 @@ class Auth
 
         if (!$existingUser) {
             if (!$autoCreate) {
-                throw new Exception('Aucun compte trouvé avec cet email');
+                throw new DomainException('Aucun compte trouvé avec cet email');
             }
             // Créer un nouvel utilisateur (patient par défaut) — uniquement pour le flow guest-to-user
             $userId = $userModel->create([
@@ -127,7 +127,7 @@ class Auth
                 $stmt->execute([$userId]);
                 $profile = $stmt->fetch();
                 $bannedUntil = new DateTime($profile['banned_until']);
-                throw new Exception('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
+                throw new DomainException('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
             }
         }
         
@@ -165,10 +165,10 @@ class Auth
     public function verifyOTP(string $sessionId, string $otp, ?string $userId = null): array
     {
         if (!Validation::otp($otp)) {
-            throw new Exception('Code OTP invalide (6 chiffres requis)');
+            throw new InvalidArgumentException('Code OTP invalide (6 chiffres requis)');
         }
         if (!preg_match('/^[a-f0-9]{32}$/', $sessionId)) {
-            throw new Exception('Session OTP invalide');
+            throw new InvalidArgumentException('Session OTP invalide');
         }
 
         // Trouver la session OTP
@@ -186,7 +186,7 @@ class Auth
             ');
             $stmt->execute([$userId, hash('sha256', $sessionId)]);
         } else {
-            throw new Exception('user_id requis pour vérification OTP');
+            throw new InvalidArgumentException('user_id requis pour vérification OTP');
         }
         
         $session = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -226,7 +226,7 @@ class Auth
                 $message .= ' (Le code a déjà été utilisé)';
             }
             
-            throw new Exception($message);
+            throw new DomainException($message);
         }
 
         if ($session['verified']) {
@@ -243,7 +243,7 @@ class Auth
                     'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null
                 ]
             );
-            throw new Exception('Code OTP déjà utilisé');
+            throw new DomainException('Code OTP déjà utilisé');
         }
 
         // Vérifier le code
@@ -252,7 +252,7 @@ class Auth
         
         // Vérifier que l'OTP ne contient que des chiffres
         if (!preg_match('/^\d{6}$/', $otpString)) {
-            throw new Exception('Code OTP invalide (format incorrect)');
+            throw new InvalidArgumentException('Code OTP invalide (format incorrect)');
         }
         
         $verifyResult = password_verify($otpString, $session['otp_hash']);
@@ -300,7 +300,7 @@ class Auth
                 $errorMessage .= '. Vérifiez le code reçu par email et réessayez.';
             }
             
-            throw new Exception($errorMessage);
+            throw new DomainException($errorMessage);
         }
         
         // Marquer comme vérifié
@@ -313,7 +313,7 @@ class Auth
         $user = $stmt->fetch();
         
         if (!$user) {
-            throw new Exception('Utilisateur introuvable');
+            throw new DomainException('Utilisateur introuvable');
         }
         
         // Générer le token JWT
@@ -326,7 +326,7 @@ class Auth
     public function loginWithPassword(string $email, string $password): array
     {
         if (!Validation::email($email)) {
-            throw new Exception('Email invalide');
+            throw new InvalidArgumentException('Email invalide');
         }
 
         $emailHash = hash('sha256', strtolower($email));
@@ -335,7 +335,7 @@ class Auth
 
         if (!$existingUser) {
             $this->logLoginFailed(null, 'password_user_not_found');
-            throw new Exception('Email ou mot de passe incorrect');
+            throw new DomainException('Email ou mot de passe incorrect');
         }
 
         $userId = $existingUser['id'];
@@ -345,12 +345,12 @@ class Auth
             $stmt->execute([$userId]);
             $profile = $stmt->fetch();
             $bannedUntil = new DateTime($profile['banned_until']);
-            throw new Exception('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
+            throw new DomainException('Ce compte est suspendu jusqu\'au ' . $bannedUntil->format('d/m/Y H:i'));
         }
 
         if (!$this->userHasPassword($userId)) {
             $this->logLoginFailed($userId, 'password_not_set');
-            throw new Exception('Aucun mot de passe sur ce compte. Utilisez le code par email ou créez-en un depuis votre profil.');
+            throw new DomainException('Aucun mot de passe sur ce compte. Utilisez le code par email ou créez-en un depuis votre profil.');
         }
 
         $stmt = $this->db->prepare('SELECT password_hash FROM profiles WHERE id = ?');
@@ -360,14 +360,14 @@ class Auth
 
         if (!$hash || !password_verify($password, $hash)) {
             $this->logLoginFailed($userId, 'invalid_password');
-            throw new Exception('Email ou mot de passe incorrect');
+            throw new DomainException('Email ou mot de passe incorrect');
         }
 
         $stmt = $this->db->prepare('SELECT role FROM profiles WHERE id = ?');
         $stmt->execute([$userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$user) {
-            throw new Exception('Utilisateur introuvable');
+            throw new DomainException('Utilisateur introuvable');
         }
 
         return $this->finishLogin($userId, $user['role'], 'password');
@@ -380,20 +380,20 @@ class Auth
     {
         $validation = Validation::password($newPassword, $emailForValidation);
         if (!$validation['valid']) {
-            throw new Exception($validation['error'] ?? 'Mot de passe invalide');
+            throw new InvalidArgumentException($validation['error'] ?? 'Mot de passe invalide');
         }
 
         $hasPassword = $this->userHasPassword($userId);
 
         if ($hasPassword) {
             if ($currentPassword === null || $currentPassword === '') {
-                throw new Exception('Mot de passe actuel requis');
+                throw new InvalidArgumentException('Mot de passe actuel requis');
             }
             $stmt = $this->db->prepare('SELECT password_hash FROM profiles WHERE id = ?');
             $stmt->execute([$userId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$row || !password_verify($currentPassword, $row['password_hash'])) {
-                throw new Exception('Mot de passe actuel incorrect');
+                throw new DomainException('Mot de passe actuel incorrect');
             }
         }
 
@@ -440,7 +440,7 @@ class Auth
         }
 
         if (!$this->hasPasswordResetTable()) {
-            throw new Exception('Réinitialisation mot de passe indisponible');
+            throw new RuntimeException('Table password_reset_tokens absente : réinitialisation mot de passe indisponible');
         }
 
         $plainToken = bin2hex(random_bytes(32));
@@ -485,11 +485,11 @@ class Auth
     {
         $validation = Validation::password($newPassword, $email);
         if (!$validation['valid']) {
-            throw new Exception($validation['error'] ?? 'Mot de passe invalide');
+            throw new InvalidArgumentException($validation['error'] ?? 'Mot de passe invalide');
         }
 
         if (!$this->hasPasswordResetTable()) {
-            throw new Exception('Réinitialisation indisponible');
+            throw new RuntimeException('Table password_reset_tokens absente : réinitialisation indisponible');
         }
 
         $resetRow = null;
@@ -514,7 +514,7 @@ class Auth
             $userModel = new User();
             $existingUser = $userModel->findByEmailHash($emailHash);
             if (!$existingUser) {
-                throw new Exception('Code ou email invalide');
+                throw new DomainException('Code ou email invalide');
             }
             $stmt = $this->db->prepare('
                 SELECT * FROM password_reset_tokens
@@ -525,14 +525,14 @@ class Auth
             $stmt->execute([$existingUser['id']]);
             $resetRow = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$resetRow || !password_verify($code, $resetRow['code_hash'])) {
-                throw new Exception('Code ou email invalide');
+                throw new DomainException('Code ou email invalide');
             }
         } else {
-            throw new Exception('Token ou code requis');
+            throw new InvalidArgumentException('Token ou code requis');
         }
 
         if (!$resetRow) {
-            throw new Exception('Lien ou code expiré. Demandez une nouvelle réinitialisation.');
+            throw new DomainException('Lien ou code expiré. Demandez une nouvelle réinitialisation.');
         }
 
         $userId = $resetRow['user_id'];
@@ -559,7 +559,7 @@ class Auth
     {
         $validation = Validation::password($plainPassword);
         if (!$validation['valid']) {
-            throw new Exception($validation['error'] ?? 'Mot de passe invalide');
+            throw new InvalidArgumentException($validation['error'] ?? 'Mot de passe invalide');
         }
 
         $newHash = password_hash($plainPassword, PASSWORD_BCRYPT);
@@ -704,7 +704,7 @@ class Auth
             $decoded = JWT::decode($token, new Key($this->jwtSecret, 'HS256'));
             return (array) $decoded;
         } catch (Exception $e) {
-            throw new Exception('Token JWT invalide: ' . $e->getMessage());
+            throw new UnexpectedValueException('Token JWT invalide', 0, $e);
         }
     }
 

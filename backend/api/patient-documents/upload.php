@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -418,15 +419,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             file_put_contents($logFile, $logMsg, FILE_APPEND);
         }
         
-        error_log("ERROR: " . $e->getMessage());
+        ApiServerError::respond('upload document patient ' . $targetPatientId . ' user=' . $user['user_id'], $e, 'L’envoi du document a échoué. Réessayez plus tard.');
         error_log("Trace: " . $e->getTraceAsString());
         error_log("=== UPLOAD END (ERROR) ===");
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
     }
 } else {
     http_response_code(405);

@@ -52,8 +52,8 @@ try {
     nurse_passage_json_error('Méthode non autorisée', 405);
 } catch (InvalidArgumentException $e) {
     nurse_passage_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    nurse_passage_json_error($e->getMessage(), 403);
+} catch (HttpStatusException $e) {
+    nurse_passage_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[nurse/passages/series/id] ' . $e->getMessage());
     nurse_passage_json_error('Opération impossible', 500);

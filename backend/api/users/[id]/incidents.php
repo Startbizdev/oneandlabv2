@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -89,12 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ],
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('incidents profil ' . $userId . ' user=' . $user['user_id'], $e, 'Impossible de charger les incidents. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

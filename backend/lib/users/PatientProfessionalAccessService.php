@@ -138,11 +138,19 @@ final class PatientProfessionalAccessService
 
     /**
      * Adoption d’un dossier trouvé par lookup : lien PPA durable (liste + ordonnance).
+     * Sans lien préalable (dossier créé, lien d'accès, RDV commun), le professionnel doit rejouer
+     * la recherche exacte (e-mail ou téléphone du patient) et confirmer le consentement du patient.
      *
-     * @return array{ok: bool, http?: int, error?: string}
+     * @return array{ok: bool, http?: int, error?: string, code?: string, consent_recorded?: bool}
      */
-    public function adoptPatientForStaff(string $requesterId, string $requesterRole, string $patientId): array
-    {
+    public function adoptPatientForStaff(
+        string $requesterId,
+        string $requesterRole,
+        string $patientId,
+        string $lookupEmail = '',
+        string $lookupPhone = '',
+        bool $consentGiven = false,
+    ): array {
         if ($requesterId === '' || $patientId === '') {
             return ['ok' => false, 'http' => 400, 'error' => 'Identifiants requis'];
         }
@@ -156,9 +164,40 @@ final class PatientProfessionalAccessService
         if ($requesterRole === 'super_admin') {
             return ['ok' => true];
         }
-        $this->linkPatientProfessional($patientId, $requesterId, null, 'manual_link');
+        if ($this->canStaffEditPatientProfile($requesterId, $requesterRole, $patientId)) {
+            $this->linkPatientProfessional($patientId, $requesterId, null, 'manual_link');
 
-        return ['ok' => true];
+            return ['ok' => true];
+        }
+
+        if ((trim($lookupEmail) === '') === (trim($lookupPhone) === '')) {
+            return [
+                'ok' => false,
+                'http' => 403,
+                'error' => 'Recherchez d’abord le patient par son e-mail ou son téléphone.',
+                'code' => 'PATIENT_LOOKUP_MISMATCH',
+            ];
+        }
+        require_once __DIR__ . '/UserIdentityLookup.php';
+        if ((new UserIdentityLookup($this->db))->findPatientIdByContact($lookupEmail, $lookupPhone) !== $patientId) {
+            return [
+                'ok' => false,
+                'http' => 403,
+                'error' => 'Ce dossier ne correspond pas au contact recherché.',
+                'code' => 'PATIENT_LOOKUP_MISMATCH',
+            ];
+        }
+        if (!$consentGiven) {
+            return [
+                'ok' => false,
+                'http' => 400,
+                'error' => 'Veuillez confirmer le consentement du patient pour la prise de rendez-vous.',
+                'code' => 'PATIENT_BOOKING_CONSENT_REQUIRED',
+            ];
+        }
+        $this->linkPatientProfessional($patientId, $requesterId, null, 'manual_link', true);
+
+        return ['ok' => true, 'consent_recorded' => true];
     }
 
     public function hasProfessionalAccessToPatient(string $requesterId, string $patientId): bool

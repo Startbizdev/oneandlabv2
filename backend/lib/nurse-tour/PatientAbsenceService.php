@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../../models/User.php';
@@ -279,7 +280,7 @@ final class PatientAbsenceService
             ['user_id' => $nurseId, 'role' => 'nurse'],
             $patientId,
         )) {
-            throw new RuntimeException('Accès patient refusé');
+            throw HttpStatusException::forbidden('Accès patient refusé');
         }
     }
 

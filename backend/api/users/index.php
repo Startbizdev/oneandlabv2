@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -94,9 +95,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userId = $userModel->create($createData, $user['user_id'], $user['role']);
         // Tout envoi d'email / notification doit passer par EmailQueue (flush en shutdown, après la réponse HTTP)
         echo json_encode(['success' => true, 'data' => ['id' => $userId]]);
+    } catch (EmailAlreadyUsed $e) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => EmailAlreadyUsed::CODE]);
     } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('création utilisateur role=' . $role . ' user=' . $user['user_id'], $e, 'La création de l\'utilisateur a échoué. Réessayez plus tard.');
     }
     exit;
 }

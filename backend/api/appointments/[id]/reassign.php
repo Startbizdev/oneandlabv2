@@ -8,7 +8,8 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/EmailQueue.php';
-require_once __DIR__ . '/../../../lib/LabTeamAccess.php';
+require_once __DIR__ . '/../../../lib/appointments/LabReassignPolicy.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -88,25 +89,12 @@ try {
 
     $type = $appointment['type'] ?? '';
 
-    // Lab / subaccount : ne peuvent réassigner que les RDV blood_test dont ils ont la charge (assigned_lab_id = lab principal ou un sous-compte de l'équipe)
-    if (in_array($user['role'] ?? '', ['lab', 'subaccount'], true)) {
-        $stmtPerm = $pdo->prepare('SELECT assigned_lab_id FROM appointments WHERE id = ?');
-        $stmtPerm->execute([$appointmentId]);
-        $row = $stmtPerm->fetch(PDO::FETCH_ASSOC);
-        $currentAssignedLabId = $row['assigned_lab_id'] ?? null;
-        if ($type !== 'blood_test') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Seuls les rendez-vous prise de sang peuvent être réassignés depuis cet espace.']);
-            exit;
-        }
-        if ($currentAssignedLabId !== null && $currentAssignedLabId !== $user['user_id']) {
-            $teamIds = LabTeamAccess::teamMemberIds($pdo, $user['user_id'], $user['role'] ?? '');
-            if (!in_array($currentAssignedLabId, $teamIds, true)) {
-                http_response_code(403);
-                echo json_encode(['success' => false, 'error' => 'Vous ne pouvez réassigner que les rendez-vous de votre équipe.']);
-                exit;
-            }
-        }
+    try {
+        LabReassignPolicy::assertCanReassign($pdo, $user, $appointment, $assignedTo);
+    } catch (HttpStatusException $e) {
+        http_response_code($e->httpStatus);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
+        exit;
     }
 
     // Les lab / sous-compte / préleveur ne reçoivent que les RDV prise de sang. Les infirmiers que les RDV soins infirmiers.
@@ -209,10 +197,6 @@ try {
         $batchIdRe = $appointment['creation_batch_id'] ?? null;
         $patientIdRe = $appointment['patient_id'] ?? null;
         if (!empty($batchIdRe) && !empty($patientIdRe) && ($appointment['type'] ?? '') === 'blood_test') {
-            $teamIdsRe = [];
-            if (in_array($user['role'] ?? '', ['lab', 'subaccount'], true)) {
-                $teamIdsRe = LabTeamAccess::teamMemberIds($pdo, $user['user_id'], $user['role'] ?? '');
-            }
             $sibReStmt = $pdo->prepare(
                 'SELECT id, assigned_lab_id FROM appointments
                  WHERE creation_batch_id = ? AND patient_id = ? AND type = ? AND id != ?'
@@ -227,8 +211,7 @@ try {
                 if ($sibReId === '') {
                     continue;
                 }
-                $sibLab = $sibRe['assigned_lab_id'] ?? null;
-                if ($sibLab !== null && $sibLab !== '' && !empty($teamIdsRe) && !in_array((string) $sibLab, $teamIdsRe, true)) {
+                if (!LabReassignPolicy::canReassignSibling($pdo, $user, $sibRe['assigned_lab_id'] ?? null)) {
                     continue;
                 }
                 $updSibRe->execute([
@@ -423,7 +406,9 @@ try {
             error_log('Reassign notification: ' . $e->getMessage());
         }
     }
+} catch (NurseQuotaExceeded $e) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => 'PLAN_LIMIT']);
 } catch (Exception $e) {
-    http_response_code($e instanceof NurseQuotaExceeded ? 403 : 500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e instanceof NurseQuotaExceeded ? 'PLAN_LIMIT' : 'SERVER_ERROR']);
+    ApiServerError::respond('réassignation RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'La réassignation du rendez-vous a échoué. Réessayez plus tard.');
 }

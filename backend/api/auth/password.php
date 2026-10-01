@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 authPublicCors('PUT, OPTIONS');
 
@@ -33,10 +34,10 @@ try {
     $currentPassword = isset($input['current_password']) ? (string) $input['current_password'] : null;
 
     if ($newPassword === '') {
-        throw new Exception('Nouveau mot de passe requis');
+        throw new InvalidArgumentException('Nouveau mot de passe requis');
     }
     if ($newPassword !== $confirmPassword) {
-        throw new Exception('Les mots de passe ne correspondent pas');
+        throw new InvalidArgumentException('Les mots de passe ne correspondent pas');
     }
 
     $userModel = new User();
@@ -54,10 +55,12 @@ try {
         'success' => true,
         'data' => $result,
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('changement mot de passe user=' . ($authUser['user_id'] ?? '?'), $e, 'La mise à jour du mot de passe a échoué. Réessayez plus tard.');
 }

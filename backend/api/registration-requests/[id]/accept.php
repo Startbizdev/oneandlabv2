@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../models/RegistrationRequest.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -43,7 +44,9 @@ try {
     $model = new RegistrationRequest();
     $result = $model->accept($id, $user['user_id']);
     echo json_encode(['success' => true, 'data' => $result]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (Exception $e) {
+    ApiServerError::respond('acceptation demande d’inscription ' . $id . ' user=' . $user['user_id'], $e, 'L’acceptation de la demande a échoué. Réessayez plus tard.');
 }

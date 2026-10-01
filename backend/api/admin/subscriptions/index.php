@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../lib/SubscriptionDisplay.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -34,8 +35,7 @@ try {
     $roleMiddleware = new RoleMiddleware();
     $roleMiddleware->handle($authUser, ['super_admin']);
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('authentification', $e);
     exit;
 }
 

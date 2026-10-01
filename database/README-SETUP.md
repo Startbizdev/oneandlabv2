@@ -52,7 +52,7 @@ Puis éditez les fichiers pour configurer les valeurs.
 | `BACKEND_KEK_HEX` | Clé de chiffrement HDS (64 caractères hex) | (généré) | ✅ |
 | `JWT_SECRET` | Secret pour les tokens JWT | (généré) | ✅ |
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées (séparées par virgules) | `http://localhost:3000,http://localhost:8888` | ✅ |
-| `SMTP_HOST` | Serveur SMTP | `ssl0.ovh.net` | ✅ |
+| `SMTP_HOST` | Serveur SMTP (sans valeur, aucun e-mail n'est envoyé et l'échec est journalisé) | (aucun) | ✅ |
 | `SMTP_PORT` | Port SMTP | `465` | ✅ |
 | `SMTP_USER` | Utilisateur SMTP | (vide) | ⚠️ Pour emails |
 | `SMTP_PASS` | Mot de passe SMTP | (vide) | ⚠️ Pour emails |

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../../lib/ai/AiBookingService.php';
 
 ai_handle_options(['GET', 'PATCH', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse']);
+$user = ai_require_user(AiBookingAccess::ROLES);
 $id = trim((string) ($_GET['id'] ?? ''));
 if ($id === '') {
     ai_json_error('Identifiant requis', 400);
@@ -26,7 +26,16 @@ if ($method === 'GET') {
 if ($method === 'PATCH') {
     $input = ai_read_json_body();
     $patch = is_array($input['payload'] ?? null) ? $input['payload'] : $input;
-    $draft = $service->patchDraft($id, $user, $patch);
+    try {
+        $draft = $service->patchDraft($id, $user, $patch);
+    } catch (HttpStatusException $e) {
+        ai_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
+    } catch (InvalidArgumentException $e) {
+        ai_json_error($e->getMessage(), 400, 'VALIDATION_ERROR');
+    } catch (Throwable $e) {
+        ApiServerError::respond('ai/booking/drafts ' . $id . ' user=' . $user['user_id'], $e, 'Le brouillon de rendez-vous n’a pas pu être mis à jour. Réessayez plus tard.');
+        exit;
+    }
     if (!$draft) {
         ai_json_error('Brouillon introuvable', 404);
     }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/PassageMaterializer.php';
 require_once __DIR__ . '/PassageDateExpander.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
@@ -87,7 +88,7 @@ final class NursePassageSeriesService
     {
         $existing = $this->getById($id, $nurseId);
         if (!$existing) {
-            throw new RuntimeException('Série introuvable');
+            throw HttpStatusException::notFound('Série introuvable');
         }
         $normalized = $this->normalizeInput(array_merge($existing, $input));
         $upd = $this->db->prepare('
@@ -111,7 +112,7 @@ final class NursePassageSeriesService
 
         $series = $this->getById($id, $nurseId);
         if (!$series) {
-            throw new RuntimeException('Série introuvable');
+            throw HttpStatusException::notFound('Série introuvable');
         }
         $this->cancelFutureAppointments($id, $nurseId);
         $materialized = $this->materializer->materializeSeries($series, $nurseId);
@@ -130,7 +131,7 @@ final class NursePassageSeriesService
     {
         $existing = $this->getById($id, $nurseId);
         if (!$existing) {
-            throw new RuntimeException('Série introuvable');
+            throw HttpStatusException::notFound('Série introuvable');
         }
         $this->cancelFutureAppointments($id, $nurseId);
         $this->db->prepare('DELETE FROM nurse_passage_series WHERE id = ? AND nurse_id = ?')->execute([$id, $nurseId]);
@@ -143,7 +144,7 @@ final class NursePassageSeriesService
     {
         $series = $this->getById($id, $nurseId);
         if (!$series) {
-            throw new RuntimeException('Série introuvable');
+            throw HttpStatusException::notFound('Série introuvable');
         }
         $materialized = $this->materializer->materializeSeries($series, $nurseId);
 
@@ -274,8 +275,8 @@ final class NursePassageSeriesService
         if (DbSchemaCache::tableHasColumn($this->db, 'appointments', 'passage_series_id')) {
             $stmt = $this->db->prepare('
                 SELECT COUNT(*) AS cnt,
-                       MIN(DATE(CONVERT_TZ(scheduled_at, \'+00:00\', \'Europe/Paris\'))) AS first_date,
-                       MAX(DATE(CONVERT_TZ(scheduled_at, \'+00:00\', \'Europe/Paris\'))) AS last_date
+                       MIN(DATE(scheduled_at)) AS first_date,
+                       MAX(DATE(scheduled_at)) AS last_date
                 FROM appointments
                 WHERE passage_series_id = ?
                   AND status NOT IN (\'canceled\', \'refused\', \'expired\')

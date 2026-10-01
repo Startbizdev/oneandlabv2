@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../lib/Auth.php';
+require_once __DIR__ . '/../lib/ApiServerError.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -24,8 +25,7 @@ class AuthMiddleware
      */
     public function handle(): array
     {
-        $headers = getallheaders();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        $authHeader = self::authorizationHeader();
         
         if (!$authHeader) {
             http_response_code(401);
@@ -37,10 +37,8 @@ class AuthMiddleware
             exit;
         }
         
-        // Extraire le token (format: "Bearer {token}")
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $token = $matches[1];
-        } else {
+        $token = self::bearerToken($authHeader);
+        if ($token === null) {
             http_response_code(401);
             echo json_encode([
                 'success' => false,
@@ -50,49 +48,109 @@ class AuthMiddleware
             exit;
         }
         
+        $userId = $this->userIdFromToken($token);
+        if ($userId === null) {
+            $this->respondInvalidToken();
+        }
+
+        // Une panne base de données ne doit pas répondre 401 : les clients déconnecteraient l'utilisateur.
         try {
-            $decoded = $this->auth->verifyJWT($token);
-            $userId = $decoded['user_id'];
             // Toujours utiliser le rôle en base : le JWT est émis à la connexion et peut être obsolète
             // si le profil a changé (ex. infirmier → laboratoire), ce qui provoquait des refus d’acceptation RDV incohérents avec l’UI.
             $role = $this->user->getRoleById($userId);
-            if ($role === null) {
-                http_response_code(401);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Utilisateur introuvable',
-                    'code' => 'UNAUTHORIZED',
-                ]);
-                exit;
-            }
+            $banned = $role !== null && $this->user->isBanned($userId);
+        } catch (Throwable $e) {
+            ApiServerError::respond('authentification user=' . $userId, $e);
+            exit;
+        }
 
-            // Vérifier si le compte est banni
-            if ($this->user->isBanned($userId)) {
-                http_response_code(403);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Ce compte est suspendu',
-                    'code' => 'FORBIDDEN',
-                ]);
-                exit;
-            }
-            
-            return [
-                'user_id' => $userId,
-                'role' => $role,
-            ];
-        } catch (Exception $e) {
+        if ($role === null) {
             http_response_code(401);
             echo json_encode([
                 'success' => false,
-                'error' => 'Token invalide',
+                'error' => 'Utilisateur introuvable',
                 'code' => 'UNAUTHORIZED',
             ]);
             exit;
         }
+
+        if ($banned) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Ce compte est suspendu',
+                'code' => 'FORBIDDEN',
+            ]);
+            exit;
+        }
+
+        return [
+            'user_id' => $userId,
+            'role' => $role,
+        ];
+    }
+
+    /**
+     * Authentification facultative (endpoints publics) : l'utilisateur si la session est valide,
+     * null sinon (pas de token, token invalide ou expiré, compte introuvable ou suspendu).
+     *
+     * @return array{user_id: string, role: string}|null
+     */
+    public function tryAuthenticate(): ?array
+    {
+        $authHeader = self::authorizationHeader();
+        $token = $authHeader !== null ? self::bearerToken($authHeader) : null;
+        $userId = $token !== null ? $this->userIdFromToken($token) : null;
+        if ($userId === null) {
+            return null;
+        }
+
+        $role = $this->user->getRoleById($userId);
+        if ($role === null || $this->user->isBanned($userId)) {
+            return null;
+        }
+
+        return [
+            'user_id' => $userId,
+            'role' => $role,
+        ];
+    }
+
+    private function userIdFromToken(string $token): ?string
+    {
+        try {
+            $decoded = $this->auth->verifyJWT($token);
+        } catch (UnexpectedValueException $e) {
+            ApiServerError::log('JWT rejeté', $e);
+            return null;
+        }
+        $userId = $decoded['user_id'] ?? null;
+
+        return is_string($userId) && $userId !== '' ? $userId : null;
+    }
+
+    public static function authorizationHeader(): ?string
+    {
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        $value = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    private static function bearerToken(string $authHeader): ?string
+    {
+        // Format attendu : "Bearer {token}"
+        return preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches) ? $matches[1] : null;
+    }
+
+    private function respondInvalidToken(): never
+    {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Token invalide',
+            'code' => 'UNAUTHORIZED',
+        ]);
+        exit;
     }
 }
-
-
-
-

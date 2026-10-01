@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../NotificationService.php';
 
 final class HealthMetricTypes
@@ -232,7 +233,7 @@ final class HealthService
         if (!empty($input['health_source_id'])) {
             $healthSourceId = (string) $input['health_source_id'];
             if (!$this->sourceBelongsToPatient($healthSourceId, $patientId)) {
-                throw new RuntimeException('Source santé introuvable');
+                throw HttpStatusException::notFound('Source santé introuvable');
             }
         }
 
@@ -304,7 +305,7 @@ final class HealthService
         $stmt->execute([$deviceId, $patientId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!is_array($row)) {
-            throw new RuntimeException('Appareil introuvable');
+            throw HttpStatusException::notFound('Appareil introuvable');
         }
 
         return $row;

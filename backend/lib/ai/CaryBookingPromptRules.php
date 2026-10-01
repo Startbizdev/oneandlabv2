@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/AiBookingAccess.php';
+
 /**
  * Règles parcours RDV IA — patient vs staff (infirmier / pro / préleveur).
  */
@@ -29,11 +31,22 @@ VOICE;
 
     public static function workflowBlock(string $role): string
     {
+        if (!AiBookingAccess::allows(['role' => $role])) {
+            return self::bookingUnavailableBlock();
+        }
         if (self::isStaffRole($role)) {
             return self::staffWorkflowBlock();
         }
 
         return self::patientWorkflowBlock();
+    }
+
+    private static function bookingUnavailableBlock(): string
+    {
+        return <<<'UNAVAILABLE'
+- Prise de rendez-vous : NON disponible dans Cary pour ce profil. N'appelle jamais update_booking_draft et ne collecte pas d'informations de RDV.
+- Si l'utilisateur veut créer un rendez-vous, indique-lui d'utiliser le parcours de création de l'application (pour un préleveur : bouton « Demander un prélèvement » sur l'accueil), qui recueille le consentement du patient.
+UNAVAILABLE;
     }
 
     private static function patientWorkflowBlock(): string

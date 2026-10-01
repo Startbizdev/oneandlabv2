@@ -60,13 +60,13 @@ class RegistrationRequest
             $data['role'] = 'nurse';
         }
         if (!in_array($role, ['lab', 'pro', 'nurse'], true)) {
-            throw new Exception('Rôle invalide. Attendu: lab, pro ou nurse.');
+            throw new InvalidArgumentException('Rôle invalide. Attendu: lab, pro ou nurse.');
         }
         $email = trim((string)($data['email'] ?? ''));
         $first_name = trim((string)($data['first_name'] ?? ''));
         $last_name = trim((string)($data['last_name'] ?? ''));
         if ($email === '' || $first_name === '' || $last_name === '') {
-            throw new Exception('Email, prénom et nom sont requis.');
+            throw new InvalidArgumentException('Email, prénom et nom sont requis.');
         }
 
         $emailHash = hash('sha256', strtolower($email));
@@ -78,11 +78,11 @@ class RegistrationRequest
         if ($profileRow) {
             $existingRole = (string) ($profileRow['role'] ?? '');
             if ($existingRole === $role) {
-                throw new Exception(
+                throw new DomainException(
                     'Un compte ' . $role . ' existe déjà avec cet email. Connectez-vous ou utilisez « Mot de passe oublié ».'
                 );
             }
-            throw new Exception(
+            throw new DomainException(
                 'Cet email est déjà utilisé par un compte Cary (rôle « ' . $existingRole . ' »).'
             );
         }
@@ -93,7 +93,7 @@ class RegistrationRequest
         );
         $pendingReq->execute([$emailHash]);
         if ($pendingReq->fetch(PDO::FETCH_ASSOC)) {
-            throw new Exception('Une demande d\'inscription est déjà en cours de validation pour cet email.');
+            throw new DomainException('Une demande d\'inscription est déjà en cours de validation pour cet email.');
         }
 
         $emailEnc = $this->crypto->encryptField($email);
@@ -425,7 +425,7 @@ class RegistrationRequest
     {
         $req = $this->getById($id);
         if (!$req || $req['status'] !== 'pending') {
-            throw new Exception('Demande introuvable ou déjà traitée.');
+            throw new DomainException('Demande introuvable ou déjà traitée.');
         }
         require_once __DIR__ . '/User.php';
         $userModel = new User();
@@ -497,7 +497,7 @@ class RegistrationRequest
 
         if ($existing) {
             if (($existing['role'] ?? '') !== $req['role']) {
-                throw new Exception(
+                throw new DomainException(
                     'Un compte existe déjà avec cet email (rôle « ' . ($existing['role'] ?? '?') . ' »). '
                     . 'Impossible d\'accepter cette demande « ' . $req['role'] . ' ».'
                 );
@@ -674,7 +674,7 @@ class RegistrationRequest
         $stmt->execute([$id]);
         $r = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$r || $r['status'] !== 'pending') {
-            throw new Exception('Demande introuvable ou déjà traitée.');
+            throw new DomainException('Demande introuvable ou déjà traitée.');
         }
         $this->db->prepare('UPDATE registration_requests SET status = ?, reviewed_at = NOW(), reviewed_by = ? WHERE id = ?')
             ->execute(['rejected', $actorId, $id]);

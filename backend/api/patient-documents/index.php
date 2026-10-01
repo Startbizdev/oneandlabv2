@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../lib/PatientDossierDocuments.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../models/User.php';
 
 // CORS
@@ -127,12 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => array_values($validDocuments),
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('documents patient ' . $targetPatientId . ' user=' . $user['user_id'], $e, 'Impossible de charger les documents. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

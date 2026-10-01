@@ -30,121 +30,17 @@ if (empty($path)) {
     exit;
 }
 
-// Base API directory
-$apiDir = __DIR__;
+require_once __DIR__ . '/../lib/ApiRouteResolver.php';
 
-// ======================================================
-// 1) Try: /path.php
-// Example: /auth/request-otp → auth/request-otp.php
-// ======================================================
-$file = $apiDir . '/' . $path . '.php';
-if (file_exists($file)) {
-    require $file;
-    exit;
-}
-
-// ======================================================
-// 2) Try index file: /path/index.php
-// Example: /coverage-zones → coverage-zones/index.php
-// ======================================================
-$indexFile = $apiDir . '/' . $path . '/index.php';
-if (file_exists($indexFile)) {
-    require $indexFile;
-    exit;
-}
-
-// ======================================================
-// 3) Dynamic [slug] route (before [id] to prioritize)
-// Example: /public/nurse/mon-slug → public/nurse/[slug].php
-// ======================================================
-$segments = explode('/', $path);
-$last = array_pop($segments);
-$basePath = implode('/', $segments);
-$dynamicSlugFile = $apiDir . '/' . $basePath . '/[slug].php';
-
-if (file_exists($dynamicSlugFile)) {
-    $_GET['slug'] = $last;
-    require $dynamicSlugFile;
-    exit;
-}
-
-// ======================================================
-// 4) Dynamic [id] route
-// Example: /users/123 → users/[id].php
-// ======================================================
-$segments = explode('/', $path);
-$last = array_pop($segments);
-
-$basePath = implode('/', $segments);
-$dynamicFile = $apiDir . '/' . $basePath . '/[id].php';
-
-if (file_exists($dynamicFile)) {
-    $_GET['id'] = $last;
-    require $dynamicFile;
-    exit;
-}
-
-// ======================================================
-// 5) Dynamic with action
-// Example: /users/123/incidents → users/[id]/incidents.php
-// ======================================================
-$segments = explode('/', $path);
-$action = array_pop($segments);
-$id = array_pop($segments);
-$basePath = implode('/', $segments);
-
-$dynamicActionFile = $apiDir . '/' . $basePath . '/[id]/' . $action . '.php';
-
-if (file_exists($dynamicActionFile)) {
-    $_GET['id'] = $id;
-    require $dynamicActionFile;
-    exit;
-}
-
-// ======================================================
-// 6) Nested action: /users/123/password/reset-email
-// Example: users/[id]/password/reset-email.php
-// ======================================================
-$segments = explode('/', $path);
-if (count($segments) >= 4) {
-    $nestedAction = array_pop($segments);
-    $nestedFolder = array_pop($segments);
-    $nestedId = array_pop($segments);
-    $nestedBase = implode('/', $segments);
-    $nestedFile = $apiDir . '/' . $nestedBase . '/[id]/' . $nestedFolder . '/' . $nestedAction . '.php';
-    if (file_exists($nestedFile)) {
-        $_GET['id'] = $nestedId;
-        require $nestedFile;
-        exit;
+$route = ApiRouteResolver::resolve($path, __DIR__);
+if ($route !== null) {
+    foreach ($route['params'] as $key => $value) {
+        $_GET[$key] = $value;
     }
+    require $route['file'];
+    exit;
 }
 
-// ======================================================
-// 7) Double dynamic after [id]
-// Example: /nurse/patients/123/absences/456 → nurse/patients/[id]/absences/[absenceId].php
-// ======================================================
-$segments = explode('/', $path);
-if (count($segments) >= 5) {
-    $secondValue = array_pop($segments);
-    $middleFolder = array_pop($segments);
-    $idValue = array_pop($segments);
-    $nestedDir = $apiDir . '/' . implode('/', $segments) . '/[id]/' . $middleFolder;
-    if (is_dir($nestedDir)) {
-        foreach (glob($nestedDir . '/[[]*[]].php') ?: [] as $candidate) {
-            $basename = basename($candidate);
-            if (preg_match('/^\[([^\]]+)\]\.php$/', $basename, $m)) {
-                $_GET['id'] = $idValue;
-                $_GET[$m[1]] = $secondValue;
-                require $candidate;
-                exit;
-            }
-        }
-    }
-}
-
-// ======================================================
-// No route found
-// ======================================================
 http_response_code(404);
 echo json_encode([
     'success' => false,

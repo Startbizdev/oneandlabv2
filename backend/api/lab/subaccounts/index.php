@@ -11,6 +11,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../../config/cors.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -123,9 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ], $labId, 'lab');
         
         echo json_encode(['success' => true, 'data' => ['id' => $id]]);
+    } catch (EmailAlreadyUsed $e) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => EmailAlreadyUsed::CODE]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('création sous-compte user=' . $labId, $e, 'Impossible de créer le sous-compte. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

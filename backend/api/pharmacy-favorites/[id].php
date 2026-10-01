@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../pharmacy/_helpers.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 [$user, $db, $moduleConfig, $orderService, $catalogService, $favoriteService] = pharmacyApiBootstrap(['PUT', 'DELETE', 'OPTIONS']);
 
@@ -34,6 +35,9 @@ try {
         echo json_encode(['success' => true]);
         exit;
     }
+} catch (PDOException $e) {
+    ApiServerError::respond('favori pharmacie ' . $pharmacyId . ' user=' . $uid, $e, 'La mise à jour du favori a échoué. Réessayez plus tard.');
+    exit;
 } catch (RuntimeException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);

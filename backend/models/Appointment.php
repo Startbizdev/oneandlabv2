@@ -505,7 +505,7 @@ class Appointment
         $stmt->execute([$id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$existing) {
-            throw new Exception('Rendez-vous introuvable');
+            throw new DomainException('Rendez-vous introuvable');
         }
 
         $oldFormData = [];
@@ -608,7 +608,7 @@ class Appointment
 
         if (array_key_exists('category_id', $data)) {
             if (!empty($data['category_id']) && !Validation::uuid($data['category_id'])) {
-                throw new Exception('ID de catégorie invalide (format UUID requis).');
+                throw new InvalidArgumentException('ID de catégorie invalide (format UUID requis).');
             }
             $updateFields[] = 'category_id = ?';
             $params[] = !empty($data['category_id']) ? $data['category_id'] : null;

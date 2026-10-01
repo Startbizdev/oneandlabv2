@@ -3,6 +3,9 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Email.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
+require_once __DIR__ . '/../../lib/ContactInquiry.php';
+require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? '';
@@ -54,57 +57,51 @@ try {
     $message = trim((string) ($input['message'] ?? ''));
 
     if ($name === '') {
-        throw new Exception('Le nom est requis.');
+        throw new InvalidArgumentException('Le nom est requis.');
     }
     if ($email === '') {
-        throw new Exception('L\'email est requis.');
+        throw new InvalidArgumentException('L\'email est requis.');
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new Exception('Adresse email invalide.');
+        throw new InvalidArgumentException('Adresse email invalide.');
     }
     if (!isset($typeLabels[$contactType])) {
-        throw new Exception('Veuillez choisir un motif de contact.');
+        throw new InvalidArgumentException('Veuillez choisir un motif de contact.');
     }
     if ($message === '') {
-        throw new Exception('Le message est requis.');
+        throw new InvalidArgumentException('Le message est requis.');
     }
+
+    // Formulaire public : le compte n'est joint que si la session est valide ; tout bloc "context" envoyé par le client est ignoré.
+    $authUser = AuthMiddleware::authorizationHeader() !== null ? (new AuthMiddleware())->tryAuthenticate() : null;
+    $accountRows = $authUser !== null ? ContactInquiry::accountRows($authUser, new User()) : [];
+    $clientRows = ContactInquiry::clientRows($input['client'] ?? null);
 
     $typeLabel = $typeLabels[$contactType];
     $subject = '[Cary Contact] ' . $typeLabel . ' — ' . $name;
-
-    $inner = '<p style="margin:0 0 12px 0;"><strong>Motif :</strong> ' . htmlspecialchars($typeLabel) . '</p>'
-        . '<p style="margin:0 0 12px 0;"><strong>Nom :</strong> ' . htmlspecialchars($name) . '</p>'
-        . '<p style="margin:0 0 12px 0;"><strong>Email :</strong> ' . htmlspecialchars($email) . '</p>'
-        . '<p style="margin:0 0 8px 0;"><strong>Message :</strong></p>'
-        . '<p style="margin:0 0 16px 0;white-space:pre-wrap;">' . nl2br(htmlspecialchars($message)) . '</p>';
-
-    $context = $input['context'] ?? null;
-    if (is_array($context) && count($context) > 0) {
-        $inner .= '<hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;" />'
-            . '<p style="margin:0 0 8px 0;"><strong>Informations compte (application mobile)</strong></p>';
-        foreach ($context as $label => $value) {
-            if (!is_scalar($value)) {
-                continue;
-            }
-            $text = trim((string) $value);
-            if ($text === '') {
-                continue;
-            }
-            $inner .= '<p style="margin:0 0 6px 0;"><strong>' . htmlspecialchars((string) $label) . ' :</strong> '
-                . htmlspecialchars($text) . '</p>';
-        }
-    }
+    $inner = ContactInquiry::innerHtml($typeLabel, $name, $email, $message, $accountRows, $clientRows);
 
     $emailLib = new Email();
     $body = $emailLib->buildStaffInquiryBody('Nouveau message — formulaire contact', $inner);
     $sent = $emailLib->send($CONTACT_TO, $subject, $body, true, $email, $name);
 
     if (!$sent) {
-        throw new Exception('L\'envoi du message a échoué. Veuillez réessayer ou nous écrire à ' . $CONTACT_TO . '.');
+        ApiServerError::respond(
+            'formulaire contact user=' . ($authUser['user_id'] ?? 'anonyme'),
+            new RuntimeException('Échec de l\'envoi de l\'e-mail de contact'),
+            'L\'envoi du message a échoué. Veuillez réessayer ou nous écrire à ' . $CONTACT_TO . '.'
+        );
+        exit;
     }
 
     echo json_encode(['success' => true, 'message' => 'Message envoyé. Nous vous répondrons rapidement.']);
-} catch (Exception $e) {
+} catch (InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (Throwable $e) {
+    ApiServerError::respond(
+        'formulaire contact',
+        $e,
+        'L\'envoi du message a échoué. Veuillez réessayer ou nous écrire à ' . $CONTACT_TO . '.'
+    );
 }

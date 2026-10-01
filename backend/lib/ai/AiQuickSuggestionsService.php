@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/ContextComposer.php';
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/AiBookingAccess.php';
 
 final class AiQuickSuggestionsService
 {
@@ -19,14 +20,25 @@ final class AiQuickSuggestionsService
      */
     public function suggestionsForUser(array $user, ?string $patientId = null): array
     {
-        $role = (string) ($user['role'] ?? '');
-        $items = [];
-
         try {
             $ctx = $this->composer->compose($user, $patientId);
         } catch (Throwable $e) {
-            return $this->fallbackSuggestions($role);
+            return $this->fallbackSuggestions((string) ($user['role'] ?? ''));
         }
+
+        return $this->suggestionsFromContext($user, $ctx);
+    }
+
+    /**
+     * Suggestions à partir d'un contexte déjà composé (`ContextComposer::compose`).
+     *
+     * @return list<array{id: string, label: string}>
+     */
+    public function suggestionsFromContext(array $user, array $ctx): array
+    {
+        $role = (string) ($user['role'] ?? '');
+        $isPatient = $role === 'patient';
+        $items = [];
 
         $upcoming = $ctx['appointments']['upcoming'] ?? [];
         $labResults = $ctx['lab_results'] ?? [];
@@ -36,28 +48,30 @@ final class AiQuickSuggestionsService
             $when = $next['scheduled_at'] ?? '';
             $items[] = [
                 'id' => 'next_appointment',
-                'label' => $when ? 'Mon prochain RDV' : 'Mes rendez-vous à venir',
+                'label' => $when ? 'Mon prochain rendez-vous' : 'Mes rendez-vous à venir',
             ];
         }
 
         if ($role === 'patient') {
             $items[] = ['id' => 'book', 'label' => 'Prendre un rendez-vous'];
-        } elseif ($upcoming === []) {
-            $items[] = ['id' => 'book', 'label' => 'Prendre un rendez-vous'];
         }
 
         if ($labResults !== []) {
-            $items[] = ['id' => 'lab_results', 'label' => 'Explique mes derniers résultats'];
+            $items[] = $isPatient
+                ? ['id' => 'lab_results', 'label' => 'Expliquer mes résultats']
+                : ['id' => 'patient_lab_results', 'label' => 'Résultats récents des patients'];
         }
 
         $documents = $ctx['documents'] ?? $ctx['profile_documents'] ?? [];
         if (is_array($documents) && $documents !== []) {
-            $items[] = ['id' => 'analyze_docs', 'label' => 'Analyse mes documents'];
+            $items[] = $isPatient
+                ? ['id' => 'analyze_docs', 'label' => 'Analyser mes documents']
+                : ['id' => 'patient_docs', 'label' => 'Analyser les documents du patient'];
         }
 
         $health = $ctx['health_metrics'] ?? null;
         if (is_array($health) && !empty($health['has_data'])) {
-            $items[] = ['id' => 'health_trends', 'label' => 'Montre mes tendances santé'];
+            $items[] = ['id' => 'health_trends', 'label' => 'Voir mes tendances santé'];
         }
 
         if ($role === 'patient') {
@@ -71,7 +85,7 @@ final class AiQuickSuggestionsService
                 }
                 foreach ($hr['gaps'] ?? [] as $gap) {
                     if (is_array($gap) && ($gap['gap_key'] ?? '') === 'lipid_panel_unknown') {
-                        $items[] = ['id' => 'book_blood_test', 'label' => 'Réserver un bilan'];
+                        $items[] = ['id' => 'book_blood_test', 'label' => 'Réserver un bilan lipidique'];
                         break;
                     }
                 }
@@ -81,12 +95,14 @@ final class AiQuickSuggestionsService
         }
 
         if ($role === 'patient') {
-            $items[] = ['id' => 'prepare_rdv', 'label' => 'Préparer mon prochain RDV'];
-        } elseif (in_array($role, ['pro', 'nurse'], true)) {
-            $items[] = ['id' => 'patient_rdv', 'label' => 'Planifier un RDV patient'];
+            $items[] = ['id' => 'prepare_rdv', 'label' => 'Préparer mon rendez-vous'];
+        } elseif (AiBookingAccess::allows($user)) {
+            $items[] = ['id' => 'patient_rdv', 'label' => 'Planifier un rendez-vous patient'];
         }
 
-        $items[] = ['id' => 'general', 'label' => 'Question sur mon suivi'];
+        $items[] = $role === 'patient'
+            ? ['id' => 'general', 'label' => 'Question sur mon suivi']
+            : ['id' => 'case_question', 'label' => 'Question sur un dossier'];
 
         $seen = [];
         $out = [];
@@ -109,16 +125,18 @@ final class AiQuickSuggestionsService
      */
     private function fallbackSuggestions(string $role): array
     {
-        if (in_array($role, ['pro', 'nurse'], true)) {
-            return [
-                ['id' => 'patient_rdv', 'label' => 'Planifier un RDV patient'],
-                ['id' => 'general', 'label' => 'Question sur un dossier'],
-            ];
+        if ($role !== 'patient') {
+            $items = AiBookingAccess::allows(['role' => $role])
+                ? [['id' => 'patient_rdv', 'label' => 'Planifier un rendez-vous patient']]
+                : [];
+            $items[] = ['id' => 'case_question', 'label' => 'Question sur un dossier'];
+
+            return $items;
         }
 
         return [
             ['id' => 'book', 'label' => 'Prendre un rendez-vous'],
-            ['id' => 'lab_results', 'label' => 'Mes résultats de labo'],
+            ['id' => 'lab_results', 'label' => 'Expliquer mes résultats'],
             ['id' => 'general', 'label' => 'Question sur mon suivi'],
         ];
     }

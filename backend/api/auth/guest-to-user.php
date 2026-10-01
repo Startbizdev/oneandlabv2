@@ -4,6 +4,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../lib/Email.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../../lib/Validation.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS - Fonction pour obtenir et valider l'origine
@@ -63,10 +65,13 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['email'])) {
-        throw new Exception('Email requis');
+        throw new InvalidArgumentException('Email requis');
     }
     
     $email = $input['email'];
+    if (!is_string($email) || !Validation::email($email)) {
+        throw new InvalidArgumentException('Email invalide');
+    }
     $emailHash = hash('sha256', strtolower($email));
     
     $userModel = new User();
@@ -123,12 +128,14 @@ try {
             'session_id' => $result['session_id'] ?? null,
         ]);
     }
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'code' => 'VALIDATION_ERROR',
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('invité vers compte', $e, 'La création du compte a échoué. Réessayez plus tard.');
 }
 

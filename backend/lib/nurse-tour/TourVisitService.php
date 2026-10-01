@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/NurseTourService.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/NotificationService.php';
+require_once __DIR__ . '/../AppTimezone.php';
 
 final class TourVisitService
 {
@@ -94,18 +95,16 @@ final class TourVisitService
             $formData['availability'] = json_encode($availability, JSON_UNESCAPED_UNICODE);
         }
 
-        $utc = $this->scheduledAtParisToUtc($scheduledAt, $availability);
+        $scheduled = $this->parseScheduledAtParis($scheduledAt, $availability);
 
         $this->appointments->update($aptId, [
-            'scheduled_at' => $utc,
+            'scheduled_at' => AppTimezone::sqlDateTime($scheduled),
             'form_data' => $formData,
         ], $nurseId, 'nurse');
 
         $tourDate = (string) ($row['tour_date'] ?? '');
         if ($tourDate === '') {
-            $tourDate = (new DateTimeImmutable($utc, new DateTimeZone('UTC')))
-                ->setTimezone(new DateTimeZone('Europe/Paris'))
-                ->format('Y-m-d');
+            $tourDate = AppTimezone::format('Y-m-d', $scheduled);
         }
 
         $service = new NurseTourService($this->db);
@@ -139,9 +138,8 @@ final class TourVisitService
     /**
      * @param array<string, mixed>|null $availability
      */
-    private function scheduledAtParisToUtc(string $scheduledAt, ?array $availability): string
+    private function parseScheduledAtParis(string $scheduledAt, ?array $availability): DateTimeImmutable
     {
-        $tzParis = new DateTimeZone('Europe/Paris');
         $raw = trim($scheduledAt);
         if ($raw === '') {
             throw new InvalidArgumentException('Date/heure invalide');
@@ -159,13 +157,12 @@ final class TourVisitService
             $raw = sprintf('%s %02d:%02d:00', $raw, max(0, min(23, $hour)), $minute);
         }
 
-        $dt = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $raw, $tzParis)
-            ?: DateTimeImmutable::createFromFormat('Y-m-d H:i', substr($raw, 0, 16), $tzParis);
-        if (!$dt) {
+        $dt = AppTimezone::parseSqlDateTime($raw);
+        if ($dt === null) {
             throw new InvalidArgumentException('Date/heure invalide');
         }
 
-        return $dt->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        return $dt;
     }
 
     /**

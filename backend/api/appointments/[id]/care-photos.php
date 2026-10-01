@@ -12,6 +12,7 @@ require_once __DIR__ . '/../../../lib/CarePhotoGallery.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -143,8 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ],
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('photos de soin RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'Impossible de charger les photos. Réessayez plus tard.');
     }
     exit;
 }
@@ -299,8 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'data' => ['id' => $id],
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('ajout photo de soin RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'L’envoi de la photo a échoué. Réessayez plus tard.');
     }
     exit;
 }

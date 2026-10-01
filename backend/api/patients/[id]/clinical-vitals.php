@@ -55,7 +55,8 @@ try {
     health_json_error('Méthode non autorisée', 405);
 } catch (InvalidArgumentException $e) {
     health_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    $code = str_contains($e->getMessage(), 'refusé') || str_contains($e->getMessage(), 'réservé') ? 403 : 404;
-    health_json_error($e->getMessage(), $code);
+} catch (HttpStatusException $e) {
+    health_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
+} catch (Throwable $e) {
+    ApiServerError::respond('constantes cliniques patient=' . $patientId . ' user=' . ($user['user_id'] ?? ''), $e, 'Constantes cliniques indisponibles. Réessayez plus tard.');
 }

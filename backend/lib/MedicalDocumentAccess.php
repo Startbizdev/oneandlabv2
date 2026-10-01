@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/LabTeamAccess.php';
 require_once __DIR__ . '/MedicalDocumentSubject.php';
+require_once __DIR__ . '/pharmacy/PharmacyOrderAccess.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -90,16 +91,42 @@ class MedicalDocumentAccess
         if (($document['uploaded_by'] ?? '') === $user['user_id']) {
             return true;
         }
+        $documentId = (string) ($document['id'] ?? '');
         if (!empty($document['appointment_id'])) {
-            return self::userHasAppointmentDocumentAccess($db, $user, $document);
+            return self::userHasAppointmentDocumentAccess($db, $user, $document)
+                || self::userCanViewViaPharmacyOrder($db, $user, $documentId);
         }
 
-        $owner = self::resolveProfileDocumentOwner($db, (string) ($document['id'] ?? ''));
-        if ($owner === null) {
+        $owner = self::resolveProfileDocumentOwner($db, $documentId);
+        if ($owner !== null && self::userHasProfileDocumentAccess($db, $user, $owner['patient_id'])) {
+            return true;
+        }
+
+        return self::userCanViewViaPharmacyOrder($db, $user, $documentId);
+    }
+
+    /** Ordonnance jointe à une commande pharmacie que l'utilisateur peut consulter (officine destinataire, patient). */
+    public static function userCanViewViaPharmacyOrder(PDO $db, array $user, string $documentId): bool
+    {
+        $userId = (string) ($user['user_id'] ?? '');
+        if ($documentId === '' || $userId === '') {
             return false;
         }
 
-        return self::userHasProfileDocumentAccess($db, $user, $owner['patient_id']);
+        $stmt = $db->prepare('
+            SELECT requester_id, pharmacy_id, patient_id
+            FROM pharmacy_orders
+            WHERE (pharmacy_id = ? OR patient_id = ? OR requester_id = ?)
+              AND JSON_CONTAINS(prescription_document_ids, JSON_QUOTE(?))
+        ');
+        $stmt->execute([$userId, $userId, $userId, $documentId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $order) {
+            if (PharmacyOrderAccess::canView($user, $order)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function userHasAppointmentDocumentAccess(PDO $db, array $user, array $document): bool

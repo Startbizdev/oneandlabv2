@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../../lib/CarePhotoGallery.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../models/User.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -108,8 +109,7 @@ if ($medicalDocumentId === '') {
             (string) $user['user_id']
         );
     } catch (Throwable $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('fil de discussion photos RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'Impossible d’ouvrir la discussion. Réessayez plus tard.');
         exit;
     }
 }
@@ -195,6 +195,5 @@ try {
         ],
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('commentaire photo de soin RDV ' . $appointmentId . ' user=' . $user['user_id'], $e, 'L’envoi du commentaire a échoué. Réessayez plus tard.');
 }

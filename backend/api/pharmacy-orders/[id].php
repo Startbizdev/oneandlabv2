@@ -6,6 +6,7 @@ require_once __DIR__ . '/../pharmacy/_helpers.php';
 require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../../lib/pharmacy/PharmacyOrderAccess.php';
 require_once __DIR__ . '/../../lib/pharmacy/PharmacyNotificationHelper.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 [$user, $db, $moduleConfig, $orderService] = pharmacyApiBootstrap(['GET', 'PATCH', 'OPTIONS']);
 $notifications = new NotificationService();
@@ -100,6 +101,8 @@ if ($method === 'PATCH') {
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    } catch (PDOException $e) {
+        ApiServerError::respond('statut commande pharmacie ' . $orderId . ' user=' . ($user['user_id'] ?? ''), $e, 'La mise à jour de la commande a échoué. Réessayez plus tard.');
     } catch (RuntimeException $e) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

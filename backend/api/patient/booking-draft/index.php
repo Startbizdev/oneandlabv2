@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/PatientBookingDraftStorage.php';
 require_once __DIR__ . '/../../../lib/PatientUrgencyConfig.php';
+require_once __DIR__ . '/../../../lib/appointments/AppointmentCreateInputPolicy.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -81,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    foreach ($payloads as $p) {
+    foreach ($payloads as $index => $p) {
         if (!is_array($p)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Payload invalide']);
@@ -90,6 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (($p['patient_id'] ?? '') !== $uid) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'patient_id incorrect']);
+            exit;
+        }
+        try {
+            $payloads[$index] = AppointmentCreateInputPolicy::apply($db, $user, $p);
+        } catch (AppointmentCreateInputDenied $e) {
+            http_response_code($e->httpStatus);
+            echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode], JSON_UNESCAPED_UNICODE);
             exit;
         }
     }

@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../models/RegistrationRequest.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -79,9 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $model = new RegistrationRequest();
         $id = $model->create($body);
         echo json_encode(['success' => true, 'data' => ['id' => $id]]);
-    } catch (Exception $e) {
+    } catch (InvalidArgumentException | DomainException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    } catch (Exception $e) {
+        ApiServerError::respond('création demande d’inscription role=' . $role, $e, 'L’envoi de la demande d’inscription a échoué. Réessayez plus tard.');
     }
     exit;
 }
@@ -101,8 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $list = $model->getAll($status, $roleFilter);
         echo json_encode(['success' => true, 'data' => $list]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        ApiServerError::respond('liste demandes d’inscription user=' . $user['user_id'], $e, 'Impossible de charger les demandes d’inscription. Réessayez plus tard.');
     }
     exit;
 }

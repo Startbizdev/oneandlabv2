@@ -80,7 +80,9 @@ try {
 
     AppointmentApiLogging::logAppointment('ERREUR lors de l\'authentification', ['error' => $e->getMessage()]);
 
-    throw $e;
+    ApiServerError::respond('authentification rendez-vous', $e);
+
+    exit;
 
 }
 

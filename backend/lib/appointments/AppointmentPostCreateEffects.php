@@ -42,11 +42,15 @@ final class AppointmentPostCreateEffects
     }
 
     /**
+     * Attribution QR : uniquement depuis le jeton utm_qr d'un patient qui a scanné un QR actif.
+     * attribution_qr_id n'est jamais repris du client (retiré par AppointmentCreateInputPolicy).
+     *
      * @param array<string, mixed> $inputForCreate
      */
-    public function resolveAttributionQrFromUtm(array &$inputForCreate): void
+    public function resolveAttributionQrFromUtm(array &$inputForCreate, string $creatorRole): void
     {
-        if (!empty($inputForCreate['utm_qr']) && empty($inputForCreate['attribution_qr_id'])) {
+        unset($inputForCreate['attribution_qr_id']);
+        if ($creatorRole === 'patient' && !empty($inputForCreate['utm_qr']) && is_string($inputForCreate['utm_qr'])) {
             $qrResolve = new QrCodeService();
             $resolvedQrId = $qrResolve->resolveAttributionQrId((string) $inputForCreate['utm_qr']);
             if ($resolvedQrId !== null) {

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../../lib/Auth.php';
 require_once __DIR__ . '/../../../../lib/Email.php';
 require_once __DIR__ . '/../../../../models/User.php';
 require_once __DIR__ . '/../../../../config/cors.php';
+require_once __DIR__ . '/../../../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -43,13 +44,13 @@ try {
 
     $targetId = $_GET['id'] ?? null;
     if (!$targetId) {
-        throw new Exception('ID utilisateur requis');
+        throw new InvalidArgumentException('ID utilisateur requis');
     }
 
     $userModel = new User();
     $email = $userModel->getDecryptedEmail($targetId);
     if (!$email) {
-        throw new Exception('Utilisateur introuvable');
+        throw new DomainException('Utilisateur introuvable');
     }
 
     $auth = new Auth();
@@ -65,7 +66,9 @@ try {
         'success' => true,
         'message' => 'Email de réinitialisation envoyé.',
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+} catch (Throwable $e) {
+    ApiServerError::respond('email réinitialisation cible=' . ($targetId ?? '?') . ' user=' . ($authUser['user_id'] ?? '?'), $e, 'Impossible d\'envoyer l\'email de réinitialisation. Réessayez plus tard.');
 }

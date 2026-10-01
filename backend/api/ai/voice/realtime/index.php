@@ -16,9 +16,11 @@ try {
     $service = new VoiceRealtimeService();
     $payload = $service->startRealtime($user, ai_read_json_body());
     ai_json_response(['success' => true, 'data' => $payload], 201);
+} catch (PDOException $e) {
+    ApiServerError::respond('ai/voice/realtime user=' . $user['user_id'], $e);
 } catch (RuntimeException $e) {
     $code = $e->getCode();
     ai_json_error($e->getMessage(), is_int($code) && $code >= 400 && $code < 600 ? $code : 400);
 } catch (Throwable $e) {
-    ai_json_error($e->getMessage(), 500);
+    ApiServerError::respond('ai/voice/realtime user=' . $user['user_id'], $e);
 }

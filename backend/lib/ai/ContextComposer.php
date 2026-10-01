@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../LabResultsListing.php';
 require_once __DIR__ . '/../PatientDossierDocuments.php';
 require_once __DIR__ . '/../../models/User.php';
@@ -285,11 +286,8 @@ final class ContextComposer
         $terminal = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
         $terminalPh = implode(',', array_fill(0, count($terminal), '?'));
 
-        $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-        $parisStart->setTimezone(new DateTimeZone('UTC'));
-        $todayUtc = $parisStart->format('Y-m-d H:i:s');
-
-        $thirtyDaysAgo = (new DateTime('now', new DateTimeZone('UTC')))->modify('-30 days')->format('Y-m-d H:i:s');
+        $todayParis = AppTimezone::sqlStartOfToday();
+        $thirtyDaysAgo = AppTimezone::sqlDateTime(AppTimezone::now()->modify('-30 days'));
 
         $sqlBase = "
             SELECT a.id, a.type, a.status, a.scheduled_at, a.patient_id, cc.name AS category_name
@@ -300,14 +298,14 @@ final class ContextComposer
         ";
         $paramsUpcoming = [...$patientIds, $thirtyDaysAgo];
         $sqlUpcoming = $sqlBase . " AND a.status NOT IN ($terminalPh) AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?) ORDER BY a.scheduled_at ASC LIMIT 10";
-        $paramsUpcoming = array_merge($paramsUpcoming, $terminal, [$todayUtc]);
+        $paramsUpcoming = array_merge($paramsUpcoming, $terminal, [$todayParis]);
 
         $stmt = $this->db->prepare($sqlUpcoming);
         $stmt->execute($paramsUpcoming);
         $upcoming = $this->mapAppointments($stmt->fetchAll(PDO::FETCH_ASSOC));
 
         $sqlPast = $sqlBase . " AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)) ORDER BY a.scheduled_at DESC LIMIT 10";
-        $paramsPast = array_merge([...$patientIds, $thirtyDaysAgo], $terminal, [$todayUtc]);
+        $paramsPast = array_merge([...$patientIds, $thirtyDaysAgo], $terminal, [$todayParis]);
         $stmtPast = $this->db->prepare($sqlPast);
         $stmtPast->execute($paramsPast);
         $past = $this->mapAppointments($stmtPast->fetchAll(PDO::FETCH_ASSOC));
@@ -338,9 +336,7 @@ final class ContextComposer
         $where = implode(' OR ', $clauses);
         $terminal = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
         $terminalPh = implode(',', array_fill(0, count($terminal), '?'));
-        $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-        $parisStart->setTimezone(new DateTimeZone('UTC'));
-        $todayUtc = $parisStart->format('Y-m-d H:i:s');
+        $todayParis = AppTimezone::sqlStartOfToday();
 
         $sql = "
             SELECT a.id, a.type, a.status, a.scheduled_at, a.patient_id, cc.name AS category_name
@@ -353,7 +349,7 @@ final class ContextComposer
             LIMIT 10
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_merge($params, $terminal, [$todayUtc]));
+        $stmt->execute(array_merge($params, $terminal, [$todayParis]));
 
         return ['upcoming' => $this->mapAppointments($stmt->fetchAll(PDO::FETCH_ASSOC)), 'past' => []];
     }

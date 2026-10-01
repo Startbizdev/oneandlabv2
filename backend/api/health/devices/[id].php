@@ -19,8 +19,11 @@ $patientId = (string) $user['user_id'];
 if ($method === 'GET') {
     try {
         health_json_response(['success' => true, 'data' => $service->getDevice($patientId, $deviceId)]);
-    } catch (RuntimeException $e) {
-        health_json_error($e->getMessage(), 404);
+    } catch (HttpStatusException $e) {
+        health_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
+    } catch (Throwable $e) {
+        ApiServerError::respond('appareil santé ' . $deviceId . ' patient=' . $patientId, $e, 'Appareil indisponible. Réessayez plus tard.');
+        exit;
     }
 }
 

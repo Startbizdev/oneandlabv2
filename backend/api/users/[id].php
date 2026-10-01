@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/users/ProfileLabAssignmentPolicy.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -122,12 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => $userData,
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('détail utilisateur ' . $id . ' user=' . $user['user_id'], $e, 'Impossible de charger ce profil. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     CSRFMiddleware::handle();
@@ -178,10 +174,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (($user['role'] ?? '') !== 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {
         unset($input['prescription_generation_enabled']);
     }
-    if (($user['role'] ?? '') !== 'super_admin' && array_key_exists('pharmacy_orders_enabled', $input)) {
-        unset($input['pharmacy_orders_enabled']);
-    }
-
     if (($user['role'] ?? '') === 'super_admin' && array_key_exists('prescription_generation_enabled', $input)) {
         $targetForRx = $userModel->getById($id, $user['user_id'], $user['role']);
         $targetRoleForRx = $targetForRx['role'] ?? '';
@@ -227,13 +219,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'error' => $e->getMessage(),
             'code' => 'VALIDATION_ERROR',
         ]);
-    } catch (Exception $e) {
-        http_response_code(500);
+    } catch (DomainException $e) {
+        http_response_code(403);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
+            'code' => 'FORBIDDEN',
         ]);
+    } catch (Exception $e) {
+        ApiServerError::respond('mise à jour utilisateur ' . $id . ' user=' . $user['user_id'], $e, 'La mise à jour du profil a échoué. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     // Supprimer: super_admin ou lab (ses subaccounts/preleveurs uniquement)
@@ -263,12 +257,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'error' => 'Utilisateur non trouvé',
             ]);
         }
-    } catch (Exception $e) {
-        http_response_code(500);
+    } catch (DomainException $e) {
+        http_response_code(403);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
+            'code' => 'FORBIDDEN',
         ]);
+    } catch (Exception $e) {
+        ApiServerError::respond('suppression utilisateur ' . $id . ' user=' . $user['user_id'], $e, 'La suppression de l’utilisateur a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

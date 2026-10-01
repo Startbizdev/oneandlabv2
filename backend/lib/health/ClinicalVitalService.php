@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/ClinicalVitalTypes.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
 require_once __DIR__ . '/../../models/User.php';
@@ -116,7 +117,7 @@ final class ClinicalVitalService
         $this->assertStaffAccess($viewer, $patientId);
         $existing = $this->fetchById($patientId, $vitalId);
         if ($existing === null) {
-            throw new RuntimeException('Constante introuvable');
+            throw HttpStatusException::notFound('Constante introuvable');
         }
 
         $payload = $this->normalizeInput(array_merge($existing, $input), true);
@@ -149,7 +150,7 @@ final class ClinicalVitalService
         $stmt = $this->db->prepare('DELETE FROM patient_clinical_vitals WHERE id = ? AND patient_id = ?');
         $stmt->execute([$vitalId, $patientId]);
         if ($stmt->rowCount() === 0) {
-            throw new RuntimeException('Constante introuvable');
+            throw HttpStatusException::notFound('Constante introuvable');
         }
     }
 
@@ -160,11 +161,11 @@ final class ClinicalVitalService
             return;
         }
         if (!in_array($role, self::STAFF_ROLES, true)) {
-            throw new RuntimeException('Accès réservé aux professionnels de santé');
+            throw HttpStatusException::forbidden('Accès réservé aux professionnels de santé');
         }
         $userModel = new User();
         if (!PatientDossierAccess::canAccess($this->db, $userModel, $viewer, $patientId)) {
-            throw new RuntimeException('Accès carnet refusé');
+            throw HttpStatusException::forbidden('Accès carnet refusé');
         }
     }
 

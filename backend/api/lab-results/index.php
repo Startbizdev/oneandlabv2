@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/LabResultsListing.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -68,10 +69,5 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'code' => 'SERVER_ERROR',
-    ]);
+    ApiServerError::respond('liste résultats labo user=' . $user['user_id'], $e, 'Impossible de charger les résultats. Réessayez plus tard.');
 }

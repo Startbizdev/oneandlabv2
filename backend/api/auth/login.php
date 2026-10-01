@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
 require_once __DIR__ . '/../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 authPublicCors('POST, OPTIONS');
 
@@ -31,17 +32,19 @@ try {
     $password = (string) ($input['password'] ?? '');
 
     if ($email === '' || $password === '') {
-        throw new Exception('Email et mot de passe requis');
+        throw new InvalidArgumentException('Email et mot de passe requis');
     }
 
     $auth = new Auth();
     $result = $auth->loginWithPassword($email, $password);
 
     echo json_encode($result);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('connexion mot de passe', $e, 'La connexion a échoué. Réessayez plus tard.');
 }

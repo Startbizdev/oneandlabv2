@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../LabTeamAccess.php';
 require_once __DIR__ . '/../PendingOfferExpiry.php';
@@ -251,17 +252,13 @@ final class AppointmentListQueryBuilder
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
             $this->appendWhere(" AND a.status NOT IN ($terminalPh)");
             $this->params = array_merge($this->params, $terminalStatuses);
-            $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-            $parisStart->setTimezone(new DateTimeZone('UTC'));
             $this->appendWhere(' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)');
-            $this->params[] = $parisStart->format('Y-m-d H:i:s');
+            $this->params[] = AppTimezone::sqlStartOfToday();
         } elseif ($patientPeriod === 'past') {
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
-            $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-            $parisStart->setTimezone(new DateTimeZone('UTC'));
             $this->appendWhere(" AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?))");
             $this->params = array_merge($this->params, $terminalStatuses);
-            $this->params[] = $parisStart->format('Y-m-d H:i:s');
+            $this->params[] = AppTimezone::sqlStartOfToday();
         }
     }
 
@@ -296,9 +293,7 @@ final class AppointmentListQueryBuilder
             $this->params[] = $userId;
             $this->params[] = $userId;
         } elseif ($nurseSegment === 'acceptes') {
-            $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-            $parisStart->setTimezone(new DateTimeZone('UTC'));
-            $parisStartStr = $parisStart->format('Y-m-d H:i:s');
+            $parisStartStr = AppTimezone::sqlStartOfToday();
             $this->appendWhere(" AND (
                     (a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned')
                         AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
@@ -310,14 +305,12 @@ final class AppointmentListQueryBuilder
             $this->params[] = $userId;
             $this->params[] = $parisStartStr;
         } elseif ($nurseSegment === 'historique') {
-            $parisStart = new DateTime('today', new DateTimeZone('Europe/Paris'));
-            $parisStart->setTimezone(new DateTimeZone('UTC'));
             $this->appendWhere(" AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND (
                     a.status IN ('completed','canceled','cancelled','refused')
                     OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)
                 )");
             $this->params[] = $userId;
-            $this->params[] = $parisStart->format('Y-m-d H:i:s');
+            $this->params[] = AppTimezone::sqlStartOfToday();
         } elseif ($nurseSegment === 'relais') {
             $this->appendWhere(" AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)
                     AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "

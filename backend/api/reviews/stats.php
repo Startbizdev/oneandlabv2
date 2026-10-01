@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../models/Review.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 
@@ -85,10 +86,5 @@ try {
         'data' => $stats,
     ]);
 } catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'code' => 'SERVER_ERROR',
-    ]);
+    ApiServerError::respond('statistiques avis ' . $revieweeId . ' user=' . $uid, $e, 'Impossible de charger les statistiques d’avis. Réessayez plus tard.');
 }

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../models/Review.php';
 require_once __DIR__ . '/../../models/Notification.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -200,19 +201,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     try {
         if (!isset($input['appointment_id'], $input['reviewee_id'], $input['rating'])) {
-            throw new Exception('appointment_id, reviewee_id et rating requis');
+            throw new InvalidArgumentException('appointment_id, reviewee_id et rating requis');
         }
         if (!isset($input['reviewee_type']) || $input['reviewee_type'] === '') {
-            throw new Exception('reviewee_type requis');
+            throw new InvalidArgumentException('reviewee_type requis');
         }
         
         if ($input['rating'] < 1 || $input['rating'] > 5) {
-            throw new Exception('La note doit être entre 1 et 5');
+            throw new InvalidArgumentException('La note doit être entre 1 et 5');
         }
 
         $revieweeType = trim((string) $input['reviewee_type']);
         if (!in_array($revieweeType, Review::REVIEWEE_TYPES, true)) {
-            throw new Exception('reviewee_type invalide (nurse, lab ou subaccount attendu)');
+            throw new InvalidArgumentException('reviewee_type invalide (nurse, lab ou subaccount attendu)');
         }
 
         $config = require __DIR__ . '/../../config/database.php';
@@ -234,13 +235,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $stmtApt->execute([$input['appointment_id']]);
         $apt = $stmtApt->fetch(PDO::FETCH_ASSOC);
         if (!$apt) {
-            throw new Exception('Rendez-vous introuvable');
+            throw new DomainException('Rendez-vous introuvable');
         }
         if ($apt['patient_id'] !== $user['user_id']) {
-            throw new Exception('Ce rendez-vous ne vous appartient pas');
+            throw new DomainException('Ce rendez-vous ne vous appartient pas');
         }
         if ($apt['status'] !== 'completed') {
-            throw new Exception('Vous ne pouvez noter qu\'un rendez-vous terminé');
+            throw new DomainException('Vous ne pouvez noter qu\'un rendez-vous terminé');
         }
         $revieweeId = $input['reviewee_id'];
         $revieweeType = $revieweeType;
@@ -254,14 +255,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 || (!empty($apt['assigned_to']) && $apt['assigned_to'] === $revieweeId);
         }
         if (!$match) {
-            throw new Exception('Ce professionnel n\'a pas effectué ce rendez-vous');
+            throw new DomainException('Ce professionnel n\'a pas effectué ce rendez-vous');
         }
 
         // Éviter un doublon d'avis pour le même rendez-vous
         $stmtExists = $db->prepare('SELECT id FROM reviews WHERE appointment_id = ? LIMIT 1');
         $stmtExists->execute([$input['appointment_id']]);
         if ($stmtExists->fetch()) {
-            throw new Exception('Vous avez déjà laissé un avis pour ce rendez-vous');
+            throw new DomainException('Vous avez déjà laissé un avis pour ce rendez-vous');
         }
         
         $id = $reviewModel->create($input, $user['user_id']);
@@ -320,31 +321,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
             'data' => ['id' => $id],
         ]);
-    } catch (InvalidArgumentException|RuntimeException $e) {
+    } catch (InvalidArgumentException | DomainException $e) {
         http_response_code(400);
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage(),
             'code' => 'VALIDATION_ERROR',
-        ]);
-    } catch (PDOException $e) {
-        http_response_code(400);
-        $msg = $e->getMessage();
-        $friendly = str_contains($msg, 'reviewee_type') || str_contains($msg, 'Data truncated')
-            ? 'Impossible d\'enregistrer l\'avis : type de professionnel non supporté en base (migration 053 requise).'
-            : 'Erreur base de données lors de l\'enregistrement de l\'avis.';
-        echo json_encode([
-            'success' => false,
-            'error' => $friendly,
-            'code' => 'DATABASE_ERROR',
         ]);
     } catch (Exception $e) {
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'VALIDATION_ERROR',
-        ]);
+        ApiServerError::respond('création avis RDV ' . ($input['appointment_id'] ?? '') . ' user=' . $user['user_id'], $e, 'L’enregistrement de l’avis a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

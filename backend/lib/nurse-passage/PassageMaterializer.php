@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/PassageDateExpander.php';
 require_once __DIR__ . '/PassageSlotResolver.php';
 require_once __DIR__ . '/../../models/Appointment.php';
@@ -202,11 +203,11 @@ final class PassageMaterializer
         require_once __DIR__ . '/../PatientDossierAccess.php';
         $userModel = new User();
         if (!PatientDossierAccess::canAccess($this->db, $userModel, ['user_id' => $nurseId, 'role' => $role], $patientId)) {
-            throw new RuntimeException('Accès patient refusé');
+            throw HttpStatusException::forbidden('Accès patient refusé');
         }
         $patient = $userModel->getById($patientId, $nurseId, $role, 'full');
         if (!$patient) {
-            throw new RuntimeException('Patient introuvable');
+            throw HttpStatusException::notFound('Patient introuvable');
         }
 
         return [
@@ -226,7 +227,7 @@ final class PassageMaterializer
         $userModel = new User();
         $patient = $userModel->getById($patientId, $nurseId, $role, 'full');
         if (!$patient) {
-            throw new RuntimeException('Patient introuvable');
+            throw HttpStatusException::notFound('Patient introuvable');
         }
         $address = $patient['address'] ?? null;
         if (!is_array($address) || empty($address['label'])) {
@@ -253,7 +254,7 @@ final class PassageMaterializer
         $userModel = new User();
         $nurse = $userModel->getById($nurseId, $nurseId, $role, 'full');
         if (!$nurse) {
-            throw new RuntimeException('Profil infirmier introuvable');
+            throw HttpStatusException::notFound('Profil infirmier introuvable');
         }
         $address = $nurse['address'] ?? null;
         if (!is_array($address) || empty($address['label'])) {

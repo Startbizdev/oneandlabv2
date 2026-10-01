@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/Auth.php';
 require_once __DIR__ . '/../../lib/RateLimit.php';
 require_once __DIR__ . '/../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS - Fonction pour obtenir et valider l'origine
@@ -73,7 +74,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     
     if (!isset($input['user_id'], $input['otp'], $input['session_id'])) {
-        throw new Exception('user_id, session_id et otp requis');
+        throw new InvalidArgumentException('user_id, session_id et otp requis');
     }
     
     // Convertir l'OTP en string et nettoyer
@@ -83,7 +84,7 @@ try {
     
     // Vérifier le format du code OTP avant de continuer
     if (strlen($otp) !== 6 || !preg_match('/^\d{6}$/', $otp)) {
-        throw new Exception('Code OTP invalide (doit être exactement 6 chiffres)');
+        throw new InvalidArgumentException('Code OTP invalide (doit être exactement 6 chiffres)');
     }
     
     // Convertir user_id en string
@@ -103,19 +104,16 @@ try {
     }
     
     $auth = new Auth();
-    
-    try {
-        $result = $auth->verifyOTP($sessionId, $otp, $userId);
-        echo json_encode($result);
-    } catch (Exception $e) {
-        throw $e;
-    }
-} catch (Exception $e) {
+    $result = $auth->verifyOTP($sessionId, $otp, $userId);
+    echo json_encode($result);
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'code' => 'VALIDATION_ERROR',
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('vérification OTP', $e, 'La vérification du code a échoué. Réessayez dans un instant.');
 }
 

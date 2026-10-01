@@ -8,6 +8,7 @@ require_once __DIR__ . '/Logger.php';
 require_once __DIR__ . '/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/PatientUrgencyConfig.php';
 require_once __DIR__ . '/PatientBookingDraftStorage.php';
+require_once __DIR__ . '/appointments/AppointmentCreateInputPolicy.php';
 
 /**
  * Après paiement Stripe : création RDV depuis le JSON brouillon + pièces.
@@ -54,6 +55,7 @@ final class PatientBookingDraftExecutor
             if (($sanitized['patient_id'] ?? '') !== $userId) {
                 throw new RuntimeException('patient_id incohérent avec le brouillon');
             }
+            $sanitized = AppointmentCreateInputPolicy::apply($db, ['user_id' => $userId, 'role' => 'patient'], $sanitized);
             if (!empty($sanitized['relative_id'])) {
                 $relativeOwner = $db->prepare(
                     'SELECT 1 FROM patient_relatives WHERE id = ? AND patient_id = ? LIMIT 1'

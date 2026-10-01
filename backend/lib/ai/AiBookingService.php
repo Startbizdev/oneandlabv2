@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../appointments/AppointmentCreateInputPolicy.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/UnifiedRdvValidator.php';
 require_once __DIR__ . '/AiDraftPayloadEnricher.php';
 require_once __DIR__ . '/AiBookingPayloadBuilder.php';
 require_once __DIR__ . '/AiBookingWorkflow.php';
+require_once __DIR__ . '/AiBookingAccess.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../models/User.php';
@@ -34,6 +36,7 @@ class AiBookingService
      */
     public function createDraft(array $user, array $input): array
     {
+        AiBookingAccess::assertAllowed($user);
         $id = Uuid::v4();
         $role = (string) ($user['role'] ?? '');
         $payload = is_array($input['payload'] ?? null) ? $input['payload'] : [];
@@ -105,6 +108,7 @@ class AiBookingService
      */
     public function patchDraft(string $id, array $user, array $patch, ?string $userMessage = null): ?array
     {
+        AiBookingAccess::assertAllowed($user);
         $draft = $this->getDraft($id, (string) $user['user_id']);
         if (!$draft || in_array($draft['status'], ['confirmed', 'cancelled', 'expired'], true)) {
             return null;
@@ -155,19 +159,20 @@ class AiBookingService
      */
     public function confirmDraft(string $id, array $user, array $finalPatch = []): array
     {
+        AiBookingAccess::assertAllowed($user);
         $draft = $this->getDraft($id, (string) $user['user_id']);
         if (!$draft) {
-            throw new RuntimeException('Brouillon introuvable');
+            throw HttpStatusException::notFound('Brouillon introuvable');
         }
         if ($draft['status'] === 'confirmed') {
-            throw new RuntimeException('Brouillon déjà confirmé');
+            throw HttpStatusException::conflict('Brouillon déjà confirmé', 'DRAFT_ALREADY_CONFIRMED');
         }
         if ($draft['status'] !== 'ready') {
-            throw new RuntimeException('Complétez le récapitulatif avant de valider');
+            throw new HttpStatusException('Complétez le récapitulatif avant de valider', 400, 'DRAFT_NOT_READY');
         }
         if (strtotime((string) $draft['expires_at']) < time()) {
             $this->db->prepare('UPDATE ai_appointment_drafts SET status = ? WHERE id = ?')->execute(['expired', $id]);
-            throw new RuntimeException('Brouillon expiré');
+            throw new HttpStatusException('Brouillon expiré', 400, 'DRAFT_EXPIRED');
         }
 
         $payload = array_merge($draft['payload'] ?? [], $finalPatch);
@@ -183,10 +188,13 @@ class AiBookingService
 
         $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
         if (!$validation['valid']) {
-            throw new RuntimeException($validation['error'] ?? 'Brouillon incomplet');
+            throw new HttpStatusException($validation['error'] ?? 'Brouillon incomplet', 400, 'VALIDATION_ERROR');
         }
 
-        $appointmentInputs = AiBookingPayloadBuilder::buildFromDraft($payload, $user, $role);
+        $appointmentInputs = array_map(
+            fn (array $input): array => AppointmentCreateInputPolicy::apply($this->db, $user, $input),
+            AiBookingPayloadBuilder::buildFromDraft($payload, $user, $role)
+        );
         $appointmentIds = [];
         $batchId = count($appointmentInputs) > 1 ? Uuid::v4() : null;
 
@@ -256,17 +264,21 @@ class AiBookingService
             }
         }
 
-        return $this->userModel->create([
-            'email' => $email,
-            'first_name' => (string) ($payload['first_name'] ?? $form['first_name'] ?? ''),
-            'last_name' => (string) ($payload['last_name'] ?? $form['last_name'] ?? ''),
-            'phone' => (string) ($payload['phone'] ?? $form['phone'] ?? ''),
-            'birth_date' => $payload['birth_date'] ?? $form['birth_date'] ?? null,
-            'gender' => $payload['gender'] ?? $form['gender'] ?? null,
-            'address' => $payload['address'] ?? $form['address'] ?? null,
-            'role' => 'patient',
-            'created_by' => $user['user_id'],
-        ], (string) $user['user_id'], (string) $user['role']);
+        try {
+            return $this->userModel->create([
+                'email' => $email,
+                'first_name' => (string) ($payload['first_name'] ?? $form['first_name'] ?? ''),
+                'last_name' => (string) ($payload['last_name'] ?? $form['last_name'] ?? ''),
+                'phone' => (string) ($payload['phone'] ?? $form['phone'] ?? ''),
+                'birth_date' => $payload['birth_date'] ?? $form['birth_date'] ?? null,
+                'gender' => $payload['gender'] ?? $form['gender'] ?? null,
+                'address' => $payload['address'] ?? $form['address'] ?? null,
+                'role' => 'patient',
+                'created_by' => $user['user_id'],
+            ], (string) $user['user_id'], (string) $user['role']);
+        } catch (EmailAlreadyUsed $e) {
+            throw HttpStatusException::conflict($e->getMessage(), EmailAlreadyUsed::CODE);
+        }
     }
 
     /**

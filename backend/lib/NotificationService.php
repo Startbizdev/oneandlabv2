@@ -257,7 +257,6 @@ class NotificationService
                 $formData = $appointmentData['form_data'] ?? null;
                 $when = NotificationMessageFormatter::whenShort($formData, $appointmentData['scheduled_at'] ?? null);
                 $message = NotificationMessageFormatter::joinParts([
-                    'RDV enregistré',
                     $careType ?: null,
                     $when ?: null,
                 ]);
@@ -266,7 +265,7 @@ class NotificationService
                     $appointmentData['patient_id'],
                     'appointment_created',
                     'RDV créé',
-                    $message,
+                    $message !== '' ? $message : 'Votre demande a bien été enregistrée.',
                     ['appointment_id' => $appointmentId]
                 );
             } catch (Exception $e) {
@@ -319,9 +318,7 @@ class NotificationService
         }
 
         $titlePatient = $n > 1 ? 'Nouveaux rendez-vous créés' : 'Nouveau rendez-vous créé';
-        $messagePatient = $n > 1
-            ? "{$n} RDV enregistrés."
-            : 'RDV enregistré.';
+        $messagePatient = implode(', ', $batchSummaries);
 
         try {
             $this->createNotification(

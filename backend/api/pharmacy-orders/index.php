@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../pharmacy/_helpers.php';
 require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../../lib/pharmacy/PharmacyNotificationHelper.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 [$user, $db, $moduleConfig, $orderService] = pharmacyApiBootstrap(['GET', 'POST', 'OPTIONS']);
 $notifications = new NotificationService();
@@ -63,6 +64,8 @@ if ($method === 'POST') {
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    } catch (PDOException $e) {
+        ApiServerError::respond('création commande pharmacie user=' . ($user['user_id'] ?? ''), $e, 'La commande n’a pas pu être envoyée. Réessayez plus tard.');
     } catch (RuntimeException $e) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

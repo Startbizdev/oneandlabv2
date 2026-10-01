@@ -26,7 +26,7 @@ final class PatientUrgencyGuard
         if ($verifiedPayment && is_array($pu) && !empty($pu['paid'])) {
             return;
         }
-        throw new Exception(
+        throw new DomainException(
             'Le supplément Horaire VIP doit être réglé avant la confirmation du rendez-vous.'
         );
     }

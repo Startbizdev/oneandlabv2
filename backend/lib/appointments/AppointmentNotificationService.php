@@ -14,6 +14,18 @@ require_once __DIR__ . '/AppointmentDispatchService.php';
  */
 final class AppointmentNotificationService
 {
+    /** Acteurs professionnels : messages nominatifs (« Le laboratoire X a annulé… ») et prévenance des assignés. */
+    private const PROFESSIONAL_ACTOR_ROLES = ['nurse', 'lab', 'subaccount', 'preleveur', 'pro'];
+
+    /**
+     * Valeur canceledBy de NotificationAppointmentCanceledFlow : 'nurse' désigne tout professionnel
+     * (y compris le pro qui annule pour reprogrammer), 'patient' sinon.
+     */
+    public static function canceledByForActorRole(?string $actorRole): string
+    {
+        return in_array($actorRole, [...self::PROFESSIONAL_ACTOR_ROLES, 'super_admin'], true) ? 'nurse' : 'patient';
+    }
+
     public function __construct(
         private PDO $db,
         private Crypto $crypto,
@@ -498,7 +510,7 @@ final class AppointmentNotificationService
         
         // Libellé de l'acteur (labo, sous-compte, préleveur, infirmier) pour les messages de notification
         $actorDisplayLabel = null;
-        if ($actorId && $actorRole && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'preleveur'])) {
+        if ($actorId && $actorRole && in_array($actorRole, self::PROFESSIONAL_ACTOR_ROLES, true)) {
             $actorDisplayLabel = $this->getActorDisplayLabel($actorId, $actorRole);
         }
         
@@ -663,11 +675,7 @@ final class AppointmentNotificationService
                 break;
                 
             case 'canceled':
-                // Déterminer qui a annulé (patient ou professionnel) selon le rôle de l'acteur
-                $canceledBy = 'patient'; // Par défaut
-                if ($actorRole && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'])) {
-                    $canceledBy = 'nurse'; // Ou 'professional' mais on garde 'nurse' pour simplifier
-                }
+                $canceledBy = self::canceledByForActorRole($actorRole);
                 
                 $appointmentType = $appointment['type'] ?? null;
                 $careTypeLabel = $appointment['category_name'] ?? (
@@ -803,7 +811,7 @@ final class AppointmentNotificationService
             $userModel = new User();
             $actor = $userModel->getById($actorId, 'system', 'system');
             if (!$actor) {
-                return $actorRole === 'nurse' ? "L'infirmier" : ($actorRole === 'preleveur' ? 'Le préleveur' : 'Le laboratoire');
+                return self::fallbackActorLabel($actorRole);
             }
             $first = trim((string)($actor['first_name'] ?? ''));
             $last = trim((string)($actor['last_name'] ?? ''));
@@ -819,10 +827,23 @@ final class AppointmentNotificationService
             if ($actorRole === 'nurse') {
                 return ($name !== '' ? "L'infirmier " . $name : "L'infirmier");
             }
+            if ($actorRole === 'pro') {
+                return $name !== '' ? 'Le professionnel de santé ' . $name : 'Le professionnel de santé';
+            }
         } catch (Exception $e) {
             // Ignorer
         }
-        return $actorRole === 'nurse' ? "L'infirmier" : ($actorRole === 'preleveur' ? 'Le préleveur' : 'Le laboratoire');
+        return self::fallbackActorLabel($actorRole);
+    }
+
+    private static function fallbackActorLabel(string $actorRole): string
+    {
+        return match ($actorRole) {
+            'nurse' => "L'infirmier",
+            'preleveur' => 'Le préleveur',
+            'pro' => 'Le professionnel de santé',
+            default => 'Le laboratoire',
+        };
     }
 
     /**

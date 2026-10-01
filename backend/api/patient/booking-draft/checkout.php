@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../lib/Validation.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/PatientUrgencyConfig.php';
+require_once __DIR__ . '/../../../lib/StripeErrorResponse.php';
 require_once __DIR__ . '/../../../vendor/autoload.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -136,8 +137,7 @@ try {
         ],
     ]);
 } catch (\Stripe\Exception\ApiErrorException $e) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    StripeErrorResponse::respond('checkout urgence draft=' . $draftId . ' user=' . $uid, $e);
     exit;
 }
 

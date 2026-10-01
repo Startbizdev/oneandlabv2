@@ -29,8 +29,8 @@ try {
     health_json_response(['success' => true, 'data' => $result]);
 } catch (InvalidArgumentException $e) {
     health_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    health_json_error($e->getMessage(), 404);
+} catch (HttpStatusException $e) {
+    health_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('health/devices/sync: ' . $e->getMessage());
     health_json_error('Synchronisation impossible', 500);

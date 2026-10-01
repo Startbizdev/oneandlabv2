@@ -23,11 +23,8 @@ try {
     ], 201);
 } catch (InvalidArgumentException $e) {
     nurse_passage_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    nurse_passage_json_error($e->getMessage(), 403);
-} catch (Exception $e) {
-    error_log('[nurse/passages/series] ' . $e->getMessage());
-    nurse_passage_json_error($e->getMessage(), 400);
+} catch (HttpStatusException $e) {
+    nurse_passage_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[nurse/passages/series] ' . $e->getMessage());
     nurse_passage_json_error('Création passage impossible', 500);

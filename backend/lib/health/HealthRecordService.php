@@ -185,13 +185,37 @@ final class HealthRecordService
      */
     public function getRecapForStaff(array $viewer, string $patientId): array
     {
+        $this->assertStaffAccess($viewer, $patientId);
+        $this->logAccess($viewer, $patientId);
+
+        return $this->getRecap($patientId, true);
+    }
+
+    /**
+     * Écriture soignant : l'accès au dossier est vérifié avant toute écriture.
+     *
+     * @param array<string, mixed> $viewer
+     * @param array<string, array{value: mixed}> $answers
+     * @return array<string, mixed>
+     */
+    public function upsertAnswersForStaff(array $viewer, string $patientId, array $answers): array
+    {
+        $this->assertStaffAccess($viewer, $patientId);
+        $this->upsertAnswers($patientId, $answers, 'staff');
+        $this->logAccess($viewer, $patientId);
+
+        return $this->getRecap($patientId, true);
+    }
+
+    /**
+     * @param array<string, mixed> $viewer
+     */
+    private function assertStaffAccess(array $viewer, string $patientId): void
+    {
         $userModel = new User();
         if (!PatientDossierAccess::canAccess($this->db, $userModel, $viewer, $patientId)) {
             throw new RuntimeException('Accès carnet refusé');
         }
-        $this->logAccess($viewer, $patientId);
-
-        return $this->getRecap($patientId, true);
     }
 
     /**

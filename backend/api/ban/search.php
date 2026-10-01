@@ -23,6 +23,7 @@ if (file_exists($envFile) && is_readable($envFile)) {
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../lib/GoogleAddressSearch.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../config/cors.php';
 
 // CORS
@@ -58,7 +59,7 @@ try {
     $limit = (int) ($_GET['limit'] ?? 10);
     
     if (empty($query)) {
-        throw new Exception('Paramètre q (query) requis');
+        throw new InvalidArgumentException('Paramètre q (query) requis');
     }
     
     $search = new GoogleAddressSearch();
@@ -68,12 +69,14 @@ try {
         'success' => true,
         'data' => $results,
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'code' => 'VALIDATION_ERROR',
     ]);
+} catch (Exception $e) {
+    ApiServerError::respond('recherche d’adresse', $e, 'La recherche d’adresse est momentanément indisponible. Réessayez plus tard.');
 }
 

@@ -28,8 +28,8 @@ try {
         'success' => true,
         'data' => $service->optimize($nurseId, $date, $mode, $force, $origin),
     ]);
-} catch (RuntimeException $e) {
-    nurse_tour_json_error($e->getMessage(), 409, 'manual_order_locked');
+} catch (HttpStatusException $e) {
+    nurse_tour_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[nurse/tour/optimize] ' . $e->getMessage());
     nurse_tour_json_error('Optimisation impossible', 500);

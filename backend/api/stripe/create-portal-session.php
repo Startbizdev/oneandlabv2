@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../config/stripe.php';
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../lib/SubscriptionManagement.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
+require_once __DIR__ . '/../../lib/StripeErrorResponse.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -34,8 +36,7 @@ try {
     $roleMiddleware = new RoleMiddleware();
     $roleMiddleware->handle($authUser, ['nurse', 'lab']);
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    ApiServerError::respond('authentification', $e);
     exit;
 }
 
@@ -79,6 +80,5 @@ try {
     ]);
     echo json_encode(['success' => true, 'url' => $session->url]);
 } catch (\Stripe\Exception\ApiErrorException $e) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    StripeErrorResponse::respond('portail Stripe user=' . $userId, $e);
 }

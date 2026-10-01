@@ -51,6 +51,29 @@ final class UserIdentityLookup
     }
 
     /**
+     * Réponse de GET /patients/lookup : uniquement ce qu'il faut pour proposer le rattachement
+     * (identifiant pour l'adoption, nom et date de naissance pour confirmer l'identité).
+     * Le dossier complet n'est lisible qu'après adoption, via GET /users/{id}.
+     *
+     * @param array<string, mixed>|null $profile profil déchiffré
+     * @return array{id: string, first_name: string, last_name: string, birth_date: ?string}|null
+     */
+    public static function patientLookupMatch(?array $profile): ?array
+    {
+        if ($profile === null || ($profile['role'] ?? '') !== 'patient' || (string) ($profile['id'] ?? '') === '') {
+            return null;
+        }
+        $birthDate = trim((string) ($profile['birth_date'] ?? ''));
+
+        return [
+            'id' => (string) $profile['id'],
+            'first_name' => (string) ($profile['first_name'] ?? ''),
+            'last_name' => (string) ($profile['last_name'] ?? ''),
+            'birth_date' => $birthDate !== '' ? $birthDate : null,
+        ];
+    }
+
+    /**
      * Profil quel que soit le rôle (détection collision email_hash avant INSERT).
      *
      * @return array{id: string, role: string}|null
@@ -88,6 +111,19 @@ final class UserIdentityLookup
         $id = $stmt->fetchColumn();
 
         return $id ? (string) $id : null;
+    }
+
+    /** Recherche exacte du formulaire RDV (GET /patients/lookup) : e-mail, sinon téléphone français. */
+    public function findPatientIdByContact(string $email, string $phoneRaw): ?string
+    {
+        $email = strtolower(trim($email));
+        if ($email !== '') {
+            return filter_var($email, FILTER_VALIDATE_EMAIL) ? $this->findPatientIdByEmailHash(hash('sha256', $email)) : null;
+        }
+        $digits = self::normalizeFrenchPatientPhoneDigits($phoneRaw);
+        $hash = $digits !== null ? self::patientPhoneDigitsHash($digits) : null;
+
+        return $hash !== null ? $this->findPatientIdByPhoneDigitsHash($hash) : null;
     }
 
     public function findPatientIdByPhoneDigitsHash(string $phoneHash): ?string

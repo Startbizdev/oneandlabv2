@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../ApiServerError.php';
 
 function ai_db(): PDO
 {

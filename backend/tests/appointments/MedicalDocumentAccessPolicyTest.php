@@ -91,4 +91,69 @@ final class MedicalDocumentAccessPolicyTest extends TestCase
             null
         ));
     }
+
+    /** @param list<array<string, string>> $orders */
+    private function dbReturningOrders(array $orders, array $expectedParams): PDO
+    {
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->expects($this->once())->method('execute')->with($expectedParams)->willReturn(true);
+        $stmt->method('fetchAll')->willReturn($orders);
+        $db = $this->createMock(PDO::class);
+        $db->expects($this->once())->method('prepare')
+            ->with($this->stringContains('FROM pharmacy_orders'))
+            ->willReturn($stmt);
+
+        return $db;
+    }
+
+    public function testRecipientPharmacyCanViewAttachedPrescription(): void
+    {
+        $db = $this->dbReturningOrders(
+            [['requester_id' => 'pro-1', 'pharmacy_id' => 'ph-1', 'patient_id' => 'pat-1']],
+            ['ph-1', 'ph-1', 'ph-1', 'doc-1'],
+        );
+
+        $this->assertTrue(MedicalDocumentAccess::userCanViewViaPharmacyOrder(
+            $db,
+            ['user_id' => 'ph-1', 'role' => 'pro'],
+            'doc-1',
+        ));
+    }
+
+    public function testUserWithoutLinkedOrderCannotViewPrescription(): void
+    {
+        $db = $this->dbReturningOrders([], ['ph-2', 'ph-2', 'ph-2', 'doc-1']);
+
+        $this->assertFalse(MedicalDocumentAccess::userCanViewViaPharmacyOrder(
+            $db,
+            ['user_id' => 'ph-2', 'role' => 'pro'],
+            'doc-1',
+        ));
+    }
+
+    public function testPatientIdMatchRequiresPatientRole(): void
+    {
+        $db = $this->dbReturningOrders(
+            [['requester_id' => 'pro-1', 'pharmacy_id' => 'ph-1', 'patient_id' => 'x-1']],
+            ['x-1', 'x-1', 'x-1', 'doc-1'],
+        );
+
+        $this->assertFalse(MedicalDocumentAccess::userCanViewViaPharmacyOrder(
+            $db,
+            ['user_id' => 'x-1', 'role' => 'nurse'],
+            'doc-1',
+        ));
+    }
+
+    public function testEmptyDocumentIdNeverQueries(): void
+    {
+        $db = $this->createMock(PDO::class);
+        $db->expects($this->never())->method('prepare');
+
+        $this->assertFalse(MedicalDocumentAccess::userCanViewViaPharmacyOrder(
+            $db,
+            ['user_id' => 'ph-1', 'role' => 'pro'],
+            '',
+        ));
+    }
 }

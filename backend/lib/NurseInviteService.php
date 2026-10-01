@@ -10,6 +10,10 @@ require_once __DIR__ . '/SmsSender.php';
 
 require_once __DIR__ . '/../models/User.php';
 
+require_once __DIR__ . '/RateLimit.php';
+
+require_once __DIR__ . '/users/UserIdentityLookup.php';
+
 
 
 /**
@@ -21,6 +25,33 @@ require_once __DIR__ . '/../models/User.php';
 final class NurseInviteService
 
 {
+
+    public const SMS_MAX_PER_CREATOR_PER_DAY = 20;
+
+    public const SMS_MAX_PER_PHONE_PER_DAY = 5;
+
+    private const QUOTA_WINDOW_SECONDS = 86400;
+
+    /** Mobile français (06 / 07, ou +33 6 / 7) normalisé en 10 chiffres ; null si invalide. */
+    public static function normalizeInvitePhone(mixed $raw): ?string
+    {
+        if (!is_string($raw)) {
+            return null;
+        }
+        $digits = UserIdentityLookup::normalizeFrenchPatientPhoneDigits($raw);
+
+        return $digits !== null && preg_match('/^0[67]\d{8}$/', $digits) === 1 ? $digits : null;
+    }
+
+    /**
+     * Anti-abus avant l'envoi : plafond par professionnel et par numéro destinataire sur 24 h.
+     * À consommer avant de créer le RDV pour ne pas laisser de RDV orphelin en cas de refus.
+     */
+    public static function consumeSmsQuota(string $creatorUserId, string $phoneDigits): bool
+    {
+        return RateLimit::allow('nurse_invite_sms_creator', $creatorUserId, self::SMS_MAX_PER_CREATOR_PER_DAY, self::QUOTA_WINDOW_SECONDS)
+            && RateLimit::allow('nurse_invite_sms_phone', $phoneDigits, self::SMS_MAX_PER_PHONE_PER_DAY, self::QUOTA_WINDOW_SECONDS);
+    }
 
     /**
 
@@ -42,13 +73,13 @@ final class NurseInviteService
 
     ): array {
 
-        $phone = trim((string) ($invite['phone'] ?? ''));
+        $phone = self::normalizeInvitePhone($invite['phone'] ?? null);
 
 
 
-        if ($phone === '') {
+        if ($phone === null) {
 
-            throw new InvalidArgumentException('Téléphone infirmier requis pour l\'invitation');
+            throw new InvalidArgumentException('Numéro de mobile de l\'infirmier invalide pour l\'invitation');
 
         }
 

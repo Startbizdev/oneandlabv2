@@ -220,6 +220,9 @@ final class AiTurnOrchestrator
         string $conversationId,
         ?array $existingDraft,
     ): ?array {
+        if (!AiBookingAccess::allows($user)) {
+            return null;
+        }
         if ($patch === null || !$this->patchHasSignal($patch)) {
             return is_array($existingDraft) && in_array($existingDraft['status'] ?? '', ['collecting', 'ready'], true)
                 ? $existingDraft

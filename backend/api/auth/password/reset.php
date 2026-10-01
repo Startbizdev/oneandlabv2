@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../lib/Auth.php';
 require_once __DIR__ . '/../../../lib/RateLimit.php';
 require_once __DIR__ . '/../../../lib/auth_public_helpers.php';
+require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 authPublicCors('POST, OPTIONS');
 
@@ -34,10 +35,10 @@ try {
     $email = isset($input['email']) ? trim((string) $input['email']) : null;
 
     if ($newPassword === '') {
-        throw new Exception('Nouveau mot de passe requis');
+        throw new InvalidArgumentException('Nouveau mot de passe requis');
     }
     if ($newPassword !== $confirmPassword) {
-        throw new Exception('Les mots de passe ne correspondent pas');
+        throw new InvalidArgumentException('Les mots de passe ne correspondent pas');
     }
 
     $auth = new Auth();
@@ -47,10 +48,12 @@ try {
         'success' => true,
         'message' => 'Mot de passe mis à jour. Vous pouvez vous connecter.',
     ]);
-} catch (Exception $e) {
+} catch (InvalidArgumentException | DomainException $e) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
     ]);
+} catch (Throwable $e) {
+    ApiServerError::respond('réinitialisation mot de passe', $e, 'La réinitialisation du mot de passe a échoué. Réessayez plus tard.');
 }

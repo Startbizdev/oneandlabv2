@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/QrCodeService.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 $corsConfig = require __DIR__ . '/../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -41,6 +42,8 @@ try {
     $service = new QrCodeService();
     $visitId = $service->recordVisit($token, $sessionId !== '' ? $sessionId : null);
     echo json_encode(['success' => true, 'data' => ['visit_id' => $visitId]]);
+} catch (PDOException $e) {
+    ApiServerError::respond('enregistrement visite QR', $e, 'Erreur serveur');
 } catch (RuntimeException $e) {
     $code = (int) $e->getCode();
     if ($code < 400 || $code >= 600) {

@@ -44,15 +44,15 @@ final class AppointmentCreationValidator
         if ($minHours > 0 && !$skipLeadTimeValidation) {
             $minAllowed = (clone $now)->modify("+{$minHours} hours");
             if ($scheduledDate < $minAllowed) {
-                throw new Exception("La date du rendez-vous doit être au moins {$minHours}h à l'avance par rapport à maintenant.");
+                throw new DomainException("La date du rendez-vous doit être au moins {$minHours}h à l'avance par rapport à maintenant.");
             }
         }
         $dayOfWeek = (int) $scheduledDate->format('w'); // 0 = dimanche, 6 = samedi
         if ($dayOfWeek === 0 && !$acceptSunday) {
-            throw new Exception('Ce laboratoire n\'accepte pas les rendez-vous le dimanche.');
+            throw new DomainException('Ce laboratoire n\'accepte pas les rendez-vous le dimanche.');
         }
         if ($dayOfWeek === 6 && !$acceptSaturday) {
-            throw new Exception('Ce laboratoire n\'accepte pas les rendez-vous le samedi.');
+            throw new DomainException('Ce laboratoire n\'accepte pas les rendez-vous le samedi.');
         }
     }
 

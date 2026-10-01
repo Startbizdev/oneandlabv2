@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
+require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../config/cors.php';
@@ -88,12 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'data' => array_merge($preferences, $defaultPreferences),
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('préférences soins infirmier user=' . $user['user_id'], $e, 'Impossible de charger vos types de soins. Réessayez plus tard.');
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
     // Créer/mettre à jour une préférence
@@ -178,12 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ]
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage(),
-            'code' => 'SERVER_ERROR',
-        ]);
+        ApiServerError::respond('mise à jour préférence soin infirmier user=' . $user['user_id'], $e, 'La mise à jour de ce type de soin a échoué. Réessayez plus tard.');
     }
 } else {
     http_response_code(405);

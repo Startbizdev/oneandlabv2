@@ -152,6 +152,13 @@ final class AiBookingToolExecutor
      */
     private function updateDraft(array $arguments): array
     {
+        if (!AiBookingAccess::allows($this->user)) {
+            return ['draft' => null, 'result' => [
+                'ok' => false,
+                'error' => 'booking_not_available_for_role',
+                'user_hint_fr' => AiBookingAccess::DENIED_MESSAGE,
+            ]];
+        }
         $patch = $arguments['patch'] ?? $arguments;
         if (!is_array($patch)) {
             return ['draft' => $this->draft, 'result' => ['ok' => false, 'error' => 'patch invalide']];

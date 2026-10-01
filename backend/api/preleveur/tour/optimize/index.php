@@ -28,8 +28,8 @@ try {
         'success' => true,
         'data' => $service->optimize($preleveurId, $date, $mode, $force, $origin),
     ]);
-} catch (RuntimeException $e) {
-    preleveur_tour_json_error($e->getMessage(), 409, 'manual_order_locked');
+} catch (HttpStatusException $e) {
+    preleveur_tour_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {
     error_log('[preleveur/tour/optimize] ' . $e->getMessage());
     preleveur_tour_json_error('Optimisation impossible', 500);
