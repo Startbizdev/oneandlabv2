@@ -18,7 +18,7 @@ import {
 } from '@/utils/appointment-documents-upload';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import { filterListDocuments } from '../utils/document-labels';
-import { getRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
 import {
   MedicalDocumentAddRow,
   MedicalDocumentOpenRowContainer,
@@ -67,7 +67,7 @@ export function RdvDocumentsPremiumPanel({
   omitCarePhotos = true,
 }: Props) {
   const c = useAppColors();
-  const section = getRdvDetailSectionStyles();
+  const section = useRdvDetailSectionStyles();
   const headStyles = useMedicalDocumentsStackHeadStyles();
   const { show: toast } = useToast();
   const qc = useQueryClient();

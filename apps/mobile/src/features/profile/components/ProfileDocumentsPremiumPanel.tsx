@@ -20,7 +20,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { getRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
 import {
   MedicalDocumentAddRow,
   MedicalDocumentOpenRowContainer,
@@ -52,7 +52,7 @@ interface Props {
 
 export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props) {
   const c = useAppColors();
-  const section = getRdvDetailSectionStyles();
+  const section = useRdvDetailSectionStyles();
   const headStyles = useMedicalDocumentsStackHeadStyles();
   const user = useAuthStore((s) => s.user);
   const isHydrated = useAuthStore((s) => s.isHydrated);

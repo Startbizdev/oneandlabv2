@@ -15,7 +15,7 @@ import {
 } from '@/utils/appointment-batch';
 import { appointmentStatusForDisplay } from '@/utils/effective-appointment-status';
 import { useAppColors } from '@/theme/use-app-colors';
-import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { RdvListCardBody } from './RdvListCardBody';
 import { buildRdvListCardAccessibilityLabel } from './rdv-list-card-accessibility';
@@ -47,7 +47,7 @@ function AppointmentListRowCardComponent({
   const styles = useStyles(buildStyles);
 
   useAppColors();
-  const cardStyles = getAppointmentListCardStyles();
+  const cardStyles = useAppointmentListCardStyles();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

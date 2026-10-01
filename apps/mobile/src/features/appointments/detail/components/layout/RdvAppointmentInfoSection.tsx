@@ -21,7 +21,7 @@ import {
 } from '../../utils/appointment-address-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
 import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 interface Props {
   apt: Appointment;
@@ -82,6 +82,7 @@ function InfoRow({
   onViewPatientProfile?: () => void;
   viewPatientProfileLabel?: string;
 }) {
+  const section = useRdvDetailSectionStyles();
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   if (row.kind === 'address') return null;
@@ -89,9 +90,9 @@ function InfoRow({
   return (
     <View
       style={[
-        getRdvDetailSectionStyles().sectionRow,
+        section.sectionRow,
         styles.infoRow,
-        index > 0 && getRdvDetailSectionStyles().rowBorder,
+        index > 0 && section.rowBorder,
       ]}
     >
       {row.kind === 'identity' ? (
@@ -156,6 +157,7 @@ export function RdvAppointmentInfoSection({
   onViewPatientProfile,
   viewPatientProfileLabel,
 }: Props) {
+  const section = useRdvDetailSectionStyles();
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
@@ -211,7 +213,7 @@ export function RdvAppointmentInfoSection({
   let rowIndex = addressRowVisible ? 1 : 0;
 
   return (
-    <View style={[getRdvDetailSectionStyles().card, edgeToEdge && getRdvDetailSectionStyles().cardEdge]}>
+    <View style={[section.card, edgeToEdge && section.cardEdge]}>
       <View>
         {addressRowVisible ? (
           <RdvAddressFieldRow
@@ -268,9 +270,9 @@ export function RdvAppointmentInfoSection({
         {contactButtons.length > 0 ? (
           <View
             style={[
-              getRdvDetailSectionStyles().sectionRow,
+              section.sectionRow,
               styles.actionsRow,
-              rowIndex > 0 && getRdvDetailSectionStyles().rowBorder,
+              rowIndex > 0 && section.rowBorder,
             ]}
           >
             <Row gap={spacing[1.5]}>

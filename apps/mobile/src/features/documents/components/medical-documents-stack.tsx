@@ -18,7 +18,7 @@ import {
   formatDocumentFileSubtitle,
   formatDocumentRowTitle,
 } from '@/utils/document-display-name';
-import { getRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
   cacheMedicalDocument,
@@ -112,7 +112,7 @@ export function MedicalDocumentsStackHead({
   loading?: boolean;
 }) {
   const c = useAppColors();
-  const section = getRdvDetailSectionStyles();
+  const section = useRdvDetailSectionStyles();
   const styles = useStyles(buildHeadStyles);
 
   if (loading) {

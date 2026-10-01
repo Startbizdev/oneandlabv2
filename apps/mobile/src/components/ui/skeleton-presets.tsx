@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Skeleton } from './Skeleton';
 import { radius, spacing, useStyles, type Theme } from '@/theme';
-import { getRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
 
 /** Ligne label + valeur (fiche KV, profil, etc.). */
 export function SkeletonKvRow({
@@ -23,17 +23,16 @@ export function SkeletonKvRow({
   );
 }
 
-const SKELETON_CTX = 'skeleton-presets';
-
 /** Placeholder lignes soin pendant chargement catalogue / lot. */
 export function SkeletonRdvCarePlaceholder({ count = 3 }: { count?: number }) {
+  const section = useRdvDetailSectionStyles();
   const styles = useStyles(buildStyles);
   return (
     <View style={styles.careBlock}>
       {Array.from({ length: count }).map((_, i) => (
         <View
           key={i}
-          style={[getRdvDetailSectionStyles().sectionRow, i > 0 && getRdvDetailSectionStyles().rowBorder]}
+          style={[section.sectionRow, i > 0 && section.rowBorder]}
         >
           <SkeletonKvRow labelWidth="38%" valueWidth="85%" />
         </View>
@@ -52,26 +51,27 @@ export function SkeletonRdvInfoCard({
   carePlaceholderCount?: number;
   showContactButtons?: boolean;
 }) {
+  const section = useRdvDetailSectionStyles();
   const styles = useStyles(buildStyles);
   return (
-    <View style={[getRdvDetailSectionStyles().card, edgeToEdge && getRdvDetailSectionStyles().cardEdge]}>
-      <View style={getRdvDetailSectionStyles().sectionRow}>
+    <View style={[section.card, edgeToEdge && section.cardEdge]}>
+      <View style={section.sectionRow}>
         <SkeletonKvRow labelWidth="22%" valueWidth="92%" />
       </View>
-      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
+      <View style={[section.sectionRow, section.rowBorder]}>
         <SkeletonKvRow labelWidth="36%" valueWidth="78%" />
       </View>
       {carePlaceholderCount > 0 ? (
         <SkeletonRdvCarePlaceholder count={carePlaceholderCount} />
       ) : null}
-      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
+      <View style={[section.sectionRow, section.rowBorder]}>
         <SkeletonKvRow labelWidth="24%" valueWidth="55%" />
       </View>
-      <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder]}>
+      <View style={[section.sectionRow, section.rowBorder]}>
         <SkeletonKvRow labelWidth="42%" valueWidth="68%" />
       </View>
       {showContactButtons ? (
-        <View style={[getRdvDetailSectionStyles().sectionRow, getRdvDetailSectionStyles().rowBorder, styles.actionsRow]}>
+        <View style={[section.sectionRow, section.rowBorder, styles.actionsRow]}>
           <View style={styles.buttonRow}>
             <Skeleton height={44} style={styles.buttonCell} borderRadius={radius.md} />
             <Skeleton height={44} style={styles.buttonCell} borderRadius={radius.md} />
@@ -113,8 +113,9 @@ export function SkeletonEntityRow({ showDivider = false }: { showDivider?: boole
 }
 
 export function SkeletonAssigneeCard({ rows = 2 }: { rows?: number }) {
+  const section = useRdvDetailSectionStyles();
   return (
-    <View style={getRdvDetailSectionStyles().card}>
+    <View style={section.card}>
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonEntityRow key={i} showDivider={i < rows - 1} />
       ))}
@@ -137,10 +138,11 @@ export function SkeletonDetailActionRow({ destructive = false }: { destructive?:
 }
 
 export function SkeletonDetailActionsCard({ count = 2 }: { count?: number }) {
+  const section = useRdvDetailSectionStyles();
   return (
-    <View style={getRdvDetailSectionStyles().card}>
+    <View style={section.card}>
       {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={i > 0 ? getRdvDetailSectionStyles().rowBorder : undefined}>
+        <View key={i} style={i > 0 ? section.rowBorder : undefined}>
           <SkeletonDetailActionRow destructive={i === count - 1 && count > 1} />
         </View>
       ))}

@@ -15,7 +15,7 @@ import { Cluster, Row, Stack } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { formatPassageStopTimeLabel } from '@oneandlab/shared-utils';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import type { NurseTourStop } from '../api/nurse-tour.service';
@@ -62,7 +62,7 @@ export function TourStopCard({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const cardStyles = getAppointmentListCardStyles();
+  const cardStyles = useAppointmentListCardStyles();
   const done = stop.visit_status === 'done' || stop.visit_status === 'skipped';
   const timeLabel =
     formatPassageStopTimeLabel({

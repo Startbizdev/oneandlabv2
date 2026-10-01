@@ -4,7 +4,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 export type DetailActionTone = 'primary' | 'neutral' | 'caution' | 'destructive';
 
@@ -121,7 +121,7 @@ function ActionRow({
 }
 
 export function DetailActionList({ actions, edgeToEdge = false, style }: Props) {
-  const section = getRdvDetailSectionStyles();
+  const section = useRdvDetailSectionStyles();
   if (!actions.length) return null;
 
   return (

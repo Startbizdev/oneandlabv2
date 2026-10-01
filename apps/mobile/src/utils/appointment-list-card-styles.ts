@@ -1,40 +1,32 @@
 import { StyleSheet } from 'react-native';
-import type { AppColors } from '@/theme/colors';
-import { elevation, radius, spacing } from '@/theme/tokens';
-import { getThemedStyles } from '@/theme/use-themed-styles';
+import { elevation, makeStyles, radius, spacing } from '@/theme';
 
 /** Coque ombre + carte intérieure (évite le clipping iOS avec overflow:hidden). */
-function buildAppointmentListCardStyles(c: AppColors) {
-  return {
-    cardShell: {
-      marginBottom: spacing[3],
-      borderRadius: radius.xl,
-      ...elevation.md,
-    },
-    card: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.cardBorder,
-      overflow: 'hidden' as const,
-    },
-    metaSection: {
-      gap: spacing[1.5],
-      paddingTop: spacing[2.5],
-      marginTop: spacing[1],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-    },
-    batchList: {
-      gap: spacing[2.5],
-      paddingTop: spacing[2.5],
-      marginTop: spacing[1],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-    },
-  };
-}
-
-export function getAppointmentListCardStyles() {
-  return getThemedStyles('appointment-list-card', buildAppointmentListCardStyles);
-}
+export const useAppointmentListCardStyles = makeStyles(({ colors: c }) => ({
+  cardShell: {
+    marginBottom: spacing[3],
+    borderRadius: radius.xl,
+    ...elevation.md,
+  },
+  card: {
+    backgroundColor: c.surface,
+    borderRadius: radius.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.cardBorder,
+    overflow: 'hidden',
+  },
+  metaSection: {
+    gap: spacing[1.5],
+    paddingTop: spacing[2.5],
+    marginTop: spacing[1],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.borderLight,
+  },
+  batchList: {
+    gap: spacing[2.5],
+    paddingTop: spacing[2.5],
+    marginTop: spacing[1],
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: c.borderLight,
+  },
+}));

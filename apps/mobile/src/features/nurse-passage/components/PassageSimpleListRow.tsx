@@ -7,7 +7,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
 import { TourStopCareSection } from '@/features/tournee-nurse/components/TourStopCareSection';
 import type { NurseTourStop } from '@/features/tournee-nurse/api/nurse-tour.service';
-import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import {
   formatPassageDurationLabel,
   formatPassageTimeLabel,
@@ -41,7 +41,7 @@ export function PassageSimpleListRow({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const cardStyles = getAppointmentListCardStyles();
+  const cardStyles = useAppointmentListCardStyles();
   const absent = isTourStopAbsent(stop);
   const done = !absent && (stop.visit_status === 'done' || stop.status === 'completed');
   const absenceLabel = stop.patient_absence?.card_label_fr;

@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin, Route } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
-import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { elevation, radius, spacing, iconSize, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 import type { NurseTourPayload } from '../api/nurse-tour.service';
@@ -21,7 +21,7 @@ type Props = {
 
 export function TourSummaryCard({ summary, activeRemaining }: Props) {
   const styles = useStyles(buildStyles);
-  const cardStyles = getAppointmentListCardStyles();
+  const cardStyles = useAppointmentListCardStyles();
   const total = summary.total_stops;
   const done = summary.done_stops;
   const absent = summary.absent_stops ?? 0;

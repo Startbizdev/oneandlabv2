@@ -15,7 +15,7 @@ import {
 } from '@/utils/appointment-batch';
 import { RdvListCardBody } from '@/features/appointments/components/RdvListCardBody';
 import { buildRdvListCardAccessibilityLabel } from '@/features/appointments/components/rdv-list-card-accessibility';
-import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
+import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { spacing, animation, useStyles, type Theme } from '@/theme';
 
@@ -36,7 +36,7 @@ function sortBatch(apts: Appointment[]) {
 function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
   const styles = useStyles(buildStyles);
 
-  const cardStyles = getAppointmentListCardStyles();
+  const cardStyles = useAppointmentListCardStyles();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

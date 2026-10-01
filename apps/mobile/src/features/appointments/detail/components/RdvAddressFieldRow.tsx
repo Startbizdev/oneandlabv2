@@ -11,7 +11,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
-import { getRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
+import { useRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
@@ -29,6 +29,7 @@ export function RdvAddressFieldRow({
   showMapActions = false,
   rowIndex = 0,
 }: Props) {
+  const section = useRdvDetailSectionStyles();
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
@@ -69,9 +70,9 @@ export function RdvAddressFieldRow({
   return (
     <View
       style={[
-        getRdvDetailSectionStyles().sectionRow,
+        section.sectionRow,
         styles.row,
-        rowIndex > 0 && getRdvDetailSectionStyles().rowBorder,
+        rowIndex > 0 && section.rowBorder,
       ]}
     >
       <AppText style={styles.label}>Adresse</AppText>
