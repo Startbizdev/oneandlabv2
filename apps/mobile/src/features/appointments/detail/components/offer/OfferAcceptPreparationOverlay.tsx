@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { radius, spacing, AppText, useLayoutMetrics, responsiveValue, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, AppText, useLayoutMetrics, responsiveValue, useStyles, font, type Theme } from '@/theme';
 
 const LOGO = require('../../../../../../assets/logo-cary.png');
 
@@ -168,7 +168,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(22, 182, 214, 0.14)',
+    backgroundColor: hexToRgba(palette.cyan[600], 0.14),
   },
   glowBottom: {
     position: 'absolute' as const,
@@ -177,7 +177,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(13, 148, 136, 0.1)',
+    backgroundColor: hexToRgba(palette.teal[600], 0.1),
   },
   safe: {
     minWidth: 0,

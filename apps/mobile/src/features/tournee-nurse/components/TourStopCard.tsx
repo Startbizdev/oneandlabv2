@@ -22,11 +22,9 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import { TourStopCareSection } from './TourStopCareSection';
 import { TourStopCompletedStamp } from './TourStopCompletedStamp';
 import { TourStopReorderControls } from './TourStopReorderControls';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, iconSize, AppText, useStyles, font, palette, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
-
-const WAZE_BRAND = '#33CCFF';
 
 const CARD_PAD_X = spacing[4];
 const CARD_PAD_Y = spacing[3.5];
@@ -149,7 +147,7 @@ export function TourStopCard({
                       ]}
                     >
                       {done ? (
-                        <Check size={iconSize['3xs']} color="#fff" strokeWidth={3} />
+                        <Check size={iconSize['3xs']} color={c.textInverse} strokeWidth={3} />
                       ) : (
                         <AppText style={styles.positionText}>{stop.position}</AppText>
                       )}
@@ -255,7 +253,7 @@ export function TourStopCard({
                     { borderColor: c.success, backgroundColor: c.success },
                   ]}
                 >
-                  <Check size={iconSize.mdSm} color="#FFFFFF" strokeWidth={2.5} />
+                  <Check size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.5} />
                 </View>
               </Pressable>
             ) : null}
@@ -270,8 +268,8 @@ export function TourStopCard({
                     size="sm"
                     variant="primary"
                     fullWidth
-                    style={{ backgroundColor: WAZE_BRAND }}
-                    leftIcon={<Navigation size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />}
+                    style={{ backgroundColor: palette.thirdParty.waze }}
+                    leftIcon={<Navigation size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                     onPress={openNav}
                   />
                 </View>
@@ -307,7 +305,7 @@ export function TourStopCard({
                     variant="primary"
                     fullWidth
                     style={{ backgroundColor: c.success }}
-                    leftIcon={<Check size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />}
+                    leftIcon={<Check size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
                     onPress={onMarkDone}
                   />
                 </View>
@@ -371,7 +369,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       paddingHorizontal: 4,
     },
     positionText: {
-      color: '#fff',
+      color: c.textInverse,
       ...font.bold,
       fontSize: fontSize['2xs'],
     },

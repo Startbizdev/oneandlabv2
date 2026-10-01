@@ -2,8 +2,7 @@ import { layoutRowWrap } from '@/theme/layout-styles';
 import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
-import { radius, spacing, AppText, useStyles, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** ISO weekday 1 = lundi … 7 = dimanche */
 const WEEKDAYS: { iso: number; label: string }[] = [
@@ -51,13 +50,7 @@ export function PassageWeekdayChips({ selected, onChange }: Props) {
             accessibilityState={{ checked: on }}
             accessibilityLabel={label}
           >
-            <AppText
-              style={{
-                ...font.semiBold,
-                fontSize: fontSize.sm,
-                color: on ? c.primaryDark : c.textSecondary,
-              }}
-            >
+            <AppText style={[styles.chipLabel, { color: on ? c.primaryDark : c.textSecondary }]}>
               {label}
             </AppText>
           </Pressable>
@@ -67,7 +60,7 @@ export function PassageWeekdayChips({ selected, onChange }: Props) {
   );
 }
 
-function buildStyles() {
+function buildStyles({ fontSize }: Theme) {
   return {
     row: {
       ...layoutRowWrap(spacing[2]),
@@ -79,6 +72,10 @@ function buildStyles() {
       borderRadius: radius.full,
       borderWidth: 1,
       alignItems: 'center' as const,
+    },
+    chipLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.sm,
     },
   };
 }

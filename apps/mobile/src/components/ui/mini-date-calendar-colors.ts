@@ -1,17 +1,5 @@
+import { appleCalendarPalette } from '@/theme/calendar-palette';
 import type { AppColors } from '@/theme/colors';
-
-/** Palette calendrier emoji Apple 📅 — usage décoratif hors liste RDV. */
-export const MINI_DATE_CALENDAR_APPLE_COLORS = {
-  accent: '#D4534B',
-  headerBg: '#D4534B',
-  headerText: '#FFFFFF',
-  bodyBg: '#FFFFFF',
-  dayText: '#000000',
-  footerBg: '#FFFFFF',
-  footerText: '#D4534B',
-  border: '#E5E5EA',
-  footerDivider: '#EBEBEB',
-} as const;
 
 export type MiniDateCalendarVariant = 'brand' | 'apple';
 
@@ -31,7 +19,7 @@ export function getMiniDateCalendarColors(
   c: AppColors,
 ): MiniDateCalendarColorSet {
   if (variant === 'apple') {
-    return MINI_DATE_CALENDAR_APPLE_COLORS;
+    return appleCalendarPalette;
   }
   return {
     headerBg: c.primary,

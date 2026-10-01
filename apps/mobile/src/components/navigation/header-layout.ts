@@ -1,20 +1,15 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native';
 import { getAppColors } from '@/theme/colors';
-import { elevation, spacing, radius } from '@/theme';
+import { elevation, hexToRgba, palette, spacing, radius } from '@/theme';
 
 /** Padding horizontal interne (titres, actions). */
 export const APP_HEADER_INNER_H_PADDING = spacing[4];
-
-/** Teinte latérale sous le header (visible dans les coins arrondis du contenu). */
-export function getAppHeaderChrome(): string {
-  return getAppColors().primaryLight;
-}
 
 /** Coins arrondis en haut de la feuille de contenu. */
 export const APP_CONTENT_TOP_RADIUS = radius['2xl'];
 
 /** Bordure haute de la feuille de contenu (séparation header / contenu). */
-export const APP_CONTENT_SHEET_BORDER = 'rgba(15, 23, 42, 0.07)';
+export const APP_CONTENT_SHEET_BORDER = hexToRgba(palette.slate[900], 0.07);
 
 const contentSheetTopRadius = (): Pick<
   ViewStyle,
@@ -79,50 +74,31 @@ export const APP_HEADER_ORB_STROKE = 2.25;
 /** Icône titre onglet. */
 export const APP_HEADER_TITLE_ICON_SIZE = 18;
 
-/** Onglets — fond chrome derrière la feuille (TabScreenShell). */
-export function appTabSceneStyle(): ViewStyle {
-  return {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: getAppHeaderChrome(),
-  };
-}
-
-/** Onglets edge-to-edge — corps plat, sans coins arrondis ni ombre. */
+/** Onglets edge-to-edge — corps plat (fond d'app), sans coins arrondis ni ombre. */
 export function appTabSceneFlatContentStyle(): ViewStyle {
   return {
     minWidth: 0,
     flex: 1,
-    backgroundColor: getAppColors().surface,
+    backgroundColor: getAppColors().background,
   };
 }
 
-/** Stack — feuille blanche à coins haut arrondis sous le header. */
+/** Stack — fond d'app plat, ou feuille blanche à coins haut arrondis sous le header. */
 export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
   const rounded = opts?.rounded !== false;
   if (!rounded) {
-    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().surface };
+    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().background };
   }
   return appContentSheetFrameStyle();
 }
 
-/** @deprecated Utiliser appTabSceneStyle ou appStackContentStyle. */
+/** @deprecated Utiliser appStackContentStyle. */
 export function appContentShellStyle(opts?: { rounded?: boolean }): ViewStyle {
   return appStackContentStyle(opts);
 }
 
 /** Espace entre le bouton retour et le titre (stack). */
 export const APP_HEADER_BACK_TITLE_GAP = spacing[2];
-
-/**
- * Onglets — contenu calé vers le bas du header (respiration au-dessus du contenu arrondi).
- */
-export function headerSlotBottomStyle(paddingBottom: number = APP_HEADER_INNER_BOTTOM): ViewStyle {
-  return {
-    paddingBottom,
-    justifyContent: 'flex-end',
-  };
-}
 
 /**
  * Stack — padding bas sans `justifyContent: 'flex-end'` (évite le décalage retour / titre).

@@ -48,7 +48,7 @@ export function HeaderGreeting() {
 
 
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize, scale }: Theme) {
 
   return {
 
@@ -66,11 +66,11 @@ function buildStyles({ colors: c, fontSize }: Theme) {
 
       minWidth: 0,
 
-      ...font.bold,
+      ...font.heading,
 
-      fontSize: Platform.select({ ios: 22, default: fontSize.lg }),
+      fontSize: Platform.select({ ios: fontSize.xl, default: fontSize.lg }),
 
-      lineHeight: Platform.select({ ios: 28, default: fontSize.lg * 1.2 }),
+      lineHeight: Platform.select({ ios: scale(28), default: fontSize.lg * 1.2 }),
 
       color: c.textPrimary,
 

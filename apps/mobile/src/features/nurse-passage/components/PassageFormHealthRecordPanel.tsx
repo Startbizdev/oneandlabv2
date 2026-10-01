@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -19,8 +17,18 @@ import { ClinicalVitalsPanel } from '@/features/health-record/components/Clinica
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { useAuthStore } from '@/store/auth-store';
 import { PassageFormHealthRecordSectionSheet } from './PassageFormHealthRecordSectionSheet';
-import { elevation, H_PADDING, radius, spacing, iconSize, progressRingSize, AppText, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import {
+  elevation,
+  H_PADDING,
+  radius,
+  spacing,
+  iconSize,
+  progressRingSize,
+  AppText,
+  font,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 type Props = {
   patientId: string;
@@ -39,7 +47,7 @@ export function PassageFormHealthRecordPanel({
   clinicalVitalContext,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles((c) => buildStyles(c, variant));
+  const styles = useStyles(variant === 'screen' ? buildScreenStyles : buildPassageStyles);
   const userRole = useAuthStore((s) => s.user?.role);
   const showClinicalVitals = userRole === 'nurse' || userRole === 'pro';
   const [editSectionId, setEditSectionId] = useState<string | null>(null);
@@ -144,11 +152,19 @@ export function PassageFormHealthRecordPanel({
   );
 }
 
-function buildStyles(c: AppColors, variant: 'passage' | 'screen' = 'passage') {
+function buildPassageStyles(t: Theme) {
+  return buildStyles(t, H_PADDING);
+}
+
+function buildScreenStyles(t: Theme) {
+  return buildStyles(t, 0);
+}
+
+function buildStyles({ colors: c, fontSize }: Theme, paddingHorizontal: number) {
   return {
     wrap: {
       gap: spacing[3],
-      paddingHorizontal: variant === 'screen' ? 0 : H_PADDING,
+      paddingHorizontal,
       paddingBottom: spacing[10],
     },
     banner: {

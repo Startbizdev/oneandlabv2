@@ -132,7 +132,7 @@ export function BookingWizardScreen({
         <FormScreen
           contentContainerStyle={scrollConfig.contentContainerStyle}
           {...spreadTabSceneScrollProps(scrollConfig)}
-          backgroundColor={c.bookingCanvasLight}
+          backgroundColor={c.background}
           footer={
             <BookingActionBar
               title="Continuer"
@@ -231,7 +231,7 @@ export function BookingWizardScreen({
           ref={formScrollRef}
           contentContainerStyle={scrollConfig.contentContainerStyle}
           {...spreadTabSceneScrollProps(scrollConfig)}
-          backgroundColor={c.bookingCanvasLight}
+          backgroundColor={c.background}
         footer={
           <BookingActionBar
             {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
@@ -571,8 +571,8 @@ export function BookingWizardScreen({
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  screenWizard: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvasLight },
-  screenCare: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvas },
+  screenWizard: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.background },
+  screenCare: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.background },
   formContent: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],

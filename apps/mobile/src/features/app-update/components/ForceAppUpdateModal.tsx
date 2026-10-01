@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Modal, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { elevation, hexToRgba, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import { openAppStoreUrl } from '../utils/app-update-policy';
 
@@ -49,7 +49,7 @@ function buildStyles({ fontSize }: Theme) {
     backdrop: {
       minWidth: 0,
       flex: 1,
-      backgroundColor: 'rgba(15,23,42,0.45)',
+      backgroundColor: hexToRgba(palette.slate[900], 0.45),
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       padding: spacing[6],

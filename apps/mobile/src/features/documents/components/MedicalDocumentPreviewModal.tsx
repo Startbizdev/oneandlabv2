@@ -12,7 +12,7 @@ import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { resolveDocumentPreviewKind } from '@/lib/downloads/document-file-kind';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 import { useToast } from '@/providers/ToastProvider';
-import { iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { iconSize, palette, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 
 const VIEWER_ACTION_SIZE = 44;
@@ -206,7 +206,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     paddingVertical: spacing[3.5],
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: c.border,
-    backgroundColor: c.background,
+    backgroundColor: c.surface,
     zIndex: 10,
     ...(Platform.OS === 'android' ? { elevation: 4 } : null),
   },
@@ -231,7 +231,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   webview: {
     minWidth: 0,
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: palette.neutral[900],
   },
   center: {
     minWidth: 0,

@@ -188,7 +188,7 @@ export function CoverageSquareMapLive({
   onDragEnd,
 }: Props) {
   const styles = useStyles(buildStyles);
-  const colors = useAppColors();
+  const c = useAppColors();
   const sessionVertices = useRef<CoverageVertex[] | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const center = useMemo(() => ({ lat, lng }), [lat, lng]);
@@ -213,15 +213,15 @@ export function CoverageSquareMapLive({
       lng,
       verts,
       maxHalfSideKm,
-      colors.primary,
-      colors.primaryMid,
+      c.primary,
+      c.primaryMid,
       readOnly,
       largeHandles,
       mapZoom,
     );
     // readOnlyVertsKey : preview seulement ; mapInitKey : (re)montage éditeur
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapInitKey, readOnlyVertsKey, colors.primary, colors.primaryMid]);
+  }, [mapInitKey, readOnlyVertsKey, c.primary, c.primaryMid]);
 
   const webViewKey = `${mapInitKey}|${readOnlyVertsKey}`;
 

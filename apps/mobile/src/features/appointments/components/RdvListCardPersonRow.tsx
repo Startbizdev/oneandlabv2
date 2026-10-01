@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -16,8 +14,8 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { RdvMaquetteCounterparty } from '@/utils/rdv-maquette-card-display';
-import { radius, spacing, AppText, useStyles, font } from '@/theme';
-import { fontSize, lh } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 /** Ligne intervenant — compact (legacy) ou pied de carte (avatar + nom). */
 const AVATAR_BY_SIZE = { compact: 28, footer: 36 } as const;
@@ -99,9 +97,8 @@ function AssignmentDot({ index, color }: { index: number; color: string }) {
 }
 
 function AssignmentPendingRow({ size }: { size: keyof typeof AVATAR_BY_SIZE }) {
-  const styles = useThemedStyles(
+  const styles = useStyles(
     size === 'footer' ? buildPendingStylesFooter : buildPendingStylesCompact,
-    'RdvListCardPersonRow.pending',
   );
   const labelOpacity = useSharedValue(0.72);
 
@@ -138,9 +135,8 @@ export function RdvListCardPersonRow({
   seed,
   size = 'compact',
 }: Props) {
-  const styles = useThemedStyles(
+  const styles = useStyles(
     size === 'footer' ? buildPersonStylesFooter : buildPersonStylesCompact,
-    'RdvListCardPersonRow',
   );
 
   if (person.assignmentPending) {
@@ -191,15 +187,15 @@ function buildPendingDotsStyles() {
   };
 }
 
-function buildPendingStylesCompact(c: AppColors) {
-  return buildPendingStyles(c, 'compact');
+function buildPendingStylesCompact(t: Theme) {
+  return buildPendingStyles(t, 'compact');
 }
 
-function buildPendingStylesFooter(c: AppColors) {
-  return buildPendingStyles(c, 'footer');
+function buildPendingStylesFooter(t: Theme) {
+  return buildPendingStyles(t, 'footer');
 }
 
-function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
+function buildPendingStyles({ colors: c, fontSize }: Theme, size: keyof typeof AVATAR_BY_SIZE) {
   const isFooter = size === 'footer';
   return {
     pendingRow: {
@@ -224,15 +220,15 @@ function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
   };
 }
 
-function buildPersonStylesCompact(c: AppColors) {
-  return buildPersonStyles(c, 'compact');
+function buildPersonStylesCompact(t: Theme) {
+  return buildPersonStyles(t, 'compact');
 }
 
-function buildPersonStylesFooter(c: AppColors) {
-  return buildPersonStyles(c, 'footer');
+function buildPersonStylesFooter(t: Theme) {
+  return buildPersonStyles(t, 'footer');
 }
 
-function buildPersonStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
+function buildPersonStyles({ colors: c, fontSize }: Theme, size: keyof typeof AVATAR_BY_SIZE) {
   const isFooter = size === 'footer';
   return {
     avatar: {

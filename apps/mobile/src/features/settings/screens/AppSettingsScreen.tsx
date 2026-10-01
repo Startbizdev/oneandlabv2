@@ -22,7 +22,6 @@ import {
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
 import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontSize } from '@/theme/typography';
 
 export function AppSettingsScreen() {
   const c = useAppColors();
@@ -151,17 +150,17 @@ export function AppSettingsScreen() {
 
   return (
     <ProfileSubScreenLayout hideSave>
-      <View style={[previewStyles(c).card, elevation.xs]}>
+      <View style={[styles.card, elevation.xs]}>
         <Cluster
           gap={spacing[3]}
           style={styles.cardHeader}
           leading={
-            <View style={previewStyles(c).iconWrap}>
+            <View style={styles.iconWrap}>
               <Smartphone size={iconSize.md} color={c.primary} strokeWidth={2} />
             </View>
           }
         >
-          <AppText style={previewStyles(c).cardTitle}>Application</AppText>
+          <AppText style={styles.cardTitle}>Application</AppText>
         </Cluster>
 
         <ProfileToggleRow
@@ -263,22 +262,22 @@ export function AppSettingsScreen() {
           </View>
         ) : null}
 
-        <Row wrap gap={spacing[2]} style={previewStyles(c).swatchRow}>
-          <View style={[previewStyles(c).swatch, { backgroundColor: c.successLight }]}>
-            <AppText style={[previewStyles(c).swatchLabel, { color: c.success }]}>Succès</AppText>
-            <AppText style={[previewStyles(c).swatchValue, { color: c.success }]}>●</AppText>
+        <Row wrap gap={spacing[2]} style={styles.swatchRow}>
+          <View style={[styles.swatch, { backgroundColor: c.successLight }]}>
+            <AppText style={[styles.swatchLabel, { color: c.success }]}>Succès</AppText>
+            <AppText style={[styles.swatchValue, { color: c.success }]}>●</AppText>
           </View>
-          <View style={[previewStyles(c).swatch, { backgroundColor: c.errorLight }]}>
-            <AppText style={[previewStyles(c).swatchLabel, { color: c.error }]}>Erreur</AppText>
-            <AppText style={[previewStyles(c).swatchValue, { color: c.error }]}>●</AppText>
+          <View style={[styles.swatch, { backgroundColor: c.errorLight }]}>
+            <AppText style={[styles.swatchLabel, { color: c.error }]}>Erreur</AppText>
+            <AppText style={[styles.swatchValue, { color: c.error }]}>●</AppText>
           </View>
-          <View style={[previewStyles(c).swatch, { backgroundColor: c.warningLight }]}>
-            <AppText style={[previewStyles(c).swatchLabel, { color: c.warning }]}>Alerte</AppText>
-            <AppText style={[previewStyles(c).swatchValue, { color: c.warning }]}>●</AppText>
+          <View style={[styles.swatch, { backgroundColor: c.warningLight }]}>
+            <AppText style={[styles.swatchLabel, { color: c.warning }]}>Alerte</AppText>
+            <AppText style={[styles.swatchValue, { color: c.warning }]}>●</AppText>
           </View>
-          <View style={[previewStyles(c).swatch, { backgroundColor: c.primaryLight }]}>
-            <AppText style={[previewStyles(c).swatchLabel, { color: c.primary }]}>Primaire</AppText>
-            <AppText style={[previewStyles(c).swatchValue, { color: c.primary }]}>●</AppText>
+          <View style={[styles.swatch, { backgroundColor: c.primaryLight }]}>
+            <AppText style={[styles.swatchLabel, { color: c.primary }]}>Primaire</AppText>
+            <AppText style={[styles.swatchValue, { color: c.primary }]}>●</AppText>
           </View>
         </Row>
       </View>
@@ -308,50 +307,45 @@ export function AppSettingsScreen() {
   );
 }
 
-function previewStyles(c: ReturnType<typeof useAppColors>) {
+function buildStyles({ colors: c, fontSize, scale }: Theme) {
   return {
-    card: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      padding: spacing[4],
-      gap: spacing[1],
-    },
-    iconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.lg,
-      backgroundColor: c.primaryLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    cardTitle: {
-      ...font.headingSemiBold,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-    },
-    swatchRow: {
-      marginTop: spacing[2],
-    },
-    swatch: {
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
-      borderRadius: radius.md,
-      minWidth: 88,
-    },
-    swatchLabel: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      marginBottom: 4,
-    },
-    swatchValue: {
-      ...font.bold,
-      fontSize: fontSize.xs,
-    },
-  };
-}
-
-function buildStyles({ colors: c, fontSize }: Theme) {
-  return {
+  card: {
+    backgroundColor: c.surface,
+    borderRadius: radius.xl,
+    padding: spacing[4],
+    gap: spacing[1],
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.lg,
+    backgroundColor: c.primaryLight,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  cardTitle: {
+    ...font.headingSemiBold,
+    fontSize: fontSize.lg,
+    color: c.textPrimary,
+  },
+  swatchRow: {
+    marginTop: spacing[2],
+  },
+  swatch: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: radius.md,
+    minWidth: 88,
+  },
+  swatchLabel: {
+    ...font.medium,
+    fontSize: fontSize.xs,
+    marginBottom: 4,
+  },
+  swatchValue: {
+    ...font.bold,
+    fontSize: fontSize.xs,
+  },
   cardHeader: {
     marginBottom: spacing[2],
   },
@@ -393,7 +387,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   infoText: {
     ...font.regular,
     fontSize: fontSize.sm,
-    lineHeight: 20,
+    lineHeight: scale(20),
   },
   link: {
     marginTop: spacing[4],

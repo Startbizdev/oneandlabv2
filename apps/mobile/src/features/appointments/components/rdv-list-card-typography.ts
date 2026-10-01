@@ -1,9 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { fontSize, lh } from '@/theme/typography';
-import { font } from '@/theme';
+import { lh } from '@/theme/typography';
+import { font, type Theme } from '@/theme';
 
 /** Échelle typo — cartes liste RDV (lisible, alignée tokens globaux). */
-export function buildRdvListCardTypography(c: AppColors) {
+export function buildRdvListCardTypography({ colors: c, fontSize }: Theme) {
   const body = fontSize.base;
   const meta = fontSize.sm;
 

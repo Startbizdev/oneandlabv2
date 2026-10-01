@@ -11,7 +11,7 @@ import { CarePhotoImage } from './CarePhotoImage';
 import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   photo: CarePhotoRow;
@@ -296,7 +296,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: hexToRgba(palette.black, 0.55),
   },
   zoomPillText: {
     ...font.semiBold,

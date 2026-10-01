@@ -274,7 +274,7 @@ export function PatientAiConversationsSheet({
                 onPress={handleNew}
                 fullWidth
                 size="md"
-                leftIcon={<MessageSquare size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.25} />}
+                leftIcon={<MessageSquare size={iconSize.mdSm} color={c.onPrimary} strokeWidth={2.25} />}
                 accessibilityLabel="Démarrer une nouvelle conversation"
               />
             </Stack>
@@ -357,7 +357,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       overflow: 'hidden' as const,
       ...Platform.select({
         ios: {
-          shadowColor: '#0F172A',
+          shadowColor: c.textPrimary,
           shadowOffset: { width: 4, height: 0 },
           shadowOpacity: 0.12,
           shadowRadius: 24,

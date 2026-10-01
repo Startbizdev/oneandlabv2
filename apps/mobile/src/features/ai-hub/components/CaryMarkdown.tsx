@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { AppText, font } from '@/theme';
+import { AppText, font, lh, useTheme } from '@/theme';
 import { Row } from '@/components/layout/primitives';
 import { View, type TextStyle } from 'react-native';
-import { fontSize, lh } from '@/theme/typography';
 
 export type MessageBlock =
   | { type: 'paragraph'; lines: string[] }
@@ -128,13 +127,14 @@ export function CaryMarkdown({
   style?: TextStyle;
   inverse?: boolean;
 }) {
+  const { colors: c, fontSize } = useTheme();
   const blocks = parseMessageBlocks(text ?? '');
 
   const baseStyle: TextStyle = {
     ...font.regular,
     fontSize: fontSize.base,
     lineHeight: lh(fontSize.base, 1.55),
-    ...(inverse ? { color: '#fff' } : null),
+    ...(inverse ? { color: c.textInverse } : null),
     ...style,
   };
 

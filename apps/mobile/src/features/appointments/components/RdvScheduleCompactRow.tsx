@@ -82,8 +82,9 @@ export function RdvScheduleCompactRow({
 
 export { CALENDAR_PX as rdvScheduleCalendarPx };
 
-function buildRdvScheduleCompactStyles({ colors: c, fontSize }: Theme) {
-  const type = buildRdvListCardTypography(c);
+function buildRdvScheduleCompactStyles(t: Theme) {
+  const { colors: c, fontSize } = t;
+  const type = buildRdvListCardTypography(t);
   return {
     root: {
       alignSelf: 'stretch' as const,

@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import {
   buildTabSceneScrollConfig,

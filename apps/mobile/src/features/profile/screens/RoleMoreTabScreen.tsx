@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
@@ -83,7 +83,7 @@ export function RoleMoreTabScreen({
 
 function buildStyles({ colors: c }: Theme) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.surface },
+  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   scroll: {
     paddingHorizontal: spacing[4],
     paddingBottom: spacing[10],

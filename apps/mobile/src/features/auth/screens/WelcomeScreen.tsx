@@ -11,7 +11,18 @@ import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSh
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { useAuthStore } from '@/store/auth-store';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { elevation, radius, spacing, useLayoutMetrics, responsiveValue, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  elevation,
+  hexToRgba,
+  radius,
+  spacing,
+  useLayoutMetrics,
+  responsiveValue,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
@@ -157,7 +168,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: 'rgba(28, 199, 181, 0.14)',
+    backgroundColor: hexToRgba(c.primary, 0.14),
   },
   glowBottom: {
     position: 'absolute' as const,
@@ -166,7 +177,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(22, 182, 214, 0.08)',
+    backgroundColor: hexToRgba(c.gradientEnd, 0.08),
   },
   safe: { minWidth: 0, flex: 1 },
   scroll: { minWidth: 0, flex: 1 },
@@ -198,7 +209,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     letterSpacing: 0.2,
   },
   tagline: {
-    ...font.regular,
+    ...font.headingSemiBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     textAlign: 'center' as const,
@@ -206,7 +217,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     letterSpacing: -0.4,
   },
   taglineAccent: {
-    ...font.extraBold,
+    ...font.headingExtraBold,
     color: c.primary,
   },
   taglineRule: {

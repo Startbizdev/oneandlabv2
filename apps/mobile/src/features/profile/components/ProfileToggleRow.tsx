@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';

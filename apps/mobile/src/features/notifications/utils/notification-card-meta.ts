@@ -8,7 +8,7 @@ import {
   formatParisWeekdayDate,
   parseParisWallClock,
 } from '@/utils/paris-datetime';
-import { getAppColors } from '@/theme/colors';
+import type { AppColors } from '@/theme/colors';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -28,12 +28,14 @@ export function formatNotificationTime(iso?: string): string {
   return formatParisDayMonthYear(ms);
 }
 
-export function notificationVisual(type?: string): {
+export function notificationVisual(
+  c: AppColors,
+  type?: string,
+): {
   Icon: LucideIcon;
   color: string;
   bg: string;
 } {
-  const c = getAppColors();
   const t = (type ?? '').toLowerCase();
   if (t.includes('pharmacy_order') || t.includes('pharmacie')) {
     return { Icon: Pill, color: c.primaryDark, bg: c.primaryLight };

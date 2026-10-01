@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Download, X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { iconSize, spacing, useStyles, type Theme } from '@/theme';
+import { hexToRgba, iconSize, palette, spacing, useStyles, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 
@@ -103,7 +103,7 @@ function buildStyles({ colors: c }: Theme) {
     shell: {
       minWidth: 0,
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.94)',
+      backgroundColor: hexToRgba(palette.black, 0.94),
     },
     stage: {
       minWidth: 0,
@@ -121,8 +121,8 @@ function buildStyles({ colors: c }: Theme) {
     footer: {
       paddingHorizontal: spacing[4],
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: 'rgba(255, 255, 255, 0.12)',
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      borderTopColor: hexToRgba(palette.white, 0.12),
+      backgroundColor: hexToRgba(palette.black, 0.55),
     },
     footerActions: {
       ...layoutRow(spacing[3]),

@@ -64,6 +64,6 @@ export default function PatientLayout() {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-    stackHost: { flex: 1, backgroundColor: c.surface },
+    stackHost: { flex: 1, backgroundColor: c.background },
   };
 }

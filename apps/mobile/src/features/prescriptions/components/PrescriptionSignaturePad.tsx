@@ -5,6 +5,7 @@ import {
   SIGNATURE_HTML,
   normalizeSignaturePngBase64,
 } from '@/features/prescriptions/lib/signature-pad-html';
+import { palette } from '@/theme';
 
 export type PrescriptionSignaturePadHandle = {
   clear: () => void;
@@ -119,11 +120,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ccc',
+    borderColor: palette.neutral[300],
   },
   web: {
     minWidth: 0,
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: palette.white,
   },
 });

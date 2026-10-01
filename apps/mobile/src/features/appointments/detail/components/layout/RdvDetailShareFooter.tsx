@@ -66,7 +66,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: radius.lg,
     overflow: 'hidden' as const,
     ...elevation.sm,
-    shadowColor: '#16B6D6',
+    shadowColor: c.gradientEnd,
     shadowOpacity: 0.2,
   },
   pressed: {

@@ -29,7 +29,7 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
   const isUnread = !item.read_at;
   const hasLink = notificationIsNavigable(item, role);
   const time = formatNotificationTime(item.created_at);
-  const { Icon, color, bg } = notificationVisual(item.type);
+  const { Icon, color, bg } = notificationVisual(c, item.type);
 
   return (
     <Pressable

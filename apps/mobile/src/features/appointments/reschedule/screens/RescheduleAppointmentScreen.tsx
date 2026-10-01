@@ -162,7 +162,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
     paddingBottom: spacing[3],
-    backgroundColor: c.background,
+    backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.border,
   },

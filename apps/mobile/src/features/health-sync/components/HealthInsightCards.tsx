@@ -39,17 +39,17 @@ export function HealthInsightCards({ insights }: Props) {
     <Stack gap={spacing[2]}>
       <AppText style={styles.sectionTitle}>Pour vous</AppText>
       {insights.map((item) => {
-        const colors = toneColors(item.tone, c);
+        const tone = toneColors(item.tone, c);
         return (
           <View
             key={item.id}
             style={[
               styles.card,
-              { backgroundColor: colors.bg, borderColor: colors.border },
+              { backgroundColor: tone.bg, borderColor: tone.border },
             ]}
           >
             <View style={styles.cardHeader}>
-              <ToneIcon tone={item.tone} color={colors.accent} />
+              <ToneIcon tone={item.tone} color={tone.accent} />
               <AppText style={styles.cardTitle}>{item.title}</AppText>
             </View>
             <AppText style={styles.cardBody}>{item.body}</AppText>

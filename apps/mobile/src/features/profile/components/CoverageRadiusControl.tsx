@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Minus, Plus } from 'lucide-react-native';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';

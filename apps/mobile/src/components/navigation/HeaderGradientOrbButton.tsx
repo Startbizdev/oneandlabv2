@@ -3,7 +3,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { elevation, radius, AppText, useStyles, font, type Theme } from '@/theme';
+import { elevation, radius, AppText, useStyles, font, hexToRgba, palette, type Theme } from '@/theme';
 import {
   APP_HEADER_ORB_ICON,
   APP_HEADER_ORB_SIZE,
@@ -126,7 +126,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     right: 5,
     height: 10,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    backgroundColor: hexToRgba(palette.white, 0.22),
   },
   glassRing: {
     width: APP_HEADER_ORB_SIZE,
@@ -145,7 +145,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     minWidth: 0,
     flex: 1,
     borderRadius: radius.lg - 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    backgroundColor: hexToRgba(c.surface, 0.94),
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },

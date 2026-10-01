@@ -36,7 +36,19 @@ import {
   type CalendarTypeFilter,
 } from '@/constants/calendar-filters';
 import { NURSE_TAB_OPTIONS, type NurseListTab } from '@/constants/appointments-list-filters';
-import { elevation, radius, spacing, iconSize, gridCellSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  elevation,
+  hexToRgba,
+  radius,
+  spacing,
+  iconSize,
+  gridCellSize,
+  useLayoutMetrics,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -502,7 +514,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: 2,
     backgroundColor: c.primary,
   },
-  dotWhite: { backgroundColor: 'rgba(255,255,255,0.75)' },
+  dotWhite: { backgroundColor: hexToRgba(c.textInverse, 0.75) },
   daySummary: {
     backgroundColor: c.primaryLight,
     borderRadius: radius.lg,

@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { animation, elevation, hexToRgba, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface BookingPremiumStepCtaProps {
   /** `wizard` : pill + 2 lignes. `list` : une ligne, coins modérés (liste RDV). */
@@ -259,7 +259,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: ARROW_ORB,
     height: ARROW_ORB,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: hexToRgba(palette.white, 0.22),
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexShrink: 0,

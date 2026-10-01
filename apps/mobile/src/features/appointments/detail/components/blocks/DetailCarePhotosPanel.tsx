@@ -307,7 +307,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     justifyContent: 'center' as const,
     paddingHorizontal: 6,
     borderWidth: 2,
-    borderColor: c.background,
+    borderColor: c.surface,
     zIndex: 2,
   },
   unreadBadgeText: {

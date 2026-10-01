@@ -4,7 +4,7 @@ import { Platform, Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { fontSize, lh } from '@/theme/typography';
+import { lh } from '@/theme/typography';
 
 export type DetailTabBarItem<T extends string = string> = {
   id: T;
@@ -34,7 +34,6 @@ export function DetailTabBar<T extends string>({
 }: DetailTabBarProps<T>) {
   const c = useAppColors();
   const styles = useStyles(buildDetailTabBarStyles);
-  const labelLineHeight = lh(fontSize.xs, 1.15);
   const iconSize = compact ? 14 : 15;
 
   if (tabs.length <= 1) return null;
@@ -72,11 +71,7 @@ export function DetailTabBar<T extends string>({
                   </View>
                 ) : null}
                 <AppText
-                  style={[
-                    styles.label,
-                    { lineHeight: labelLineHeight },
-                    active && styles.labelActive,
-                  ]}
+                  style={[styles.label, active && styles.labelActive]}
                   numberOfLines={1}
                   adjustsFontSizeToFit={compact}
                   minimumFontScale={compact ? 0.85 : 1}
@@ -151,6 +146,7 @@ function buildDetailTabBarStyles({ colors: c, fontSize }: Theme) {
       flexShrink: 1,
       ...font.semiBold,
       fontSize: fontSize.xs,
+      lineHeight: lh(fontSize.xs, 1.15),
       color: c.textTertiary,
       ...(Platform.OS === 'android'
         ? { includeFontPadding: false, textAlignVertical: 'center' as const }

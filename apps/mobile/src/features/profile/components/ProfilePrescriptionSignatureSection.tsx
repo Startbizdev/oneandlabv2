@@ -82,13 +82,13 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize, scale }: Theme) {
   return {
     help: {
       ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
-      lineHeight: 20,
+      lineHeight: scale(20),
       marginBottom: spacing[2],
     },
     empty: {

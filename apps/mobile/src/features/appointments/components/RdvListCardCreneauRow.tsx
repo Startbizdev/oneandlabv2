@@ -42,8 +42,8 @@ export function RdvListCardCreneauRow({ label, status }: Props) {
   );
 }
 
-function buildStyles({ colors: c }: Theme) {
-  const type = buildRdvListCardTypography(c);
+function buildStyles(t: Theme) {
+  const type = buildRdvListCardTypography(t);
   const labelLine = type.slot.lineHeight;
 
   return {

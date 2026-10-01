@@ -391,7 +391,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
       <FormScreen
         contentContainerStyle={scrollConfig.contentContainerStyle}
         {...spreadTabSceneScrollProps(scrollConfig)}
-        backgroundColor={c.bookingCanvasLight}
+        backgroundColor={c.background}
         footer={
           <BookingActionBar
             title={ctaTitle}

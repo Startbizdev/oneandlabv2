@@ -642,7 +642,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: c.border,
-      backgroundColor: c.background,
+      backgroundColor: c.surface,
       ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,

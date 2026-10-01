@@ -191,13 +191,13 @@ function SettingRow({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize, scale }: Theme) {
   return {
     intro: {
       ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
-      lineHeight: 20,
+      lineHeight: scale(20),
     },
     daysBlock: {
       gap: spacing[2],

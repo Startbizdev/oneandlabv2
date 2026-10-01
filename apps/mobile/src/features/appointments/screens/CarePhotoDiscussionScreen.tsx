@@ -53,7 +53,7 @@ import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-nav
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -669,7 +669,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: radius['2xl'],
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: palette.black,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
@@ -685,7 +685,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: hexToRgba(palette.black, 0.55),
   },
   zoomPillText: {
     ...font.semiBold,
@@ -726,13 +726,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
-  authorMine: { color: 'rgba(255,255,255,0.9)' },
+  authorMine: { color: hexToRgba(c.textInverse, 0.9) },
   time: {
     ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
-  timeMine: { color: 'rgba(255,255,255,0.75)' },
+  timeMine: { color: hexToRgba(c.textInverse, 0.75) },
   body: {
     ...font.regular,
     fontSize: fontSize.sm,

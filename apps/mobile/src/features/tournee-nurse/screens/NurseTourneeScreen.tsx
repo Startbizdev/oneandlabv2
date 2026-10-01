@@ -1,4 +1,3 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import dayjs from 'dayjs';
@@ -41,7 +40,6 @@ import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
 import { countTodayActiveStops, importTourToDeviceCalendar } from '../utils/tour-calendar';
 
 export function NurseTourneeScreen() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
@@ -336,8 +334,8 @@ export function NurseTourneeScreen() {
         </Row>
       }
     >
-      <View style={[styles.container, { backgroundColor: c.background }]}>
-        <View style={[styles.headerZone, { paddingTop: contentTopInset, backgroundColor: c.background }]}>
+      <View style={styles.container}>
+        <View style={[styles.headerZone, { paddingTop: contentTopInset }]}>
           <TourDayStrip
             embedded
             selectedDate={date}
@@ -469,8 +467,10 @@ function buildStyles({ colors: c }: Theme) {
     container: {
       flex: 1,
       minWidth: 0,
+      backgroundColor: c.background,
     },
     headerZone: {
+      backgroundColor: c.surface,
       paddingHorizontal: H_PADDING,
       paddingBottom: spacing[2],
       borderBottomWidth: StyleSheet.hairlineWidth,

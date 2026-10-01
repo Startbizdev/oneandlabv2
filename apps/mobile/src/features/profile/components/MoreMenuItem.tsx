@@ -4,7 +4,7 @@ import {
 } from '@/navigation/more-menu-icon-colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import Animated, {
   useAnimatedStyle,

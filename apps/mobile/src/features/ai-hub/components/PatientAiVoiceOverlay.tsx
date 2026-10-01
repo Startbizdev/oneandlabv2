@@ -267,7 +267,7 @@ function VoiceOrbDock({
   const orbInteractive = sessionActive && mode === 'assistant';
 
   return (
-    <View style={[styles.dock, { backgroundColor: c.background }]}>
+    <View style={[styles.dock, { backgroundColor: c.surface }]}>
       <View style={styles.dockInner}>
         <Pressable
           onPress={orbInteractive ? onOrbPress : undefined}
@@ -485,7 +485,7 @@ export function PatientAiVoiceOverlay({
             styles.bottomBar,
             {
               paddingBottom: insets.bottom,
-              backgroundColor: c.background,
+              backgroundColor: c.surface,
               borderTopColor: hexToRgba(c.textPrimary, 0.08),
             },
           ]}

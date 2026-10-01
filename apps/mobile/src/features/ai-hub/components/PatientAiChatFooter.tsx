@@ -5,8 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
-import { H_PADDING, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { fontSize, lh } from '@/theme/typography';
+import { FONT_SIZE_BASE, H_PADDING, lh, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   draft: string;
@@ -28,7 +27,7 @@ interface Props {
 }
 
 /** Hauteur bandeau disclaimer (estimation — layout réel via onLayout). */
-const DISCLAIMER_BLOCK_HEIGHT = spacing[1] * 2 + lh(fontSize['2xs'], 1.35) * 3;
+const DISCLAIMER_BLOCK_HEIGHT = spacing[1] * 2 + lh(FONT_SIZE_BASE['2xs'], 1.35) * 3;
 
 /** Footer complet : disclaimer + compositeur (réserve scroll liste). */
 export const PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER =
@@ -76,7 +75,7 @@ export function PatientAiChatFooter({
         onLayout={(event) => onFooterLayout?.(event.nativeEvent.layout.height)}
         style={[
           styles.shell,
-          { backgroundColor: c.background, borderTopColor: c.borderLight },
+          { backgroundColor: c.surface, borderTopColor: c.borderLight },
         ]}
       >
         {!inputFocused && disclaimer ? (

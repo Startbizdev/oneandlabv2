@@ -1,4 +1,6 @@
 import { Platform } from 'react-native';
+import { hexToRgba } from '@/theme/color-utils';
+import { palette } from '@/theme/colors';
 
 /** Hauteur estimée barre d’onglets native (hors safe area bas). */
 export const NATIVE_TAB_BAR_CONTENT_HEIGHT = Platform.select({ ios: 49, default: 56 }) ?? 56;
@@ -42,7 +44,7 @@ export const LIQUID_GLASS_FROST_OPACITY: Record<LiquidGlassChromeVariant, number
 };
 
 /** Reflet spéculaire haut du verre. */
-export const LIQUID_GLASS_SPECULAR_TOP = 'rgba(255, 255, 255, 0.42)';
+export const LIQUID_GLASS_SPECULAR_TOP = hexToRgba(palette.white, 0.42);
 
 /** Reflet spéculaire milieu du verre. */
-export const LIQUID_GLASS_SPECULAR_MID = 'rgba(255, 255, 255, 0.06)';
+export const LIQUID_GLASS_SPECULAR_MID = hexToRgba(palette.white, 0.06);

@@ -153,21 +153,21 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-  loading: {
-    minWidth: 0,
-    flex: 1,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    backgroundColor: c.background,
-  },
-  list: {
-    minWidth: 0,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[10],
-    flexGrow: 1,
-    backgroundColor: c.background,
-  },
-  footer: { marginTop: spacing[4] },
-};
+    loading: {
+      minWidth: 0,
+      flex: 1,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      backgroundColor: c.background,
+    },
+    list: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[10],
+      flexGrow: 1,
+      backgroundColor: c.background,
+    },
+    footer: { marginTop: spacing[4] },
+  };
 }

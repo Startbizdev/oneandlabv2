@@ -46,8 +46,8 @@ export function RdvCareTagsRow({
   const { data: categories = [] } = useAppointmentCareCategories();
   const styles = useStyles(density === 'compact' ? buildCompactStyles : buildDefaultStyles);
   const orbColorMap = useMemo(
-    () => buildCareTileOrbColorMap(categories),
-    [categories, colorblindType],
+    () => buildCareTileOrbColorMap(categories, c),
+    [categories, c],
   );
 
   const opts: RdvCatalogDisplayOpts | undefined = hideStaffOnlyCares
@@ -82,7 +82,7 @@ export function RdvCareTagsRow({
       {items.map((line, idx) => {
         const tagColors = useNeutral
           ? listCareTagColors(c)
-          : resolveRdvCareTagColors(line, apt.type, categories, orbColorMap);
+          : resolveRdvCareTagColors(line, apt.type, categories, c, orbColorMap);
         return (
           <Row
             key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}

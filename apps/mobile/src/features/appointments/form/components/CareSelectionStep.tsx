@@ -419,12 +419,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     minWidth: 0,
     flex: 1,
     minHeight: 0,
-    backgroundColor: c.bookingCanvas,
+    backgroundColor: c.background,
   },
   listScroll: {
     minWidth: 0,
     flex: 1,
-    backgroundColor: c.bookingCanvas,
+    backgroundColor: c.background,
   },
   listContent: {
     minWidth: 0,

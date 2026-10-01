@@ -1,7 +1,4 @@
 import type { AppColors } from '@/theme/colors';
-import { useMemo } from 'react';
-import { useAppColors } from '@/theme/use-app-colors';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 
 /** Accents sémantiques pour les icônes du menu « Plus ». */
 export type MoreMenuIconAccent =
@@ -30,21 +27,4 @@ export function resolveMoreMenuIconColors(
     default:
       return { iconColor: c.primary, iconBg: c.primaryLight };
   }
-}
-
-/** @deprecated Préférer iconAccent sur MoreMenuItem (résolution au rendu). */
-export function useMoreMenuIconColors() {
-  const c = useAppColors();
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  return useMemo(
-    () => ({
-      settings: resolveMoreMenuIconColors(c, 'settings'),
-      results: resolveMoreMenuIconColors(c, 'results'),
-      teal: resolveMoreMenuIconColors(c, 'teal'),
-      warning: resolveMoreMenuIconColors(c, 'warning'),
-      muted: resolveMoreMenuIconColors(c, 'muted'),
-      heart: resolveMoreMenuIconColors(c, 'heart'),
-    }),
-    [c, colorblindType],
-  );
 }

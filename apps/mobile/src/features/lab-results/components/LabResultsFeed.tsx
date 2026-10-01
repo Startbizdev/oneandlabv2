@@ -68,10 +68,10 @@ export function LabResultsFeed({
           {items.length} résultat{items.length > 1 ? 's' : ''}
         </AppText>
       ) : null,
-    [items.length],
+    [items.length, styles.sectionTitle],
   );
 
-  const ItemSeparator = useCallback(() => <View style={styles.separator} />, []);
+  const ItemSeparator = useCallback(() => <View style={styles.separator} />, [styles.separator]);
 
   return (
     <FlatList

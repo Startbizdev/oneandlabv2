@@ -10,7 +10,7 @@ import {
   LIQUID_GLASS_HEADER_CONTROL_SIZE,
   LIQUID_GLASS_HEADER_SYMBOL_SIZE,
 } from '@/components/navigation/nav-chrome-tokens';
-import { AppText, useStyles, font, type Theme } from '@/theme';
+import { AppText, useStyles, font, hexToRgba, palette, type Theme } from '@/theme';
 
 type Props = {
   symbol: SFSymbol;
@@ -131,7 +131,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       justifyContent: 'center' as const,
       overflow: 'hidden' as const,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(15, 23, 42, 0.08)',
+      borderColor: hexToRgba(palette.slate[900], 0.08),
     },
     fallbackIcon: {
       alignItems: 'center' as const,

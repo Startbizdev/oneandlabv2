@@ -7,7 +7,7 @@ import { Camera, ImagePlus, Trash2, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -217,7 +217,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: hexToRgba(palette.black, 0.3),
   },
   avatarRow: {
     width: '100%' as const,

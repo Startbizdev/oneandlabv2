@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';

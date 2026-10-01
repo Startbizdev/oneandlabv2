@@ -1,9 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
-import { getAppColors } from '@/theme/colors';
 import { radius, useStyles, type Theme } from '@/theme';
 
 interface Props {
@@ -72,11 +70,10 @@ export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  const html = useMemo(() => {
-    const c = getAppColors();
-    return buildMapHtml(lat, lng, radiusKm, c.primary, c.primaryMid);
-  }, [colorblindType, lat, lng, radiusKm]);
+  const html = useMemo(
+    () => buildMapHtml(lat, lng, radiusKm, c.primary, c.primaryMid),
+    [c.primary, c.primaryMid, lat, lng, radiusKm],
+  );
 
   return (
     <View style={[styles.wrap, { height }]}>

@@ -1,4 +1,4 @@
-import { iconSize } from '@/theme';
+import { iconSize, useAppColors } from '@/theme';
 import type { StaffHubSearchItem } from '@oneandlab/shared-types';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -36,6 +36,7 @@ function ageSuffix(item: StaffHubSearchItem): string | undefined {
 
 /** Ligne hub Patients — avatar patient + icônes colorées par type. */
 export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
+  const c = useAppColors();
   const title = titleForItem(item);
   const subtitle = subtitleForItem(item);
 
@@ -60,7 +61,7 @@ export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
   }
 
   if (item.kind === 'document') {
-    const visual = hubDocumentVisual(item.document_type);
+    const visual = hubDocumentVisual(item.document_type, c);
     return (
       <ProfileNavRow
         icon={visual.Icon}
@@ -83,7 +84,7 @@ export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
     );
   }
 
-  const visual = hubExchangeVisual();
+  const visual = hubExchangeVisual(c);
   return (
     <ProfileNavRow
       icon={visual.Icon}

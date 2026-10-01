@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';

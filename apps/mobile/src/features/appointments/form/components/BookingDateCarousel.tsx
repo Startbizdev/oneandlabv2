@@ -23,9 +23,8 @@ import {
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
-import { animation, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { FONT_SIZE_BASE, lh } from '@/theme/typography';
-import { getTextScaleMultiplier } from '@/theme/text-scale';
+import { animation, elevation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -34,12 +33,11 @@ const COLS = 5;
 const ROWS = 2;
 const SLIDE_COUNT = 32;
 
-function bookingDayCellHeight(): number {
-  const scale = getTextScaleMultiplier();
+function bookingDayCellHeight(fontSize: Theme['fontSize']): number {
   const padY = spacing[1.5] * 2;
   const innerGap = 2;
-  const weekdayH = lh(Math.round(FONT_SIZE_BASE['2xs'] * scale), 1.35);
-  const dayH = lh(Math.round(FONT_SIZE_BASE.base * scale), 1.22);
+  const weekdayH = lh(fontSize['2xs'], 1.35);
+  const dayH = lh(fontSize.base, 1.22);
   return padY + innerGap + weekdayH + dayH + spacing[1];
 }
 
@@ -263,6 +261,7 @@ export function BookingDateCarousel({
   acceptSunday = true,
 }: Props) {
   const styles = useStyles(buildStyles);
+  const { fontSize } = useTheme();
   const listRef = useRef<FlatList<Dayjs[]>>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [page, setPage] = useState(0);
@@ -274,7 +273,7 @@ export function BookingDateCarousel({
 
   const selected = parseIsoDay(value);
   const gap = spacing[1.5];
-  const cellHeight = bookingDayCellHeight();
+  const cellHeight = bookingDayCellHeight(fontSize);
   const cellWidth = slideWidth > 0 ? (slideWidth - gap * (COLS - 1)) / COLS : 0;
   const listHeight = ROWS * cellHeight + gap + spacing[0.5];
 
@@ -407,8 +406,8 @@ export function BookingDateCarousel({
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
-  const weekdaySize = Math.round(FONT_SIZE_BASE['2xs'] * getTextScaleMultiplier());
-  const daySize = Math.round(FONT_SIZE_BASE.base * getTextScaleMultiplier());
+  const weekdaySize = fontSize['2xs'];
+  const daySize = fontSize.base;
 
   return {
     wrap: { gap: spacing[2] },

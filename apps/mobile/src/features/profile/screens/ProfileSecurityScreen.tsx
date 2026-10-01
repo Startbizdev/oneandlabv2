@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useLayoutEffect, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useFocusEffect, useNavigation } from 'expo-router';
 import { ScanFace } from 'lucide-react-native';

@@ -25,7 +25,19 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { elevation, radius, spacing, iconSize, AppText, useLayoutMetrics, useStyles, font, type Theme } from '@/theme';
+import {
+  elevation,
+  hexToRgba,
+  palette,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useLayoutMetrics,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -218,11 +230,11 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: radius.full,
     overflow: 'hidden' as const,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(15, 23, 42, 0.07)',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.82)' : c.surface,
+    borderColor: hexToRgba(palette.slate[900], 0.07),
+    backgroundColor: Platform.OS === 'ios' ? hexToRgba(c.surface, 0.82) : c.surface,
   },
   androidShell: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: hexToRgba(c.surface, 0.98),
   },
   rowInner: {
     paddingVertical: spacing[2.5],
@@ -238,7 +250,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   progressTrack: {
     height: 1.5,
-    backgroundColor: 'rgba(15, 23, 42, 0.05)',
+    backgroundColor: hexToRgba(palette.slate[900], 0.05),
     overflow: 'hidden' as const,
   },
   progressFill: {

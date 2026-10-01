@@ -17,7 +17,7 @@ import {
   isAvailabilityRangeValid,
 } from '../utils/booking-availability-utils';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { animation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { animation, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const THUMB = 24;
 
@@ -234,7 +234,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderColor: c.primary,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    shadowColor: '#000',
+    shadowColor: palette.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
     shadowRadius: 3,

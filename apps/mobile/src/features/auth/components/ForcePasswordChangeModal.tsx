@@ -1,6 +1,5 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, View } from 'react-native';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { updatePassword } from '@/features/auth/api/auth.service';
@@ -15,7 +14,6 @@ interface Props {
 }
 
 export function ForcePasswordChangeModal({ visible, onDone }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -55,9 +53,9 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-      <View style={[styles.shell, { backgroundColor: c.background }]}>
-        <AppText style={[styles.title, { color: c.textPrimary }]}>Choisissez un nouveau mot de passe</AppText>
-        <AppText style={[styles.sub, { color: c.textSecondary }]}>
+      <View style={styles.shell}>
+        <AppText style={styles.title}>Choisissez un nouveau mot de passe</AppText>
+        <AppText style={styles.sub}>
           Pour continuer, définissez un mot de passe personnel.
         </AppText>
         <View style={styles.form}>
@@ -72,9 +70,16 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  shell: { minWidth: 0, flex: 1, padding: spacing[6], paddingTop: spacing[16], gap: spacing[3] },
-  title: { ...font.heading, fontSize: fontSize.lg },
-  sub: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
+  shell: {
+    minWidth: 0,
+    flex: 1,
+    padding: spacing[6],
+    paddingTop: spacing[16],
+    gap: spacing[3],
+    backgroundColor: c.background,
+  },
+  title: { ...font.heading, fontSize: fontSize.lg, color: c.textPrimary },
+  sub: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45, color: c.textSecondary },
   form: { marginTop: spacing[4], gap: spacing[3] },
 };
 }

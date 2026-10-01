@@ -135,8 +135,9 @@ export function RdvListCardBody({
   );
 }
 
-function buildStyles({ colors: c }: Theme) {
-  const type = buildRdvListCardTypography(c);
+function buildStyles(t: Theme) {
+  const { colors: c } = t;
+  const type = buildRdvListCardTypography(t);
   return {
     bodyShell: {
       position: 'relative' as const,

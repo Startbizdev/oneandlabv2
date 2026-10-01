@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
-import { AppText, useStyles, font, type Theme } from '@/theme';
+import { AppText, palette, useStyles, font, type Theme } from '@/theme';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -33,9 +33,9 @@ export function HealthRecordProgressRing({
   const radiusPx = (resolvedSize - resolvedStroke) / 2;
   const circumference = 2 * Math.PI * radiusPx;
   const offset = circumference - (clamped / 100) * circumference;
-  const trackColor = onGradient ? hexToRgba('#FFFFFF', 0.28) : c.borderLight;
-  const progressStart = onGradient ? '#FFFFFF' : c.primary;
-  const progressEnd = onGradient ? hexToRgba('#FFFFFF', 0.72) : (c.gradientEnd ?? c.primary);
+  const trackColor = onGradient ? hexToRgba(palette.white, 0.28) : c.borderLight;
+  const progressStart = onGradient ? palette.white : c.primary;
+  const progressEnd = onGradient ? hexToRgba(palette.white, 0.72) : (c.gradientEnd ?? c.primary);
 
   return (
     <View style={[styles.wrap, { width: resolvedSize, height: resolvedSize }]}>
@@ -106,7 +106,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       color: c.textPrimary,
     },
     labelOnGradient: {
-      color: '#FFFFFF',
+      color: palette.white,
     },
   };
 }

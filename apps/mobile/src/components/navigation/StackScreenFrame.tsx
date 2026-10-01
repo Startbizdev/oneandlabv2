@@ -58,7 +58,7 @@ function buildStyles({ colors: c }: Theme) {
     root: {
       flex: 1,
       minWidth: 0,
-      backgroundColor: c.surface,
+      backgroundColor: c.background,
     },
     body: {
       flex: 1,

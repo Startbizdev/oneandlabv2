@@ -71,14 +71,14 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
         {!allAbsentOnly ? (
           <View style={styles.metrics}>
             <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-              <Route size={iconSize['2xs']} color="#FFFFFF" strokeWidth={2.2} />
+              <Route size={iconSize['2xs']} color={palette.white} strokeWidth={2.2} />
               <AppText style={styles.metric}>
                 {total} étape{total > 1 ? 's' : ''}
               </AppText>
             </Row>
             <View style={styles.metricDot} />
             <Row gap={spacing[1]} align="center" style={styles.metricItem}>
-              <MapPin size={iconSize['2xs']} color="#FFFFFF" strokeWidth={2.2} />
+              <MapPin size={iconSize['2xs']} color={palette.white} strokeWidth={2.2} />
               <AppText style={styles.metric}>{summary.estimated_km} km estimés</AppText>
             </Row>
             {absent > 0 ? (
@@ -107,7 +107,7 @@ function buildStyles({ fontSize }: Theme) {
       gap: spacing[2],
       overflow: 'hidden' as const,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: hexToRgba('#FFFFFF', 0.22),
+      borderColor: hexToRgba(palette.white, 0.22),
     },
     glowOrb: {
       position: 'absolute' as const,
@@ -116,7 +116,7 @@ function buildStyles({ fontSize }: Theme) {
       width: 88,
       height: 88,
       borderRadius: 44,
-      backgroundColor: hexToRgba('#FFFFFF', 0.14),
+      backgroundColor: hexToRgba(palette.white, 0.14),
     },
     glowOrbSecondary: {
       position: 'absolute' as const,
@@ -133,40 +133,39 @@ function buildStyles({ fontSize }: Theme) {
       fontSize: fontSize['2xs'],
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,
-      color: hexToRgba('#FFFFFF', 0.82),
+      color: hexToRgba(palette.white, 0.82),
     },
     title: {
       ...font.heading,
       fontSize: fontSize.lg,
       lineHeight: lh(fontSize.lg),
       letterSpacing: -0.35,
-      color: '#FFFFFF',
+      color: palette.white,
     },
     sub: {
       ...font.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
-      color: hexToRgba('#FFFFFF', 0.88),
+      color: hexToRgba(palette.white, 0.88),
     },
     metrics: {
       ...layoutRowWrap(spacing[1.5]),
       alignItems: 'center' as const,
       paddingTop: spacing[2],
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: hexToRgba('#FFFFFF', 0.22),
+      borderTopColor: hexToRgba(palette.white, 0.22),
     },
-    metricItem: {
-    minWidth: 0, flexShrink: 1 },
+    metricItem: { minWidth: 0, flexShrink: 1 },
     metric: {
       ...font.semiBold,
       fontSize: fontSize.xs,
-      color: hexToRgba('#FFFFFF', 0.92),
+      color: hexToRgba(palette.white, 0.92),
     },
     metricDot: {
       width: 4,
       height: 4,
       borderRadius: 2,
-      backgroundColor: hexToRgba('#FFFFFF', 0.45),
+      backgroundColor: hexToRgba(palette.white, 0.45),
     },
   };
 }

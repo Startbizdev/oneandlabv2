@@ -8,8 +8,6 @@ import 'dayjs/locale/fr';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth, useStyles, font, type Theme } from '@/theme';
-import { fontSize } from '@/theme/typography';
-
 dayjs.locale('fr');
 
 type Props = {
@@ -98,13 +96,7 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
               accessibilityState={{ checked: on }}
               accessibilityLabel={dayjs(cell.iso).format('D MMMM YYYY')}
             >
-              <AppText
-                style={{
-                  ...font.semiBold,
-                  fontSize: fontSize.sm,
-                  color: on ? c.primaryDark : c.textPrimary,
-                }}
-              >
+              <AppText style={[styles.dayLabel, { color: on ? c.primaryDark : c.textPrimary }]}>
                 {cell.day}
               </AppText>
             </Pressable>
@@ -147,7 +139,7 @@ function buildStyles({ fontSize }: Theme) {
       ...layoutRowWrap(0),
     },
     cell: {
-      width: '14.28%' as unknown as number,
+      width: '14.28%' as const,
       aspectRatio: 1,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -157,6 +149,7 @@ function buildStyles({ fontSize }: Theme) {
       borderWidth: 1,
       borderColor: 'transparent',
     },
+    dayLabel: { ...font.semiBold, fontSize: fontSize.sm },
     summary: { marginTop: spacing[1], gap: spacing[0.5] },
     summaryLabel: { ...font.medium, fontSize: fontSize.xs },
     summaryDates: { ...font.regular, fontSize: fontSize.sm },

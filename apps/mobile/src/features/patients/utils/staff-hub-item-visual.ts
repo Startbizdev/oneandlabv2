@@ -7,7 +7,7 @@ import {
   Shield,
   type LucideIcon,
 } from 'lucide-react-native';
-import { getAppColors } from '@/theme/colors';
+import type { AppColors } from '@/theme/colors';
 
 export type HubItemVisual = {
   Icon: LucideIcon;
@@ -15,8 +15,7 @@ export type HubItemVisual = {
   iconBg: string;
 };
 
-function docVisuals(): Record<string, HubItemVisual> {
-  const c = getAppColors();
+function docVisuals(c: AppColors): Record<string, HubItemVisual> {
   return {
     carte_vitale: {
       Icon: CreditCard,
@@ -61,12 +60,12 @@ function docVisuals(): Record<string, HubItemVisual> {
   };
 }
 
-export function hubDocumentVisual(documentType: string): HubItemVisual {
-  return docVisuals()[documentType] ?? docVisuals().other;
+export function hubDocumentVisual(documentType: string, c: AppColors): HubItemVisual {
+  const visuals = docVisuals(c);
+  return visuals[documentType] ?? visuals.other;
 }
 
-export function hubExchangeVisual(): HubItemVisual {
-  const c = getAppColors();
+export function hubExchangeVisual(c: AppColors): HubItemVisual {
   return {
     Icon: MessageCircle,
     iconColor: c.primary,

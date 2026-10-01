@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { AppText, font } from '@/theme';
+import { AppText, font, hexToRgba, palette, useStyles, type Theme } from '@/theme';
 import { View } from 'react-native';
 import {
   medicalDocumentPickErrorMessage,
@@ -28,7 +28,6 @@ import {
   useMedicalDocumentsStackHeadStyles,
 } from '@/features/documents/components/medical-documents-stack';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
-import { fontSize } from '@/theme/typography';
 import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 
 function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
@@ -68,6 +67,7 @@ export function RdvDocumentsPremiumPanel({
 }: Props) {
   const c = useAppColors();
   const section = useRdvDetailSectionStyles();
+  const dossierStyles = useStyles(buildDossierStyles);
   const headStyles = useMedicalDocumentsStackHeadStyles();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -181,7 +181,7 @@ export function RdvDocumentsPremiumPanel({
 
         {hasProfileNewerAlert ? (
           <View style={dossierStyles.alert}>
-            <AppText style={[dossierStyles.alertText, { color: c.textSecondary }]}>
+            <AppText style={dossierStyles.alertText}>
               Certains documents proviennent du profil patient et sont plus récents que la version
               attachée au rendez-vous.
             </AppText>
@@ -235,18 +235,21 @@ export function RdvDocumentsPremiumPanel({
   );
 }
 
-const dossierStyles = {
-  alert: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-  },
-  alertText: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    lineHeight: fontSize.xs * 1.45,
-  },
-};
+function buildDossierStyles({ colors: c, fontSize }: Theme) {
+  return {
+    alert: {
+      marginHorizontal: 16,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: hexToRgba(palette.amber[500], 0.12),
+    },
+    alertText: {
+      ...font.medium,
+      fontSize: fontSize.xs,
+      lineHeight: fontSize.xs * 1.45,
+      color: c.textSecondary,
+    },
+  };
+}

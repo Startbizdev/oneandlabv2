@@ -1,8 +1,6 @@
 import { isValidElement, type ReactNode } from 'react';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { AppText, font } from '@/theme';
-import { getAppColors } from '@/theme/colors';
-import { fontSize } from '@/theme/typography';
+import { AppText, font, useStyles, type Theme } from '@/theme';
 
 type HeaderTitleRenderProps = {
   tintColor?: string;
@@ -23,19 +21,7 @@ export function resolveStackHeaderTitle(
   if (raw == null) return undefined;
 
   if (typeof raw === 'string') {
-    const c = getAppColors();
-    return (
-      <AppText
-        numberOfLines={1}
-        style={{
-          ...font.heading,
-          fontSize: fontSize.lg,
-          color: tintColor ?? c.textPrimary,
-        }}
-      >
-        {raw}
-      </AppText>
-    );
+    return <StackHeaderTitleText title={raw} tintColor={tintColor} />;
   }
 
   if (typeof raw === 'function') {
@@ -48,6 +34,21 @@ export function resolveStackHeaderTitle(
   if (isValidElement(raw)) return raw;
 
   return raw as ReactNode;
+}
+
+function StackHeaderTitleText({ title, tintColor }: { title: string; tintColor?: string }) {
+  const styles = useStyles(buildStyles);
+  return (
+    <AppText numberOfLines={1} style={[styles.title, tintColor ? { color: tintColor } : null]}>
+      {title}
+    </AppText>
+  );
+}
+
+function buildStyles({ colors: c, fontSize }: Theme) {
+  return {
+    title: { ...font.heading, fontSize: fontSize.lg, color: c.textPrimary },
+  };
 }
 
 /** Slot headerLeft / headerRight — élément ou render prop. */

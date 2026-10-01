@@ -9,7 +9,7 @@ export function buildExpoRouterNavigationTheme(c: AppColors): Theme {
     colors: {
       ...DefaultTheme.colors,
       primary: c.primary,
-      background: c.surface,
+      background: c.background,
       card: c.surface,
       text: c.textPrimary,
       border: c.border,

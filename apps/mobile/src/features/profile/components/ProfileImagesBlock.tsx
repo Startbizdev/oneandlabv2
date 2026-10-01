@@ -5,7 +5,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { elevation, hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -179,7 +179,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: hexToRgba(palette.black, 0.28),
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
@@ -240,7 +240,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: hexToRgba(palette.black, 0.35),
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },

@@ -1,8 +1,6 @@
 import { layoutRowEndActions } from '@/theme/layout-styles';
-import { useAppColors } from '@/theme/use-app-colors';
 import { Keyboard, Platform, Pressable, StyleSheet, View, InputAccessoryView } from 'react-native';
-import { spacing, AppText, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { spacing, AppText, font, useStyles, type Theme } from '@/theme';
 
 /** Barre clavier iOS (pavé numérique / champs longs) — « Valider » en français, pas le « Done » anglais de RN. */
 export const SHEET_KEYBOARD_ACCESSORY_ID = 'one-sheet-keyboard-valider';
@@ -10,7 +8,7 @@ export const SHEET_KEYBOARD_ACCESSORY_ID = 'one-sheet-keyboard-valider';
 export const SHEET_KEYBOARD_ACCESSORY_HEIGHT = 48;
 
 export function SheetKeyboardAccessory() {
-  const c = useAppColors();
+  const styles = useStyles(buildStyles);
 
   if (Platform.OS !== 'ios') {
     return null;
@@ -18,7 +16,7 @@ export function SheetKeyboardAccessory() {
 
   return (
     <InputAccessoryView nativeID={SHEET_KEYBOARD_ACCESSORY_ID}>
-      <View style={[styles.bar, { borderTopColor: c.borderLight, backgroundColor: c.surfaceAlt }]}>
+      <View style={styles.bar}>
         <Pressable
           onPress={() => Keyboard.dismiss()}
           hitSlop={8}
@@ -26,29 +24,34 @@ export function SheetKeyboardAccessory() {
           accessibilityLabel="Valider"
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
         >
-          <AppText style={[styles.label, { color: c.primary }]}>Valider</AppText>
+          <AppText style={styles.label}>Valider</AppText>
         </Pressable>
       </View>
     </InputAccessoryView>
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    ...layoutRowEndActions(),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-  },
-  btn: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
-  },
-  btnPressed: {
-    opacity: 0.65,
-  },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-  },
-});
+function buildStyles({ colors: c, fontSize }: Theme) {
+  return {
+    bar: {
+      ...layoutRowEndActions(),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+      backgroundColor: c.surfaceAlt,
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+    },
+    btn: {
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
+    },
+    btnPressed: {
+      opacity: 0.65,
+    },
+    label: {
+      ...font.semiBold,
+      fontSize: fontSize.base,
+      color: c.primary,
+    },
+  };
+}

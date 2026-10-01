@@ -102,7 +102,7 @@ export function HealthSyncStatusCard({
                     fullWidth
                     loading={syncing}
                     leftIcon={
-                      syncing ? undefined : <RefreshCw size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />
+                      syncing ? undefined : <RefreshCw size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />
                     }
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -141,7 +141,7 @@ export function HealthSyncStatusCard({
                   fullWidth
                   loading={syncing}
                   leftIcon={
-                    syncing ? undefined : <Activity size={iconSize.xs} color="#FFFFFF" strokeWidth={2.5} />
+                    syncing ? undefined : <Activity size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />
                   }
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

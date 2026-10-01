@@ -122,7 +122,7 @@ export function TabBar({
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
-    backgroundColor: c.background,
+    backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.border,
   },

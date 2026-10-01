@@ -3,7 +3,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
-import { elevation, spacing, useStyles, type Theme } from '@/theme';
+import { elevation, hexToRgba, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -69,10 +69,10 @@ function buildStyles({ colors: c }: Theme) {
     overflow: 'hidden' as const,
   },
   blurOverlay: {
-    backgroundColor: 'rgba(247, 244, 239, 0.9)',
+    backgroundColor: hexToRgba(c.surface, 0.9),
   },
   androidBar: {
-    backgroundColor: c.bookingCanvasLight,
+    backgroundColor: c.surface,
   },
   bar: {
     paddingTop: spacing[3],

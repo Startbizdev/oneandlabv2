@@ -1,6 +1,5 @@
-import { getAppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import {
   buildTabSceneScrollConfig,
@@ -36,10 +35,9 @@ import type { LucideIcon } from 'lucide-react-native';
 import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
-import { elevation, radius, spacing, iconSize, useStyles, font, type Theme } from '@/theme';
+import { elevation, radius, spacing, iconSize, useStyles, font, type AppColors, type Theme } from '@/theme';
 
 interface MenuItemProps {
   icon: LucideIcon;
@@ -100,12 +98,12 @@ function isPharmacistEmploi(emploi: string | null | undefined): boolean {
 }
 
 function getSections(
+  c: AppColors,
   role: string | undefined,
   emploi: string | null | undefined,
   router: ReturnType<typeof useRouter>,
   logout: () => Promise<void>,
 ): MenuSection[] {
-  const c = getAppColors();
   const menuIcons = {
     teal: { iconColor: c.primary, iconBg: c.primaryLight },
     heart: { iconColor: c.error, iconBg: c.errorLight },
@@ -246,15 +244,15 @@ function getSections(
 }
 
 export function ProfileHubScreen() {
+  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
 
   const sections = useMemo(
-    () => getSections(user?.role, user?.emploi, router, logout),
-    [user?.role, user?.emploi, router, logout, colorblindType],
+    () => getSections(c, user?.role, user?.emploi, router, logout),
+    [c, user?.role, user?.emploi, router, logout],
   );
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);

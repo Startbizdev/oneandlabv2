@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SkeletonList } from '@/components/ui/skeletons';

@@ -22,9 +22,10 @@ import {
   type ProfessionalProfileData,
 } from '@/features/profile/utils/professional-profile-sheet';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const AVATAR = 96;
+const COVER_FADE_COLORS = [palette.transparent, hexToRgba(palette.black, 0.35)] as const;
 
 interface Props {
   visible: boolean;
@@ -98,7 +99,7 @@ export function ProfessionalProfileSheet({
           />
         )}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.35)']}
+          colors={COVER_FADE_COLORS}
           style={styles.coverFade}
         />
       </View>
@@ -249,13 +250,11 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: radius.full,
     padding: 3,
     backgroundColor: c.surface,
-    ...{
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
-      elevation: 4,
-    },
+    shadowColor: palette.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatar: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -11,7 +11,7 @@ import {
   pharmacyOrderPharmacyLabel,
   pharmacyOrderStatusLabel,
 } from '../utils/order-display';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, font, palette, type Theme } from '@/theme';
 
 interface Props {
   order: PharmacyOrder;
@@ -92,7 +92,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       backgroundColor: c.surface,
       padding: spacing[3.5],
       ...{
-        shadowColor: '#000',
+        shadowColor: palette.black,
         shadowOpacity: 0.04,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 2 },

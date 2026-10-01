@@ -216,7 +216,7 @@ export function AppointmentConversationScreen() {
       )}
       {canPost ? (
         <View style={[styles.composer, { borderTopColor: c.border, backgroundColor: c.surface }]}>
-          <Row style={[styles.composerBar, { backgroundColor: c.background, borderColor: c.border }]}>
+          <Row style={[styles.composerBar, { backgroundColor: c.surface, borderColor: c.border }]}>
             <Pressable onPress={() => void onPickAttachment()} disabled={sendMutation.isPending}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
               accessibilityRole="button" accessibilityLabel="Joindre une photo ou un document">

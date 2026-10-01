@@ -1,7 +1,6 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import {
   buildCareTileOrbColorMap,
   resolveRdvCareTagColors,
@@ -45,13 +44,13 @@ interface Props {
 }
 
 function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const c = useAppColors();
   const tagStyles = useStyles(buildCareTagStyles);
   const { data: categories = [] } = useAppointmentCareCategories();
   const lines = useMemo(() => offerCareTagLines(batch), [batch]);
   const orbColorMap = useMemo(
-    () => buildCareTileOrbColorMap(categories),
-    [categories, colorblindType],
+    () => buildCareTileOrbColorMap(categories, c),
+    [categories, c],
   );
   const primaryType = batch[0]?.type ?? 'nursing';
   if (!lines.length) return null;
@@ -60,7 +59,7 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
     <View style={tagStyles.careTagsBlock}>
       <Row wrap align="center" gap={5} style={tagStyles.careTagsWrap}>
         {lines.map((line, idx) => {
-          const tagColors = resolveRdvCareTagColors(line, primaryType, categories, orbColorMap);
+          const tagColors = resolveRdvCareTagColors(line, primaryType, categories, c, orbColorMap);
           return (
             <Row
               key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
@@ -161,8 +160,9 @@ export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
   );
 }
 
-function buildCareTagStyles({ colors: c }: Theme) {
-  const type = buildRdvListCardTypography(c);
+function buildCareTagStyles(t: Theme) {
+  const { colors: c } = t;
+  const type = buildRdvListCardTypography(t);
   return {
     careTagsBlock: {
       paddingHorizontal: spacing[4],

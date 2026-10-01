@@ -1,5 +1,5 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { radius, useStyles, type Theme } from '@/theme';
 

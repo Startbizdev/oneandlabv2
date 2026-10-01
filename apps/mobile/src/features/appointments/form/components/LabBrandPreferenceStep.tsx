@@ -4,10 +4,8 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import { fetchPublicLabBrands } from '@/features/appointments/api/lab-brands.service';
 import { queryKeys } from '@/lib/query-keys';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing, AppText, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, font, useStyles, type Theme } from '@/theme';
 
 type Props = {
   mode: LabPreferenceMode | '';
@@ -25,7 +23,7 @@ export function LabBrandPreferenceStep({
   validationError,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'LabBrandPreferenceStep');
+  const styles = useStyles(buildStyles);
   const selectedMode = mode || 'platform_match';
 
   const brandsQ = useQuery({
@@ -103,7 +101,7 @@ export function LabBrandPreferenceStep({
   );
 }
 
-function buildStyles(c: ReturnType<typeof useAppColors>) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: { gap: spacing[3], paddingBottom: spacing[6] },
     lead: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },

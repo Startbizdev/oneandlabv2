@@ -15,8 +15,7 @@ import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
 import { resolvePassageTimeRange, passageCustomTimeFromHour, passageSlotFromRange } from '@oneandlab/shared-utils';
-import { radius, spacing, AppText, useStyles, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** Sélection UI — « range » = créneau horaire avec slider. */
 type DraftSelection = PassageTimeSlot | 'range';
@@ -143,13 +142,7 @@ export function PassageFormTimeSheet({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
               >
-                <AppText
-                  style={{
-                    color: selected ? c.primaryDark : c.textSecondary,
-                    ...font.semiBold,
-                    fontSize: fontSize.xs,
-                  }}
-                >
+                <AppText style={[styles.presetLabel, { color: selected ? c.primaryDark : c.textSecondary }]}>
                   {opt.label}
                 </AppText>
               </Pressable>
@@ -178,7 +171,7 @@ export function PassageFormTimeSheet({
   );
 }
 
-function buildStyles() {
+function buildStyles({ fontSize }: Theme) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     presetWrap: {
@@ -189,6 +182,10 @@ function buildStyles() {
       paddingVertical: spacing[1.5],
       borderRadius: radius.full,
       borderWidth: 1,
+    },
+    presetLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.xs,
     },
   };
 }

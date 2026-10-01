@@ -59,7 +59,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
             style={[
               styles.countBadge,
               count >= 10 && styles.countBadgeWide,
-              { backgroundColor: c.primary, borderColor: c.background },
+              { backgroundColor: c.primary, borderColor: c.surface },
             ]}
           >
             <AppText style={[styles.countText, { color: c.textInverse }]} maxFontSizeMultiplier={1.2}>

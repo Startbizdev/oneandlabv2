@@ -1,5 +1,5 @@
 import { ProfileDocumentsEmbedded } from '@/features/profile/screens/ProfileDocumentsScreen';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 

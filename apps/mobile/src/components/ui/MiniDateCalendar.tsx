@@ -1,7 +1,5 @@
-import type { AppColors } from '@/theme/colors';
-import { spacing } from '@/theme';
-import { useThemedStyles } from '@/theme/use-themed-styles';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useStyles, type Theme } from '@/theme';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -66,11 +64,7 @@ export function MiniDateCalendar({
 }: Props) {
   const layout = getMiniDateCalendarLayout(size);
   const parts = partsProp ?? formatMiniDateCalendarParts(date);
-  const styleFactory = useMemo(
-    () => (c: AppColors) => buildStyles(c, layout, variant),
-    [layout, variant],
-  );
-  const styles = useThemedStyles(styleFactory, `MiniDateCalendar.${size}.${variant}`);
+  const styles = useStyles(getStyleFactory(size, variant));
 
   if (!parts) return null;
 
@@ -219,7 +213,29 @@ const glyphStyles = StyleSheet.create({
   },
 });
 
-function buildStyles(c: AppColors, layout: MiniDateCalendarLayout, variant: MiniDateCalendarVariant) {
+type MiniDateCalendarStyleFactory = (t: Theme) => ReturnType<typeof buildStyles>;
+
+const styleFactories = new Map<string, MiniDateCalendarStyleFactory>();
+
+/** Une factory stable par couple taille / variante (cache `useStyles` par factory). */
+function getStyleFactory(
+  size: MiniDateCalendarSize,
+  variant: MiniDateCalendarVariant,
+): MiniDateCalendarStyleFactory {
+  const key = `${size}.${variant}`;
+  const hit = styleFactories.get(key);
+  if (hit) return hit;
+  const layout = getMiniDateCalendarLayout(size);
+  const factory: MiniDateCalendarStyleFactory = (t) => buildStyles(t, layout, variant);
+  styleFactories.set(key, factory);
+  return factory;
+}
+
+function buildStyles(
+  { colors: c, space }: Theme,
+  layout: MiniDateCalendarLayout,
+  variant: MiniDateCalendarVariant,
+) {
   const palette = getMiniDateCalendarColors(variant, c);
 
   return {
@@ -246,7 +262,7 @@ function buildStyles(c: AppColors, layout: MiniDateCalendarLayout, variant: Mini
       width: '100%' as const,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      paddingHorizontal: spacing[0.5],
+      paddingHorizontal: space['2xs'],
     },
     headerBand: {
       backgroundColor: palette.headerBg,

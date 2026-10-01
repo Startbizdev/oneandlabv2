@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { palette } from '@/theme/colors';
 
 export interface HealthPlatformUiConfig {
   name: string;
@@ -16,8 +17,8 @@ export function getHealthPlatformUiConfig(): HealthPlatformUiConfig {
       connectTitle: 'Connecter Apple Santé',
       connectedSubtitle: 'Poids, activité et fréquence cardiaque',
       disconnectedSubtitle: 'Autorisez Cary à lire vos données Santé',
-      iconBg: '#FF2D55',
-      iconColor: '#FFFFFF',
+      iconBg: palette.thirdParty.appleHealth,
+      iconColor: palette.white,
     };
   }
 
@@ -26,8 +27,8 @@ export function getHealthPlatformUiConfig(): HealthPlatformUiConfig {
     connectTitle: 'Connecter Health Connect',
     connectedSubtitle: 'Poids, activité et fréquence cardiaque',
     disconnectedSubtitle: 'Autorisez Cary via Health Connect',
-    iconBg: '#1B7F5E',
-    iconColor: '#FFFFFF',
+    iconBg: palette.thirdParty.healthConnect,
+    iconColor: palette.white,
   };
 }
 

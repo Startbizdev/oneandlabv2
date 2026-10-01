@@ -115,7 +115,7 @@ export function PassageSimpleListRow({
                 ) : (
                   <Check
                     size={iconSize.mdSm}
-                    color={done ? '#FFFFFF' : c.textTertiary}
+                    color={done ? c.textInverse : c.textTertiary}
                     strokeWidth={2.5}
                     opacity={done ? 1 : 0.38}
                   />

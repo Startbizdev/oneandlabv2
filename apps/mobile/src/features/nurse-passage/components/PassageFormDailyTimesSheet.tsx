@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import type { PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import { layoutRowWrap } from '@/theme/layout-styles';
-import { radius, spacing, AppText, useStyles, font } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const MULTI_SLOT_OPTIONS: PassageTimeSlot[] = ['morning', 'noon', 'afternoon', 'evening', 'night'];
 const ALL_DAY_SLOT: PassageTimeSlot = 'all_day';
@@ -81,13 +80,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
                   },
                 ]}
               >
-                <AppText
-                  style={{
-                    color: on ? c.primaryDark : c.textSecondary,
-                    ...font.semiBold,
-                    fontSize: fontSize.sm,
-                  }}
-                >
+                <AppText style={[styles.presetLabel, { color: on ? c.primaryDark : c.textSecondary }]}>
                   {PASSAGE_TIME_SLOT_LABELS[id]}
                 </AppText>
               </Pressable>
@@ -99,7 +92,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
   );
 }
 
-function buildStyles() {
+function buildStyles({ fontSize }: Theme) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     presetWrap: {
@@ -110,6 +103,10 @@ function buildStyles() {
       paddingVertical: spacing[2],
       borderRadius: radius.full,
       borderWidth: 1,
+    },
+    presetLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.sm,
     },
   };
 }

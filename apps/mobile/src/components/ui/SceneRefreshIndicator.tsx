@@ -1,7 +1,7 @@
 import { ActivityIndicator, View } from 'react-native';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useStyles, type Theme } from '@/theme';
+import { palette, useStyles, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -41,7 +41,7 @@ function buildStyles({ colors: c }: Theme) {
       paddingVertical: 6,
       borderRadius: 999,
       backgroundColor: c.surface,
-      shadowColor: '#000',
+      shadowColor: palette.black,
       shadowOpacity: 0.08,
       shadowRadius: 6,
       shadowOffset: { width: 0, height: 2 },

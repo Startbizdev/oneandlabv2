@@ -82,7 +82,7 @@ export function NurseDemandesScreen() {
         <PlanLimitsBanner />
       </View>
     ),
-    [],
+    [styles.listHeader],
   );
 
   return (

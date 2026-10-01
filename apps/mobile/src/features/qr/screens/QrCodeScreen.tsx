@@ -165,7 +165,7 @@ export function QrCodeScreen() {
               title="Partager l'affiche"
               variant="primary"
               fullWidth
-              leftIcon={<Share2 size={iconSize.mdSm} color={c.textInverse} strokeWidth={2} />}
+              leftIcon={<Share2 size={iconSize.mdSm} color={c.onPrimary} strokeWidth={2} />}
               onPress={() => void sharePoster()}
             />
             <Button

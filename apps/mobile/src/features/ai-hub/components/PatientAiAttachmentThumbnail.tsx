@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { FileText, X } from 'lucide-react-native';
 import { isPdfMime } from '../utils/attachment-preview';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type PatientAiAttachmentPreview = {
   uri: string;
@@ -70,7 +70,7 @@ export function PatientAiAttachmentThumbnail({
         </AppText>
       ) : null}
       {loading ? (
-        <View style={[styles.loadingOverlay, { backgroundColor: `${c.background}CC` }]}>
+        <View style={[styles.loadingOverlay, { backgroundColor: hexToRgba(c.background, 0.8) }]}>
           <ActivityIndicator size="small" color={c.primary} />
         </View>
       ) : null}
@@ -156,7 +156,7 @@ function buildStyles({ fontSize }: Theme) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       ...StyleSheet.flatten({
-        shadowColor: '#000',
+        shadowColor: palette.black,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.12,
         shadowRadius: 2,

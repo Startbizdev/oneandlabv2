@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ProfileCoverageEditor } from '@/features/profile/components/ProfileCoverageEditor';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 

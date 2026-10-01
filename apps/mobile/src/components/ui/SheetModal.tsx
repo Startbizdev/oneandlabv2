@@ -1,4 +1,4 @@
-import { getAppColors } from '@/theme/colors';
+import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -68,6 +68,7 @@ export function SheetModal({
   stackBehavior = 'switch',
   keyboardBehavior = 'interactive',
 }: Props) {
+  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
@@ -130,7 +131,7 @@ export function SheetModal({
         <Row gap={spacing[2]} style={styles.header}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={iconSize.mdLg} color={getAppColors().primary} strokeWidth={2.5} />
+              <ChevronLeft size={iconSize.mdLg} color={c.primary} strokeWidth={2.5} />
             </Pressable>
           ) : null}
           <View style={styles.headerText}>
@@ -140,7 +141,7 @@ export function SheetModal({
         </Row>
       </View>
     ),
-    [onBack, styles, subtitle, title],
+    [c.primary, onBack, styles, subtitle, title],
   );
 
   const bottomPad = Math.max(insets.bottom, spacing[3]);

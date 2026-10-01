@@ -65,7 +65,7 @@ export function HealthRecordPromptCard({ percent, onPress, loading }: Props) {
 
             <View style={styles.body}>
               <Row gap={spacing[1.5]} align="center">
-                <HeartPulse size={iconSize.xs} color="#FFFFFF" strokeWidth={2.25} />
+                <HeartPulse size={iconSize.xs} color={palette.white} strokeWidth={2.25} />
                 <AppText style={styles.title}>Mon carnet de santé</AppText>
               </Row>
               <AppText style={styles.subtitle} numberOfLines={2}>
@@ -74,7 +74,7 @@ export function HealthRecordPromptCard({ percent, onPress, loading }: Props) {
             </View>
 
             <View style={styles.chevronWrap}>
-              <ArrowRight size={iconSize.mdSm} color="#FFFFFF" strokeWidth={2.25} />
+              <ArrowRight size={iconSize.mdSm} color={palette.white} strokeWidth={2.25} />
             </View>
           </Row>
         </LinearGradient>
@@ -127,7 +127,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderRadius: 60,
       top: -36,
       right: -24,
-      backgroundColor: hexToRgba('#FFFFFF', 0.16),
+      backgroundColor: hexToRgba(palette.white, 0.16),
     },
     glowOrbSecondary: {
       position: 'absolute' as const,
@@ -136,13 +136,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderRadius: 36,
       bottom: -28,
       left: 24,
-      backgroundColor: hexToRgba('#FFFFFF', 0.08),
+      backgroundColor: hexToRgba(palette.white, 0.08),
     },
     ringWrap: {
       width: 56,
       height: 56,
       borderRadius: radius.full,
-      backgroundColor: hexToRgba('#FFFFFF', 0.18),
+      backgroundColor: hexToRgba(palette.white, 0.18),
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
@@ -150,20 +150,20 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     title: {
       ...font.bold,
       fontSize: fontSize.base,
-      color: '#FFFFFF',
+      color: palette.white,
       letterSpacing: -0.2,
     },
     subtitle: {
       ...font.regular,
       fontSize: fontSize.sm,
-      color: hexToRgba('#FFFFFF', 0.88),
+      color: hexToRgba(palette.white, 0.88),
       lineHeight: fontSize.sm * 1.4,
     },
     chevronWrap: {
       width: 32,
       height: 32,
       borderRadius: radius.full,
-      backgroundColor: hexToRgba('#FFFFFF', 0.2),
+      backgroundColor: hexToRgba(palette.white, 0.2),
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },

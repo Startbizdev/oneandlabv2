@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useMutation, useQuery } from '@tanstack/react-query';

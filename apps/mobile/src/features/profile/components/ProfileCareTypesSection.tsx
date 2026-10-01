@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
@@ -156,10 +156,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   emojiTileEnabled: {
     backgroundColor: c.surface,
     borderColor: palette.brand[200],
-  },
-  emoji: {
-    fontSize: fontSize.lg,
-    lineHeight: 24,
   },
   rowTitle: {
     ...font.semiBold,

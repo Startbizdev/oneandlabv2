@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { ProfileNurseView } from '@/features/profile/views/ProfileNurseView';
 import { ProfilePatientView } from '@/features/profile/views/ProfilePatientView';
