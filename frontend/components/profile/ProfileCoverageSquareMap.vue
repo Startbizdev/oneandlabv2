@@ -21,7 +21,7 @@
       </p>
       <p v-if="!readOnly" class="text-xs text-muted flex items-center gap-1.5">
         <UIcon name="i-lucide-move" class="w-3.5 h-3.5 shrink-0" />
-        Glissez un poignet pour former votre zone
+        Glissez une poignée pour former votre zone
       </p>
     </div>
     <p v-if="limitReachedHint" class="text-xs text-amber-600 dark:text-amber-400">

@@ -55,15 +55,16 @@ if ($method === 'PATCH') {
         echo json_encode(['success' => false, 'error' => 'Relation et préférence requises']);
         exit;
     }
-    $stmt = $db->prepare(
-        'UPDATE patient_professional_access SET hidden_by_patient = ? WHERE id = ? AND patient_id = ?'
-    );
-    $stmt->execute([!empty($body['hidden']) ? 1 : 0, $id, $patientId]);
-    if ($stmt->rowCount() === 0) {
+    $exists = $db->prepare('SELECT 1 FROM patient_professional_access WHERE id = ? AND patient_id = ? LIMIT 1');
+    $exists->execute([$id, $patientId]);
+    if ($exists->fetchColumn() === false) {
         http_response_code(404);
         echo json_encode(['success' => false, 'error' => 'Relation introuvable']);
         exit;
     }
+    $db->prepare(
+        'UPDATE patient_professional_access SET hidden_by_patient = ? WHERE id = ? AND patient_id = ?'
+    )->execute([!empty($body['hidden']) ? 1 : 0, $id, $patientId]);
     echo json_encode(['success' => true]);
     exit;
 }
