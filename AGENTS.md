@@ -20,11 +20,11 @@ Plateforme de rendez-vous de prélèvement à domicile. Rôles : patient, infirm
 
 ## Règles (`.cursor/rules/`)
 
-- Toujours : `senior-error-fixing`, `architecture-code-quality`
+- Toujours : `senior-error-fixing`, `architecture-code-quality`, `cary-premium-completion` (ne pas s'arrêter avant d'avoir vérifié toutes les vues, toujours vérifier le backend, solution simple de dev senior)
 - Code : `typescript-react-vue`, `backend-php`
 - Design : `cary-design-rules`, `ui-preferences` (web), `mobile-full-width-segments`
 - Fonctionnel : `cary-functional-guardian`
-- Visual QA : `mobile-visual-qa-ios`, `web-visual-qa`
+- Visual QA : `mobile-visual-qa-ios` (iOS ou émulateur Android `emulator-5600`), `web-visual-qa`
 
 ## Sous-agents (`.cursor/agents/`)
 

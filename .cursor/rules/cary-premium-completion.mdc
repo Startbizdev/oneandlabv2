@@ -1,0 +1,42 @@
+---
+description: Exigence de complétude et de qualité premium Cary — ne jamais s'arrêter avant d'avoir vérifié toutes les vues et fonctionnalités, toujours vérifier le backend, solution simple de dev senior
+alwaysApply: true
+---
+
+# Cary — complétude et qualité premium
+
+## Ne jamais s'arrêter avant la fin
+
+- Une refonte ou une QA n'est terminée que lorsque **chaque vue de l'inventaire** (`apps/mobile/VISUAL-QA.md`, `apps/mobile/FUNCTIONAL-MATRIX.md`) a : capture avant, critique écrite, corrections, capture après, actions tracées jusqu'au backend.
+- Ne pas déclarer « terminé » parce que ça compile ou que les tests passent. Ne pas s'arrêter pour faire un point intermédiaire : continuer jusqu'à l'inventaire coché à 100 %, pour tous les rôles (patient, infirmier, préleveur, pro, laboratoire, admin quand concerné).
+- Suivre le plan validé à la lettre ; un écart doit être signalé explicitement, jamais passé sous silence.
+
+## Toujours vérifier, ne jamais inventer
+
+- Avant de modifier ou d'affirmer quoi que ce soit sur une donnée ou une action : lire l'endpoint (`backend/api`), la policy (`backend/lib`), le model et le contrat de réponse.
+- Distinguer vérifié / hypothèse. Dire « je ne sais pas » plutôt que deviner.
+
+## Approche de dev senior
+
+- Avant de coder : comparer l'approche actuelle et la meilleure solution simple. Si l'approche existante de l'app est mauvaise ou sur-ingénierée, la remplacer par la solution la plus simple et correcte.
+- Pas de hardcoding dupliqué : une seule source de vérité (tokens du thème, `STACK_HEADER_CATALOG`, constantes partagées, map d'illustrations).
+- Supprimer le code mort produit par la refonte (appelants compris).
+
+## Boucle Visual QA par vue (obligatoire)
+
+CAPTURE → lister les défauts comme un humain exigeant (bruit, texte en trop, hiérarchie, troncature, icône mal dimensionnée, action principale peu claire, card inutile) → corriger → RECAPTURE → comparer → recommencer jusqu'à zéro défaut.
+
+- Rien ne doit être coupé : aucun texte tronqué involontairement, aucune icône rognée ; tester aussi avec une grande taille de police système.
+- Écrire la critique et les corrections dans `VISUAL-QA.md`.
+
+## Direction premium éditoriale médicale
+
+- Référence : Airbnb, Apple (Keynote, Santé). Simple, intuitif, aucune surcharge cognitive.
+- Un écran = une intention, un titre court, au plus une phrase d'aide, une action principale.
+- Détails : `cary-design-rules.mdc`.
+
+## Environnement QA mobile
+
+- Émulateur `emulator-5600` (AVD `Cary_Pixel_8_API_35`) uniquement. Ne jamais toucher `emulator-5580`, les AVD `ERYVYN_*` ni le lecteur `R:` (autre projet).
+- Metro lancé **sans** `CI=1` (sinon le rechargement des fichiers est désactivé), depuis `C:\...\apps\mobile`, port 8082, `adb reverse tcp:8082 tcp:8082`.
+- Backend local uniquement (docker `cary-mobile-qa`, port 8888). Jamais la base de prod, jamais de SSH, aucun déploiement ni EAS sans GO explicite.

@@ -14,6 +14,13 @@ Niveau de finition visé : Apple Health, Linear, Stripe, Airbnb/Uber (qualité p
 
 Objectif : une vraie application premium conçue par une équipe Product Design, pas un template SaaS ni une interface manifestement générée par IA.
 
+### Direction « éditorial médical premium » (Airbnb, Apple Keynote / Santé)
+
+- **Un écran = une intention.** Un titre court (≤ 4 mots si possible), au plus **une** phrase d'aide, **une** action principale.
+- **Budget de texte** : pas de paragraphe d'explication dans un écran fonctionnel ; une ligne d'aide maximum par section ; libellés de 1 à 3 mots ; pas de texte répété entre titre, sous-titre et bouton.
+- Beaucoup d'air, alignements stricts sur la grille de spacing, peu d'éléments visibles à la fois. Ce qui n'aide pas l'utilisateur à agir est retiré ou replié.
+- Aucun texte ni icône coupé : le contenu s'adapte (retour à la ligne, taille de police système grande).
+
 ## 2. Interdictions — éviter le « AI flop »
 
 Ne jamais générer automatiquement :
@@ -80,23 +87,31 @@ Priorité absolue : réutiliser les icônes et assets Cary existants avant d'en 
 - Web : `frontend/public/images/` (`care/`, `landing/`, `lab-brands/`, `menuswipe/`).
 - `frontend/public/undraw/` contient des illustrations génériques : ne pas en ajouter de nouvelles.
 
-### Illustrations 3D des soins (référence validée)
+### Visuel des soins
 
-26 illustrations 3D, une par type de soin (prise de sang, vaccination, injection, pansement, perfusion, examen des urines, suivi diabète, grossesse, soins palliatifs, « autre »…). C'est **le** visuel à utiliser partout où un soin ou une catégorie de soin est affiché : choix des soins dans la réservation, panier, récap, cartes et détail RDV, tournée, catalogue admin.
+**Soins = illustrations 3D générées, web et mobile, une par catégorie de soin.** Jamais d'emoji ni d'icône Lucide pour représenter un soin.
 
-- Fichiers : `frontend/public/images/care/<clé>.webp` (web, 256 px) et `apps/mobile/src/assets/care-art/<clé>.png` (mobile, 192 px).
-- Liste des clés et correspondance nom / type → clé : `CARE_ARTWORK_KEYS` et `careArtworkKey()` dans `packages/shared-utils/src/care-artwork.ts`. Ne jamais écrire un chemin `/images/care/...` en dur ni refaire le mapping.
-- Affichage : web `resolveCareCategoryImageSrc()` / `careListBadgeDisplay()` (`frontend/utils/care-icons.ts`) ; mobile `CarePictogram` (`components/ui/CarePictogram.tsx`, map `constants/care-artwork-images.ts`).
-- Priorité conservée : icône choisie par l'admin > image importée par l'admin (`care_categories.image_url`) > illustration 3D Cary.
-- Ajouter un soin : générer l'image dans le même style (fond magenta uni), la traiter avec `python scripts/care-artwork/process.py <dossier>` qui produit les deux formats, ajouter la clé à `CARE_ARTWORK_KEYS` et à `care-artwork-images.ts`, puis lancer `node scripts/test-care-icons.cjs`.
+- Clés et correspondance nom / type → clé : `CARE_ARTWORK_KEYS` et `careArtworkKey()` dans `packages/shared-utils/src/care-artwork.ts` (clé = `careArtworkSlug(nom de la catégorie)`, alias pour les anciens libellés). Chaque catégorie réelle a sa clé ; le visuel du type (`prise-de-sang` / `soins-infirmiers`) n'est qu'un repli pour une catégorie inconnue. Ne jamais écrire un chemin d'illustration en dur ni refaire le mapping.
+- Fichiers : web `frontend/public/images/care/<clé>.webp` (256 px) ; mobile `apps/mobile/src/assets/care-art/<clé>.png` (192 px), une entrée par clé dans `apps/mobile/src/constants/care-artwork-images.ts` (`require` statiques, livrés avec l'app, hors ligne).
+- Affichage mobile : un seul composant, `CareIcon` (`features/categories/components/CareIcon.tsx`) — puits neutre `surfaceAlt` en liste (`variant="well"`), illustration seule à côté d'un libellé, masquée à l'accessibilité (le libellé porte le sens). Nom du catalogue prioritaire via `careSourceFromCatalog`.
+- Priorité, identique web et mobile : image importée par l'admin (`care_categories.image_url`) > illustration 3D de la catégorie. `care_categories.icon` n'est qu'un pictogramme de secours web si l'image ne se charge pas ; il ne masque jamais l'illustration. Web : `resolveCareCategoryImageSrc()` / `careListBadgeDisplay()` (`frontend/utils/care-icons.ts`).
+- Pipeline d'un nouveau soin : générer l'image dans le même style (fond vert #00FF00 uni — le magenta efface les rouges —, fichier `<clé>.jpg|png`), `python scripts/care-artwork/process.py <dossier>` (produit le webp web **et** le png mobile), ajouter la clé à `CARE_ARTWORK_KEYS` et à `care-artwork-images.ts`, puis `node scripts/test-care-icons.cjs`.
 
-Ne jamais remplacer arbitrairement un asset Cary par une icône générique. Les icônes fonctionnelles appartiennent au même système (web : Lucide via `@iconify-json/lucide`). Une icône doit avoir une fonction ou améliorer réellement la compréhension.
+**Interface = Lucide.** Ne jamais remplacer arbitrairement un asset Cary par une icône générique. Les icônes fonctionnelles appartiennent au même système : **Lucide outline** (web : `@iconify-json/lucide` ; mobile : `lucide-react-native`), trait `1.75`, tailles **20** (dans le contenu) et **24** (header, bottom nav). Une icône doit avoir une fonction ou améliorer réellement la compréhension.
 
-## 9. Illustrations 3D
+### Navigation mobile
 
-Autorisées mais rares et intentionnelles : onboarding, empty states importants, succès de réservation, fonctionnalités majeures, pédagogie santé, assistant, permissions, certaines expériences émotionnelles.
+- **Bottom nav** : barre custom unique (expo-router `Tabs` + `tabBar`), icônes Lucide outline, onglet actif en couleur primaire avec trait renforcé, libellés courts sur une ligne, badge numérique, safe area, cibles ≥ 44 pt. Configuration des onglets par rôle dans un seul fichier de constantes.
+- **Header** : un seul composant ; grand titre en tête d'onglet, titre compact dans une pile, retour `ChevronLeft`, au plus une action à droite. Titres depuis `STACK_HEADER_CATALOG` (ou prop `title` pour un titre propre au rôle).
 
-Style : 3D premium, formes douces, composition simple, fond propre, palette Cary, détails médicaux subtils, esthétique startup premium contemporaine, cohérence parfaite entre toutes les illustrations.
+## 9. Illustrations
+
+Deux univers, jamais mélangés :
+
+- **Soins** (web et mobile) : illustrations 3D (section 8), uniquement pour représenter un soin.
+- **Empty states, tutoriel, succès, permissions, hors ligne** : illustration **éditoriale vectorielle plate premium** — formes douces, palette Cary (turquoise `#1CC7B5`, bleu nuit, neutres chauds), un seul sujet central, beaucoup d'air, fond transparent, aucun texte. Map unique : `apps/mobile/src/constants/illustrations.ts` ; `EmptyState` reçoit une clé d'illustration.
+
+Autorisées mais intentionnelles : une illustration par état de sens (aucun RDV, aucun document…), pas une par écran.
 
 Interdit : personnages 3D génériques corporate, rendu enfantin, clipart, accumulation d'objets, texte intégré dans l'image, style différent d'un écran à l'autre. Toutes les illustrations appartiennent au **même** univers artistique Cary.
 
@@ -108,7 +123,8 @@ Avant de générer une illustration :
 2. définir précisément sa fonction ;
 3. définir son emplacement et son ratio ;
 4. reprendre la palette Cary ;
-5. conserver le style des illustrations Cary déjà validées (référence : les illustrations de soins `frontend/public/images/care/`).
+5. conserver le style de son univers (soins : `frontend/public/images/care/` ; éditorial : `apps/mobile/assets/illustrations/`) ;
+6. générer sur fond magenta uni puis détourer avec `python scripts/care-artwork/process.py` (même pipeline pour les deux univers).
 
 Ne jamais générer une image simplement pour remplir un espace vide.
 

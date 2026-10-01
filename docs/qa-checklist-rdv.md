@@ -44,4 +44,3 @@
 ## Sécurité
 
 - [ ] `POST /api/appointments` refusé pour rôles non listés (ex. préleveur si exclu).
-- [ ] `patient-documents/upload-debug.php` : **404** en production (`APP_ENV=production`).

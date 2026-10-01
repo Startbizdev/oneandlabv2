@@ -10,25 +10,24 @@ Quand tu ajoutes ou modifies des onglets segmentés, **ne réinvente pas** : cop
 
 ## Références validées (dans cet ordre)
 
-1. **Fiche RDV** → `DetailTabBar` (`components/ui/DetailTabBar.tsx`) via `DetailSegmentBar`
+1. **Tous les écrans** → `FullWidthSegmentBar` (`components/ui/FullWidthSegmentBar.tsx`) ; fiche RDV via `DetailSegmentBar` (icônes par défaut)
 2. **Formulaire RDV** → `BookingAvailabilitySection` (`features/appointments/form/components/BookingAvailabilitySection.tsx`)
-3. **Autres écrans** → `FullWidthSegmentBar` (`components/ui/FullWidthSegmentBar.tsx`)
-4. **Squelette** → `SkeletonSegmentBar` (`components/ui/skeleton-presets.tsx`) — mêmes contraintes flex
+3. **Squelette** → `SkeletonSegmentBar` (`components/ui/skeleton-presets.tsx`) — mêmes contraintes flex
 
 ## Pattern obligatoire
 
 ```tsx
 // Host + shell View (pas Box/Stack empilés, pas Row seul comme conteneur racine)
 host: { width: '100%', alignSelf: 'stretch' }
-shell: { width: '100%', flexDirection: 'row', gap: spacing[1], padding: spacing[0.5], borderRadius: radius.lg, backgroundColor: c.surfaceSubtle }
+shell: { width: '100%', flexDirection: 'row', gap: spacing[1], padding: spacing[0.5], borderRadius: radius.lg, backgroundColor: c.surfaceAlt }
 
 // Chaque onglet : Pressable avec style STATIQUE (pas de fonction style)
 tab: { flex: 1, flexBasis: 0, minWidth: 0, borderRadius: radius.md }
-tabActive: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.primaryMid }
+tabActive: { backgroundColor: c.surface, ...elevation.xs }
 ```
 
 - Icône + label **en ligne** (`Row` à l'intérieur du `Pressable`), pas empilés verticalement sauf besoin explicite.
-- Tokens : `surfaceSubtle` (fond), `surface` + `primaryMid` (actif), `primaryDark` / `textTertiary` (icônes & texte).
+- Tokens : `surfaceAlt` (fond neutre), `surface` + `elevation.xs` (actif), `primaryDark` / `textTertiary` (icônes & texte).
 
 ## Conteneur parent (ScrollView)
 
@@ -67,4 +66,4 @@ Références : `LegalInformationScreen`, `PatientDetailScreen`, `AppointmentDeta
 
 ## Avant de livrer
 
-Comparer visuellement avec `BookingAvailabilitySection` (2 onglets) ou `DetailTabBar` (3 onglets) : chaque segment occupe une part égale sur toute la largeur utile.
+Comparer visuellement avec `BookingAvailabilitySection` (2 onglets) ou la fiche RDV `DetailSegmentBar` (3 onglets) : chaque segment occupe une part égale sur toute la largeur utile.

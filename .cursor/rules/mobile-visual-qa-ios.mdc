@@ -6,11 +6,11 @@ alwaysApply: false
 
 # Visual QA iOS obligatoire (mobile)
 
-Une vue mobile n'est **pas terminée** après typecheck, lint ou build. Elle doit être inspectée visuellement dans un simulateur iOS.
+Une vue mobile n'est **pas terminée** après typecheck, lint ou build. Elle doit être inspectée visuellement dans un simulateur iOS ou, sous Windows, dans l'émulateur Android `emulator-5600` (voir `cary-premium-completion.mdc`).
 
 ## Boucle obligatoire pour chaque vue
 
-1. Ouvrir la vue dans le simulateur iOS.
+1. Ouvrir la vue dans le simulateur iOS ou l'émulateur Android.
 2. La placer dans un état réaliste avec des données de démonstration.
 3. Prendre une capture **AVANT** modification.
 4. Analyser la capture comme un Senior Product Designer iOS : hiérarchie visuelle, spacing, alignements, typographie, taille et position des CTA, densité d'information, cohérence des cards, navigation, safe areas, scroll, contraste, accessibilité, cohérence globale avec Cary, apparence native iOS, absence de rendu générique / « AI generated UI ».
@@ -23,7 +23,7 @@ Une vue mobile n'est **pas terminée** après typecheck, lint ou build. Elle doi
 
 ## États à vérifier (lorsque applicables)
 
-normal · loading · empty · error · données longues · clavier ouvert · formulaire avec erreurs · modal / sheet ouverte · light mode · dark mode · petite taille d'iPhone · grande taille d'iPhone
+normal · loading · empty · error · données longues · clavier ouvert · formulaire avec erreurs · modal / sheet ouverte · grande taille de police système · petit écran · grand écran (thème clair uniquement)
 
 ## Inventaire `VISUAL-QA.md`
 
@@ -35,8 +35,7 @@ Maintenir à la racine `VISUAL-QA.md` listant toutes les routes/vues de l'applic
 - [ ] analyse
 - [ ] corrections
 - [ ] screenshot après
-- [ ] light vérifié
-- [ ] dark vérifié
+- [ ] grande police vérifiée (rien de coupé)
 - [ ] états critiques vérifiés
 - [ ] validation finale
 ```
@@ -50,4 +49,4 @@ Stocker dans `artifacts/visual-qa/{patient,nurse,pro,auth,booking,appointments,p
 
 Critères de design : `cary-design-rules.mdc` (dont les 10 questions avant validation). Validation fonctionnelle : `cary-functional-guardian.mdc`.
 
-**Aucune vue ne peut être déclarée terminée sans capture APRÈS.** Si le simulateur iOS n'est pas disponible (ex. machine Windows), le dire explicitement et laisser la vue non validée plutôt que de cocher les cases.
+**Aucune vue ne peut être déclarée terminée sans capture APRÈS.** Si aucun simulateur / émulateur n'est disponible, le dire explicitement et laisser la vue non validée plutôt que de cocher les cases.
