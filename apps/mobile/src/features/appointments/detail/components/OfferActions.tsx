@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -10,11 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { updateAppointment } from '../../api/appointments.service';
-import {spacing, iconSize } from '@/theme';
+import { spacing, iconSize, useStyles } from '@/theme';
 
 export function OfferActions({ appointmentId, onDone }: { appointmentId: string; onDone?: () => void }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'OfferActions');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const mut = useMutation({
@@ -53,7 +51,7 @@ export function OfferActions({ appointmentId, onDone }: { appointmentId: string;
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     row: {
       minWidth: 0,

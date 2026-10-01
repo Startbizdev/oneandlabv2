@@ -1,11 +1,9 @@
 import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { Lightbulb, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { Stack } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { layoutRowCenter } from '@/theme/layout-styles';
 import type { HealthInsight } from '../utils/health-metric-stats';
@@ -33,7 +31,7 @@ function ToneIcon({ tone, color }: { tone: HealthInsight['tone']; color: string 
 
 export function HealthInsightCards({ insights }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   if (insights.length === 0) return null;
 
@@ -62,10 +60,10 @@ export function HealthInsightCards({ insights }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     sectionTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       letterSpacing: 0.8,
@@ -82,13 +80,13 @@ function buildStyles(c: AppColors) {
     },
     cardTitle: {
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       flex: 1,
     },
     cardBody: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.5,

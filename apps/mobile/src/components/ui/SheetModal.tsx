@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { getAppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useRef } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -14,8 +12,7 @@ import {
 import { BottomSheetKeyboardAwareScrollView } from './BottomSheetKeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from './sheet-keyboard-accessory';
 import { FormScrollContext, useFormScrollProviderValue } from '@/components/layout/form-scroll-context';
@@ -71,7 +68,7 @@ export function SheetModal({
   stackBehavior = 'switch',
   keyboardBehavior = 'interactive',
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const formScroll = useFormScrollProviderValue();
@@ -216,7 +213,7 @@ export function SheetModal({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     sheetBackground: {
       backgroundColor: c.surface,
@@ -257,13 +254,13 @@ function buildStyles(c: AppColors) {
       gap: spacing[1],
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.md,
       color: c.textPrimary,
       lineHeight: fontSize.md * 1.25,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.4,

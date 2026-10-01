@@ -1,6 +1,4 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
@@ -22,8 +20,7 @@ import {
   resolveAppointmentDetailAddressLine,
 } from '../../utils/appointment-address-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 interface Props {
@@ -86,7 +83,7 @@ function InfoRow({
   viewPatientProfileLabel?: string;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'RdvAppointmentInfoSection.InfoRow');
+  const styles = useStyles(buildStyles);
   if (row.kind === 'address') return null;
 
   return (
@@ -160,7 +157,7 @@ export function RdvAppointmentInfoSection({
   viewPatientProfileLabel,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvAppointmentInfoSection_tsx_RdvAppointmentInfoSection_styles');
+  const styles = useStyles(buildStyles);
 
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
@@ -300,7 +297,7 @@ export function RdvAppointmentInfoSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   infoRow: {
     gap: spacing[1],
@@ -319,7 +316,7 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
   },
   label: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textTransform: 'uppercase' as const,
@@ -332,7 +329,7 @@ function buildStyles(c: AppColors) {
   value: {
     minWidth: 0,
     flexShrink: 1,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.35,
@@ -340,7 +337,7 @@ function buildStyles(c: AppColors) {
   valueMuted: {
     textDecorationLine: 'line-through' as const,
     color: c.textSecondary,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
   },
 };
 }

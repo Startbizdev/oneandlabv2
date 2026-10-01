@@ -1,9 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { elevation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title?: string;
@@ -11,7 +8,7 @@ interface Props {
 }
 
 export function ProfileNavCard({ title, children }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileNavCard_tsx_ProfileNavCard_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.section}>
@@ -21,11 +18,11 @@ export function ProfileNavCard({ title, children }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   section: { gap: spacing[2] },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     letterSpacing: 0.2,

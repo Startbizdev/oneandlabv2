@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -12,8 +10,7 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '../constants/relationship-types';
 import type { PatientRelative } from '../api/patient-relatives.service';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -39,7 +36,7 @@ export function PatientRelativeFormSheet({
   onClose,
   onSubmit,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_components_PatientRelativeFormSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [relationshipType, setRelationshipType] = useState('child');
@@ -164,11 +161,11 @@ export function PatientRelativeFormSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   fields: { gap: spacing[3] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     marginBottom: spacing[2],
@@ -189,17 +186,17 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primaryLight,
   },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
   },
   pillTextActive: {
     color: c.primary,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
   error: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.error,
   },

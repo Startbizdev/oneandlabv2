@@ -1,7 +1,5 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -9,8 +7,8 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth, useStyles, font, type Theme } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 dayjs.locale('fr');
 
@@ -22,7 +20,7 @@ type Props = {
 export function PassageMultiDateCalendar({ selected, onChange }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const cellMaxWidth = calendarCellMaxWidth(layout.width);
   const [cursor, setCursor] = useState(() => dayjs().startOf('month'));
 
@@ -102,7 +100,7 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
             >
               <AppText
                 style={{
-                  fontFamily: fontFamily.semiBold,
+                  ...font.semiBold,
                   fontSize: fontSize.sm,
                   color: on ? c.primaryDark : c.textPrimary,
                 }}
@@ -129,12 +127,12 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     wrap: { gap: spacing[2] },
     header: { marginBottom: spacing[1] },
     monthLabel: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.md,
       textTransform: 'capitalize' as const,
     },
@@ -142,7 +140,7 @@ function buildStyles(_c: AppColors) {
     weekday: {
       width: 36,
       textAlign: 'center' as const,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
     },
     grid: {
@@ -160,7 +158,7 @@ function buildStyles(_c: AppColors) {
       borderColor: 'transparent',
     },
     summary: { marginTop: spacing[1], gap: spacing[0.5] },
-    summaryLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.xs },
-    summaryDates: { fontFamily: fontFamily.regular, fontSize: fontSize.sm },
+    summaryLabel: { ...font.medium, fontSize: fontSize.xs },
+    summaryDates: { ...font.regular, fontSize: fontSize.sm },
   };
 }

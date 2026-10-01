@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Phone, MessageSquare, Mail } from 'lucide-react-native';
@@ -10,8 +8,7 @@ import {
   getRelationshipLabel,
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   apt: Appointment;
@@ -20,7 +17,7 @@ interface Props {
 /** Bloc patient / proche — équivalent `#patientPortalFooter` + infos compte sur le web. */
 export function RdvPatientPortalSection({ apt }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvPatientPortalSection_tsx_RdvPatientPortalSection_styles');
+  const styles = useStyles(buildStyles);
 
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const rel = (
@@ -79,7 +76,7 @@ export function RdvPatientPortalSection({ apt }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   block: {
     paddingTop: spacing[2],
@@ -88,19 +85,19 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
   value: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
@@ -115,7 +112,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.border,
   },
   chipText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
@@ -18,8 +16,7 @@ import {
   patientDisplayName,
 } from '@/utils/appointment-detail-display';
 import { appointmentBeneficiaryAvatarMeta } from '../utils/patient-appointment-display';
-import { spacing, elevation, iconSize, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, elevation, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -30,7 +27,7 @@ interface ActionChipProps {
 }
 
 function ActionChip({ icon, label, onPress }: ActionChipProps) {
-  const styles = useThemedStyles(buildStyles, 'RdvPatientSection.ActionChip');
+  const styles = useStyles(buildStyles);
   return (
     <Pressable onPress={onPress} style={[styles.chip, elevation.xs]}>
       <Row gap={spacing[1.5]} align="center">
@@ -43,7 +40,7 @@ function ActionChip({ icon, label, onPress }: ActionChipProps) {
 
 function ContactRow({ phone, email }: { phone: string; email: string }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'RdvPatientSection.ContactRow');
+  const styles = useStyles(buildStyles);
   const callPhone = useCallback(() => void Linking.openURL(`tel:${phone}`), [phone]);
   const smsPhone = useCallback(() => void Linking.openURL(`sms:${phone}`), [phone]);
   const sendEmail = useCallback(() => void Linking.openURL(`mailto:${email}`), [email]);
@@ -85,7 +82,7 @@ interface Props {
 export function RdvPatientSection({
   apt, role }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvPatientSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   if (role === 'patient') return null;
 
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
@@ -166,7 +163,7 @@ export function RdvPatientSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   sectionHeader: {
     marginBottom: spacing[3],
@@ -175,26 +172,26 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
     textTransform: 'uppercase' as const,
   },
   patientName: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.3,
   },
   birthText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     marginBottom: spacing[1],
   },
   relText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     marginBottom: spacing[1],
@@ -208,7 +205,7 @@ function buildStyles(c: AppColors) {
   },
   minorText: {
     minWidth: 0,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.warning,
     flex: 1,
@@ -228,7 +225,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.border,
   },
   chipLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },
@@ -240,19 +237,19 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   bookingLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
   bookingName: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   bookingHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     marginBottom: spacing[1],

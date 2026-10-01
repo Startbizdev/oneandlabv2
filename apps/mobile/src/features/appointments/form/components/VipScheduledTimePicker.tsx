@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 import {
@@ -9,8 +7,8 @@ import {
 } from '@oneandlab/shared-constants';
 import { Row } from '@/components/layout/primitives';
 import { SelectField, type SelectOption } from '@/components/ui/SelectField';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 const VIP_HOUR_OPTIONS: SelectOption[] = Array.from(
   { length: PATIENT_VIP_MAX_HOUR - PATIENT_VIP_MIN_HOUR + 1 },
@@ -39,7 +37,7 @@ export function VipScheduledTimePicker({
   onHourChange,
   onMinuteChange,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_VipScheduledTimePicker_tsx_styles');
+  const styles = useStyles(buildStyles);
   const hourValue = String(urgentHour);
   const minuteValue = String(urgentMinute);
   const summary = useMemo(
@@ -89,11 +87,11 @@ export function VipScheduledTimePicker({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[2] },
     sectionLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
@@ -109,18 +107,18 @@ function buildStyles(c: AppColors) {
       flexShrink: 0,
     },
     colon: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       color: c.textTertiary,
       marginBottom: spacing[0.5],
     },
     summary: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: '#92400e',
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs, 1.4),
       color: c.textTertiary,

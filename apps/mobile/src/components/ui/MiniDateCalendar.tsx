@@ -131,7 +131,7 @@ function BandLabel({
       style={[
         textBoxReset.base,
         {
-          fontFamily: typography.fontFamily,
+          fontWeight: typography.fontWeight,
           fontSize: typography.fontSize,
           lineHeight: typography.lineHeight,
           letterSpacing: typography.letterSpacing,
@@ -184,14 +184,13 @@ function DayNumberGlyph({
           style={[
             textBoxReset.base,
             {
-              fontFamily: typography.fontFamily,
+              fontWeight: typography.fontWeight,
               fontSize,
               lineHeight: lineBoxHeight,
               height: lineBoxHeight,
               letterSpacing: typography.letterSpacing,
               color,
               fontVariant: ['tabular-nums' as const],
-              fontWeight: typography.fontWeight,
             },
           ]}
           onTextLayout={onTextLayout}

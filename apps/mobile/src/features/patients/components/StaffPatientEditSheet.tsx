@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,8 +14,7 @@ import { parseProfileAddress } from '@/features/profile/utils/parse-profile-addr
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -27,7 +24,7 @@ type Props = {
 };
 
 export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: Props) {
-  const styles = useThemedStyles(buildStyles, 'StaffPatientEditSheet');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -142,11 +139,11 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     form: { gap: spacing[3], paddingBottom: spacing[24] },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: 18,

@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
 
-import { AppText } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { WebView } from 'react-native-webview';
@@ -19,7 +17,6 @@ import { webAppUrl } from '@/config/env';
 
 import { useAuthStore } from '@/store/auth-store';
 
-import { fontFamily, fontSize } from '@/theme/typography';
 
 
 
@@ -53,7 +50,7 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
 
   const c = useAppColors();
 
-  const styles = useThemedStyles(buildStyles, 'components_web_AppWebViewScreen_tsx_AppWebViewScreen_styles');
+  const styles = useStyles(buildStyles);
 
 
 
@@ -137,7 +134,7 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
 
@@ -163,7 +160,7 @@ function buildStyles(c: AppColors) {
 
     minWidth: 0,
 
-    fontFamily: fontFamily.bold,
+    ...font.heading,
 
     fontSize: fontSize.lg,
 

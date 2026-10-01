@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import type { ReactElement } from 'react';
 
@@ -10,8 +8,7 @@ import type { LucideIcon } from 'lucide-react-native';
 
 import type { SFSymbol } from 'sf-symbols-typescript';
 
-import { AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 
 
 
@@ -27,7 +24,7 @@ interface HeaderTitleProps {
 
 export function HeaderTitleText({ title }: HeaderTitleProps) {
 
-  const styles = useThemedStyles(buildStyles, 'navigation_HeaderTitle_tsx_HeaderTitleText_styles');
+  const styles = useStyles(buildStyles);
 
 
 
@@ -93,7 +90,7 @@ export function tabHeaderTitle(
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
 
@@ -109,7 +106,7 @@ function buildStyles(c: AppColors) {
 
     title: {
 
-      fontFamily: fontFamily.bold,
+      ...font.bold,
 
       fontSize: Platform.select({ ios: 22, default: fontSize.lg }),
 

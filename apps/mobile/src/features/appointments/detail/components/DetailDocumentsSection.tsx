@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -20,8 +18,7 @@ import { DocumentsBlock } from './DocumentsBlock';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 import { getDocumentTypeLabel } from '../utils/document-labels';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
   const base = APPOINTMENT_DETAIL_DOC_ORDER.filter((t) => t !== 'resultats');
@@ -54,7 +51,7 @@ export function DetailDocumentsSection({
   omitCarePhotos,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_DetailDocumentsSection_tsx_DetailDocumentsSection_styles');
+  const styles = useStyles(buildStyles);
 
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -145,7 +142,7 @@ export function DetailDocumentsSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   uploadZone: {
@@ -157,7 +154,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   uploadTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     textTransform: 'uppercase' as const,
@@ -167,7 +164,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2],
   },
   uploadLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },

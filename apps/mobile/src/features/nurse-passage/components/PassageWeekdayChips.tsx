@@ -1,11 +1,9 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 /** ISO weekday 1 = lundi … 7 = dimanche */
 const WEEKDAYS: { iso: number; label: string }[] = [
@@ -25,7 +23,7 @@ type Props = {
 
 export function PassageWeekdayChips({ selected, onChange }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   const toggle = (iso: number) => {
     const set = new Set(selected);
@@ -55,7 +53,7 @@ export function PassageWeekdayChips({ selected, onChange }: Props) {
           >
             <AppText
               style={{
-                fontFamily: fontFamily.semiBold,
+                ...font.semiBold,
                 fontSize: fontSize.sm,
                 color: on ? c.primaryDark : c.textSecondary,
               }}
@@ -69,7 +67,7 @@ export function PassageWeekdayChips({ selected, onChange }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     row: {
       ...layoutRowWrap(spacing[2]),

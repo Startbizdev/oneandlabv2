@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { StyleSheet, View } from 'react-native';
@@ -11,8 +9,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -20,7 +17,7 @@ dayjs.locale('fr');
 export function RdvInfoCard({
   apt }: { apt: Appointment }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvInfoCard_tsx_styles');
+  const styles = useStyles(buildStyles);
   const scheduled = apt.scheduled_at ? dayjs(apt.scheduled_at) : null;
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, apt.scheduled_at, fd);
@@ -65,7 +62,7 @@ export function RdvInfoCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   topRow: {
     marginBottom: spacing[3],
@@ -76,7 +73,7 @@ function buildStyles(c: AppColors) {
   category: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.3,
@@ -93,18 +90,18 @@ function buildStyles(c: AppColors) {
     gap: 4,
   },
   dayText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     textTransform: 'capitalize' as const,
   },
   dayMuted: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textTertiary,
   },
   timeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.primary,
   },

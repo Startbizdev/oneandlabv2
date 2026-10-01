@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -9,8 +7,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { PrescriptionAppointmentSelectSheet } from './PrescriptionAppointmentSelectSheet';
 import { prescriptionAppointmentSelectSummary } from '../utils/prescription-display';
 import { groupAppointmentsByBatch } from '@/utils/appointment-batch';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   appointments: Appointment[];
@@ -39,7 +36,7 @@ export function PrescriptionAppointmentSelectField({
   placeholder = 'Choisir un rendez-vous…',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionAppointmentSelectField');
+  const styles = useStyles(buildStyles);
   const [open, setOpen] = useState(false);
 
   const sorted = useMemo(
@@ -126,14 +123,14 @@ export function PrescriptionAppointmentSelectField({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       gap: spacing[1],
       alignSelf: 'stretch' as const,
     },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[0.5],
@@ -152,7 +149,7 @@ function buildStyles(c: AppColors) {
     triggerText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },

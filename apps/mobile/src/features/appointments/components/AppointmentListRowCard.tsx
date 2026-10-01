@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -21,7 +19,7 @@ import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styl
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
 import { RdvListCardBody } from './RdvListCardBody';
 import { buildRdvListCardAccessibilityLabel } from './rdv-list-card-accessibility';
-import { spacing, animation } from '@/theme';
+import { spacing, animation, useStyles, type Theme } from '@/theme';
 
 interface Props {
   row: AppointmentListRow;
@@ -46,7 +44,7 @@ function AppointmentListRowCardComponent({
   role,
   viewerId,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_components_AppointmentListRowCard_tsx_AppointmentListRowCardComponent_styles');
+  const styles = useStyles(buildStyles);
 
   useAppColors();
   const cardStyles = getAppointmentListCardStyles();
@@ -131,7 +129,7 @@ function AppointmentListRowCardComponent({
 
 export const AppointmentListRowCard = React.memo(AppointmentListRowCardComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   inner: {
     paddingHorizontal: spacing[4],

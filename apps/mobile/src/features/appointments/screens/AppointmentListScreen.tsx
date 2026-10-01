@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,7 +16,7 @@ import {
 } from '../hooks/use-infinite-appointments-list';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   filters: AppointmentListFilters;
@@ -30,7 +28,7 @@ export function AppointmentListScreen({
   filters,
   detailPathPrefix,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_AppointmentListScreen_tsx_AppointmentListScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
@@ -106,7 +104,7 @@ export function AppointmentListScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: {
     minWidth: 0,

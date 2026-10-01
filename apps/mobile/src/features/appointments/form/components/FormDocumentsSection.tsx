@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View, StyleSheet } from 'react-native';
 import { SERVICE_DOC_FIELDS } from '../constants/appointment-document-fields';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
@@ -7,8 +5,7 @@ import { MissingPrescriptionAlert } from './MissingPrescriptionAlert';
 import { WizardDocumentFields } from './WizardDocumentFields';
 import type { DocumentFileRef } from '../types/document-file-ref';
 import { hasDocumentFile } from '../types/document-file-ref';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   serviceName?: string;
@@ -32,7 +29,7 @@ export function FormDocumentsSection({
   skipPrescription,
   showProfileSummary,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormDocumentsSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const fields = skipPrescription
     ? SERVICE_DOC_FIELDS.filter((f) => f.key !== 'ordonnance')
     : SERVICE_DOC_FIELDS;
@@ -73,7 +70,7 @@ export function FormDocumentsSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[3] },
   profileBanner: {
@@ -84,7 +81,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   profileBannerText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.primaryDark,
     lineHeight: fontSize.sm * 1.45,

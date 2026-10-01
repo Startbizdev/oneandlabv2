@@ -33,8 +33,12 @@ export function getTextScale(): TextScale {
 
 syncTextScale('normal');
 
+export function getTextScaleMultiplierFor(scale: TextScale): number {
+  return MULTIPLIERS[scale];
+}
+
 export function getTextScaleMultiplier(): number {
-  return MULTIPLIERS[getTextScale()];
+  return getTextScaleMultiplierFor(getTextScale());
 }
 
 export function scaleFontSize(basePx: number): number {

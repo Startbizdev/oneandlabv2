@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { ChevronRight, MapPin, Pill, UserRound } from 'lucide-react-native';
@@ -13,8 +11,7 @@ import {
   pharmacyOrderPharmacyLabel,
   pharmacyOrderStatusLabel,
 } from '../utils/order-display';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   order: PharmacyOrder;
@@ -25,7 +22,7 @@ interface Props {
 
 export function PharmacyOrderCard({ order, variant, showOrderedBy = false, onPress }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyOrderCard');
+  const styles = useStyles(buildStyles);
   const patientLabel = pharmacyOrderBeneficiaryLabel(order);
   const pharmacyLabel = pharmacyOrderPharmacyLabel(order);
   const orderedBy = showOrderedBy ? pharmacyOrderOrderedByLabel(order) : null;
@@ -86,7 +83,7 @@ export function PharmacyOrderCard({ order, variant, showOrderedBy = false, onPre
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       borderRadius: radius.lg,
@@ -116,13 +113,13 @@ function buildStyles(c: AppColors) {
     patientName: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
       lineHeight: fontSize.md * 1.25,
     },
     date: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       flexShrink: 0,
@@ -130,18 +127,18 @@ function buildStyles(c: AppColors) {
     metaRow: { marginTop: spacing[0.5] },
     metaText: {
       flex: 1,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     orderedBy: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.primaryDark,
       lineHeight: fontSize.xs * 1.35,
     },
     modeLine: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
     },
@@ -149,7 +146,7 @@ function buildStyles(c: AppColors) {
     addressIcon: { marginTop: 2 },
     addressText: {
       flex: 1,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.4,
@@ -163,7 +160,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
     },
     statusText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primaryDark,
     },

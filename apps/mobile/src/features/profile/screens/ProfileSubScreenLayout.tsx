@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import type { ReactNode } from 'react';
 
@@ -24,7 +22,7 @@ import {
 
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 
 
@@ -60,7 +58,7 @@ export function ProfileSubScreenLayout({
 
 }: Props) {
 
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileSubScreenLayout_tsx_ProfileSubScreenLayout_styles');
+  const styles = useStyles(buildStyles);
 
 
 
@@ -122,7 +120,7 @@ export function ProfileSubScreenLayout({
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
 
   return {
 

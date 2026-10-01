@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { CareCategory } from '@/features/categories/api/categories.service';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   categories: CareCategory[];
@@ -13,7 +10,7 @@ interface Props {
 }
 
 export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CategoryPicker_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.wrapper}>
       <AppText style={styles.label}>Type de soin</AppText>
@@ -37,11 +34,11 @@ export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[2] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -63,7 +60,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   chipText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,

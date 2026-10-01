@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   icon: LucideIcon;
@@ -16,7 +13,7 @@ interface Props {
 
 export function OfferInfoRow({ icon: Icon, label, value, bordered }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   if (!value.trim()) return null;
   return (
     <Cluster
@@ -33,7 +30,7 @@ export function OfferInfoRow({ icon: Icon, label, value, bordered }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       minWidth: 0,
@@ -47,14 +44,14 @@ function buildStyles(c: AppColors) {
     icon: { marginTop: 2 },
     body: { flex: 1, gap: 2, minWidth: 0 },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       letterSpacing: 0.4,
       textTransform: 'uppercase' as const,
     },
     value: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.4,

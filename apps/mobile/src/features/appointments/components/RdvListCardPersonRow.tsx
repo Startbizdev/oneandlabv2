@@ -16,8 +16,8 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { RdvMaquetteCounterparty } from '@/utils/rdv-maquette-card-display';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font } from '@/theme';
+import { fontSize, lh } from '@/theme/typography';
 
 /** Ligne intervenant — compact (legacy) ou pied de carte (avatar + nom). */
 const AVATAR_BY_SIZE = { compact: 28, footer: 36 } as const;
@@ -36,7 +36,7 @@ interface Props {
 
 function AssignmentPulseDots() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildPendingDotsStyles, 'RdvListCardPersonRow.dots');
+  const styles = useStyles(buildPendingDotsStyles);
 
   return (
     <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -183,7 +183,7 @@ export function RdvListCardPersonRow({
   );
 }
 
-function buildPendingDotsStyles(_c: AppColors) {
+function buildPendingDotsStyles() {
   return {
     dots: {
       flexShrink: 0,
@@ -215,7 +215,7 @@ function buildPendingStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
     pendingLabel: {
       flexShrink: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: isFooter ? fontSize.sm : fontSize.xs,
       lineHeight: lh(isFooter ? fontSize.sm : fontSize.xs),
       color: c.primaryDark,
@@ -246,14 +246,14 @@ function buildPersonStyles(c: AppColors, size: keyof typeof AVATAR_BY_SIZE) {
       minWidth: 0,
     },
     name: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: isFooter ? fontSize.base : fontSize.sm,
       lineHeight: lh(isFooter ? fontSize.base : fontSize.sm),
       color: c.textPrimary,
       letterSpacing: -0.1,
     },
     roleInline: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: isFooter ? fontSize.sm : fontSize.xs,
       lineHeight: lh(isFooter ? fontSize.sm : fontSize.xs),
       color: c.textTertiary,

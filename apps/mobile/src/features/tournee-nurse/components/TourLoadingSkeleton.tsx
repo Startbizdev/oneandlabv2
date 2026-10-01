@@ -1,13 +1,11 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { H_PADDING, radius, spacing } from '@/theme';
+import { H_PADDING, radius, spacing, useStyles } from '@/theme';
 
 export function TourLoadingSkeleton() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.wrap}>
@@ -18,7 +16,7 @@ export function TourLoadingSkeleton() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     wrap: {
       paddingHorizontal: H_PADDING,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,8 +26,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   detailPathPrefix: string;
@@ -50,7 +47,7 @@ function rowFromAppointment(apt: Appointment): AppointmentListRow {
 export function OfferAppointmentModal({
   detailPathPrefix }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_OfferAppointmentModal_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -302,7 +299,7 @@ export function OfferAppointmentModal({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   lotPill: {
     alignSelf: 'flex-start' as const,
@@ -315,7 +312,7 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
   },
   lotPillText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },
@@ -328,7 +325,7 @@ function buildStyles(c: AppColors) {
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,

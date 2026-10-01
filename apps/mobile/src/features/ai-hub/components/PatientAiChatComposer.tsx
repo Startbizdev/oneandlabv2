@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Mic, Plus, Send } from 'lucide-react-native';
-import {elevation, H_PADDING, radius, spacing, iconSize } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, H_PADDING, radius, spacing, iconSize, useStyles, font, type Theme } from '@/theme';
 import {
   PatientAiAttachmentThumbnail,
   type PatientAiAttachmentPreview,
@@ -57,7 +54,7 @@ export function PatientAiChatComposer({
   embedded = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const canAttach = Boolean(onAttachPress) && !disabled && !attaching;
 
   return (
@@ -166,7 +163,7 @@ export function PatientAiChatComposer({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     dockStandalone: {
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -197,7 +194,7 @@ function buildStyles(_c: AppColors) {
     input: {
       minWidth: 0,
       flex: 1,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       padding: 0,
       margin: 0,

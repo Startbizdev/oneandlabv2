@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
@@ -7,8 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type DetailEntityRowProps = {
   /** Petit libellé au-dessus du titre (ex. « Infirmier(e) »). */
@@ -48,7 +45,7 @@ export function DetailEntityRow({
   showDivider = false,
 }: DetailEntityRowProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_DetailEntityRow_tsx_DetailEntityRow_styles');
+  const styles = useStyles(buildStyles);
 
   const hasContact = contactActions.length > 0;
   const hasProfile = Boolean(onProfilePress);
@@ -116,7 +113,7 @@ export function DetailEntityRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   item: {
     paddingVertical: spacing[2.5],
@@ -132,19 +129,19 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
   },
   eyebrow: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     letterSpacing: 0.2,
   },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   subtitle: {
     marginTop: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

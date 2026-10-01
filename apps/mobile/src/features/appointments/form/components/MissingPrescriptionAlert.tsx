@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useState } from 'react';
@@ -7,8 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { AlertTriangle } from 'lucide-react-native';
 import { missingPrescriptionCopy } from '../constants/appointment-document-fields';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   serviceType?: string;
@@ -18,7 +15,7 @@ interface Props {
 export function MissingPrescriptionAlert({
   serviceType, visible }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_MissingPrescriptionAlert_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [open, setOpen] = useState(false);
   if (!visible) return null;
 
@@ -42,7 +39,7 @@ export function MissingPrescriptionAlert({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   box: {
     padding: spacing[3],
@@ -53,17 +50,17 @@ function buildStyles(c: AppColors) {
   },
   body: { minWidth: 0, flex: 1, gap: spacing[1] },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   more: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.warning,
   },
   desc: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,

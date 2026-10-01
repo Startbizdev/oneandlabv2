@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, type ScrollView } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -33,7 +31,7 @@ import { MessageCircle } from 'lucide-react-native';
 type SegmentId = 'infos' | 'documents';
 
 export function PatientAppointmentDetailScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PatientAppointmentDetailScreen_tsx_PatientAppointmentDetailScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { id, segment: segmentParam } = useLocalSearchParams<{
     id: string;
@@ -193,7 +191,7 @@ export function PatientAppointmentDetailScreen() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
   scroll: {
     minWidth: 0,

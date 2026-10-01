@@ -1,18 +1,15 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function RegisterMerciScreen() {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'features_auth_screens_RegisterMerciScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { type } = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
 
@@ -54,7 +51,7 @@ export function RegisterMerciScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
     minWidth: 0,
@@ -88,26 +85,26 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[2],
   },
   title: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     textAlign: 'center' as const,
   },
   sub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
     textAlign: 'center' as const,
   },
   body: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,
     lineHeight: fontSize.sm * 1.55,
   },
   hint: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,

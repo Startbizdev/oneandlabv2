@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,8 +13,7 @@ import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { normalizePatientGender, patientGenderIsSet } from '@/utils/patient-gender';
 
 export interface PatientOption {
@@ -70,7 +67,7 @@ export function FormPatientSection({
   onAdoptLookupPatient,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormPatientSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [selectOpen, setSelectOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -310,13 +307,13 @@ export function FormPatientSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     errorBox: { padding: spacing[3], gap: spacing[2], borderRadius: radius.lg, backgroundColor: c.errorLight },
     errorText: { color: c.error, fontSize: fontSize.sm },
   wrapper: { gap: spacing[3] },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -340,17 +337,17 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   modeTabText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     textAlign: 'center' as const,
   },
   modeTabTextActive: {
     color: c.primary,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
   fieldLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -365,7 +362,7 @@ function buildStyles(c: AppColors) {
   selectBtnText: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -381,12 +378,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surfaceAlt,
   },
   existingProfileTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   existingProfileHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
@@ -408,7 +405,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   genderText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

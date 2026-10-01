@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
@@ -15,15 +13,14 @@ import {
   appointmentPickerRowKey,
 } from './PrescriptionAppointmentPickerRow';
 import { prescriptionAppointmentMatchesSearch } from '../utils/prescription-display';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 const LIST_MAX_HEIGHT = 400;
 const ROW_DRAW_DISTANCE = 108 * 4;
 
 function ListSeparator() {
-  const styles = useThemedStyles(buildSeparatorStyles, 'PrescriptionAppointmentSelectSheet.separator');
+  const styles = useStyles(buildSeparatorStyles);
   return <View style={styles.separator} />;
 }
 
@@ -56,7 +53,7 @@ export function PrescriptionAppointmentSelectSheet({
   searchPlaceholder = 'Rechercher par date, créneau ou soin…',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionAppointmentSelectSheet');
+  const styles = useStyles(buildStyles);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -181,7 +178,7 @@ export function PrescriptionAppointmentSelectSheet({
   );
 }
 
-function buildSeparatorStyles(c: AppColors) {
+function buildSeparatorStyles({ colors: c }: Theme) {
   return {
     separator: {
       height: StyleSheet.hairlineWidth,
@@ -190,7 +187,7 @@ function buildSeparatorStyles(c: AppColors) {
   };
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     body: {
       minWidth: 0,
@@ -228,14 +225,14 @@ function buildStyles(c: AppColors) {
       gap: spacing[2],
     },
     centeredText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     empty: {
       paddingHorizontal: H_PAD,
       paddingVertical: spacing[6],
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
       textAlign: 'center' as const,

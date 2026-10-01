@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, NativeScrollEvent, NativeSyntheticEvent, ScrollView, View } from 'react-native';
@@ -13,12 +11,11 @@ import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { Button } from '@/components/ui/Button';
 import { Row } from '@/components/layout/primitives';
 import { TutorialIllustration } from '../components/TutorialIllustration';
-import { radius, spacing, useLayoutMetrics, carouselHeight as computeCarouselHeight, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, useLayoutMetrics, carouselHeight as computeCarouselHeight, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function TutorialCarouselScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'TutorialCarouselScreen');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { replay } = useLocalSearchParams<{ replay?: string }>();
   const role = useAuthStore((s) => s.user?.role);
@@ -165,7 +162,7 @@ export function TutorialCarouselScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
     minWidth: 0, flex: 1, backgroundColor: c.background },
@@ -179,7 +176,7 @@ function buildStyles(c: AppColors) {
     kicker: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.sm,
       color: c.primaryDark,
       letterSpacing: 0.2,
@@ -215,7 +212,7 @@ function buildStyles(c: AppColors) {
       paddingHorizontal: spacing[1],
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       color: c.textPrimary,
       letterSpacing: -0.4,
@@ -223,7 +220,7 @@ function buildStyles(c: AppColors) {
       textAlign: 'center' as const,
     },
     body: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textSecondary,
       lineHeight: fontSize.base * 1.5,

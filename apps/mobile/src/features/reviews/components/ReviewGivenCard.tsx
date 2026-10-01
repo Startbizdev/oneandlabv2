@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -11,8 +9,7 @@ import {
   appointmentTypeLabel,
   formatReviewDate,
 } from '@/features/reviews/utils/review-labels';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 
@@ -24,7 +21,7 @@ interface Props {
 
 export function ReviewGivenCard({ review }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewGivenCard_tsx_ReviewGivenCard_styles');
+  const styles = useStyles(buildStyles);
 
   const proName = review.reviewee_name?.trim() || 'Professionnel';
   const date = formatReviewDate(review.created_at);
@@ -94,7 +91,7 @@ export function ReviewGivenCard({ review }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -112,28 +109,28 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   proLabel: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   proName: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   date: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   context: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
   },
   comment: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.55,
@@ -147,14 +144,14 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   responseLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.3,
   },
   responseText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.5,
@@ -167,7 +164,7 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.sm,
   },
   hiddenText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

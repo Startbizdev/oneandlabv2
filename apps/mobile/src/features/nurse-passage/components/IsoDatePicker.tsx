@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -8,8 +6,7 @@ import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useInBottomSheet } from '@/components/ui/sheet-keyboard-context';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   label?: string;
@@ -37,7 +34,7 @@ export function IsoDatePicker({
   maximumDate,
   placeholder = 'Choisir une date',
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'IsoDatePicker');
+  const styles = useStyles(buildStyles);
   const inSheet = useInBottomSheet();
   const [iosOpen, setIosOpen] = useState(false);
   const [inlineOpen, setInlineOpen] = useState(false);
@@ -166,11 +163,11 @@ export function IsoDatePicker({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[1], minWidth: 0 },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[0.5],
@@ -191,13 +188,13 @@ function buildStyles(c: AppColors) {
     fieldDisabled: { opacity: 0.6 },
     fieldError: { borderColor: c.error },
     value: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     placeholder: { color: c.textTertiary },
     error: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.error,
       marginTop: spacing[0.5],

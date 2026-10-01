@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { iconSlot, flexText } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
@@ -10,8 +8,7 @@ import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRo
 import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { rdvMaquetteTimeLabel } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
-import { spacing, AppText } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 
 const CALENDAR_SIZE = 'xs' as const;
 const CALENDAR_PX = miniDateCalendarOuterSize(CALENDAR_SIZE);
@@ -30,8 +27,8 @@ interface RdvScheduleCompactRowProps {
 }
 
 function useRdvScheduleStyles(density: RdvScheduleDensity) {
-  const compact = useThemedStyles(buildRdvScheduleCompactStyles, 'RdvScheduleCompactRow.compact');
-  const relaxed = useThemedStyles(buildRdvScheduleRelaxedStyles, 'RdvScheduleCompactRow.relaxed');
+  const compact = useStyles(buildRdvScheduleCompactStyles);
+  const relaxed = useStyles(buildRdvScheduleRelaxedStyles);
   return density === 'relaxed' ? relaxed : compact;
 }
 
@@ -85,7 +82,7 @@ export function RdvScheduleCompactRow({
 
 export { CALENDAR_PX as rdvScheduleCalendarPx };
 
-function buildRdvScheduleCompactStyles(c: AppColors) {
+function buildRdvScheduleCompactStyles({ colors: c, fontSize }: Theme) {
   const type = buildRdvListCardTypography(c);
   return {
     root: {
@@ -110,8 +107,8 @@ function buildRdvScheduleCompactStyles(c: AppColors) {
   };
 }
 
-function buildRdvScheduleRelaxedStyles(c: AppColors) {
-  const compact = buildRdvScheduleCompactStyles(c);
+function buildRdvScheduleRelaxedStyles(t: Theme) {
+  const compact = buildRdvScheduleCompactStyles(t);
   return {
     ...compact,
     trailing: {

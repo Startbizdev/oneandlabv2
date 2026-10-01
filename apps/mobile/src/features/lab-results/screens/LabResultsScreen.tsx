@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -24,7 +22,7 @@ import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-i
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
 
@@ -34,7 +32,7 @@ interface Props {
 }
 
 export function LabResultsScreen({ role, rolePrefix }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_lab_results_screens_LabResultsScreen_tsx_LabResultsScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const { show: toast } = useToast();
@@ -158,7 +156,7 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   searchWrap: {

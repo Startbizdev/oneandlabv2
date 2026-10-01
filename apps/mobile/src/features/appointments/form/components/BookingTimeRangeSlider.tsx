@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
@@ -19,8 +17,7 @@ import {
   isAvailabilityRangeValid,
 } from '../utils/booking-availability-utils';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { animation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { animation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const THUMB = 24;
 
@@ -37,7 +34,7 @@ function triggerHaptic() {
 
 export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingTimeRangeSlider_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthSv = useSharedValue(0);
   const minSv = useSharedValue(min);
@@ -194,20 +191,20 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     gap: spacing[2],
     paddingTop: spacing[1],
   },
   timeValue: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     fontVariant: ['tabular-nums' as const],
   },
   timeSep: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textTertiary,
   },
@@ -250,12 +247,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primary,
   },
   tick: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   warn: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.error,
     textAlign: 'center' as const,

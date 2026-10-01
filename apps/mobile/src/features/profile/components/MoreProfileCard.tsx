@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -13,8 +11,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { queryKeys } from '@/lib/query-keys';
-import { elevation, radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   roleLabel: string;
@@ -27,7 +24,7 @@ interface Props {
 /** Carte profil premium pour les onglets « Plus » — photo / logo si disponible. */
 export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_MoreProfileCard_tsx_styles');
+  const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
 
   const profileQ = useQuery({
@@ -107,7 +104,7 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
 
 const AVATAR = 58;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     borderRadius: radius['2xl'],
@@ -155,7 +152,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   name: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.35,
@@ -170,13 +167,13 @@ function buildStyles(c: AppColors) {
     borderColor: hexToRgba(c.primary, 0.18),
   },
   roleText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
     letterSpacing: 0.2,
   },
   subtitle: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     marginTop: 2,

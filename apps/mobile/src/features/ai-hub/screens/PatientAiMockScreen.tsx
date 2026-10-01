@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, View, type ListRenderItem } from 'react-native';
@@ -26,8 +24,8 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 type ScreenStyles = ReturnType<typeof buildStyles>;
 
@@ -120,7 +118,7 @@ function ListSeparator({ styles }: { styles: ScreenStyles }) {
 /** Mock hub conversationnel Cary IA (Phase B — pas de backend). */
 export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: ScreenProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent, {
     extraBottom: PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER + spacing[2],
@@ -308,7 +306,7 @@ export function PatientAiMockScreen({ historyOpen, onHistoryOpenChange }: Screen
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const userBodySize = fontSize.base;
   const userBodyLine = lh(userBodySize);
   const assistantBodySize = fontSize.lg;
@@ -342,13 +340,13 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[1],
     },
     bodyText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: userBodySize,
       lineHeight: userBodyLine,
       color: c.textPrimary,
     },
     assistantText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: assistantBodySize,
       lineHeight: assistantBodyLine,
       color: c.textPrimary,
@@ -398,7 +396,7 @@ function buildStyles(c: AppColors) {
       paddingVertical: spacing[2.5],
     },
     typingText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.base,
       fontStyle: 'italic' as const,
     },

@@ -1,6 +1,5 @@
-import { Platform } from 'react-native';
 import { radius } from '@/theme';
-import { FONT_SIZE_BASE, fontFamily, lh, lineHeight } from '@/theme/typography';
+import { FONT_SIZE_BASE, lh, lineHeight } from '@/theme/typography';
 
 export type MiniDateCalendarSize = 'xs' | 'sm' | 'md';
 
@@ -16,9 +15,8 @@ const BORDER_WIDTH = 1;
 type BandTypography = {
   fontSize: number;
   lineHeight: number;
-  fontFamily: string;
   letterSpacing: number;
-  fontWeight?: '600' | '700';
+  fontWeight: '600' | '700';
 };
 
 export type MiniDateCalendarLayout = {
@@ -35,26 +33,17 @@ export type MiniDateCalendarLayout = {
 
 function bandTypography(
   fontSize: number,
-  family: string,
+  fontWeight: BandTypography['fontWeight'],
   ratio: number,
   letterSpacing: number,
-  fontWeight?: BandTypography['fontWeight'],
 ): BandTypography {
   return {
     fontSize,
     lineHeight: ratio === 1 ? fontSize : lh(fontSize, ratio),
-    fontFamily: family,
     letterSpacing,
     fontWeight,
   };
 }
-
-const DAY_FONT_FAMILY =
-  Platform.select({
-    ios: 'System',
-    android: 'sans-serif-medium',
-    default: fontFamily.bold,
-  }) ?? fontFamily.bold;
 
 /** Dérive tailles et typo depuis le thème — pas de px magiques dans le composant. */
 function buildLayout(
@@ -71,9 +60,9 @@ function buildLayout(
     borderRadius,
     bandWeights: BAND_WEIGHTS,
     dayOffsetTop,
-    weekday: bandTypography(weekdaySize, fontFamily.bold, lineHeight.snug, 0.45),
-    day: bandTypography(daySize, DAY_FONT_FAMILY, 1, 0, '700'),
-    month: bandTypography(monthSize, fontFamily.semiBold, lineHeight.snug, 0.3),
+    weekday: bandTypography(weekdaySize, '700', lineHeight.snug, 0.45),
+    day: bandTypography(daySize, '700', 1, 0),
+    month: bandTypography(monthSize, '600', lineHeight.snug, 0.3),
   };
 }
 

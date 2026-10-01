@@ -1,87 +1,77 @@
 # Architecture styles — mobile Cary
 
+Thème clair unique (pas de mode sombre). `app.json` force `userInterfaceStyle: "light"`.
+
 ## Stack
 
-1. **Tokens** — `tokens.ts` (spacing, radius, iconSize), `typography.ts`, `colors.ts` (`AppColors`)
-2. **Fragments** — `layout-styles.ts` (layoutRow, flexText, actionsSlot, hairlineTop…)
-3. **Hook** — `useThemedStyles(buildStyles, context)` dans chaque composant React
-4. **Couleurs dynamiques** — `useAppColors()` pour icônes et couleurs inline en JSX
-5. **Primitives layout** — `Box`, `Row`, `Cluster`, `Stack`, `Spacer` (`components/layout/primitives.tsx`)
-6. **Primitives composant** — `StackCard`, `ListRowShell`, `Button`, `IconActionButton`, `FullWidthSegmentBar`
+1. **Tokens** — `colors.ts` (`palette`, `AppColors`), `tokens.ts` (spacing, radius, elevation, iconSize), `typography.ts` (`font`, `FONT_SIZE_BASE`, `textStyles`)
+2. **Thème** — `theme.ts` : `buildTheme(colorblindType, textScale)` renvoie `{ colors, fontSize, font, space, radius, shadow, scale }`
+3. **Provider** — `ThemeProvider` (monté dans `AppProviders`) lit les réglages d'accessibilité (daltonisme, texte agrandi) ; `useTheme()` pour lire le thème
+4. **Styles** — `useStyles(buildStyles)` ou `makeStyles((t) => ({ ... }))` (`make-styles.ts`), cache par factory et par thème
+5. **Texte** — `AppText variant="h1 | h2 | body | caption | label…"` porte la typographie
+6. **Primitives** — `Row`, `Cluster`, `Stack` (`components/layout/primitives.tsx`), `Button`, `IconActionButton`, `ListRowShell`, `FullWidthSegmentBar`
 
-## Hiérarchie obligatoire
+## Typographie
 
-```
-Tokens → Fragments → Primitives layout → Primitives composant → Feature
-```
-
-Un composant feature **compose** les couches ci-dessus. Il n'écrit pas `flexDirection: 'row'` à la main.
-
-| Besoin | Primitive |
-|--------|-----------|
-| Ligne horizontale | `Row` |
-| `[leading \| contenu \| actions]` | `Cluster` ou `ListRowShell` |
-| Empilement vertical + gap | `Stack` |
-| Carte corps + footer actions séparés | `StackCard` |
-| Bouton texte | `Button` |
-| Bouton icône | `IconActionButton` |
+- Titres : **Raleway** (`font.heading`, `font.headingSemiBold`, `font.headingExtraBold`), chargée dans `app/_layout.tsx`.
+- Texte courant : **police système** (`font.regular`, `font.medium`, `font.semiBold`, `font.bold`) — la graisse seule, pas de `fontFamily`.
+- Ne jamais combiner `fontFamily` Raleway et `fontWeight` (Android retombe sur la police système).
 
 ## Factory
 
 ```tsx
-function buildStyles(c: AppColors) {
-  return {
-    surface: {
-      backgroundColor: c.surface,
-    },
-  };
-}
+import { AppText, font, useStyles, type Theme } from '@/theme';
 
 export function MyScreen() {
-  const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'MyScreen');
+  const styles = useStyles(buildStyles);
   return (
-    <Cluster
-      leading={<Icon color={c.primary} />}
-      actions={<Button title="Voir" size="sm" variant="ghost" />}
-    >
-      <Text numberOfLines={1}>Contenu long…</Text>
-    </Cluster>
+    <View style={styles.card}>
+      <AppText style={styles.title}>Titre</AppText>
+    </View>
   );
+}
+
+function buildStyles({ colors: c, fontSize, space, radius }: Theme) {
+  return {
+    card: {
+      flexDirection: 'row',
+      gap: space.md,
+      padding: space.lg,
+      borderRadius: radius.lg,
+      backgroundColor: c.surface,
+    },
+    title: { ...font.heading, fontSize: fontSize.lg, color: c.textPrimary },
+  } as const;
 }
 ```
 
-## Règles de layout (React Native / Yoga)
+- La factory est définie **hors** du composant et renvoie des objets simples (`useStyles` appelle `StyleSheet.create`).
+- Variantes : deux factories nommées (`buildCompactStyles`, `buildDefaultStyles`) plutôt qu'une lambda recréée à chaque rendu.
+- Couleurs inline en JSX (icônes) : `useAppColors()` ou `useTheme().colors`.
 
-| Rôle | Style imposé |
-|------|----------------|
-| Conteneur row | `minWidth: 0` (fourni par `Row` / `Cluster`) |
-| Colonne contenu | `flex: 1` + `minWidth: 0` (fourni par `Cluster`) |
+## Couleurs
+
+- Fond d'app unique : `c.background` (`#F6F8F8`, aligné sur le web). Cartes et barres : `c.surface` (blanc).
+- Aucune couleur hex / `rgb()` / `rgba()` hors `src/theme/` (règle ESLint `oneandlab/no-raw-colors`). Transparence : `hexToRgba(c.primary, 0.12)`.
+- `import { colors }` (proxy statique) : réservé à `navigation/screen-options.ts` et `components/navigation/header-layout.ts`.
+
+## Layout (React Native / Yoga)
+
+`flexDirection: 'row'` est autorisé. Garde-fous utiles :
+
+| Rôle | Style |
+|------|-------|
+| Colonne de texte dans une row | `flex: 1` + `minWidth: 0` |
 | Slot fixe (icône, bouton) | `flexShrink: 0` |
 | Texte en row | `numberOfLines` explicite |
 
-## Interdit
-
-- `return StyleSheet.create(...)` dans `build*Styles` passé à `useThemedStyles`
-- `new Proxy` + `getThemedStyles` dans du **nouveau** code
-- Factory inline `(c) => buildStyles(c, flag)` — **deux factories nommées**
-- `import { colors }` dans un composant React — utiliser `useAppColors()`
-- `flexDirection: 'row'` brut hors primitives / `layout-styles.ts`
-- Override agressif de `Button` — utiliser `IconActionButton`
-- Corps riche + actions sur **la même row** — utiliser `StackCard` (2 rangées)
-
-## Exceptions documentées
-
-- `colors` statique : **uniquement** `navigation/screen-options.ts` et `navigation/header-layout.ts`
+`npm run lint:layout` affiche un rapport indicatif (non bloquant) des `flex` sans `minWidth: 0`.
 
 ## Vérification (CI)
 
 ```bash
 npm run verify -w @oneandlab/mobile
-# équivalent :
-npm run typecheck && npm run lint:layout && npm run lint:styles:strict && npm run lint
+# équivalent : npm run typecheck && npm run lint
 ```
 
-- `lint:layout` — ratchet : aucun `flex` / `row` sans `minWidth: 0`
-- `lint:styles:strict` — pas de `colors.xxx` sans `useAppColors()`
-- `eslint` — `no-static-colors-import` (error), `no-raw-flex-row` (error — hors primitives UI internes)
+- ESLint : `oneandlab/no-raw-colors` (error), `oneandlab/no-static-colors-import` (error), `no-explicit-any` (error).

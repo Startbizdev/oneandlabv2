@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -14,13 +12,12 @@ import {
 } from '@/utils/preleveur-live-banner';
 import type { MedicalDocumentRow } from '../../api/appointment-detail.service';
 import { PatientListCard, PatientListRow } from './PatientListPrimitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PatientPreleveurAlerts({
   batch }: { batch: Appointment[] }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientEngagementSections');
+  const styles = useStyles(buildStyles);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -84,7 +81,7 @@ export function PatientFooterActions({
   onScrollToDocuments?: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientEngagementSections');
+  const styles = useStyles(buildStyles);
   const resultats = documents.filter((d) => d.document_type === 'resultats');
   const completed = batch.filter((a) => a.status === 'completed');
 
@@ -136,7 +133,7 @@ export function PatientFooterActions({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     alertCard: {
       backgroundColor: c.primaryLight,
@@ -151,12 +148,12 @@ function buildStyles(c: AppColors) {
     },
     alertTexts: { gap: 4 },
     alertTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     alertSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: 18,
@@ -172,7 +169,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.errorLight,
     },
     actionBtnText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
     },

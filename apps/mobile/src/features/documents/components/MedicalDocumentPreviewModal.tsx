@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, StyleSheet, View } from 'react-native';
@@ -14,9 +12,8 @@ import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { resolveDocumentPreviewKind } from '@/lib/downloads/document-file-kind';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 import { useToast } from '@/providers/ToastProvider';
-import { iconSize, spacing, AppText } from '@/theme';
+import { iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 const VIEWER_ACTION_SIZE = 44;
 
@@ -36,7 +33,7 @@ interface Props {
 
 function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: string }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'MedicalDocumentPreviewModal.PdfPreviewBody');
+  const styles = useStyles(buildStyles);
   const [html, setHtml] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -114,7 +111,7 @@ function PdfPreviewBody({ localUri, fileName }: { localUri: string; fileName?: s
 /** Visionneuse in-app : image plein écran ou PDF intégré. */
 export function MedicalDocumentPreviewModal({ visible, localUri, fileName, onClose }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_documents_components_MedicalDocumentPreviewModal_tsx_MedicalDocumentPreviewModal_styles');
+  const styles = useStyles(buildStyles);
 
   const insets = useSafeAreaInsets();
   const { show: toast } = useToast();
@@ -197,7 +194,7 @@ export function MedicalDocumentPreviewModal({ visible, localUri, fileName, onClo
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   pdfShell: {
     minWidth: 0,
@@ -227,7 +224,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   pdfTitle: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -245,12 +242,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.background,
   },
   loadingText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   failText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,

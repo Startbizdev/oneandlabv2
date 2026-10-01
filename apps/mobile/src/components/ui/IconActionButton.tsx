@@ -1,9 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, useStyles } from '@/theme';
 
 interface IconActionButtonProps {
   label: string;
@@ -27,7 +25,7 @@ export function IconActionButton({
   style,
   children,
 }: IconActionButtonProps) {
-  const styles = useThemedStyles(buildIconActionButtonStyles, 'IconActionButton');
+  const styles = useStyles(buildIconActionButtonStyles);
 
   return (
     <Button
@@ -45,7 +43,7 @@ export function IconActionButton({
   );
 }
 
-function buildIconActionButtonStyles(_c: AppColors) {
+function buildIconActionButtonStyles() {
   const size = spacing[9];
   return {
     btn: {

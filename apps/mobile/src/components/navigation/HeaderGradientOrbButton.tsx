@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { elevation, radius, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, AppText, useStyles, font, type Theme } from '@/theme';
 import {
   APP_HEADER_ORB_ICON,
   APP_HEADER_ORB_SIZE,
@@ -33,7 +30,7 @@ export function HeaderGradientOrbButton({
   variant = 'gradient',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_navigation_HeaderGradientOrbButton_tsx_styles');
+  const styles = useStyles(buildStyles);
   const showBadge = badgeCount > 0;
 
   return (
@@ -93,7 +90,7 @@ export function HeaderOrbIconStroke() {
 
 const BADGE_SIZE = 20;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   host: {
     width: APP_HEADER_ORB_SIZE,
@@ -178,7 +175,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.surface,
   },
   badgeText: {
-    fontFamily: fontFamily.extraBold,
+    ...font.extraBold,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.15,
     color: c.textInverse,

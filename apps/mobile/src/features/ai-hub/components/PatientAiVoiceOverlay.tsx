@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,8 +30,8 @@ import {
   shouldShowAiDraftDocumentUpload,
 } from '../utils/should-show-ai-draft-documents';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 /** Réserve bas d’écran pour l’orbe + safe area — évite que le fil soit masqué. */
 const TRANSCRIPT_DOCK_CLEARANCE = 196;
@@ -346,7 +344,7 @@ export function PatientAiVoiceOverlay({
   onInterrupt,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
   const [started, setStarted] = useState(false);
   const transcriptRef = useRef<ScrollView>(null);
@@ -539,7 +537,7 @@ export function PatientAiVoiceOverlay({
 /** @deprecated Utiliser PatientAiVoiceOverlay */
 export const PatientAiVoiceMockOverlay = PatientAiVoiceOverlay;
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: { minWidth: 0, flex: 1 },
     shell: { minWidth: 0, flex: 1 },
@@ -571,21 +569,21 @@ function buildStyles(_c: AppColors) {
     },
     turnUser: {
       alignSelf: 'flex-end' as const,
-      backgroundColor: hexToRgba(_c.primary, 0.12),
+      backgroundColor: hexToRgba(c.primary, 0.12),
     },
     turnAssistant: {
       alignSelf: 'flex-start' as const,
-      backgroundColor: _c.surfaceAlt,
+      backgroundColor: c.surfaceAlt,
     },
     turnLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       marginBottom: spacing[0.5],
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     turnText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.md,
       lineHeight: lh(fontSize.md, 1.45),
     },
@@ -604,7 +602,7 @@ function buildStyles(_c: AppColors) {
       gap: spacing[3],
     },
     dockTitle: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       textAlign: 'center' as const,
     },
@@ -640,13 +638,13 @@ function buildStyles(_c: AppColors) {
       paddingTop: spacing[1],
     },
     errorCaption: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       textAlign: 'center' as const,
     },
     settingsLink: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       textDecorationLine: 'underline' as const,
       paddingVertical: spacing[1],
@@ -662,7 +660,7 @@ function buildStyles(_c: AppColors) {
       justifyContent: 'center' as const,
     },
     endBtnText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
     },
   };

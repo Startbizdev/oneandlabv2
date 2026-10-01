@@ -1,7 +1,5 @@
 import { layoutRowCenter } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -17,8 +15,7 @@ import { patientDisplayName } from '@/features/patients/utils/patient-contact-di
 import { adoptStaffPatient } from '@/features/patients/api/patients.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   patients: PatientRow[];
@@ -58,7 +55,7 @@ export function PrescriptionPatientSelectField({
   placeholder = 'Choisir un patient…',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectField');
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -219,14 +216,14 @@ export function PrescriptionPatientSelectField({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       gap: spacing[1],
       alignSelf: 'stretch' as const,
     },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[0.5],
@@ -245,7 +242,7 @@ function buildStyles(c: AppColors) {
     triggerText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
@@ -262,7 +259,7 @@ function buildStyles(c: AppColors) {
       paddingHorizontal: spacing[3],
     },
     addPatientText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
     },

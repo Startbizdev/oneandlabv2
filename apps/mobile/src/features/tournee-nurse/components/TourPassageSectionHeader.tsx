@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SlidersHorizontal } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   sortActive: boolean;
@@ -21,7 +18,7 @@ export function TourPassageSectionHeader({
   onOpenFilter,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <Row align="center" gap={spacing[1.5]} style={styles.row}>
@@ -47,20 +44,20 @@ export function TourPassageSectionHeader({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     row: {
       marginBottom: spacing[2],
       alignSelf: 'stretch' as const,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,
     },
     absentHint: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
     },
     filterBtn: {

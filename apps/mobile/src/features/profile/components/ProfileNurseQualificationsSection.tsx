@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
@@ -25,8 +23,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   bare?: boolean;
@@ -35,7 +32,7 @@ interface Props {
 export function ProfileNurseQualificationsSection({
   bare }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileNurseQualificationsSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -222,10 +219,10 @@ export function ProfileNurseQualificationsSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
@@ -253,7 +250,7 @@ function buildStyles(c: AppColors) {
   },
   rowBusy: { opacity: 0.55 },
   rowTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -268,7 +265,7 @@ function buildStyles(c: AppColors) {
   },
   otherBlockBare: { marginHorizontal: spacing[4] },
   otherTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -280,7 +277,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2],
   },
   addText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },

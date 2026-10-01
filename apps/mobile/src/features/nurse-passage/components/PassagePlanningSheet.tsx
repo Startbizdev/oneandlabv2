@@ -1,11 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 export type PassagePlanningChoice = 'single_day' | 'recurring';
 
@@ -35,7 +33,7 @@ const OPTIONS: {
 
 export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const dateLabel = dayjs(selectedDate).format('dddd D MMMM');
 
   const handleSelect = (choice: PassagePlanningChoice) => {
@@ -74,7 +72,7 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     body: {
       gap: spacing[3],
@@ -86,9 +84,9 @@ function buildStyles(_c: AppColors) {
       padding: spacing[4],
       gap: spacing[1],
     },
-    optionTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.md },
+    optionTitle: { ...font.semiBold, fontSize: fontSize.md },
     optionSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.4),
     },

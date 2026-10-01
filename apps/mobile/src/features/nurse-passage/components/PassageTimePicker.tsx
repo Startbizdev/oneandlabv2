@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -7,8 +5,7 @@ import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { useInBottomSheet } from '@/components/ui/sheet-keyboard-context';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   label?: string;
@@ -23,7 +20,7 @@ function parseTimeToDate(hhmm: string): Date {
 }
 
 export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }: Props) {
-  const styles = useThemedStyles(buildStyles, 'PassageTimePicker');
+  const styles = useStyles(buildStyles);
   const inSheet = useInBottomSheet();
   const [iosOpen, setIosOpen] = useState(false);
   const [inlineOpen, setInlineOpen] = useState(false);
@@ -142,11 +139,11 @@ export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[1], marginTop: spacing[2] },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[0.5],
@@ -164,7 +161,7 @@ function buildStyles(c: AppColors) {
     },
     fieldDisabled: { opacity: 0.6 },
     value: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },

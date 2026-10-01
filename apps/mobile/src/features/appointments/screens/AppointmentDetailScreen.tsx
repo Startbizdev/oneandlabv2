@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, type ScrollView } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -49,7 +47,7 @@ import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-nav
 import { beneficiaryDisplayName } from '@/utils/beneficiary-display-name';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { HeartPulse, MessageCircle } from 'lucide-react-native';
 
 interface Props {
@@ -63,7 +61,7 @@ function isStaffExchangeRole(role: string): boolean {
 }
 
 export function AppointmentDetailScreen({ role }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_AppointmentDetailScreen_tsx_AppointmentDetailScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { id, careGallery, carePhoto, segment: segmentParam } = useLocalSearchParams<{
     id: string;
@@ -373,7 +371,7 @@ export function AppointmentDetailScreen({ role }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   scroll: {
     minWidth: 0,

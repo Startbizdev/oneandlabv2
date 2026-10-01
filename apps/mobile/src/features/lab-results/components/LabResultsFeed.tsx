@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import { LabResultListCard } from './LabResultListCard';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
 
@@ -40,7 +37,7 @@ export function LabResultsFeed({
   refreshProgressOffset = 0,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultsFeed_tsx_LabResultsFeed_styles');
+  const styles = useStyles(buildStyles);
 
   const renderItem: ListRenderItem<LabResultListItem> = useCallback(
     ({ item }) => {
@@ -106,7 +103,7 @@ export function LabResultsFeed({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   listContent: {
     minWidth: 0,
@@ -116,7 +113,7 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[10],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,

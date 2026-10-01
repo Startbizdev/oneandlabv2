@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -14,15 +12,14 @@ import {
   patientListSubtitle,
   patientPickerOptionFromRow,
 } from '@/features/patients/utils/patient-contact-display';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 const LIST_MAX_HEIGHT = 400;
 const ROW_DRAW_DISTANCE = 72 * 4;
 
 function ListSeparator() {
-  const styles = useThemedStyles(buildSeparatorStyles, 'PrescriptionPatientSelectSheet.separator');
+  const styles = useStyles(buildSeparatorStyles);
   return <View style={styles.separator} />;
 }
 
@@ -65,7 +62,7 @@ export function PrescriptionPatientSelectSheet({
   searchPlaceholder = 'Rechercher un patient…',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionPatientSelectSheet');
+  const styles = useStyles(buildStyles);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -186,7 +183,7 @@ export function PrescriptionPatientSelectSheet({
   );
 }
 
-function buildSeparatorStyles(c: AppColors) {
+function buildSeparatorStyles({ colors: c }: Theme) {
   return {
     separator: {
       height: StyleSheet.hairlineWidth,
@@ -195,7 +192,7 @@ function buildSeparatorStyles(c: AppColors) {
   };
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     sheetBody: {
       minWidth: 0,
@@ -225,19 +222,19 @@ function buildStyles(c: AppColors) {
     rowSelected: { backgroundColor: c.primaryLight },
     rowBody: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     name: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     nameSelected: { color: c.primaryDark },
     meta: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     trailing: { minWidth: 28, alignItems: 'center' as const, justifyContent: 'center' as const },
     empty: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center' as const,

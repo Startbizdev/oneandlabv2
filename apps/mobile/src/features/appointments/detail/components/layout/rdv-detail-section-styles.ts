@@ -2,7 +2,8 @@ import { StyleSheet } from 'react-native';
 import type { AppColors } from '@/theme/colors';
 import { radius, spacing } from '@/theme/tokens';
 import { getThemedStyles } from '@/theme/use-themed-styles';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontSize } from '@/theme/typography';
+import { font } from '@/theme';
 
 function buildRdvDetailSectionStyles(c: AppColors) {
   return {
@@ -34,7 +35,7 @@ function buildRdvDetailSectionStyles(c: AppColors) {
     sectionTitle: {
       minWidth: 0,
       flex: 1,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },

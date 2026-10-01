@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { GENDER_OPTIONS } from '@/constants/pro-emploi';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   label?: string;
@@ -14,7 +11,7 @@ interface Props {
 }
 
 export function GenderSelect({ label = 'Genre', value, onChange, error }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_GenderSelect_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.wrap}>
       <AppText style={styles.label}>{label}</AppText>
@@ -37,11 +34,11 @@ export function GenderSelect({ label = 'Genre', value, onChange, error }: Props)
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.3,
@@ -61,17 +58,17 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primaryLight,
   },
   chipText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
   },
   chipTextActive: {
     color: c.primary,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
   error: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.error,
   },

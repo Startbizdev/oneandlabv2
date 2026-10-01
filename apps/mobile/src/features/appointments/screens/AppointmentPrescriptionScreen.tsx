@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -21,14 +19,14 @@ import {
 } from '../hooks/appointment-detail-result';
 import { appointmentPrescriptionTitle } from '../detail/utils/appointment-prescription-navigation';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   role: string;
 }
 
 export function AppointmentPrescriptionScreen({ role }: Props) {
-  const styles = useThemedStyles(buildStyles, 'AppointmentPrescriptionScreen');
+  const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -114,7 +112,7 @@ export function AppointmentPrescriptionScreen({ role }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     content: {
       paddingHorizontal: spacing[4],

@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
 import { NotificationCard } from './NotificationCard';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   items: AppNotification[];
@@ -41,7 +38,7 @@ export function NotificationsFeed({
   refreshProgressOffset = 0,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_notifications_components_NotificationsFeed_tsx_NotificationsFeed_styles');
+  const styles = useStyles(buildStyles);
 
   const renderItem: ListRenderItem<AppNotification> = useCallback(
     ({ item }) => <NotificationCard item={item} onPress={() => onPressItem(item)} />,
@@ -108,7 +105,7 @@ export function NotificationsFeed({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   listContent: {
     minWidth: 0,
@@ -118,7 +115,7 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[10],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
@@ -139,7 +136,7 @@ function buildStyles(c: AppColors) {
   endHint: {
     textAlign: 'center' as const,
     marginTop: spacing[2],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

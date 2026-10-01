@@ -2,8 +2,8 @@ import { useAppColors } from '@/theme/use-app-colors';
 ;
 import { ProfileNurseQualificationsSection } from '@/features/profile/components/ProfileNurseQualificationsSection';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 export function ProfileNurseQualificationsScreen() {
   const c = useAppColors();
@@ -11,7 +11,7 @@ export function ProfileNurseQualificationsScreen() {
     <ProfileSubScreenLayout hideSave>
       <AppText
         style={{
-          fontFamily: fontFamily.regular,
+          ...font.regular,
           fontSize: fontSize.sm,
           color: c.textSecondary,
           lineHeight: fontSize.sm * 1.45,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -7,8 +5,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, View, type ImageResize
 import { ImageOff, RefreshCw } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { radius, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   photoId: string;
@@ -30,7 +27,7 @@ export function CarePhotoImage({
   children,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CarePhotoImage_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [uri, setUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -94,7 +91,7 @@ export function CarePhotoImage({
   return body;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     overflow: 'hidden' as const,
@@ -113,7 +110,7 @@ function buildStyles(c: AppColors) {
     padding: 8,
   },
   failText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -122,7 +119,7 @@ function buildStyles(c: AppColors) {
     marginTop: 2,
   },
   retryText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },

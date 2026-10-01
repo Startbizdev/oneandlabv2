@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,8 +12,7 @@ import {
 import { HealthRecordQuestionStep } from '@/features/health-record/components/HealthRecordQuestionStep';
 import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health-record-completion';
 import { recapItemsToQuestions } from '@/features/health-record/utils/health-record-questions';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -30,7 +27,7 @@ export function PassageFormHealthRecordSectionSheet({
   sectionId,
   onClose,
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -137,18 +134,18 @@ export function PassageFormHealthRecordSectionSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[4] },
     progress: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     empty: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       paddingBottom: spacing[4],

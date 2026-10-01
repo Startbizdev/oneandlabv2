@@ -1,7 +1,5 @@
 import { layoutRowBetween } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -10,8 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -37,7 +34,7 @@ export function PassageFormDurationSheet({
   onConfirm,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const [draftDuration, setDraftDuration] = useState(duration);
   const [draftCustom, setDraftCustom] = useState(customDuration);
 
@@ -98,7 +95,7 @@ export function PassageFormDurationSheet({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     list: { gap: spacing[2], paddingBottom: spacing[4] },
     option: {
@@ -108,6 +105,6 @@ function buildStyles(_c: AppColors) {
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3.5],
     },
-    label: { fontFamily: fontFamily.semiBold, fontSize: fontSize.md },
+    label: { ...font.semiBold, fontSize: fontSize.md },
   };
 }

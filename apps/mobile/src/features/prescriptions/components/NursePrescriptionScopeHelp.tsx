@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { Row } from '@/components/layout/primitives';
@@ -12,8 +10,7 @@ import {
 } from '@oneandlab/shared-utils';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
-import { spacing, radius, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, radius, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -29,7 +26,7 @@ function formatUpdatedAt(iso: string): string {
 
 function CategoryBlock({ category }: { category: NursePrescriptionScopeCategory }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildCategoryStyles, 'NursePrescriptionScopeSheet_category');
+  const styles = useStyles(buildCategoryStyles);
   const [open, setOpen] = useState(false);
 
   return (
@@ -77,7 +74,7 @@ function CategoryBlock({ category }: { category: NursePrescriptionScopeCategory 
 
 function SourceRow({ source }: { source: NursePrescriptionLegalSource }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildSourceStyles, 'NursePrescriptionScopeSheet_source');
+  const styles = useStyles(buildSourceStyles);
 
   return (
     <Row align="start" style={styles.row}>
@@ -104,7 +101,7 @@ function SourceRow({ source }: { source: NursePrescriptionLegalSource }) {
 
 export function NursePrescriptionScopeHelp() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'NursePrescriptionScopeHelp');
+  const styles = useStyles(buildStyles);
   const [sheetOpen, setSheetOpen] = useState(false);
   const scope = NURSE_PRESCRIPTION_SCOPE;
   const updatedLabel = useMemo(() => formatUpdatedAt(scope.updatedAt), [scope.updatedAt]);
@@ -173,7 +170,7 @@ export function NursePrescriptionScopeHelp() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     banner: {
       flexWrap: 'wrap',
@@ -196,19 +193,19 @@ function buildStyles(c: AppColors) {
     },
     bannerText: { flex: 1, minWidth: 160, gap: spacing[1] },
     bannerTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     bannerSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: 18,
     },
     bannerBtn: { alignSelf: 'flex-start' },
     intro: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: 22,
@@ -227,13 +224,13 @@ function buildStyles(c: AppColors) {
     caryText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textPrimary,
       lineHeight: 18,
     },
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize['2xs'],
       color: c.textSecondary,
       textTransform: 'uppercase',
@@ -250,19 +247,19 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[2],
     },
     ruleTitle: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     ruleBody: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       marginTop: spacing[1],
       lineHeight: 18,
     },
     disclaimer: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       color: c.textSecondary,
       lineHeight: 17,
@@ -275,7 +272,7 @@ function buildStyles(c: AppColors) {
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }
 
-function buildCategoryStyles(c: AppColors) {
+function buildCategoryStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       borderWidth: 1,
@@ -292,12 +289,12 @@ function buildCategoryStyles(c: AppColors) {
     },
     triggerText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     catTitle: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     catSummary: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: 17,
@@ -310,11 +307,11 @@ function buildCategoryStyles(c: AppColors) {
       gap: spacing[1],
     },
     bulletRow: { gap: spacing[2], paddingRight: spacing[1] },
-    bullet: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.primary },
+    bullet: { ...font.regular, fontSize: fontSize.sm, color: c.primary },
     itemText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textPrimary,
       lineHeight: 18,
@@ -326,7 +323,7 @@ function buildCategoryStyles(c: AppColors) {
       backgroundColor: c.surfaceAlt,
     },
     limitText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       color: c.textSecondary,
       lineHeight: 16,
@@ -334,7 +331,7 @@ function buildCategoryStyles(c: AppColors) {
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }
 
-function buildSourceStyles(c: AppColors) {
+function buildSourceStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       alignItems: 'flex-start',
@@ -347,17 +344,17 @@ function buildSourceStyles(c: AppColors) {
     },
     textCol: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     note: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     meta: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       color: c.textSecondary,
     },

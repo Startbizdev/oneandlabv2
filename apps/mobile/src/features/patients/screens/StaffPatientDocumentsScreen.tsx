@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { ScrollView, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
@@ -17,12 +15,12 @@ import {
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
 import { fetchPatientProfile } from '../api/patient-profile.service';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
 export function StaffPatientDocumentsScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_patients_screens_StaffPatientDocumentsScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
@@ -86,7 +84,7 @@ export function StaffPatientDocumentsScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     screen: { minWidth: 0, flex: 1, backgroundColor: c.background },
     loading: { minWidth: 0, flex: 1, padding: spacing[4] },

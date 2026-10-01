@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -17,8 +15,7 @@ import { CreatePatientModal } from '@/features/patients/components/CreatePatient
 import { StaffPatientHubListRow } from '@/features/patients/components/StaffPatientHubListRow';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { queryKeys } from '@/lib/query-keys';
-import { H_PADDING, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { H_PADDING, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Users } from 'lucide-react-native';
 
@@ -29,7 +26,7 @@ function paramString(v: string | string[] | undefined): string {
 
 export function PassagePatientPickScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{
     start_date?: string | string[];
@@ -144,7 +141,7 @@ export function PassagePatientPickScreen() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     scroll: { paddingBottom: spacing[10] },
     modeBanner: {
@@ -156,7 +153,7 @@ function buildStyles(_c: AppColors) {
       paddingVertical: spacing[2.5],
     },
     modeBannerText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       lineHeight: fontSize.sm * 1.4,
     },
@@ -164,7 +161,7 @@ function buildStyles(_c: AppColors) {
     createRow: { paddingHorizontal: H_PADDING, marginBottom: spacing[3] },
     list: { paddingHorizontal: H_PADDING, gap: spacing[1] },
     hint: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       marginBottom: spacing[2],
       paddingHorizontal: H_PADDING,

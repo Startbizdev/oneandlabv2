@@ -1,12 +1,10 @@
 import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Star } from 'lucide-react-native';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { spacing, AppText } from '@/theme';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const SIZE_MAP = {
   sm: 16,
@@ -75,7 +73,7 @@ export function RatingStars({
   style,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_reviews_components_RatingStars_tsx_styles');
+  const styles = useStyles(buildStyles);
   const starSize = SIZE_MAP[size];
   const gap = GAP_MAP[size];
   const touch = dense ? starSize + 2 : TOUCH_MAP[size];
@@ -139,7 +137,7 @@ export function RatingStars({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     cell: {
       alignItems: 'center' as const,
@@ -152,7 +150,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: hexToRgba(c.star, 0.12),
     },
     value: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       marginLeft: spacing[1],
     },
   };

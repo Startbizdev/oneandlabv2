@@ -1,11 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MoreHorizontal, Pencil, type LucideIcon } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 type Props = {
   label: string;
@@ -24,7 +22,7 @@ export function PassageFormFieldRow({
   onPress,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const isAction = variant === 'action';
   const Icon: LucideIcon = isAction ? MoreHorizontal : Pencil;
 
@@ -71,7 +69,7 @@ export function PassageFormFieldRow({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     row: {
       borderWidth: StyleSheet.hairlineWidth,
@@ -81,13 +79,13 @@ function buildStyles(_c: AppColors) {
     },
     textCol: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     value: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.4),
     },

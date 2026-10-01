@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo } from 'react';
@@ -24,8 +22,7 @@ import {
   type ProfessionalProfileData,
 } from '@/features/profile/utils/professional-profile-sheet';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const AVATAR = 96;
 
@@ -39,7 +36,7 @@ interface Props {
 export function ProfessionalProfileSheet({
   visible, onClose, profile, title }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfessionalProfileSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const displayName = professionalProfileDisplayName(profile);
   const sheetTitle = title?.trim() || displayName;
   const coverSrc = resolveProfileImageUrl(profile.coverImageUrl);
@@ -222,7 +219,7 @@ export function ProfessionalProfileSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   sheetBody: {
     paddingHorizontal: 0,
@@ -265,7 +262,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   roleEyebrow: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
@@ -273,7 +270,7 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[1],
   },
   name: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.xl,
     color: c.textPrimary,
     textAlign: 'center' as const,
@@ -291,12 +288,12 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   badgeMuted: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   badgeValue: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },
@@ -317,14 +314,14 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
     color: c.textTertiary,
   },
   bio: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * 1.55,
     color: c.textPrimary,
@@ -340,7 +337,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surfaceAlt,
   },
   emptyText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -365,12 +362,12 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   linkLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   linkUrl: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

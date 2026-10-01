@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -22,13 +20,13 @@ import {
   type ActiveColorblindType,
 } from '@/theme/colorblind-types';
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontSize } from '@/theme/typography';
 
 export function AppSettingsScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_settings_screens_AppSettingsScreen_tsx_AppSettingsScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { show: toast } = useToast();
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
@@ -327,7 +325,7 @@ function previewStyles(c: ReturnType<typeof useAppColors>) {
       justifyContent: 'center' as const,
     },
     cardTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.headingSemiBold,
       fontSize: fontSize.lg,
       color: c.textPrimary,
     },
@@ -341,18 +339,18 @@ function previewStyles(c: ReturnType<typeof useAppColors>) {
       minWidth: 88,
     },
     swatchLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       marginBottom: 4,
     },
     swatchValue: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
     },
   };
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   cardHeader: {
     marginBottom: spacing[2],
@@ -366,7 +364,7 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[2],
   },
   typeLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
   },
   typeRow: {
@@ -379,11 +377,11 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   typeChipTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   typeChipHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.4,
   },
@@ -393,14 +391,14 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[4],
   },
   infoText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     lineHeight: 20,
   },
   link: {
     marginTop: spacing[4],
     textAlign: 'center' as const,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
   },
 };

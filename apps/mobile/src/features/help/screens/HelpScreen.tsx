@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
@@ -27,8 +25,7 @@ import { getHelpFaqForRole, type HelpFaqItem } from '@/features/help/help-faq-co
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   'Onglets principaux': LayoutGrid,
@@ -56,7 +53,7 @@ function answerPreview(answer: string, max = 72): string {
 
 export function HelpScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_help_screens_HelpScreen_tsx_HelpScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
@@ -117,7 +114,7 @@ export function HelpScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: {
     paddingHorizontal: spacing[4],
@@ -126,7 +123,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[4],
   },
   lead: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,

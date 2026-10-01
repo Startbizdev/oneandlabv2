@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -9,8 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import type { PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import { layoutRowWrap } from '@/theme/layout-styles';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 const MULTI_SLOT_OPTIONS: PassageTimeSlot[] = ['morning', 'noon', 'afternoon', 'evening', 'night'];
 const ALL_DAY_SLOT: PassageTimeSlot = 'all_day';
@@ -25,7 +23,7 @@ type Props = {
 
 export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const [selected, setSelected] = useState<PassageTimeSlot[]>(['morning']);
 
   useEffect(() => {
@@ -86,7 +84,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
                 <AppText
                   style={{
                     color: on ? c.primaryDark : c.textSecondary,
-                    fontFamily: fontFamily.semiBold,
+                    ...font.semiBold,
                     fontSize: fontSize.sm,
                   }}
                 >
@@ -101,7 +99,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     presetWrap: {

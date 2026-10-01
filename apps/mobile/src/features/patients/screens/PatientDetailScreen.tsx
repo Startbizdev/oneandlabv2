@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
@@ -42,8 +40,7 @@ import {
   patientGenderLabel,
 } from '../utils/patient-profile-display';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { StaffPatientEditSheet } from '../components/StaffPatientEditSheet';
 import {
@@ -68,7 +65,7 @@ function InfoRow({
   secondary?: string;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientDetailScreen.InfoRow');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.infoRow}>
       <Cluster gap={spacing[3]} align="start" leading={
@@ -92,7 +89,7 @@ function InfoRow({
 
 export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_patients_screens_PatientDetailScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -404,7 +401,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   screen: {
     minWidth: 0,
@@ -438,13 +435,13 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   heroName: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.3,
   },
   heroMeta: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -458,7 +455,7 @@ function buildStyles(c: AppColors) {
     overflow: 'hidden' as const,
   },
   cardKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
@@ -487,20 +484,20 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   infoLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   infoValue: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   infoSecondary: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.4,

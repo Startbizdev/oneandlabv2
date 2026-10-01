@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { View } from 'react-native';
@@ -16,8 +14,8 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import {
   tourStopAsAppointment,
 } from '../utils/tour-stop-as-appointment';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 type Props = {
   stop: NurseTourStop;
@@ -42,7 +40,7 @@ function isDetailOptionLabel(label: string): boolean {
 /** Soins (emoji + libellé) et options catalogue — aligné détail RDV. */
 export function TourStopCareSection({ stop, embedded = false, muted = false, listCompact = false }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const apt = useMemo(() => tourStopAsAppointment(stop), [stop]);
   const { data: categories = [] } = useAppointmentCareCategories();
 
@@ -93,7 +91,7 @@ export function TourStopCareSection({ stop, embedded = false, muted = false, lis
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       marginTop: spacing[1.5],
@@ -111,13 +109,13 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     optionLine: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       color: c.textSecondary,
     },
     optionLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       color: c.textTertiary,
     },
     metaRow: {
@@ -133,7 +131,7 @@ function buildStyles(c: AppColors) {
     metaLine: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
     },
   };

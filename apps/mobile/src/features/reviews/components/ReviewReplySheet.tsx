@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
@@ -7,8 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { reviewerDisplayName } from '@/features/reviews/utils/review-labels';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { MessageSquare } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -33,7 +30,7 @@ export function ReviewReplySheet({
   submitting,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewReplySheet_tsx_ReviewReplySheet_styles');
+  const styles = useStyles(buildStyles);
 
   if (!review) return null;
 
@@ -82,7 +79,7 @@ export function ReviewReplySheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   preview: {
     backgroundColor: c.surfaceAlt,
@@ -93,7 +90,7 @@ function buildStyles(c: AppColors) {
     borderLeftColor: c.star,
   },
   previewComment: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.5,
@@ -101,7 +98,7 @@ function buildStyles(c: AppColors) {
   },
   input: { minHeight: 120, textAlignVertical: 'top' as const },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,

@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback, useState } from 'react';
 import { Platform, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
@@ -30,7 +27,7 @@ function TextareaComponent(
   ref: React.ForwardedRef<TextInput>,
 ) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_Textarea_tsx_styles');
+  const styles = useStyles(buildStyles);
 
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
@@ -106,13 +103,13 @@ function TextareaComponent(
 
 export const Textarea = React.memo(React.forwardRef(TextareaComponent));
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: {
     gap: spacing[1],
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     letterSpacing: 0.3,
     color: c.textSecondary,
@@ -132,7 +129,7 @@ function buildStyles(c: AppColors) {
   input: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textPrimary,
     paddingHorizontal: spacing[4],
@@ -142,13 +139,13 @@ function buildStyles(c: AppColors) {
     ...(Platform.OS === 'android' ? { textAlignVertical: 'top' as const } : {}),
   },
   error: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.error,
     letterSpacing: 0.1,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

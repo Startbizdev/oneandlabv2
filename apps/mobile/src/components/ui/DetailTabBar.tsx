@@ -1,12 +1,10 @@
 import { layoutRowCenter } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { fontSize, lh } from '@/theme/typography';
 
 export type DetailTabBarItem<T extends string = string> = {
   id: T;
@@ -35,7 +33,7 @@ export function DetailTabBar<T extends string>({
   compact = false,
 }: DetailTabBarProps<T>) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildDetailTabBarStyles, 'DetailTabBar');
+  const styles = useStyles(buildDetailTabBarStyles);
   const labelLineHeight = lh(fontSize.xs, 1.15);
   const iconSize = compact ? 14 : 15;
 
@@ -101,7 +99,7 @@ export function DetailTabBar<T extends string>({
   );
 }
 
-function buildDetailTabBarStyles(c: AppColors) {
+function buildDetailTabBarStyles({ colors: c, fontSize }: Theme) {
   return {
     host: {
       width: '100%' as const,
@@ -151,7 +149,7 @@ function buildDetailTabBarStyles(c: AppColors) {
     label: {
       minWidth: 0,
       flexShrink: 1,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       ...(Platform.OS === 'android'
@@ -175,7 +173,7 @@ function buildDetailTabBarStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
     },
     badgeText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize['2xs'],
       color: c.textSecondary,
     },

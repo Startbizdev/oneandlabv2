@@ -1,6 +1,4 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -14,8 +12,7 @@ import {
   detailLinesForSelectedService,
   selectionModalTitle,
 } from '../utils/selected-service-detail-lines';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -36,7 +33,7 @@ export function SelectedServicesDetailSheet({
   onRemove,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'SelectedServicesDetailSheet');
+  const styles = useStyles(buildStyles);
   const handleRemove = (svc: SelectedServiceInput) => {
     Alert.alert('Retirer ce soin ?', svc.name, [
       { text: 'Annuler', style: 'cancel' },
@@ -107,7 +104,7 @@ export function SelectedServicesDetailSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     item: {
       paddingVertical: spacing[3],
@@ -117,7 +114,7 @@ function buildStyles(c: AppColors) {
       borderBottomColor: c.borderLight,
     },
     itemName: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       lineHeight: fontSize.base * 1.35,
@@ -142,16 +139,16 @@ function buildStyles(c: AppColors) {
       lineHeight: fontSize.sm * 1.45,
     },
     detailLabel: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       color: c.textTertiary,
     },
     detailValue: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       color: c.textSecondary,
     },
     empty: {
       marginTop: spacing[1],
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
       lineHeight: fontSize.sm * 1.4,

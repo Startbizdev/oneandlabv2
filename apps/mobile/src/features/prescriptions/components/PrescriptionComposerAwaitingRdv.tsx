@@ -1,16 +1,13 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { FilePenLine } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth, useStyles, font, type Theme } from '@/theme';
 
 /** Zone visible tant qu'aucun RDV n'est choisi — évite l'effet « il faut scroller ». */
 export function PrescriptionComposerAwaitingRdv() {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionComposerAwaitingRdv');
+  const styles = useStyles(buildStyles);
   const hintMaxWidth = centeredCopyMaxWidth(layout);
 
   return (
@@ -26,7 +23,7 @@ export function PrescriptionComposerAwaitingRdv() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       alignItems: 'center' as const,
@@ -48,13 +45,13 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       textAlign: 'center' as const,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center' as const,

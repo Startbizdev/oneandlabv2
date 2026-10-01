@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -23,8 +21,7 @@ import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBann
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
   if (filter === 'pending') return list.filter((r) => !r.response?.trim());
@@ -33,7 +30,7 @@ function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
 }
 
 export function NurseReviewsScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseReviewsScreen_tsx_NurseReviewsScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
@@ -185,7 +182,7 @@ export function NurseReviewsScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   loading: { padding: spacing[4], paddingTop: spacing[2] },
@@ -201,7 +198,7 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[3],
   },
   sectionHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.5,
@@ -214,12 +211,12 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   filterEmptyTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   filterEmptyDesc: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     textAlign: 'center' as const,

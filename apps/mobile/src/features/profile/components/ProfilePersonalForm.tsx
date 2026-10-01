@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -14,8 +12,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { fetchUser, updateUser } from '../api/profile.service';
-import { elevation, radius, spacing, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   /** Afficher le bouton Enregistrer sous le formulaire */
@@ -23,7 +20,7 @@ interface Props {
 }
 
 export function ProfilePersonalForm({ showSaveButton = true }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfilePersonalForm_tsx_ProfilePersonalForm_styles');
+  const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
@@ -127,7 +124,7 @@ export function ProfilePersonalForm({ showSaveButton = true }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   avatarSection: {
     paddingTop: spacing[2],
@@ -138,12 +135,12 @@ function buildStyles(c: AppColors) {
   },
   avatarInfo: { gap: 2 },
   avatarName: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
   },
   avatarEmail: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -156,13 +153,13 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   sectionTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     marginBottom: spacing[1],
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.5,

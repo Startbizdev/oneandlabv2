@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,8 +17,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import type { CoveragePolygonPayload, CoverageVertex } from '@oneandlab/shared-utils';
 import { toPolygonPayload } from '@oneandlab/shared-utils';
@@ -29,7 +26,7 @@ const MIN_RADIUS = 5;
 const DEFAULT_RADIUS = 20;
 
 export function ProfileNurseCoverageScreen() {
-  const styles = useThemedStyles(buildStyles, 'ProfileNurseCoverageScreen');
+  const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -170,16 +167,16 @@ export function ProfileNurseCoverageScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     intro: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.45,

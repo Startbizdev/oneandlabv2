@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { type ReactNode } from 'react';
 import { View, StyleSheet, type ScrollViewProps, type ViewStyle } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { KeyboardScrollView } from './KeyboardScrollView';
 import { ResponsiveContent } from './ResponsiveContent';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 /**
  * Conteneur d'écran sans SafeAreaView.
@@ -45,7 +43,7 @@ export function Screen({
   ...rest
 }: ScreenProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_layout_Screen_tsx_Screen_styles');
+  const styles = useStyles(buildStyles);
   const bg = { backgroundColor: backgroundColor ?? c.background };
   const body = responsive ? <ResponsiveContent centered>{children}</ResponsiveContent> : children;
 
@@ -99,7 +97,7 @@ export function Screen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   flex: {
     minWidth: 0,

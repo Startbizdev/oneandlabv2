@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
@@ -32,13 +30,13 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
 
 export function ProfileNurseHubView() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_views_ProfileNurseHubView_tsx_ProfileNurseHubView_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -233,7 +231,7 @@ export function ProfileNurseHubView() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   scroll: {
     padding: spacing[4],

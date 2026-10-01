@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { actionsSlot, flexText, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface ListRowShellProps {
   leading?: ReactNode;
@@ -40,7 +37,7 @@ export function ListRowShell({
   style,
   disabled = false,
 }: ListRowShellProps) {
-  const styles = useThemedStyles(buildListRowShellStyles, 'ListRowShell');
+  const styles = useStyles(buildListRowShellStyles);
 
   const bodyContent =
     body ??
@@ -86,7 +83,7 @@ export function ListRowShell({
   );
 }
 
-function buildListRowShellStyles(c: AppColors) {
+function buildListRowShellStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       ...layoutRow(spacing[3]),
@@ -112,14 +109,14 @@ function buildListRowShellStyles(c: AppColors) {
       opacity: 0.92,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       lineHeight: fontSize.base * 1.3,
     },
     hint: {
       marginTop: spacing[0.5],
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.35,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Fragment } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
@@ -11,9 +9,10 @@ import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
+import { useStyles, type Theme } from '@/theme';
 
 export default function NurseLayout() {
-  const styles = useThemedStyles(buildStyles, 'NurseLayout');
+  const styles = useStyles(buildStyles);
   useGlobalOfferPolling();
 
   return (
@@ -85,7 +84,7 @@ export default function NurseLayout() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     stackHost: { flex: 1, backgroundColor: c.surface },
   };

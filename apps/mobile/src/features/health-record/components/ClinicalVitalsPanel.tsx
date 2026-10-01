@@ -1,6 +1,5 @@
 import { layoutRowBaselineWrap, layoutRowWrap } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -22,8 +21,7 @@ import {
 } from '../utils/clinical-vital-display';
 import { ClinicalVitalEditSheet } from './ClinicalVitalEditSheet';
 import { ClinicalVitalHistorySheet } from './ClinicalVitalHistorySheet';
-import { elevation, radius, spacing, iconSize, useLayoutMetrics, gridColumns, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, gridColumns, AppText, useStyles, font, type Theme } from '@/theme';
 
 const CARD_MIN_H = 96;
 /** 1 carte « Ajouter » + une carte par type de constante. */
@@ -83,7 +81,7 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
   const cols = gridColumns(layout.width, { compact: 3, default: 4 });
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const slotStyle = { width: `${100 / cols}%` as const };
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -200,12 +198,12 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const gap = spacing[2];
   return {
     wrap: { gap: spacing[2] },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       textTransform: 'uppercase' as const,
@@ -261,7 +259,7 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     addLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
     },
@@ -278,7 +276,7 @@ function buildStyles(c: AppColors) {
       textAlign: 'center' as const,
     },
     cardLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.2,
@@ -294,24 +292,24 @@ function buildStyles(c: AppColors) {
     },
     cardValue: {
       minWidth: 0,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.md,
       color: c.textPrimary,
       flexShrink: 1,
     },
     cardUnit: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     cardDate: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       color: c.textTertiary,
       lineHeight: 12,
     },
     cardPlaceholder: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.md,
       color: c.textTertiary,
       lineHeight: fontSize.md,

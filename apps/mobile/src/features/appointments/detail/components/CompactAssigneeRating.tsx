@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
 import { StyleSheet, View } from 'react-native';
 import { Star } from 'lucide-react-native';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import {
   formatReviewsCount,
   type AssigneeReviewSummary,
@@ -18,7 +15,7 @@ interface Props {
 
 function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'CompactAssigneeRating.Empty');
+  const styles = useStyles(buildStyles);
   return (
     <View accessibilityLabel={`${label}, pas encore d'avis`}>
       <Row wrap gap={spacing[1]}>
@@ -42,7 +39,7 @@ function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
 /** Note + nombre d'avis sous le nom d'un intervenant. */
 export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_CompactAssigneeRating_tsx_CompactAssigneeRating_styles');
+  const styles = useStyles(buildStyles);
 
   if (!summary) {
     return showNewWhenEmpty ? <EmptyAssigneeRating /> : null;
@@ -74,26 +71,26 @@ export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Pro
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   rating: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
     fontVariant: ['tabular-nums' as const],
   },
   separator: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   count: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   newLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

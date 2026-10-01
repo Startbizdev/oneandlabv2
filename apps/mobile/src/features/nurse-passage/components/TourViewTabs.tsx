@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { PassageTourViewTab } from '@oneandlab/shared-types';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { H_PADDING, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { H_PADDING, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 
 const TABS: { id: PassageTourViewTab; label: string }[] = [
@@ -20,7 +17,7 @@ type Props = {
 
 export function TourViewTabs({ active, onChange }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.row}>
@@ -54,7 +51,7 @@ export function TourViewTabs({ active, onChange }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     row: {
       ...layoutRow(spacing[2]),
@@ -70,7 +67,7 @@ function buildStyles(_c: AppColors) {
       alignItems: 'center' as const,
     },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       textAlign: 'center' as const,
     },

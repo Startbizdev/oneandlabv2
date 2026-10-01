@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, ActivityIndicator, StyleSheet, type PressableProps } from 'react-native';
 import Animated, {
@@ -9,10 +7,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { animation, radius, spacing } from '@/theme';
+import { animation, radius, spacing, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { scaleLayoutSize } from '@/theme/text-scale';
 
 type Variant =
   | 'primary'
@@ -107,7 +103,7 @@ function ButtonComponent({
   ...props
 }: ButtonProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_Button_tsx_ButtonComponent_styles');
+  const styles = useStyles(buildStyles);
 
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -156,7 +152,7 @@ function ButtonComponent({
         accessibilityLabel={props.accessibilityLabel ?? (iconOnly ? title : undefined)}
         style={[
           styles.base,
-          styles.size[size],
+          styles[SIZE_STYLE_KEY[size]],
           variantStyleFor(variant, c),
           isDisabled && styles.disabled,
           fullWidth && styles.fullWidth,
@@ -187,7 +183,7 @@ function ButtonComponent({
             <Animated.Text
               style={[
                 isMini ? styles.textMini : styles.text,
-                styles.textSize[size],
+                styles[TEXT_SIZE_STYLE_KEY[size]],
                 { color: textColorFor(variant, c) },
                 leftIcon || rightIcon
                   ? isMini
@@ -208,76 +204,63 @@ function ButtonComponent({
 
 export const Button = React.memo(ButtonComponent);
 
-function buildStyles(c: AppColors) {
-  const textSizeStyles = {
-    mini: { fontSize: fontSize.xs },
-    sm: { fontSize: fontSize.sm },
-    md: { fontSize: fontSize.base },
-    lg: { fontSize: fontSize.md },
-  } as const;
+const SIZE_STYLE_KEY = { mini: 'sizeMini', sm: 'sizeSm', md: 'sizeMd', lg: 'sizeLg' } as const;
+const TEXT_SIZE_STYLE_KEY = {
+  mini: 'textSizeMini',
+  sm: 'textSizeSm',
+  md: 'textSizeMd',
+  lg: 'textSizeLg',
+} as const;
 
-  const sizeStyles = {
-    mini: {
-      paddingVertical: sizeStyleBase.mini.paddingVertical,
-      paddingHorizontal: sizeStyleBase.mini.paddingHorizontal,
-      borderRadius: sizeStyleBase.mini.borderRadius,
-      minHeight: scaleLayoutSize(sizeStyleBase.mini.baseMinHeight),
-      gap: 3,
-    },
-    sm: {
-      paddingVertical: sizeStyleBase.sm.paddingVertical,
-      paddingHorizontal: sizeStyleBase.sm.paddingHorizontal,
-      borderRadius: sizeStyleBase.sm.borderRadius,
-      minHeight: scaleLayoutSize(sizeStyleBase.sm.baseMinHeight),
-      gap: 0,
-    },
-    md: {
-      paddingVertical: sizeStyleBase.md.paddingVertical,
-      paddingHorizontal: sizeStyleBase.md.paddingHorizontal,
-      borderRadius: sizeStyleBase.md.borderRadius,
-      minHeight: scaleLayoutSize(sizeStyleBase.md.baseMinHeight),
-      gap: 0,
-    },
-    lg: {
-      paddingVertical: sizeStyleBase.lg.paddingVertical,
-      paddingHorizontal: sizeStyleBase.lg.paddingHorizontal,
-      borderRadius: sizeStyleBase.lg.borderRadius,
-      minHeight: scaleLayoutSize(sizeStyleBase.lg.baseMinHeight),
-      gap: 0,
-    },
-  } as const;
-
+function sizeStyle(size: Size, scale: Theme['scale']) {
+  const base = sizeStyleBase[size];
   return {
-  base: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  inlineWrap: {
-    flexShrink: 0,
-    alignSelf: 'center' as const,
-  },
-  fullWidth: {
-    width: '100%' as const,
-  },
-  text: {
-    fontFamily: fontFamily.semiBold,
-    letterSpacing: 0.1,
-  },
-  textMini: {
-    fontFamily: fontFamily.medium,
-    letterSpacing: 0,
-  },
-  textWithIcon: {
-    marginHorizontal: spacing[2],
-  },
-  textWithIconMini: {
-    marginHorizontal: 0,
-  },
-  disabled: {
-    opacity: 0.45,
-  },
-  size: sizeStyles,
-  textSize: textSizeStyles,
-};
+    paddingVertical: base.paddingVertical,
+    paddingHorizontal: base.paddingHorizontal,
+    borderRadius: base.borderRadius,
+    minHeight: scale(base.baseMinHeight),
+    gap: size === 'mini' ? 3 : 0,
+  };
+}
+
+function buildStyles({ fontSize, scale }: Theme) {
+  return {
+    base: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    inlineWrap: {
+      flexShrink: 0,
+      alignSelf: 'center',
+    },
+    fullWidth: {
+      width: '100%',
+    },
+    text: {
+      ...font.semiBold,
+      letterSpacing: 0.1,
+    },
+    textMini: {
+      ...font.medium,
+      letterSpacing: 0,
+    },
+    textWithIcon: {
+      marginHorizontal: spacing[2],
+    },
+    textWithIconMini: {
+      marginHorizontal: 0,
+    },
+    disabled: {
+      opacity: 0.45,
+    },
+    sizeMini: sizeStyle('mini', scale),
+    sizeSm: sizeStyle('sm', scale),
+    sizeMd: sizeStyle('md', scale),
+    sizeLg: sizeStyle('lg', scale),
+    textSizeMini: { fontSize: fontSize.xs },
+    textSizeSm: { fontSize: fontSize.sm },
+    textSizeMd: { fontSize: fontSize.base },
+    textSizeLg: { fontSize: fontSize.md },
+  } as const;
 }

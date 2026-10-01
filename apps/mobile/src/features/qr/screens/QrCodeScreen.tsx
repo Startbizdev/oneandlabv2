@@ -1,6 +1,4 @@
 import { layoutRow } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,14 +12,13 @@ import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { useAuthStore } from '@/store/auth-store';
-import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
+import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 export function QrCodeScreen() {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'features_qr_screens_QrCodeScreen_styles');
+  const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const qc = useQueryClient();
 
@@ -195,7 +192,7 @@ export function QrCodeScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     scroll: {
       paddingHorizontal: spacing[4],
@@ -241,24 +238,24 @@ function buildStyles(c: AppColors) {
     },
     statValue: {
       fontSize: fontSize.xl,
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       color: c.primary,
     },
     statLabel: {
       marginTop: spacing[1],
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       color: c.textPrimary,
     },
     statSub: {
       marginTop: 2,
       fontSize: fontSize.xs,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       color: c.textSecondary,
     },
     counter: {
       fontSize: fontSize.xs,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       color: c.textSecondary,
       textAlign: 'right' as const,
     },
@@ -269,12 +266,12 @@ function buildStyles(c: AppColors) {
       marginTop: spacing[2],
       textAlign: 'center' as const,
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       color: c.textSecondary,
     },
     muted: {
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       color: c.textSecondary,
     },
   };

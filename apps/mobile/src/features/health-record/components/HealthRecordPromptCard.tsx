@@ -1,7 +1,5 @@
-import type { AppColors } from '@/theme/colors';
 import { palette } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, Pressable, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,8 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { ArrowRight, HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Skeleton } from '@/components/ui/skeletons';
-import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { HealthRecordProgressRing } from './HealthRecordProgressRing';
 import { healthRecordHeroSubtitle } from '../utils/health-record-display';
 
@@ -24,7 +21,7 @@ interface Props {
 }
 
 export function HealthRecordPromptCard({ percent, onPress, loading }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordPromptCard');
+  const styles = useStyles(buildStyles);
   const subtitle = healthRecordHeroSubtitle(percent);
 
   if (loading) {
@@ -86,7 +83,7 @@ export function HealthRecordPromptCard({ percent, onPress, loading }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const cardRadius = Platform.select({
     ios: { borderCurve: 'continuous' as const },
     default: {},
@@ -107,10 +104,10 @@ function buildStyles(_c: AppColors) {
     loadingShell: {
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3.5],
-      backgroundColor: _c.surface,
+      backgroundColor: c.surface,
       borderRadius: CARNET_CARD_RADIUS,
       borderWidth: 1,
-      borderColor: _c.borderLight,
+      borderColor: c.borderLight,
       ...cardRadius,
     },
     loadingBody: { flex: 1, minWidth: 0, gap: spacing[2] },
@@ -151,13 +148,13 @@ function buildStyles(_c: AppColors) {
     },
     body: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: '#FFFFFF',
       letterSpacing: -0.2,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: hexToRgba('#FFFFFF', 0.88),
       lineHeight: fontSize.sm * 1.4,

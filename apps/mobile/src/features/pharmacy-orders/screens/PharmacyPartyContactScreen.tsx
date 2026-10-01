@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -17,8 +15,7 @@ import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
 import { Cluster, Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function roleLabel(role?: string | null, emploi?: string | null): string {
   if (emploi?.trim()) return emploi.trim();
@@ -31,7 +28,7 @@ export function PharmacyPartyContactScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const userId = String(id ?? '');
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyPartyContactScreen');
+  const styles = useStyles(buildStyles);
   const scrollConfig = useStackScrollConfig(styles.content);
 
   const profileQ = useQuery({
@@ -125,7 +122,7 @@ export function PharmacyPartyContactScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     content: {
       paddingHorizontal: spacing[4],
@@ -141,17 +138,17 @@ function buildStyles(c: AppColors) {
     },
     heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
     name: {
-      fontFamily: fontFamily.semiBold,
+      ...font.headingSemiBold,
       fontSize: fontSize.lg,
       color: c.textPrimary,
     },
     meta: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primaryDark,
     },
     line: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,

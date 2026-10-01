@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
@@ -21,8 +19,7 @@ import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const CONFIRMED_STATUSES = new Set(['confirmed', 'in_progress', 'on_the_way']);
 
@@ -53,7 +50,7 @@ interface Props {
 }
 
 export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bookLabel }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PreleveurAppointmentsListScreen_tsx_PreleveurAppointmentsListScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
@@ -172,7 +169,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {
@@ -192,7 +189,7 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[3],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,

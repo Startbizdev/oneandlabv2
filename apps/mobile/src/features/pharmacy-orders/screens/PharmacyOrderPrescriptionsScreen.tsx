@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -19,14 +17,13 @@ import { useToast } from '@/providers/ToastProvider';
 import { fetchPharmacyOrder } from '../api/pharmacy-orders.service';
 import { fetchMedicalDocumentById } from '@/features/appointments/api/medical-documents.service';
 import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PharmacyOrderPrescriptionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = String(id ?? '');
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const scrollConfig = useStackScrollConfig(styles.content);
   const { show: toast } = useToast();
 
@@ -163,7 +160,7 @@ export function PharmacyOrderPrescriptionsScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     content: {
       width: '100%' as const,
@@ -174,7 +171,7 @@ function buildStyles(c: AppColors) {
     },
     loader: { marginTop: spacing[10] },
     lead: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
@@ -190,12 +187,12 @@ function buildStyles(c: AppColors) {
     },
     body: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     rowTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     rowSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },

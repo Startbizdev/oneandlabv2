@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import {
   PROFESSIONAL_ID_LABEL,
   getProfessionalIdDisplay,
@@ -34,15 +32,14 @@ import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface RegisterScreenProps {
   role?: RegisterRole;
 }
 
 export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
-  const styles = useThemedStyles(buildStyles, 'features_auth_screens_RegisterScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
   const role = roleProp ?? 'patient';
   const router = useRouter();
@@ -314,7 +311,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   content: {
     padding: spacing[4],
@@ -327,12 +324,12 @@ function buildStyles(c: AppColors) {
   half: { minWidth: 0, flex: 1 },
   loginLink: { alignItems: 'center' as const, paddingTop: spacing[2] },
   loginLinkText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   loginLinkAccent: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     color: c.primary,
   },
 };

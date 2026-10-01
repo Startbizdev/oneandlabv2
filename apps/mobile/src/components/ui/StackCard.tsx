@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { hairlineBottom, hairlineTop, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** Inset intérieur — parité `AppointmentListRowCard` (`inner`). */
 export const STACK_CARD_INSET_X = spacing[4];
@@ -16,7 +13,7 @@ interface StackCardProps {
 }
 
 function StackCardRoot({ children, style }: StackCardProps) {
-  const styles = useThemedStyles(buildStackCardStyles, 'StackCard');
+  const styles = useStyles(buildStackCardStyles);
 
   return (
     <View style={[styles.card, style]}>
@@ -42,7 +39,7 @@ function StackCardSection({
   accessibilityLabel,
   style,
 }: SectionProps) {
-  const styles = useThemedStyles(buildStackCardStyles, 'StackCard.Section');
+  const styles = useStyles(buildStackCardStyles);
   const sectionStyle = [
     styles.section,
     bordered === 'bottom' && styles.sectionBorderBottom,
@@ -71,7 +68,7 @@ interface FooterProps {
 }
 
 function StackCardFooter({ children, style }: FooterProps) {
-  const styles = useThemedStyles(buildStackCardStyles, 'StackCard.Footer');
+  const styles = useStyles(buildStackCardStyles);
 
   return <View style={[styles.footer, style]}>{children}</View>;
 }
@@ -82,7 +79,7 @@ interface FooterMetaProps {
 }
 
 function StackCardFooterMeta({ children, numberOfLines = 1 }: FooterMetaProps) {
-  const styles = useThemedStyles(buildStackCardStyles, 'StackCard.FooterMeta');
+  const styles = useStyles(buildStackCardStyles);
 
   return (
     <AppText style={styles.footerMeta} numberOfLines={numberOfLines}>
@@ -92,7 +89,7 @@ function StackCardFooterMeta({ children, numberOfLines = 1 }: FooterMetaProps) {
 }
 
 function StackCardFooterActions({ children }: { children: ReactNode }) {
-  const styles = useThemedStyles(buildStackCardStyles, 'StackCard.FooterActions');
+  const styles = useStyles(buildStackCardStyles);
 
   return <View style={styles.footerActions}>{children}</View>;
 }
@@ -104,7 +101,7 @@ export const StackCard = Object.assign(StackCardRoot, {
   FooterActions: StackCardFooterActions,
 });
 
-function buildStackCardStyles(c: AppColors) {
+function buildStackCardStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -141,7 +138,7 @@ function buildStackCardStyles(c: AppColors) {
     footerMeta: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.45,

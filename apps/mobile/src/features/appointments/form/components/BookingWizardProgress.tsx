@@ -1,9 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   current: number;
@@ -13,7 +10,7 @@ interface Props {
 }
 
 export function BookingWizardProgress({ current, total, label, hint }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardProgress_tsx_styles');
+  const styles = useStyles(buildStyles);
   const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
 
   return (
@@ -32,11 +29,11 @@ export function BookingWizardProgress({ current, total, label, hint }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   stepText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
     textTransform: 'uppercase' as const,
@@ -46,12 +43,12 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
     flex: 1,
     textAlign: 'right' as const,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,

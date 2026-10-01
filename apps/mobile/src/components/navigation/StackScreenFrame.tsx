@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
 import { ScenePullRefreshContext } from '@/components/ui/scene-pull-refresh-context';
@@ -9,6 +7,7 @@ import { StackHeaderInsetProvider } from '@/components/navigation/liquid-glass-h
 import { LiquidGlassTabHeader } from '@/components/navigation/LiquidGlassTabHeader';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { StackGlassBackButton } from '@/navigation/StackGlassBackButton';
+import { useStyles, type Theme } from '@/theme';
 
 type Props = {
   title?: ReactNode;
@@ -26,7 +25,7 @@ export function StackScreenFrame({
   children,
   shellStyle,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'StackScreenFrame');
+  const styles = useStyles(buildStyles);
   const [sceneRefreshing, setSceneRefreshing] = useState(false);
   const bindSceneRefresh = useCallback((visible: boolean) => {
     setSceneRefreshing(visible);
@@ -54,7 +53,7 @@ export function StackScreenFrame({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     root: {
       flex: 1,

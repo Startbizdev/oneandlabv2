@@ -1,9 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { CalendarDays } from 'lucide-react-native';
-import {radius, spacing, iconSize } from '@/theme';
+import { radius, spacing, iconSize, useStyles, type Theme } from '@/theme';
 import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
 
 type Props = {
@@ -14,7 +12,7 @@ type Props = {
 /** Ajoute la tournée du jour au calendrier du téléphone. */
 export function TourCalendarExportAction({ onPress, loading }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.wrap}>
@@ -36,7 +34,7 @@ export function TourCalendarExportAction({ onPress, loading }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     wrap: {
       paddingRight: spacing[1],

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -21,8 +19,7 @@ import {
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   appointmentId: string;
@@ -33,7 +30,7 @@ interface Props {
 export function RescheduleAppointmentScreen({
   appointmentId, role, basePath }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_screens_RescheduleAppointmentScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
   const scrollConfig = useStackScrollConfig(styles.content);
 
@@ -146,7 +143,7 @@ export function RescheduleAppointmentScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   loading: {
     minWidth: 0,
@@ -173,7 +170,7 @@ function buildStyles(c: AppColors) {
     alignSelf: 'flex-start' as const,
   },
   backLinkText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.primary,
   },
@@ -184,12 +181,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surfaceAlt,
   },
   patientName: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   patientPhone: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

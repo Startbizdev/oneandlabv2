@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Row } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -8,8 +6,7 @@ import { api } from '@/api/client';
 import { StaffPatientKvSection } from '../StaffPatientKvSection';
 import { DetailSection } from '../layout/DetailSection';
 import { canLeaveReview } from '@/utils/can-leave-review';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   primary: Appointment;
@@ -38,7 +35,7 @@ export function PatientRdvUnifiedCard({
   withHero = false,
   hideCareDetails: _hideCareDetails = true,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientRdvUnifiedCard_tsx_styles');
+  const styles = useStyles(buildStyles);
   const extraContacts = withHero ? (
     <StaffPatientKvSection apt={primary} />
   ) : null;
@@ -103,7 +100,7 @@ export function PatientRdvUnifiedCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   actionBtn: {
@@ -115,7 +112,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   actionBtnText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },

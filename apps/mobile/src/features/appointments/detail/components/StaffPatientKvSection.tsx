@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { radius, spacing, AppText } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   apt: Appointment;
@@ -13,7 +10,7 @@ interface Props {
 /** Alertes proche uniquement (bénéficiaire + titulaire sont dans « Informations du rendez-vous »). */
 export function StaffPatientKvSection({ apt }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_StaffPatientKvSection_tsx_StaffPatientKvSection_styles');
+  const styles = useStyles(buildStyles);
 
   const ext = apt as Appointment & {
     relative?: { is_minor?: boolean; age_years?: number };
@@ -42,7 +39,7 @@ export function StaffPatientKvSection({ apt }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   minor: {
@@ -51,7 +48,7 @@ function buildStyles(c: AppColors) {
     borderWidth: 1,
   },
   minorText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.45,
   },

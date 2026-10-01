@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Activity, CheckCircle2, HeartPulse, RefreshCw, Unplug } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import {
   formatHealthSyncRelative,
@@ -39,7 +36,7 @@ export function HealthSyncStatusCard({
   compact = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const platform = getHealthPlatformUiConfig();
 
   return (
@@ -160,7 +157,7 @@ export function HealthSyncStatusCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -194,7 +191,7 @@ function buildStyles(c: AppColors) {
     },
     title: {
       minWidth: 0,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       letterSpacing: -0.2,
@@ -210,11 +207,11 @@ function buildStyles(c: AppColors) {
       borderRadius: radius.full,
     },
     badgeText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.55,
@@ -233,25 +230,25 @@ function buildStyles(c: AppColors) {
       gap: spacing[0.5],
     },
     statLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize['2xs'],
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     statValue: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
       letterSpacing: -0.3,
     },
     statUnit: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
     statHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       color: c.textTertiary,
     },

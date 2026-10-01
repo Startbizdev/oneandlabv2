@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { getCancellationMotifLine, isAppointmentCanceled } from '@/utils/appointment-detail-display';
-import { radius, spacing, AppText } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 export function RdvCancellationBanner({
   apt,
@@ -15,7 +12,7 @@ export function RdvCancellationBanner({
   compact?: boolean;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvCancellationBanner_tsx_RdvCancellationBanner_styles');
+  const styles = useStyles(buildStyles);
 
   if (!isAppointmentCanceled(apt.status)) return null;
   const motif = getCancellationMotifLine(apt);
@@ -34,7 +31,7 @@ export function RdvCancellationBanner({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   bannerCompact: {
     marginHorizontal: spacing[4],
@@ -47,11 +44,11 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   motif: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.5,
   },

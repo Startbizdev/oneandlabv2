@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import {radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -17,7 +14,7 @@ interface Props {
 export function RegisterHeaderTitle({
   title, subtitle, Icon }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'navigation_RegisterHeaderTitle_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <Cluster
       gap={spacing[3]}
@@ -50,7 +47,7 @@ export function registerHeaderTitle(
   return () => <RegisterHeaderTitle title={title} subtitle={subtitle} Icon={Icon} />;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   row: {
     flex: 1,
@@ -70,13 +67,13 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.4,

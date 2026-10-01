@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { AppText } from '@/theme';
+import { AppText, font } from '@/theme';
 import { View } from 'react-native';
 import {
   medicalDocumentPickErrorMessage,
@@ -28,7 +28,7 @@ import {
   useMedicalDocumentsStackHeadStyles,
 } from '@/features/documents/components/medical-documents-stack';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontSize } from '@/theme/typography';
 import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 
 function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
@@ -245,7 +245,7 @@ const dossierStyles = {
     backgroundColor: 'rgba(245, 158, 11, 0.12)',
   },
   alertText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.45,
   },

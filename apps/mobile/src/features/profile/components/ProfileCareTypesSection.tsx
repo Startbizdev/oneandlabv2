@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -17,8 +15,7 @@ import type { NurseCategoryPreference } from '@/features/profile/types/profile.t
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { palette, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   /** Liste seule (écran dédié, sans carte section). */
@@ -27,7 +24,7 @@ interface Props {
 
 
 export function ProfileCareTypesSection({ bare }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileCareTypesSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -117,10 +114,10 @@ export function ProfileCareTypesSection({ bare }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   empty: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -165,7 +162,7 @@ function buildStyles(c: AppColors) {
     lineHeight: 24,
   },
   rowTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },

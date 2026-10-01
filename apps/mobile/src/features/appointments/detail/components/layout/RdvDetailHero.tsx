@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import type { ReactNode } from 'react';
@@ -24,8 +22,7 @@ import {
   beneficiaryDisplayName,
   patientContactEmail,
 } from '../../utils/patient-appointment-display';
-import { radius, spacing, iconSize, avatarSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -54,7 +51,7 @@ export function RdvDetailHero({
   footer,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailHero_tsx_styles');
+  const styles = useStyles(buildStyles);
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at, fd);
@@ -187,7 +184,7 @@ export function RdvDetailHero({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     backgroundColor: c.surface,
@@ -204,24 +201,24 @@ function buildStyles(c: AppColors) {
   title: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.xl,
     color: c.textPrimary,
     letterSpacing: -0.4,
     lineHeight: fontSize.xl * 1.15,
   },
   typeOnly: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.primary,
   },
   type: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.primary,
   },
   scheduleText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -235,12 +232,12 @@ function buildStyles(c: AppColors) {
     gap: spacing[0.5],
   },
   patientName: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   patientSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -255,13 +252,13 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
   },
   addressText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
   },
   meta: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
@@ -13,8 +11,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type StaffCancellationValues = {
   reason: string;
@@ -32,7 +29,7 @@ interface Props {
 
 export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_StaffCancellationFields_tsx_StaffCancellationFields_styles');
+  const styles = useStyles(buildStyles);
 
   const { reason, comment, photoUri } = values;
   const showPhoto = cancellationReasonRequiresPhoto(reason);
@@ -104,29 +101,29 @@ export function StaffCancellationFields({ values, onChange, onPickPhoto }: Props
 
 export { staffCancellationCanSubmit };
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   form: { gap: spacing[3] },
   counter: {
     marginTop: -spacing[2],
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   photoBlock: { gap: spacing[2] },
   photoTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   photoHint: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
   },
   hint: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
@@ -8,8 +6,7 @@ import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
 import { BottomSheet } from './BottomSheet';
 import { useInBottomSheet } from './sheet-keyboard-context';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type SelectOption = { value: string; label: string };
 
@@ -36,7 +33,7 @@ export function SelectField({
   hideLabel = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_SelectField_tsx_styles');
+  const styles = useStyles(buildStyles);
   const inSheet = useInBottomSheet();
   const [open, setOpen] = useState(false);
   const selectedLabel = useMemo(
@@ -118,11 +115,11 @@ export function SelectField({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -167,7 +164,7 @@ function buildStyles(c: AppColors) {
   triggerText: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * 1.25,
     color: c.textPrimary,
@@ -177,7 +174,7 @@ function buildStyles(c: AppColors) {
   },
   placeholder: { color: c.textTertiary },
   error: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.error,
   },
@@ -192,7 +189,7 @@ function buildStyles(c: AppColors) {
   },
   itemActive: { backgroundColor: c.primaryLight },
   itemText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.base,
     lineHeight: fontSize.base * 1.25,
     color: c.textPrimary,
@@ -200,7 +197,7 @@ function buildStyles(c: AppColors) {
       ? { includeFontPadding: false, textAlignVertical: 'center' as const }
       : null),
   },
-  itemTextActive: { color: c.primary, fontFamily: fontFamily.semiBold },
+  itemTextActive: { color: c.primary, ...font.semiBold },
 };
 }
 

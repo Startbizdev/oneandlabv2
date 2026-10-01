@@ -1,18 +1,16 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Check } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { hexToRgba } from '@/theme/color-utils';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import { elevation } from '@/theme/tokens';
 
 /** Gros check centré en absolu — carte effectuée (contenu grisé en dessous). */
 export function TourStopCompletedStamp() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.root} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no">
@@ -28,7 +26,7 @@ export function TourStopCompletedStamp() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
       ...StyleSheet.absoluteFillObject,
@@ -56,7 +54,7 @@ function buildStyles(c: AppColors) {
       ...elevation.sm,
     },
     label: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
       letterSpacing: 0.4,

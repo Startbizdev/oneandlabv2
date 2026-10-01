@@ -1,11 +1,9 @@
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { type LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { getRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 export type DetailActionTone = 'primary' | 'neutral' | 'caution' | 'destructive';
@@ -68,7 +66,7 @@ function ActionRow({
   topBorder: boolean;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'DetailActionList');
+  const styles = useStyles(buildStyles);
   const tone = buildToneConfig(c)[action.tone];
   const Icon = action.icon;
   const disabled = action.disabled || action.loading;
@@ -135,7 +133,7 @@ export function DetailActionList({ actions, edgeToEdge = false, style }: Props) 
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   iconWrap: {
     width: 40,
@@ -145,13 +143,13 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     lineHeight: fontSize.base * 1.3,
   },
   hint: {
     marginTop: 2,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.35,
   },

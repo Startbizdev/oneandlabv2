@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { UserRole } from '@oneandlab/shared-types';
 import type { FlashListRef } from '@shopify/flash-list';
@@ -38,8 +36,8 @@ import {
 } from '@/lib/downloads/download-medical-document';
 import type { AiQuickSuggestion } from '@oneandlab/shared-types';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
-import { H_PADDING, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 type ScreenStyles = ReturnType<typeof buildStyles>;
 
@@ -172,7 +170,7 @@ export function CaryAiHubScreen({
   includeTabBarInset = true,
 }: ScreenProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const { bottom: safeBottom } = useSafeAreaInsets();
   const tabBarInset = useNativeTabBarInset(0);
@@ -567,7 +565,7 @@ export function CaryAiHubScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const userBodySize = fontSize.sm;
   const assistantBodySize = fontSize.base;
 
@@ -588,13 +586,13 @@ function buildStyles(c: AppColors) {
     assistantPlainRow: { maxWidth: '100%' as const },
     plainContent: { minWidth: 0, flex: 1, paddingTop: spacing[0.5] },
     bodyText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: userBodySize,
       lineHeight: lh(userBodySize, 1.4),
       color: c.textPrimary,
     },
     assistantText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: assistantBodySize,
       lineHeight: lh(assistantBodySize, 1.45),
       color: c.textPrimary,
@@ -644,7 +642,7 @@ function buildStyles(c: AppColors) {
       maxWidth: '88%' as const,
     },
     typingText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       fontStyle: 'italic' as const,
     },

@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CheckCircle2, ChevronRight, HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import {
   formatHealthSyncRelative,
   getHealthPlatformUiConfig,
@@ -29,7 +26,7 @@ export function HealthSourceConnectCard({
   compact = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'HealthSourceConnectCard');
+  const styles = useStyles(buildStyles);
   const platform = getHealthPlatformUiConfig();
 
   const title = connected ? platform.name : platform.connectTitle;
@@ -85,7 +82,7 @@ export function HealthSourceConnectCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -120,7 +117,7 @@ function buildStyles(c: AppColors) {
       gap: spacing[0.5],
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       letterSpacing: -0.2,
@@ -129,7 +126,7 @@ function buildStyles(c: AppColors) {
       fontSize: fontSize.sm,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.5,

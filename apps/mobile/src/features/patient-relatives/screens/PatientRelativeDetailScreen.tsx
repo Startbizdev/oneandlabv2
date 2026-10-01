@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -28,11 +26,10 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PatientRelativeDetailScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_screens_PatientRelativeDetailScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { show: toast } = useToast();
@@ -190,22 +187,22 @@ export function PatientRelativeDetailScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[12] },
   hero: { gap: spacing[1] },
   heroName: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
   },
   heroSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   headerEdit: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
     marginRight: spacing[2],

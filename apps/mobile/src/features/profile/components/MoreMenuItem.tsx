@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import {
   resolveMoreMenuIconColors,
   type MoreMenuIconAccent,
@@ -16,8 +14,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import {radius, spacing, iconSize } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, useStyles, font, type Theme } from '@/theme';
 
 export interface MoreMenuItemProps {
   icon: LucideIcon;
@@ -45,7 +42,7 @@ export function MoreMenuItem({
   iconBg,
 }: MoreMenuItemProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildMoreMenuStyles, 'MoreMenuItem');
+  const styles = useStyles(buildMoreMenuStyles);
 
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -100,11 +97,11 @@ export function MoreMenuItem({
   );
 }
 
-export function buildMoreMenuStyles(c: AppColors) {
+export function buildMoreMenuStyles({ colors: c, fontSize }: Theme) {
   return {
   section: { gap: spacing[2] },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     letterSpacing: 0.2,
@@ -130,7 +127,7 @@ export function buildMoreMenuStyles(c: AppColors) {
     flexShrink: 0,
   },
   menuLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -150,7 +147,7 @@ export function buildMoreMenuStyles(c: AppColors) {
     paddingHorizontal: spacing[1],
   },
   badgeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textInverse,
   },

@@ -29,6 +29,7 @@ export const palette = {
     700: '#149E90',
     800: '#108578',
     900: '#0C6B61',
+    950: '#064A44',
   },
   cyan: {
     400: brand.gradientStart,
@@ -73,6 +74,21 @@ export const palette = {
     500: '#F59E0B',
     600: '#D97706',
     700: '#B45309',
+    800: '#92400E',
+  },
+  teal: {
+    600: '#0D9488',
+  },
+  neutral: {
+    300: '#CCCCCC',
+    900: '#1A1A1A',
+    950: '#111111',
+  },
+  /** Couleurs de marques tierces (icônes d'intégration) — ne pas utiliser pour l'UI Cary. */
+  thirdParty: {
+    appleHealth: '#FF2D55',
+    healthConnect: '#1B7F5E',
+    waze: '#33CCFF',
   },
   red: {
     50: '#FEF2F2',
@@ -114,12 +130,12 @@ function resolveSemantic(type: ColorblindType) {
   return getColorblindSemantic(type);
 }
 
-function buildAppColorsSync(type: ColorblindType) {
+export function buildAppColors(type: ColorblindType) {
   const cb = resolveSemantic(type);
 
   return {
-    /** Fond principal — blanc pur (onglets, stacks, listes). */
-    background: palette.white,
+    /** Fond d'app unique (écrans, stacks, listes) — aligné sur le canvas web. */
+    background: palette.canvas.base,
     surface: palette.white,
     surfaceAlt: palette.canvas.muted,
     surfaceSubtle: palette.brand[50],
@@ -193,11 +209,11 @@ function buildAppColorsSync(type: ColorblindType) {
   };
 }
 
-export type AppColors = ReturnType<typeof buildAppColorsSync>;
+export type AppColors = ReturnType<typeof buildAppColors>;
 
 /** Palette courante (recalculée à chaque accès — type daltonien pris en compte). */
 export function getAppColors(): AppColors {
-  return buildAppColorsSync(getColorblindType());
+  return buildAppColors(getColorblindType());
 }
 
 /**

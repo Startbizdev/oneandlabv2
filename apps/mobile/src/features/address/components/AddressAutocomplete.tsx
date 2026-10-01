@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -8,8 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { useFormScroll } from '@/components/layout/form-scroll-context';
 import { searchAddresses, type AddressSuggestion } from '../api/address.service';
 import type { AddressPayload } from '@/features/appointments/form/types';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   value: AddressPayload | null;
@@ -29,7 +26,7 @@ export function AddressAutocomplete({
   error,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_address_components_AddressAutocomplete_tsx_AddressAutocomplete_styles');
+  const styles = useStyles(buildStyles);
 
   const [query, setQuery] = useState(value?.label ?? '');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -174,7 +171,7 @@ export function AddressAutocomplete({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[2] },
   inputWrap: { position: 'relative' as const },
@@ -195,17 +192,17 @@ function buildStyles(c: AppColors) {
   },
   suggestionFirst: { borderTopWidth: 0 },
   suggestionLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   suggestionMeta: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   noResult: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     paddingHorizontal: spacing[1],

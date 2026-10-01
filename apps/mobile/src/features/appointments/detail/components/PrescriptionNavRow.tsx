@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ChevronRight, FileOutput, type LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -18,7 +15,7 @@ interface Props {
 
 export function PrescriptionNavRow({ title, subtitle, onPress, Icon = FileOutput, badge }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionNavRow');
+  const styles = useStyles(buildStyles);
 
   return (
     <Pressable onPress={onPress} style={styles.card} accessibilityRole="button">
@@ -50,7 +47,7 @@ export function PrescriptionNavRow({ title, subtitle, onPress, Icon = FileOutput
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -79,18 +76,18 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.error,
     },
     badgeText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       color: c.textInverse,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     subtitle: {
       marginTop: 2,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },

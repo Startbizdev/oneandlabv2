@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Image, StyleSheet, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
@@ -9,8 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { AssigneeReviewSummary } from '@/features/appointments/detail/utils/assignee-review-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   /** Titre du poste (ex. Infirmier(e), Laboratoire). */
@@ -47,7 +44,7 @@ export function AssigneeProfileRow({
   showDivider = true,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AssigneeProfileRow_tsx_AssigneeProfileRow_styles');
+  const styles = useStyles(buildStyles);
 
   const contactActions = buildPhoneContactActions(phone);
 
@@ -128,7 +125,7 @@ export function AssigneeProfileRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   block: {
     paddingVertical: spacing[2.5],
@@ -142,20 +139,20 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   name: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.2,
   },
   role: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.25,
   },
   subtitle: {
     marginTop: spacing[0.5],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,

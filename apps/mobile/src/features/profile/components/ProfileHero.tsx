@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -7,8 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, User } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing, iconSize, avatarSize, useLayoutMetrics, responsiveValue, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, avatarSize, useLayoutMetrics, responsiveValue, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ROLE_LABEL: Record<string, string> = {
   nurse: 'Infirmier·ère',
@@ -42,7 +39,7 @@ export function ProfileHero({
 }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileHero_tsx_styles');
+  const styles = useStyles(buildStyles);
   const name = `${firstName} ${lastName}`.trim() || 'Mon profil';
   const coverSrc = resolveProfileImageUrl(coverImageUrl);
   const coverHeight = responsiveValue(layout, { compact: 96, default: 120, wide: 132 });
@@ -105,7 +102,7 @@ export function ProfileHero({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     marginBottom: spacing[2],
@@ -157,7 +154,7 @@ function buildStyles(c: AppColors) {
     elevation: 4,
   },
   name: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     letterSpacing: -0.5,
@@ -172,12 +169,12 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   roleText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },
   email: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,

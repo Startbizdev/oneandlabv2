@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
@@ -16,8 +14,7 @@ import {
   profileDocRefFromRow,
   type DocumentFileRef,
 } from '../types/document-file-ref';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title?: string;
@@ -39,7 +36,7 @@ export function WizardDocumentFields({
   loadingProfile,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_WizardDocumentFields_tsx_styles');
+  const styles = useStyles(buildStyles);
   async function pick(key: string) {
     const picked = await pickMedicalDocumentFile();
     if (!picked) return;
@@ -147,16 +144,16 @@ export function WizardDocumentFields({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[2] },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   subtitle: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.primaryDark,
   },
@@ -164,7 +161,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[1],
   },
   loadingText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -198,7 +195,7 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   docLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -206,19 +203,19 @@ function buildStyles(c: AppColors) {
     color: c.success,
   },
   docHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   fileMeta: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   replaceLink: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },

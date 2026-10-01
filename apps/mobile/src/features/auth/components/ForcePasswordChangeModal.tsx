@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
@@ -9,8 +7,7 @@ import { updatePassword } from '@/features/auth/api/auth.service';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { validatePasswordStrength, passwordsMatch } from '@oneandlab/shared-utils';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -19,7 +16,7 @@ interface Props {
 
 export function ForcePasswordChangeModal({ visible, onDone }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_ForcePasswordChangeModal_tsx_ForcePasswordChangeModal_styles');
+  const styles = useStyles(buildStyles);
 
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -73,11 +70,11 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   shell: { minWidth: 0, flex: 1, padding: spacing[6], paddingTop: spacing[16], gap: spacing[3] },
-  title: { fontFamily: fontFamily.bold, fontSize: fontSize.lg },
-  sub: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
+  title: { ...font.heading, fontSize: fontSize.lg },
+  sub: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
   form: { marginTop: spacing[4], gap: spacing[3] },
 };
 }

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
   getProfessionalIdDisplay,
@@ -26,18 +24,17 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
-function buildFieldStyles(c: AppColors) {
+function buildFieldStyles({ colors: c, fontSize }: Theme) {
   return {
     fieldLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     fieldHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       marginTop: spacing[1],
@@ -53,7 +50,7 @@ function buildFieldStyles(c: AppColors) {
     emailText: {
       minWidth: 0,
       flex: 1,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
@@ -62,7 +59,7 @@ function buildFieldStyles(c: AppColors) {
 
 export function ProfileNurseCoordinatesScreen() {
   const c = useAppColors();
-  const fieldStyles = useThemedStyles(buildFieldStyles, 'ProfileNurseCoordinatesScreen.fieldStyles');
+  const fieldStyles = useStyles(buildFieldStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();

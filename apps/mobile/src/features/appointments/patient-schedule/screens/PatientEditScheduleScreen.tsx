@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ActivityIndicator, View } from 'react-native';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';
@@ -8,15 +6,14 @@ import { usePatientEditSchedule } from '@/features/appointments/patient-schedule
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   appointmentId: string;
 }
 
 export function PatientEditScheduleScreen({ appointmentId }: Props) {
-  const styles = useThemedStyles(buildStyles, 'PatientEditScheduleScreen');
+  const styles = useStyles(buildStyles);
   const r = usePatientEditSchedule(appointmentId);
   const scrollConfig = useStackScrollConfig(styles.content);
 
@@ -79,19 +76,19 @@ export function PatientEditScheduleScreen({ appointmentId }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     content: { paddingHorizontal: spacing[4], paddingTop: spacing[2], gap: spacing[4] },
     loading: { flex: 1, minWidth: 0, alignItems: 'center' as const, justifyContent: 'center' as const },
     blocked: { flex: 1, minWidth: 0, padding: spacing[4] },
     blockedText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     lead: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,

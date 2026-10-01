@@ -1,6 +1,4 @@
 import { Row } from '@/components/layout/primitives';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, {
   createContext,
   useCallback,
@@ -27,9 +25,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { elevation, radius, spacing, iconSize, AppText, useLayoutMetrics } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText, useLayoutMetrics, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -83,7 +80,7 @@ function ToastCard({
 }) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'ToastProvider.ToastCard');
+  const styles = useStyles(buildStyles);
   const meta = toastMetaFor(toast.type, c);
   const { Icon } = meta;
   const progress = useSharedValue(1);
@@ -143,7 +140,7 @@ function ToastCard({
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const styles = useThemedStyles(buildStyles, 'providers_ToastProvider_tsx_ToastProvider_styles');
+  const styles = useStyles(buildStyles);
 
   const { top } = useSafeAreaInsets();
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -192,7 +189,7 @@ export function useToast() {
   return ctx;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -234,7 +231,7 @@ function buildStyles(c: AppColors) {
   line: {
     flex: 1,
     minWidth: 0,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
     letterSpacing: -0.15,

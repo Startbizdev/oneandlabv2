@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import {
   COVERAGE_MAP_TILE_ATTRIBUTION,
   COVERAGE_MAP_TILE_MAX_ZOOM,
@@ -190,7 +187,7 @@ export function CoverageSquareMapLive({
   onVerticesChange,
   onDragEnd,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'CoverageSquareMapLive');
+  const styles = useStyles(buildStyles);
   const colors = useAppColors();
   const sessionVertices = useRef<CoverageVertex[] | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -293,7 +290,7 @@ export function CoverageSquareMapLive({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[2] },
     webview: {
@@ -308,16 +305,16 @@ function buildStyles(c: AppColors) {
       opacity: 0.01,
     },
     summary: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     summaryStrong: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       color: c.primary,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },

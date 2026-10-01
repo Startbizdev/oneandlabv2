@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,8 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { api } from '@/api/client';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface CarePhoto {
   id: string;
@@ -21,7 +18,7 @@ interface CarePhoto {
 }
 
 export function CarePhotosSection({ appointmentId }: { appointmentId: string }) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_CarePhotosSection_tsx_CarePhotosSection_styles');
+  const styles = useStyles(buildStyles);
 
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -92,7 +89,7 @@ export function CarePhotosSection({ appointmentId }: { appointmentId: string }) 
 
 const PHOTO_SIZE = 96;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   photoWrap: {
     width: PHOTO_SIZE,
@@ -111,12 +108,12 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   photoPlaceholderText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   caption: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     marginTop: spacing[1],

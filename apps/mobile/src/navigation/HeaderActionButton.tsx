@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactElement } from 'react';
 import type { NativeStackHeaderRightProps } from '@react-navigation/native-stack';
@@ -9,8 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarPlus, Heart, Plus, UserPlus, type LucideIcon } from 'lucide-react-native';
 import { Pressable, StyleSheet } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { elevation, radius, spacing, AppText, useLayoutMetrics, headerActionMaxWidth } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, AppText, useLayoutMetrics, headerActionMaxWidth, useStyles, font, type Theme } from '@/theme';
 
 const ICON_SIZE = 16;
 
@@ -53,7 +50,7 @@ export function headerRightAction(
 export function HeaderActionButton({ kind, href, onPress }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'navigation_HeaderActionButton_tsx_HeaderActionButton_styles');
+  const styles = useStyles(buildStyles);
   const pillMaxWidth = headerActionMaxWidth(layout);
 
   const router = useRouter();
@@ -85,7 +82,7 @@ export function HeaderActionButton({ kind, href, onPress }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   pressable: {
     borderRadius: radius.lg,
@@ -104,7 +101,7 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.lg,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textInverse,
     letterSpacing: 0.1,

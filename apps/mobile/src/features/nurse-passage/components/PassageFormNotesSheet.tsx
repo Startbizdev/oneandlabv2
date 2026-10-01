@@ -1,11 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -15,7 +13,7 @@ type Props = {
 };
 
 export function PassageFormNotesSheet({ visible, notes, onClose, onConfirm }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const [draft, setDraft] = useState(notes);
 
   useEffect(() => {
@@ -51,7 +49,7 @@ export function PassageFormNotesSheet({ visible, notes, onClose, onConfirm }: Pr
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     body: { paddingBottom: spacing[4] },
   };

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { forwardRef } from 'react';
 import type { ScrollView, ScrollViewProps } from 'react-native';
@@ -8,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
 import { KeyboardScrollView } from './KeyboardScrollView';
 import { ScreenActionLayout } from './ScreenActionLayout';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 /** Hauteur estimée barre d'action (hors safe area basse). */
 export const FORM_ACTION_BAR_HEIGHT = 48 + spacing[3] + spacing[3];
@@ -32,7 +30,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   ref,
 ) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'FormScreen');
+  const styles = useStyles(buildStyles);
   const bg = backgroundColor ?? c.background;
   const { bottom } = useSafeAreaInsets();
   const tabSceneBottom = useTabSceneInsetBottom();
@@ -70,7 +68,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   );
 });
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     container: {
       minWidth: 0,

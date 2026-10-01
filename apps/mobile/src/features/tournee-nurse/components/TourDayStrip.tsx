@@ -1,6 +1,4 @@
 import { layoutRowCenter } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef } from 'react';
@@ -8,8 +6,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { formatMiniDateCalendarParts } from '@/utils/mini-date-calendar-parts';
-import { H_PADDING, elevation, radius, spacing, iconSize, fontSize, AppText } from '@/theme';
-import { fontFamily } from '@/theme/typography';
+import { H_PADDING, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 
 type Props = {
@@ -34,7 +31,7 @@ type DayCellProps = {
 
 function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildCellStyles);
+  const styles = useStyles(buildCellStyles);
   const a11y = formatMiniDateCalendarParts(iso)?.accessibilityLabel ?? iso;
   /** Primary uniquement sur le jour sélectionné — aujourd'hui redevient neutre si non actif. */
   const variant = active ? 'brand' : 'apple';
@@ -77,7 +74,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
 
 export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded = false }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const scrollRef = useRef<ScrollView>(null);
   const today = useMemo(() => dayjs().startOf('day'), []);
   const todayIso = today.format('YYYY-MM-DD');
@@ -162,7 +159,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     bar: {
       ...layoutRowCenter(spacing[1]),
@@ -195,7 +192,7 @@ function buildStyles(_c: AppColors) {
   };
 }
 
-function buildCellStyles(c: AppColors) {
+function buildCellStyles({ colors: c, fontSize }: Theme) {
   return {
     cell: {
       width: CALENDAR_PX + spacing[1],
@@ -243,7 +240,7 @@ function buildCellStyles(c: AppColors) {
       paddingHorizontal: 5,
     },
     countText: {
-      fontFamily: fontFamily.extraBold,
+      ...font.extraBold,
       fontSize: fontSize['2xs'],
       lineHeight: 12,
       textAlign: 'center' as const,

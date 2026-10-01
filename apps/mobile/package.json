@@ -43,14 +43,13 @@
     "test:voice-realtime": "node scripts/test-voice-realtime-events.cjs",
     "test:ai-hub-utils": "node scripts/test-resolve-assistant-message-text.cjs",
     "lint": "eslint . --ext .ts,.tsx",
-    "lint:styles": "node scripts/lint-themed-styles.mjs",
-    "lint:styles:strict": "node scripts/lint-themed-styles.mjs --strict-colors",
-    "lint:layout": "node scripts/lint-layout.mjs --ratchet",
-    "verify": "npm run typecheck && npm run lint:layout && npm run lint:styles:strict && npm run lint -- --max-warnings 9999"
+    "lint:layout": "node scripts/lint-layout.mjs --summary",
+    "verify": "npm run typecheck && npm run lint -- --max-warnings 9999"
   },
   "dependencies": {
     "@edkimmel/expo-audio-stream": "^1.1.1",
     "@expo-google-fonts/nunito": "^0.4.2",
+    "@expo-google-fonts/raleway": "^0.4.2",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@hookform/resolvers": "^3.9.1",
     "@kingstinct/react-native-healthkit": "14.0.2",

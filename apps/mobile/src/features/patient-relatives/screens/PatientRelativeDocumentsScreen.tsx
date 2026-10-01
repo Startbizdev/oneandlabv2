@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useMemo, useState } from 'react';
@@ -37,8 +35,7 @@ import {
 import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const PAGE_SIZE = 8;
 
@@ -66,7 +63,7 @@ function AddDocumentSection({
   onPick: (docType: RelativeProfileUploadType) => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientRelativeDocumentsScreen.AddDocumentSection');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.addCard}>
       <AppText style={styles.addKicker}>Ajouter</AppText>
@@ -116,7 +113,7 @@ function SavedDocumentRow({
   onDownload: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientRelativeDocumentsScreen.SavedDocumentRow');
+  const styles = useStyles(buildStyles);
   return (
     <Cluster
       gap={spacing[3]}
@@ -147,7 +144,7 @@ function SavedDocumentRow({
 
 export function PatientRelativeDocumentsScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_patient_relatives_screens_PatientRelativeDocumentsScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -319,19 +316,19 @@ export function PatientRelativeDocumentsScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   loading: { minWidth: 0, flex: 1, padding: spacing[4] },
   list: { minWidth: 0, paddingHorizontal: spacing[4], paddingBottom: spacing[12], flexGrow: 1 },
   header: { gap: spacing[2], marginBottom: spacing[3] },
   introTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
   },
   introSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
@@ -345,7 +342,7 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[1],
   },
   addKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
@@ -354,7 +351,7 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[3],
   },
   addHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     paddingHorizontal: spacing[4],
@@ -367,7 +364,7 @@ function buildStyles(c: AppColors) {
     marginLeft: spacing[4] + 40 + spacing[3],
   },
   sectionKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
@@ -375,7 +372,7 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[2],
   },
   emptyHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     marginTop: spacing[2],
@@ -399,12 +396,12 @@ function buildStyles(c: AppColors) {
   },
   docText: { gap: 2 },
   docLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   docFile: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

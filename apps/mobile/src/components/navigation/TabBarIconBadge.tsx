@@ -1,9 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { AppText, fontFamily, fontSize } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   Icon: LucideIcon;
@@ -24,7 +22,7 @@ export function TabBarIconBadge({
   strokeWidth = 2,
   badge = 0,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'components_navigation_TabBarIconBadge_tsx_styles');
+  const styles = useStyles(buildStyles);
   const showDot = badge > 0 && badge < 10;
   const label = badge > 99 ? '99+' : String(badge);
 
@@ -44,7 +42,7 @@ export function TabBarIconBadge({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     width: 28,
@@ -82,7 +80,7 @@ function buildStyles(c: AppColors) {
     right: -14,
   },
   badgeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.15,
     color: c.textInverse,

@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
@@ -29,7 +26,7 @@ interface Props {
 
 export function AppointmentFormScreen(props: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_screens_AppointmentFormScreen_tsx_AppointmentFormScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const f = useAppointmentForm(props);
 
@@ -134,7 +131,7 @@ export function AppointmentFormScreen(props: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   loading: {
     minWidth: 0,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { QrCode } from 'lucide-react-native';
@@ -8,9 +6,10 @@ import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
+import { useStyles, type Theme } from '@/theme';
 
 export default function ProLayout() {
-  const styles = useThemedStyles(buildStyles, 'ProLayout');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.stackHost}>
@@ -69,7 +68,7 @@ export default function ProLayout() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     stackHost: { flex: 1, backgroundColor: c.surface },
   };

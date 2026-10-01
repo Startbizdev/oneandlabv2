@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
@@ -12,7 +10,7 @@ import {
   navigateAppointmentForListRow,
   type AppointmentListRow,
 } from '@/utils/appointment-batch';
-import {spacing, iconSize } from '@/theme';
+import { spacing, iconSize, useStyles, type Theme } from '@/theme';
 
 interface Props {
   row: AppointmentListRow;
@@ -36,7 +34,7 @@ export const PrescriptionAppointmentPickerRow = React.memo(function Prescription
   onPick,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionAppointmentPickerRow');
+  const styles = useStyles(buildStyles);
   const displayApt = displayAppointmentForListRow(row);
   const lotLabel = row.kind === 'batch' ? batchLotSummaryLabel(row.appointments) : '';
 
@@ -70,7 +68,7 @@ export const PrescriptionAppointmentPickerRow = React.memo(function Prescription
 
 export { rowMatchesSelection };
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     row: {
       width: '100%' as const,

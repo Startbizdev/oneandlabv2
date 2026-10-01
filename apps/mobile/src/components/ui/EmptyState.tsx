@@ -1,20 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React from 'react';
 import { Image, type ImageSourcePropType, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
-import {
-  radius,
-  spacing,
-  iconSize,
-  AppText,
-  useLayoutMetrics,
-  centeredCopyMaxWidth,
-  responsiveValue,
-} from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth, responsiveValue, useStyles, font, type Theme } from '@/theme';
 import { emptyStateEntering } from '@/lib/platform/list-entering-animation';
 import { Button } from './Button';
 
@@ -47,7 +36,7 @@ function EmptyStateComponent({
 }: EmptyStateProps) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'components_ui_EmptyState_tsx_EmptyStateComponent_styles');
+  const styles = useStyles(buildStyles);
   const descriptionMaxWidth = centeredCopyMaxWidth(layout);
   const actionMaxWidth = responsiveValue(layout, { compact: 220, default: 240, wide: 280 });
 
@@ -99,7 +88,7 @@ function EmptyStateComponent({
 
 export const EmptyState = React.memo(EmptyStateComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
     alignItems: 'center' as const,
@@ -124,14 +113,14 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[1],
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     textAlign: 'center' as const,
     letterSpacing: -0.3,
   },
   description: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,

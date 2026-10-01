@@ -1,6 +1,4 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { Input } from '@/components/ui/Input';
@@ -21,8 +19,7 @@ import {
   deleteClinicalVital,
   updateClinicalVital,
 } from '../api/clinical-vitals.service';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -43,7 +40,7 @@ export function ClinicalVitalEditSheet({
   stackBehavior = 'switch',
   onClose,
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
 
   const isEdit = Boolean(reading?.id);
@@ -204,13 +201,13 @@ export function ClinicalVitalEditSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     typeGrid: {
       ...layoutRowWrap(spacing[2]),
     },
     error: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.error,
     },

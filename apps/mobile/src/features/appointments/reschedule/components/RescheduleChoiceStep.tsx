@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -15,8 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import type { RescheduleChoiceMode } from '../utils/build-reschedule-payload';
-import { elevation, palette, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type FlowChip = {
   label: string;
@@ -70,7 +67,7 @@ interface Props {
 }
 
 function FlowChipView({ chip }: { chip: FlowChip }) {
-  const styles = useThemedStyles(buildStyles, 'RescheduleChoiceStep.FlowChipView');
+  const styles = useStyles(buildStyles);
   const chipStyle =
     chip.tone === 'accent'
       ? styles.flowChipAccent
@@ -113,7 +110,7 @@ function RescheduleChoiceCard({
 }) {
   const disabled = disabledReason !== null;
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'RescheduleChoiceStep.RescheduleChoiceCard');
+  const styles = useStyles(buildStyles);
   const Icon = choice.icon;
 
   return (
@@ -193,7 +190,7 @@ function RescheduleChoiceCard({
 export function RescheduleChoiceStep({
   patientName, choiceMode, canReplace, onSelect }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_reschedule_components_RescheduleChoiceStep_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.root}>
       <Animated.View entering={FadeInUp.duration(320)} style={styles.hero}>
@@ -231,7 +228,7 @@ export function RescheduleChoiceStep({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     gap: spacing[3],
@@ -248,20 +245,20 @@ function buildStyles(c: AppColors) {
     ...elevation.xs,
   },
   heroEyebrow: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
   heroTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.2,
   },
   instruction: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
@@ -329,12 +326,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: palette.brand[100],
   },
   badgeText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
   },
   cardTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     letterSpacing: -0.1,
@@ -358,7 +355,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primary,
   },
   cardDescription: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
@@ -389,7 +386,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   flowChipText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
   },
   flowChipTextNeutral: { color: palette.slate[600] },

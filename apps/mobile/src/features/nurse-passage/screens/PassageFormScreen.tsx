@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
@@ -47,8 +45,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import type { NursePassageNursingItem, PassageDailyTimeSlot } from '@oneandlab/shared-types';
-import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { H_PADDING, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type SheetKey = 'planning' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
 type SegmentId = 'information' | 'documents' | 'health_record';
@@ -66,7 +63,7 @@ function paramString(v: string | string[] | undefined): string {
 
 export function PassageFormScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const contentTopInset = useStackContentTopInset();
   const router = useRouter();
   const qc = useQueryClient();
@@ -412,7 +409,7 @@ export function PassageFormScreen() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     screen: { flex: 1, minWidth: 0 },
     header: {
@@ -436,13 +433,13 @@ function buildStyles(_c: AppColors) {
     patientRow: { minWidth: 0 },
     patientNameCol: { flex: 1, minWidth: 0 },
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.5,
     },
     patientName: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       lineHeight: fontSize.xl * 1.2,
     },

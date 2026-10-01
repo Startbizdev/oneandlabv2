@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import {
@@ -10,8 +8,7 @@ import {
 import { Row } from '@/components/layout/primitives';
 import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { Input } from '@/components/ui/Input';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   label?: string;
@@ -32,7 +29,7 @@ export function BirthDatePicker({
   error,
   disabled,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'components_ui_BirthDatePicker_tsx_styles');
+  const styles = useStyles(buildStyles);
   const wrapRef = useRef<View>(null);
   const scrollFocusedIntoView = useScrollFocusedFieldIntoView();
   const [dayText, setDayText] = useState('');
@@ -161,11 +158,11 @@ export function BirthDatePicker({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[2] },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
@@ -181,12 +178,12 @@ function buildStyles(c: AppColors) {
       flex: 1.35,
     },
     summary: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     error: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.error,
     },

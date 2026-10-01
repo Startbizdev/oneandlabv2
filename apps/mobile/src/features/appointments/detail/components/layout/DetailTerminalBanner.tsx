@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { CalendarX, CircleCheck, Ban, TimerOff } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type { AppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ICONS: Record<string, LucideIcon> = {
   'calendar-x': CalendarX,
@@ -18,7 +15,7 @@ const ICONS: Record<string, LucideIcon> = {
 
 export function DetailTerminalBanner({ terminal }: { terminal: AppointmentSidebarTerminalEmpty }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailTerminalBanner_tsx_DetailTerminalBanner_styles');
+  const styles = useStyles(buildStyles);
 
   const Icon = ICONS[terminal.icon] ?? CircleCheck;
   return (
@@ -36,7 +33,7 @@ export function DetailTerminalBanner({ terminal }: { terminal: AppointmentSideba
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     paddingHorizontal: spacing[3],
@@ -48,12 +45,12 @@ function buildStyles(c: AppColors) {
   },
   text: {},
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },
   desc: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

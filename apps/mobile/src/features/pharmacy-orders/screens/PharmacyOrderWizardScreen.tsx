@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
@@ -53,8 +51,7 @@ import {
 } from '../api/pharmacy-orders.service';
 import { personDisplayName, pharmacyFulfillmentLabel } from '../utils/order-display';
 import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const CATALOG_WIZARD_STEPS = 4;
 const OWN_PHARMACY_WIZARD_STEPS = 3;
@@ -65,7 +62,7 @@ interface Props {
 
 export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyOrderWizardScreen');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -655,7 +652,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     formContent: {
       paddingHorizontal: spacing[4],
@@ -664,18 +661,18 @@ function buildStyles(c: AppColors) {
     },
     block: { gap: spacing[3] },
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     errorText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.error,
     },
@@ -694,7 +691,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.primary,
     },
     relativePillText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
@@ -708,19 +705,17 @@ function buildStyles(c: AppColors) {
       borderStyle: 'dashed' as const,
     },
     addRelativeText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
     },
     patientHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     documentsBlock: { gap: spacing[2] },
     documentRow: {
-      // Layout interne compact d’une ligne de document.
-      // eslint-disable-next-line oneandlab/no-raw-flex-row
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       gap: spacing[2],
@@ -732,14 +727,12 @@ function buildStyles(c: AppColors) {
     },
     documentName: {
       flex: 1,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     addDocumentButton: {
       minHeight: 48,
-      // Pressable composite ; Row ne peut pas porter l’interaction.
-      // eslint-disable-next-line oneandlab/no-raw-flex-row
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -751,7 +744,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
     },
     addDocumentText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
     },
@@ -765,13 +758,13 @@ function buildStyles(c: AppColors) {
       gap: spacing[1],
     },
     recapTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       marginBottom: spacing[1],
     },
     recapLine: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,

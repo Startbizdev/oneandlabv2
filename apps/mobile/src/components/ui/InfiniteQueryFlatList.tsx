@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import React, { type ReactElement, type ReactNode, useCallback, useRef } from 'react';
 
@@ -46,7 +44,7 @@ import {
 
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 
 
 
@@ -113,7 +111,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   const c = useAppColors();
 
-  const styles = useThemedStyles(buildStyles, 'InfiniteQueryFlatList');
+  const styles = useStyles(buildStyles);
 
   const sceneInsets = useTabSceneInsets();
 
@@ -337,7 +335,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
 
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
 
   return {
 

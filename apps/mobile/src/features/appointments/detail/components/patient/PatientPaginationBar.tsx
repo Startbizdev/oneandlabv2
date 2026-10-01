@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   page: number;
@@ -19,7 +16,7 @@ interface Props {
 export function PatientPaginationBar({
   page, pages, total, onPrev, onNext }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientPaginationBar_tsx_styles');
+  const styles = useStyles(buildStyles);
   if (pages <= 1 && total <= 0) return null;
 
   return (
@@ -48,7 +45,7 @@ export function PatientPaginationBar({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     paddingHorizontal: spacing[4],
@@ -71,7 +68,7 @@ function buildStyles(c: AppColors) {
   btnDisabled: { opacity: 0.45 },
   label: {
     minWidth: 0,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     textAlign: 'center' as const,

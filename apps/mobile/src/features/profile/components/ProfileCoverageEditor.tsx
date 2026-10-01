@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -25,8 +23,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import type { CoveragePolygonPayload, CoverageVertex } from '@oneandlab/shared-utils';
 import { ensureSixVertices, maxVertexDistanceKm, polygonAreaKm2, toPolygonPayload } from '@oneandlab/shared-utils';
 
@@ -64,7 +61,7 @@ export function ProfileCoverageEditor({
   savingZone = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfileCoverageEditor');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -431,7 +428,7 @@ export function ProfileCoverageEditor({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     stack: { gap: spacing[4] },
     card: {
@@ -444,12 +441,12 @@ function buildStyles(c: AppColors) {
     },
     cardHeader: {},
     cardTitle: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     cardDesc: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
@@ -462,7 +459,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.warningMid,
     },
     alertText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.warning,
       lineHeight: fontSize.sm * 1.45,
@@ -475,17 +472,17 @@ function buildStyles(c: AppColors) {
       borderColor: c.warningMid,
     },
     discoveryText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.warning,
       lineHeight: fontSize.sm * 1.45,
     },
     discoveryLink: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       textDecorationLine: 'underline',
     },
     savingHint: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.primary,
       textAlign: 'center',
@@ -497,17 +494,17 @@ function buildStyles(c: AppColors) {
       gap: spacing[1],
     },
     previewSummary: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     previewSummaryStrong: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       color: c.primary,
     },
     previewCaption: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.45,

@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Modal, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function AlreadyAcceptedModal() {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AlreadyAcceptedModal_tsx_AlreadyAcceptedModal_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   return (
@@ -28,7 +25,7 @@ export function AlreadyAcceptedModal() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   backdrop: {
     minWidth: 0,
@@ -52,13 +49,13 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[1],
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.xl,
     color: c.textPrimary,
     textAlign: 'center' as const,
   },
   message: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
     textAlign: 'center' as const,

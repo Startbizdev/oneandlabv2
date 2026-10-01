@@ -1,6 +1,4 @@
-import { iconSize } from '@/theme';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
+import { iconSize, useStyles, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
@@ -20,7 +18,7 @@ export function DocumentDownloadButton({
   accessibilityLabel,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_documents_components_DocumentDownloadButton_tsx_DocumentDownloadButton_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <Pressable
@@ -39,7 +37,7 @@ export function DocumentDownloadButton({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   btn: {
     padding: 8,

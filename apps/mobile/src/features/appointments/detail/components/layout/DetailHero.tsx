@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,8 +9,7 @@ import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -24,7 +21,7 @@ interface Props {
 
 export function DetailHero({ primary, batch, isMultiBatch }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailHero_tsx_styles');
+  const styles = useStyles(buildStyles);
   const scheduled = primary.scheduled_at ? dayjs(primary.scheduled_at) : null;
   const fd = (primary.form_data ?? {}) as Record<string, unknown>;
   const timeLabel = formatAvailabilityDisplayFr(fd.availability, primary.scheduled_at, fd);
@@ -91,7 +88,7 @@ export function DetailHero({ primary, batch, isMultiBatch }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     borderRadius: radius['2xl'],
@@ -108,7 +105,7 @@ function buildStyles(c: AppColors) {
   title: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize.xl,
     color: c.textPrimary,
     letterSpacing: -0.4,
@@ -121,14 +118,14 @@ function buildStyles(c: AppColors) {
     borderRadius: radius.full,
   },
   typePillText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
     letterSpacing: 0.3,
   },
   batchHint: {
     minWidth: 0,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     flex: 1,
@@ -138,13 +135,13 @@ function buildStyles(c: AppColors) {
   },
   scheduleTexts: { gap: 4 },
   dateLine: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     textTransform: 'capitalize' as const,
   },
   timeLine: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

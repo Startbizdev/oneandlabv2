@@ -1,8 +1,8 @@
 import { layoutRowEndActions } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Keyboard, Platform, Pressable, StyleSheet, View, InputAccessoryView } from 'react-native';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 /** Barre clavier iOS (pavé numérique / champs longs) — « Valider » en français, pas le « Done » anglais de RN. */
 export const SHEET_KEYBOARD_ACCESSORY_ID = 'one-sheet-keyboard-valider';
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
   },
 });

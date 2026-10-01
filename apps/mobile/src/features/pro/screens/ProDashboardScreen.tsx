@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -12,8 +10,7 @@ import { api } from '@/api/client';
 import { SkeletonDashboardStats } from '@/components/ui/skeletons';
 import { useAuthStore } from '@/store/auth-store';
 import { scrollChildEntering, scrollSectionEntering } from '@/lib/platform/list-entering-animation';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function greeting() {
   const h = dayjs().hour();
@@ -32,7 +29,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, accent, index }: StatCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProDashboardScreen.StatCard');
+  const styles = useStyles(buildStyles);
   const accentColor = accent ?? c.primary;
   const entering = scrollChildEntering(index, 60, 300);
   const Shell = entering ? Animated.View : View;
@@ -50,7 +47,7 @@ function StatCard({ label, value, icon, accent, index }: StatCardProps) {
 
 export function ProDashboardScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_pro_screens_ProDashboardScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
 
   const statsQ = useQuery({
@@ -128,7 +125,7 @@ export function ProDashboardScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   scroll: { minWidth: 0, flex: 1 },
@@ -141,12 +138,12 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[2],
   },
   greeting: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.lg,
     color: c.textSecondary,
   },
   name: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['3xl'],
     color: c.textPrimary,
     letterSpacing: -0.8,
@@ -171,13 +168,13 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   statValue: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
@@ -190,13 +187,13 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   dateDay: {
-    fontFamily: fontFamily.semiBold,
+    ...font.headingSemiBold,
     fontSize: fontSize.lg,
     color: c.primary,
     textTransform: 'capitalize' as const,
   },
   dateLabel: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
     textTransform: 'capitalize' as const,

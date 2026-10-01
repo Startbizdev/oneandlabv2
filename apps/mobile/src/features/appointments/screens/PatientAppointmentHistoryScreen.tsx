@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,13 +14,13 @@ import { resolveAppointmentDetail } from '@/features/appointments/hooks/appointm
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { PatientPaginationBar } from '../detail/components/patient/PatientPaginationBar';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 const PAGE_SIZE = 8;
 const PAST_STATUSES = 'completed,canceled,cancelled,refused,expired';
 
 export function PatientAppointmentHistoryScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_PatientAppointmentHistoryScreen_tsx_PatientAppointmentHistoryScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -124,7 +122,7 @@ export function PatientAppointmentHistoryScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   loading: {
     minWidth: 0,

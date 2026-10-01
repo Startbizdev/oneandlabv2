@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
@@ -46,8 +44,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { elevation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type WorkspaceTab = 'create' | 'history';
 
@@ -81,7 +78,7 @@ export function PrescriptionWorkspaceScreen({
   hideProfileGapsAlert = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionWorkspaceScreen');
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, embedded ? styles.embeddedContent : styles.content);
   const prescriptionKind = resolvePrescriptionKindForRole(roleBase === 'nurse' ? 'nurse' : 'pro');
@@ -454,7 +451,7 @@ export function PrescriptionWorkspaceScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     embeddedContainer: { minWidth: 0, width: '100%' as const },
@@ -493,12 +490,12 @@ function buildStyles(c: AppColors) {
       borderTopWidth: 0,
     },
     passageDraftTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     passageDraftHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,

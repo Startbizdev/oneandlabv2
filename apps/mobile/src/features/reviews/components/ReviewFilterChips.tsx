@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, ScrollView } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { ReviewFilter } from '@/features/reviews/types';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const FILTERS: { id: ReviewFilter; label: string }[] = [
   { id: 'all', label: 'Tous' },
@@ -19,7 +16,7 @@ interface Props {
 }
 
 export function ReviewFilterChips({ value, onChange, counts }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_reviews_components_ReviewFilterChips_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <ScrollView
       horizontal
@@ -46,7 +43,7 @@ export function ReviewFilterChips({ value, onChange, counts }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   row: {
     paddingVertical: spacing[1],
@@ -64,7 +61,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   chipText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

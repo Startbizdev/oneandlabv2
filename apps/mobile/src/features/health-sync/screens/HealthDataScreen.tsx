@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRouter } from 'expo-router';
 import { Linking, Platform, RefreshControl, View } from 'react-native';
@@ -12,8 +10,7 @@ import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-i
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { elevation, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import { HealthActivityHero } from '../components/HealthActivityHero';
 import { HealthConnectOnboarding } from '../components/HealthConnectOnboarding';
@@ -37,7 +34,7 @@ interface Props {
 }
 
 export function HealthDataScreen({ variant = 'stack' }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_health_sync_HealthDataScreen_styles');
+  const styles = useStyles(buildStyles);
   const c = useAppColors();
   const router = useRouter();
   const insets = useTabSceneInsets();
@@ -211,7 +208,7 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
   return variant === 'stack' ? <StackChromeScreen>{content}</StackChromeScreen> : content;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
     minWidth: 0, flex: 1, backgroundColor: c.background },
@@ -223,7 +220,7 @@ function buildStyles(c: AppColors) {
       gap: spacing[5],
     },
     sectionTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       letterSpacing: 0.8,
@@ -246,24 +243,24 @@ function buildStyles(c: AppColors) {
       gap: spacing[1.5],
     },
     noDataTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     noDataText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.5,
     },
     link: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
       marginTop: spacing[1],
     },
     disclaimer: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       textAlign: 'center' as const,

@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
 import { BookingPremiumStepCta } from '@/features/appointments/form/components/BookingPremiumStepCta';
-import {spacing, iconSize } from '@/theme';
+import { spacing, iconSize, useStyles, type Theme } from '@/theme';
 
 interface Props {
   href: Href;
@@ -19,7 +17,7 @@ const DEFAULT_LABEL = 'Nouveau rendez-vous';
 
 function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL, flush = false }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_components_AppointmentsBookCta_tsx_AppointmentsBookCtaComponent_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
 
@@ -42,7 +40,7 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL, flush = fal
 
 export const AppointmentsBookCta = React.memo(AppointmentsBookCtaComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrap: {
     marginTop: spacing[2],

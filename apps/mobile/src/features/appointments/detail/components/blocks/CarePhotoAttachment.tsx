@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useState } from 'react';
@@ -13,8 +11,7 @@ import { CarePhotoImage } from './CarePhotoImage';
 import { exportLocalFile } from '@/lib/downloads/open-local-file';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   photo: CarePhotoRow;
@@ -31,7 +28,7 @@ export function CarePhotoAttachment({
   accessibilityLabel,
   children,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CarePhotoAttachment_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const isPdf = isCarePhotoPdf(photo);
 
@@ -76,7 +73,7 @@ function CarePhotoPdfCard({
   children?: React.ReactNode;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'CarePhotoPdfCard');
+  const styles = useStyles(buildStyles);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -214,7 +211,7 @@ function CarePhotoPdfCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   pdfWrap: {
     overflow: 'hidden' as const,
@@ -234,7 +231,7 @@ function buildStyles(c: AppColors) {
     padding: spacing[4],
   },
   failText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -243,7 +240,7 @@ function buildStyles(c: AppColors) {
     marginTop: 2,
   },
   retryText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },
@@ -265,7 +262,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   pdfName: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     textAlign: 'center' as const,
@@ -274,7 +271,7 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[1],
   },
   openText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
   },
@@ -288,7 +285,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   downloadText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
@@ -302,7 +299,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   zoomPillText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textInverse,
   },

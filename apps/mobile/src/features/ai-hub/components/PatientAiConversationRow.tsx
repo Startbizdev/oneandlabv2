@@ -1,13 +1,11 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
 import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { MessageSquare, Pin } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import { showConversationRowActions } from '../utils/conversation-row-actions';
 
 interface Props {
@@ -34,7 +32,7 @@ export function PatientAiConversationRow({
   archiveLabel = 'Archiver',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientAiConversationRow');
+  const styles = useStyles(buildStyles);
 
   const canLongPress = Boolean(onTogglePin || onArchive || (deletable && onDelete));
 
@@ -110,7 +108,7 @@ export function PatientAiConversationRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       alignSelf: 'stretch' as const,
@@ -160,7 +158,7 @@ function buildStyles(c: AppColors) {
     title: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       color: c.textPrimary,
@@ -168,7 +166,7 @@ function buildStyles(c: AppColors) {
       paddingTop: 4,
     },
     titleActive: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       color: c.textPrimary,
     },
   };

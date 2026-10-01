@@ -1,9 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
-import { AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 import { spacing } from '@/theme';
 
 type Props = {
@@ -12,7 +9,7 @@ type Props = {
 
 export function TourSlotSectionLabel({ label }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.wrap}>
@@ -21,14 +18,14 @@ export function TourSlotSectionLabel({ label }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     wrap: {
       marginTop: spacing[2],
       marginBottom: spacing[1.5],
     },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,

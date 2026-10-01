@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
@@ -41,8 +39,7 @@ import type { PatientRelative } from '@/features/patient-relatives/api/patient-r
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   mode: 'patient' | 'dashboard';
@@ -55,7 +52,7 @@ interface Props {
 export function BookingWizardScreen({
   mode, role, basePath, embeddedInTab = false }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_screens_BookingWizardScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
@@ -572,7 +569,7 @@ export function BookingWizardScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   screenWizard: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvasLight },
   screenCare: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.bookingCanvas },
@@ -583,7 +580,7 @@ function buildStyles(c: AppColors) {
   },
   section: { gap: spacing[4] },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -595,7 +592,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.errorMid,
   },
   errorText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.error,
     lineHeight: fontSize.sm * 1.45,
@@ -613,7 +610,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   relativePillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -627,7 +624,7 @@ function buildStyles(c: AppColors) {
     borderStyle: 'dashed' as const,
   },
   addRelativeText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },
@@ -638,18 +635,18 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   selfName: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   selfEmail: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   identityBlock: { gap: spacing[3] },
   fieldLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -668,7 +665,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   genderPillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -701,14 +698,14 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   checkmark: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textInverse,
   },
   consentText: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.55,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -17,8 +15,7 @@ import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScr
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ROLE_LABELS: Record<string, string> = {
   patient: 'Patient',
@@ -34,7 +31,7 @@ function displayName(first?: string, last?: string, email?: string) {
 
 export function SupportScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_help_screens_SupportScreen_tsx_SupportScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { show: toast } = useToast();
   const user = useAuthStore((s) => s.user);
@@ -177,10 +174,10 @@ export function SupportScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   lead: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,
@@ -202,12 +199,12 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   cardTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.headingSemiBold,
     fontSize: fontSize.lg,
     color: c.textPrimary,
   },
   cardHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.45,
@@ -218,13 +215,13 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2],
   },
   metaLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     letterSpacing: 0.2,
   },
   metaValue: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,

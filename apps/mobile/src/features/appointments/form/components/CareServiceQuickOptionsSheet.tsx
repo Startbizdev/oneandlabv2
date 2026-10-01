@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -20,8 +18,7 @@ import { Input } from '@/components/ui/Input';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import { resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const BLOOD_TEST_TYPE_OPTIONS = [
   { label: 'Une seule fois', value: 'single' },
@@ -65,7 +62,7 @@ function OptionSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const styles = useThemedStyles(buildStyles, 'CareServiceQuickOptionsSheet.OptionSelect');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.field}>
       <AppText style={styles.fieldLabel}>
@@ -104,7 +101,7 @@ export function CareServiceQuickOptionsSheet({
   onDismissed,
   onConfirm,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CareServiceQuickOptionsSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [localError, setLocalError] = useState('');
   const [careOptions, setCareOptions] = useState<Record<string, string | number>>({});
   const [bloodTestType, setBloodTestType] = useState('single');
@@ -384,7 +381,7 @@ export function CareServiceQuickOptionsSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   errorBox: {
     backgroundColor: c.errorLight,
@@ -392,13 +389,13 @@ function buildStyles(c: AppColors) {
     padding: spacing[3],
   },
   errorText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.error,
   },
   field: { gap: spacing[2] },
   fieldLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.3,
@@ -415,7 +412,7 @@ function buildStyles(c: AppColors) {
   },
   pillActive: { backgroundColor: c.primary, borderColor: c.primary },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,

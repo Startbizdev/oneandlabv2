@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Footprints } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { DAILY_STEPS_GOAL } from '../utils/health-metric-stats';
 
@@ -19,7 +16,7 @@ interface Props {
 
 export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, lastWeight }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   const stepsDisplay = todaySteps ?? avgSteps7d;
   const goalPct =
@@ -95,7 +92,7 @@ export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, last
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       borderRadius: radius.xl,
@@ -115,13 +112,13 @@ function buildStyles(c: AppColors) {
       gap: spacing[0.5],
     },
     ringValue: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
       letterSpacing: -0.5,
     },
     ringUnit: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
@@ -130,29 +127,29 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     goal: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primary,
     },
     sub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     miniLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize['2xs'],
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     miniValue: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },

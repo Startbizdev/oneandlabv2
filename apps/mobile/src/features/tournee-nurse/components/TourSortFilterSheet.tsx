@@ -1,14 +1,12 @@
 import { layoutRowBetween } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Alert, Pressable, View } from 'react-native';
 import { Check, RotateCcw } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Row } from '@/components/layout/primitives';
 import type { TourSortMode } from '../api/nurse-tour.service';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
 export const TOUR_SORT_MODES: { id: TourSortMode; label: string; hint: string }[] = [
@@ -33,7 +31,7 @@ type Props = {
 
 export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect, onReset }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   const handleSelect = (mode: TourSortMode) => {
     if (mode === active) {
@@ -112,7 +110,7 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     list: { gap: spacing[2] },
     option: {
@@ -123,8 +121,8 @@ function buildStyles(_c: AppColors) {
       borderWidth: 1,
     },
     optionText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
-    optionLabel: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
-    optionHint: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: lh(fontSize.xs) },
+    optionLabel: { ...font.semiBold, fontSize: fontSize.sm },
+    optionHint: { ...font.regular, fontSize: fontSize.xs, lineHeight: lh(fontSize.xs) },
     resetBtn: {
       marginTop: spacing[2],
       paddingVertical: spacing[3],
@@ -133,6 +131,6 @@ function buildStyles(_c: AppColors) {
       borderWidth: 1,
       alignItems: 'center' as const,
     },
-    resetText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
+    resetText: { ...font.semiBold, fontSize: fontSize.sm },
   };
 }

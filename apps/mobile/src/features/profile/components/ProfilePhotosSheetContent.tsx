@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
@@ -9,8 +7,7 @@ import { Camera, ImagePlus, Trash2, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -33,7 +30,7 @@ export function ProfilePhotosSheetContent({
   onChangeCover,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfilePhotosSheetContent_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { picking, pickImage, isPicking } = usePickProfileImage();
 
   const profileSrc = resolveProfileImageUrl(profileImageUrl);
@@ -153,7 +150,7 @@ function PhotoActions({
   onRemove,
 }: PhotoActionsProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfilePhotosSheetContent.PhotoActions');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.section}>
       <AppText style={styles.sectionTitle}>{title}</AppText>
@@ -184,7 +181,7 @@ function PhotoActions({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     width: '100%' as const,
@@ -271,7 +268,7 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[4],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     marginBottom: spacing[2],

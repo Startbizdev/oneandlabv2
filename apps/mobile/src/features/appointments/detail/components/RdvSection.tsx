@@ -1,8 +1,5 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -12,7 +9,7 @@ interface Props {
 
 /** Titre de section au-dessus d’une carte (hiérarchie fiche RDV). */
 export function RdvSection({ title, children, style }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvSection_tsx_RdvSection_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={[styles.wrap, style]}>
@@ -22,13 +19,13 @@ export function RdvSection({ title, children, style }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     gap: spacing[2],
   },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.9,

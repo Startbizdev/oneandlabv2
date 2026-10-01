@@ -1,15 +1,13 @@
 import { StyleSheet, View } from 'react-native';
 import type { ReactNode } from 'react';
 import type { Href } from 'expo-router';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import {
   AppointmentsListFilterBar,
   AppointmentsListSearchHost,
   type FilterChip,
 } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 /** Espacement vertical uniforme : sous le header, entre recherche / CTA / carte carnet. */
 export const RDV_LIST_SEARCH_EDGE = spacing[3];
@@ -94,7 +92,7 @@ export function AppointmentsRdvListBookHeader({
   return <AppointmentsBookCta flush href={href} {...(label != null ? { label } : {})} />;
 }
 
-function buildRdvListChromeStyles(c: AppColors) {
+function buildRdvListChromeStyles({ colors: c }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     listContent: {
@@ -125,7 +123,7 @@ function buildRdvListChromeStyles(c: AppColors) {
 }
 
 export function useRdvListChromeStyles() {
-  return useThemedStyles(buildRdvListChromeStyles);
+  return useStyles(buildRdvListChromeStyles);
 }
 
 /** @deprecated Préférer useRdvListChromeStyles() dans les écrans fonctionnels. */

@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { CircleCheck } from 'lucide-react-native';
 import type { WizardRecapItem } from './BookingWizardSegmentContext';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   recaps: WizardRecapItem[];
@@ -15,7 +12,7 @@ interface Props {
 /** Soins déjà planifiés (étape documents, multi-actes uniquement). */
 export function BookingWizardPreviousRecaps({ recaps }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardPreviousRecaps_tsx_BookingWizardPreviousRecaps_styles');
+  const styles = useStyles(buildStyles);
 
   if (recaps.length === 0) return null;
 
@@ -39,25 +36,25 @@ export function BookingWizardPreviousRecaps({ recaps }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     paddingVertical: spacing[1],
   },
   copy: { minWidth: 0, flex: 1, gap: 2 },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   line: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
-  bold: { fontFamily: fontFamily.semiBold, color: c.textPrimary },
+  bold: { ...font.semiBold, color: c.textPrimary },
   date: { color: c.textTertiary },
 };
 }

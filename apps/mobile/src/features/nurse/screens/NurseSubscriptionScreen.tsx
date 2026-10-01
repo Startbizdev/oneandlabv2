@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { NURSE_PLAN_LIST } from '@oneandlab/shared-constants';
 import { useMemo } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, RefreshControl, ScrollView, View } from 'react-native';
@@ -11,8 +9,7 @@ import {
   NURSE_PRO_TRIAL_FOOTNOTE,
 } from '@/features/nurse/utils/subscription-price-display';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
   spreadTabSceneScrollProps,
@@ -40,7 +37,7 @@ function openManageSubscriptions(source?: string | null) {
 
 export function NurseSubscriptionScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseSubscriptionScreen_tsx_NurseSubscriptionScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const insets = useSafeAreaInsets();
   const sceneInsets = useTabSceneInsets();
@@ -195,7 +192,7 @@ export function NurseSubscriptionScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: { minWidth: 0, flex: 1 },
   content: {
@@ -203,7 +200,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[4],
   },
   lead: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     lineHeight: 20,
   },
@@ -216,11 +213,11 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   statusTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
   },
   statusMeta: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
   },
   restore: {
@@ -228,11 +225,11 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2],
   },
   restoreText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   legal: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: 18,
   },

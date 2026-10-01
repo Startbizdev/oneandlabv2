@@ -1,9 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const OPTIONS = [
   { label: 'Sans préférence', value: 'any' },
@@ -17,7 +14,7 @@ interface Props {
 }
 
 export function PreferredNurseGenderButtons({ value, onChange }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_PreferredNurseGenderButtons_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.wrap}>
       <AppText style={styles.label}>Préférence pour l&apos;infirmier(ère)</AppText>
@@ -39,11 +36,11 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   label: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -56,7 +53,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
   },
   pillActive: { backgroundColor: c.primary, borderColor: c.primary },
-  text: { fontFamily: fontFamily.medium, fontSize: fontSize.sm, color: c.textSecondary },
+  text: { ...font.medium, fontSize: fontSize.sm, color: c.textSecondary },
   textActive: { color: c.textInverse },
 };
 }

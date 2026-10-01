@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {
@@ -23,8 +21,7 @@ import {
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import {elevation, radius, spacing, animation, iconSize } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, animation, iconSize, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -48,7 +45,7 @@ function AppointmentCardComponent({
   onRefuse,
 }: AppointmentCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'AppointmentCard');
+  const styles = useStyles(buildStyles);
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -182,7 +179,7 @@ function AppointmentCardComponent({
 
 export const AppointmentCard = React.memo(AppointmentCardComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -196,13 +193,13 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[3],
     },
     patientName: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       letterSpacing: -0.2,
     },
     careText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
@@ -219,12 +216,12 @@ function buildStyles(c: AppColors) {
     metaText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     metaTime: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       color: c.textLink,
     },
     metaAddress: {

@@ -1,14 +1,11 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { DetailKvRow } from '@/utils/appointment-detail-display';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function KvRow({ label, value, strikethrough }: DetailKvRow) {
-  const styles = useThemedStyles(buildStyles, 'RdvKvCard.KvRow');
+  const styles = useStyles(buildStyles);
   if (!value) return null;
   return (
     <Row justify="between" align="start" gap={spacing[3]} style={styles.row}>
@@ -35,7 +32,7 @@ export function RdvKvCard({
   title = 'Informations',
   rows,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvKvCard_tsx_RdvKvCard_styles');
+  const styles = useStyles(buildStyles);
 
   const visible = rows.filter((r) => r.value);
   if (!visible.length) return null;
@@ -57,10 +54,10 @@ export function RdvKvCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   overline: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
@@ -80,7 +77,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[3],
   },
   rowLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.5,
@@ -90,7 +87,7 @@ function buildStyles(c: AppColors) {
   },
   rowValue: {
     minWidth: 0,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     flex: 1,

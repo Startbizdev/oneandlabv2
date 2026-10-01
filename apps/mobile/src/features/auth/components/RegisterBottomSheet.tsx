@@ -1,5 +1,4 @@
 import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
@@ -8,8 +7,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const REGISTER_ROLE_META: {
   role: RegisterRole;
@@ -49,7 +47,7 @@ export function RegisterBottomSheet({
   onLoginPress,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_RegisterBottomSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const hasEmail = Boolean(pendingEmail?.trim());
 
   const roleItems: MoreMenuItemProps[] = REGISTER_ROLE_META.map((item) => {
@@ -103,7 +101,7 @@ export function RegisterBottomSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   body: {
     width: '100%' as const,
@@ -120,12 +118,12 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   emailLabel: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   emailValue: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
@@ -136,13 +134,13 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[1],
   },
   loginText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,
   },
   loginAccent: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     color: c.primary,
   },
 };

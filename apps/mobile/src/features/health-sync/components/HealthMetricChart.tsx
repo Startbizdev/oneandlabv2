@@ -1,14 +1,11 @@
 import { layoutRowEndBetween } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { Platform, View } from 'react-native';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { LineChart } from 'lucide-react-native';
 import type { HealthMetricPoint } from '@oneandlab/shared-types';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -29,7 +26,7 @@ export function HealthMetricChart({
   isLast = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'HealthMetricChart');
+  const styles = useStyles(buildStyles);
 
   const { path, last, min, max } = useMemo(() => {
     if (points.length === 0) {
@@ -87,7 +84,7 @@ export function HealthMetricChart({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       paddingHorizontal: spacing[4],
@@ -102,7 +99,7 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[3],
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       letterSpacing: -0.15,
@@ -111,19 +108,19 @@ function buildStyles(c: AppColors) {
       alignItems: 'flex-end' as const,
     },
     value: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       color: c.textPrimary,
       letterSpacing: -0.3,
     },
     unit: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       marginTop: -2,
     },
     range: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       marginTop: spacing[2],
@@ -141,7 +138,7 @@ function buildStyles(c: AppColors) {
       }),
     },
     emptyHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
     },

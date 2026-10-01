@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -18,9 +16,8 @@ import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 
-import { elevation, radius, spacing, AppText } from '@/theme';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
-import { fontFamily, fontSize } from '@/theme/typography';
 
 
 
@@ -36,7 +33,7 @@ interface Props {
 
 export function LegalInformationScreen({ rolePrefix }: Props) {
 
-  const styles = useThemedStyles(buildStyles, 'features_legal_screens_LegalInformationScreen_tsx_LegalInformationScreen_styles');
+  const styles = useStyles(buildStyles);
 
 
 
@@ -112,7 +109,7 @@ export function LegalInformationScreen({ rolePrefix }: Props) {
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
 
@@ -130,7 +127,7 @@ function buildStyles(c: AppColors) {
 
   lead: {
 
-    fontFamily: fontFamily.regular,
+    ...font.regular,
 
     fontSize: fontSize.sm,
 

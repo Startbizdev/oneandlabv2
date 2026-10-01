@@ -1,7 +1,5 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -17,8 +15,8 @@ import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import { PassageTimePicker } from './PassageTimePicker';
 import type { PassageTimeSlot } from '@oneandlab/shared-types';
 import { resolvePassageTimeRange, passageCustomTimeFromHour, passageSlotFromRange } from '@oneandlab/shared-utils';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 /** Sélection UI — « range » = créneau horaire avec slider. */
 type DraftSelection = PassageTimeSlot | 'range';
@@ -74,7 +72,7 @@ export function PassageFormTimeSheet({
   onConfirm,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const maxHour = availabilityMaxHour('nursing');
   const minHour = availabilitySliderMinHour(passageDate, maxHour);
 
@@ -148,7 +146,7 @@ export function PassageFormTimeSheet({
                 <AppText
                   style={{
                     color: selected ? c.primaryDark : c.textSecondary,
-                    fontFamily: fontFamily.semiBold,
+                    ...font.semiBold,
                     fontSize: fontSize.xs,
                   }}
                 >
@@ -180,7 +178,7 @@ export function PassageFormTimeSheet({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     presetWrap: {

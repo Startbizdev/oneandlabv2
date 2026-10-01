@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { bookingLeadTimeAfterClosing, nextBookingDateAfterClosing } from '@oneandlab/shared-utils';
 import { availabilityMaxHour } from '../utils/booking-availability-utils';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { AvailabilityType, UrgentTimingMode } from '../utils/availability';
 import { BookingAvailabilitySection } from './BookingAvailabilitySection';
 import { BookingDateCarousel } from './BookingDateCarousel';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   scheduledAt: string;
@@ -46,7 +44,7 @@ export function FormScheduleSection({
   onUrgentMinute,
   onUrgentTimingMode,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormScheduleSection_tsx_FormScheduleSection_styles');
+  const styles = useStyles(buildStyles);
 
   const [clockNow, setClockNow] = useState(Date.now);
   const maxHour = availabilityMaxHour(serviceType);
@@ -89,7 +87,7 @@ export function FormScheduleSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrapper: { gap: spacing[4] },
 };

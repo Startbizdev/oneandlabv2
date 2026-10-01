@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -14,8 +12,7 @@ import { Row } from '@/components/layout/primitives';
 import { HealthRecordSectionEmoji } from '../components/HealthRecordSectionEmoji';
 import { HealthRecordQuestionStep } from '../components/HealthRecordQuestionStep';
 import { useHealthRecordWizard } from '../hooks/use-health-record-wizard';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function normalizeRouteParam(value?: string | string[]): string | undefined {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -26,7 +23,7 @@ function normalizeRouteParam(value?: string | string[]): string | undefined {
 }
 
 export function HealthRecordWizardScreen() {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordWizardScreen');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { section, question } = useLocalSearchParams<{ section?: string | string[]; question?: string | string[] }>();
   const sectionId = normalizeRouteParam(section);
@@ -139,7 +136,7 @@ export function HealthRecordWizardScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     loading: {
     minWidth: 0, flex: 1, padding: spacing[4] },
@@ -152,7 +149,7 @@ function buildStyles(c: AppColors) {
     section: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       textTransform: 'uppercase' as const,
@@ -160,7 +157,7 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[1],
     },
     step: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[5],

@@ -1,7 +1,5 @@
 import { layoutRowBetween } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -15,8 +13,7 @@ import { useProfileAddressSync } from '@/features/appointments/form/hooks/usePro
 import { hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -41,7 +38,7 @@ export function PassageFormLocationSheet({
   onConfirm,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const user = useAuthStore((s) => s.user);
@@ -202,7 +199,7 @@ export function PassageFormLocationSheet({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     body: { gap: spacing[4], paddingBottom: spacing[4] },
     list: { gap: spacing[2] },
@@ -215,12 +212,12 @@ function buildStyles(_c: AppColors) {
     },
     textCol: {
     minWidth: 0, flex: 1, gap: spacing[0.5] },
-    label: { fontFamily: fontFamily.semiBold, fontSize: fontSize.md },
-    hint: { fontFamily: fontFamily.regular, fontSize: fontSize.sm },
+    label: { ...font.semiBold, fontSize: fontSize.md },
+    hint: { ...font.regular, fontSize: fontSize.sm },
     addressBlock: { gap: spacing[2] },
-    addressTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.base },
+    addressTitle: { ...font.semiBold, fontSize: fontSize.base },
     addressHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: fontSize.xs * 1.45,
     },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
@@ -9,8 +7,7 @@ import {
   NURSING_FREQUENCY_OPTIONS,
   showNursingFrequency,
 } from '@oneandlab/shared-constants';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const BLOOD_TYPE_OPTIONS = [
   { label: 'Une seule fois', value: 'single' },
@@ -44,7 +41,7 @@ function OptionPills({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const styles = useThemedStyles(buildStyles, 'FormCareFieldsSection.OptionPills');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.group}>
       <AppText style={styles.groupLabel}>{label}</AppText>
@@ -89,7 +86,7 @@ export function FormCareFieldsSection({
   onChange,
   hidePreferredNurseGender,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormCareFieldsSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   if (isBloodTestAppointment(type)) {
     return (
       <View style={styles.wrapper}>
@@ -157,17 +154,17 @@ export function FormCareFieldsSection({
   return null;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[3] },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   group: { gap: spacing[2] },
   groupLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -184,7 +181,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

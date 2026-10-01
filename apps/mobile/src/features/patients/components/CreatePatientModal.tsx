@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -22,8 +20,7 @@ import {
   type PatientProfileUploadType,
 } from '../api/patient-profile.service';
 import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type CreatedPatientResult = Pick<PatientRow, 'id' | 'first_name' | 'last_name'> & {
   phone?: string;
@@ -64,7 +61,7 @@ export function CreatePatientModal({
   stackBehavior,
   detectDuplicates = true,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_patients_components_CreatePatientModal_tsx_styles');
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -251,11 +248,11 @@ export function CreatePatientModal({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   fields: { gap: spacing[3] },
   errorText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.error,
   },

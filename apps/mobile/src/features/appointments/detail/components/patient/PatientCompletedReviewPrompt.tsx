@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
 import { Pressable, View } from 'react-native';
@@ -9,8 +7,8 @@ import * as Haptics from 'expo-haptics';
 import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { RdvPublishedReviewBanner } from '@/features/appointments/detail/components/RdvPublishedReviewBanner';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
 import {
   revieweeFirstName,
   type ReviewRow,
@@ -34,7 +32,7 @@ function PendingReviewCard({
   onPress: () => void;
 }) {
   const c = useAppColors();
-  const cardStyles = useThemedStyles(buildCardStyles, 'PatientCompletedReviewPrompt.card');
+  const cardStyles = useStyles(buildCardStyles);
   const headline = proName
     ? `Comment s'est passé votre soin avec ${proName} ?`
     : "Comment s'est passé votre soin ?";
@@ -122,7 +120,7 @@ function PublishedReviewAlert({
 /** Encart avis post-RDV — carte visible & cliquable → bottom sheet. */
 export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
   const c = useAppColors();
-  const cardStyles = useThemedStyles(buildCardStyles, 'PatientCompletedReviewPrompt.card');
+  const cardStyles = useStyles(buildCardStyles);
   const {
     reviewable,
     reviewsByAppt,
@@ -198,7 +196,7 @@ export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
   );
 }
 
-function buildCardStyles(c: AppColors) {
+function buildCardStyles({ colors: c, fontSize }: Theme) {
   return {
     stack: { gap: spacing[3] },
     pressedOuter: { opacity: 0.94, transform: [{ scale: 0.985 }] },
@@ -218,7 +216,7 @@ function buildCardStyles(c: AppColors) {
       gap: spacing[2.5],
     },
     kicker: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       letterSpacing: 0.8,
       textTransform: 'uppercase' as const,
@@ -229,17 +227,17 @@ function buildCardStyles(c: AppColors) {
       borderRadius: radius.full,
     },
     timePillText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
     },
     headline: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.md,
       color: c.textPrimary,
       lineHeight: fontSize.md * 1.3,
     },
     subline: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
@@ -251,7 +249,7 @@ function buildCardStyles(c: AppColors) {
       borderRadius: radius.full,
     },
     soinTagText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
     },
     cta: {
@@ -262,13 +260,13 @@ function buildCardStyles(c: AppColors) {
       borderWidth: 1,
     },
     ctaText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       textAlign: 'center' as const,
     },
     footerHint: {
       textAlign: 'center' as const,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },

@@ -53,7 +53,7 @@ Ne pas donner la même importance visuelle à toutes les informations. Utiliser 
 État actuel à connaître :
 
 - Web : conforme (`--font-heading: 'Raleway'` dans `frontend/assets/css/main.css`, texte en police système).
-- Mobile : **tout est encore en Nunito** (`apps/mobile/src/theme/typography.ts`). La bascule vers Raleway + police système doit se faire **au niveau des tokens de `theme/typography.ts`**, en une migration explicite et vérifiée visuellement — jamais écran par écran avec des `fontFamily` en dur, ce qui mélangerait trois polices.
+- Mobile : conforme. Rôles `font.heading*` (Raleway) et `font.regular / medium / semiBold / bold` (système) dans `apps/mobile/src/theme/typography.ts` — jamais de `fontFamily` en dur dans un écran.
 
 ## 6. Couleurs
 
@@ -61,7 +61,7 @@ Brand principal : `#1CC7B5`. Il sert principalement à : CTA principal, état s�
 
 Utiliser exclusivement les tokens sémantiques du thème :
 
-- Mobile : `useAppColors()` (`apps/mobile/src/theme/colors.ts`), jamais de hex en dur (`lint:styles --strict-colors`).
+- Mobile : `t.colors` dans `useStyles` / `useAppColors()` (`apps/mobile/src/theme/colors.ts`), jamais de hex ni `rgba` en dur hors `src/theme/` (règle ESLint `oneandlab/no-raw-colors`). Thème clair uniquement.
 - Web : classes Tailwind `primary-*` et tokens de `frontend/assets/css/main.css` / `app.config.ts`.
 
 success / warning / danger / info ont une signification fonctionnelle constante.
@@ -70,7 +70,7 @@ success / warning / danger / info ont une signification fonctionnelle constante.
 
 Une card n'existe que si elle matérialise réellement un groupe logique. Avant d'en ajouter une : « un simple espace, séparateur ou changement typographique suffit-il ? » Si oui, pas de card.
 
-Les cards importantes ont beaucoup d'air, une hiérarchie claire, peu de décoration et une action évidente si elles sont interactives. Mobile : réutiliser `StackCard` / `ListRowShell` (voir `apps/mobile/AGENTS.md`).
+Les cards importantes ont beaucoup d'air, une hiérarchie claire, peu de décoration et une action évidente si elles sont interactives. Mobile : réutiliser `ListRowShell` et les primitives de `apps/mobile/AGENTS.md`.
 
 ## 8. Iconographie
 

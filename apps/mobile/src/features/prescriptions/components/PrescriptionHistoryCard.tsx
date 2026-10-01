@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { IconActionButton } from '@/components/ui/IconActionButton';
@@ -12,12 +10,11 @@ import {
 } from '../utils/prescription-display';
 import { prescriptionRowAsAppointment } from '../utils/prescription-row-appointment';
 import { Stack } from '@/components/layout/primitives';
-import { iconSize, radius, spacing, AppText } from '@/theme';
+import { iconSize, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { Download, Eye } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface RowProps {
   row: ProPrescriptionRow;
@@ -41,7 +38,7 @@ export function PrescriptionHistoryCard({
   topBorder = false,
 }: RowProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildRowStyles, 'PrescriptionHistoryCard');
+  const styles = useStyles(buildRowStyles);
   const title = prescriptionHistoryRowTitle(row, { showPatient });
   const hint = prescriptionHistoryRowHint(row, { showPatient });
   const busy = downloading || previewing;
@@ -122,12 +119,12 @@ export function PrescriptionHistoryCard({
 
 /** Conteneur liste bordée (style table). */
 export function PrescriptionHistoryList({ children }: { children: ReactNode }) {
-  const styles = useThemedStyles(buildListStyles, 'PrescriptionHistoryList');
+  const styles = useStyles(buildListStyles);
 
   return <View style={styles.table}>{children}</View>;
 }
 
-function buildRowStyles(c: AppColors) {
+function buildRowStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       paddingVertical: spacing[2.5],
@@ -139,13 +136,13 @@ function buildRowStyles(c: AppColors) {
       flex: 1,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.3,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.35,
@@ -156,7 +153,7 @@ function buildRowStyles(c: AppColors) {
       paddingTop: spacing[0.5],
     },
     lotLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
       letterSpacing: 0.15,
@@ -174,7 +171,7 @@ function buildRowStyles(c: AppColors) {
   };
 }
 
-function buildListStyles(c: AppColors) {
+function buildListStyles({ colors: c }: Theme) {
   return {
     table: {
       minWidth: 0,

@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Row } from '@/components/layout/primitives';
 import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import type { PatientContactButton } from '@/utils/contact-actions';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const CONTACT_ICONS = {
   phone: Phone,
@@ -25,7 +22,7 @@ interface Props {
 
 export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailPersonBlock_tsx_DetailPersonBlock_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.wrap}>
@@ -56,14 +53,14 @@ export function DetailPersonBlock({ title, name, subtitle, detail, buttons }: Pr
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     gap: spacing[2],
     paddingVertical: spacing[1],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.3,
@@ -71,17 +68,17 @@ function buildStyles(c: AppColors) {
     marginBottom: 2,
   },
   name: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   sub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   detail: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,

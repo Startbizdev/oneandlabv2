@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
@@ -8,8 +6,7 @@ import { Row } from '@/components/layout/primitives';
 import type { BottomTabBarProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** Hauteur zone icône + libellé (hors safe area bas). */
 const TAB_CONTENT_HEIGHT = 50;
@@ -33,7 +30,7 @@ function TabItem({
   routeName: string;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'TabBar.TabItem');
+  const styles = useStyles(buildStyles);
   const label =
     typeof options.tabBarLabel === 'string'
       ? options.tabBarLabel
@@ -83,7 +80,7 @@ function TabItem({
 export function TabBar({
   state, descriptors, navigation }: BottomTabBarProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_navigation_TabBar_tsx_styles');
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
 
   return (
@@ -122,7 +119,7 @@ export function TabBar({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
     backgroundColor: c.background,
@@ -147,13 +144,13 @@ function buildStyles(c: AppColors) {
     marginBottom: spacing[0.5],
   },
   label: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     letterSpacing: 0.1,
   },
   labelFocused: {
     color: c.primary,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   labelIdle: {

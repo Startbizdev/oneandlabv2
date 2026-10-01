@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -30,8 +28,7 @@ import {
   postAppointmentConversationAttachment,
   postAppointmentConversationMessage,
 } from '../detail/api/conversation.service';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 
 export function AppointmentConversationScreen() {
@@ -42,7 +39,7 @@ export function AppointmentConversationScreen() {
   }>();
   const appointmentId = String(id ?? '');
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'AppointmentConversationScreen_styles');
+  const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id);
   const userRole = useAuthStore((s) => s.user?.role);
   const qc = useQueryClient();
@@ -242,7 +239,7 @@ export function AppointmentConversationScreen() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     root: { flex: 1, minWidth: 0 },
     errorState: { paddingHorizontal: spacing[4], gap: spacing[2] },
@@ -251,8 +248,8 @@ function buildStyles(_c: AppColors) {
     bubble: { borderWidth: 1, borderRadius: 12, padding: spacing[3], maxWidth: '88%' },
     bubbleMine: { alignSelf: 'flex-end' },
     bubbleOther: { alignSelf: 'flex-start' },
-    author: { fontFamily: fontFamily.medium, fontSize: fontSize.xs, marginBottom: spacing[1] },
-    attachment: { marginTop: spacing[2], fontFamily: fontFamily.medium, fontSize: fontSize.xs },
+    author: { ...font.medium, fontSize: fontSize.xs, marginBottom: spacing[1] },
+    attachment: { marginTop: spacing[2], ...font.medium, fontSize: fontSize.xs },
     composer: { borderTopWidth: 1, padding: spacing[3], gap: spacing[2] },
     composerBar: { minHeight: 48, maxHeight: 112, borderWidth: 1, borderRadius: 24, alignItems: 'center' as const, paddingHorizontal: spacing[1], paddingVertical: spacing[1] },
     composerInput: { flex: 1, minWidth: 0, minHeight: 34, maxHeight: 96, paddingHorizontal: spacing[2], paddingVertical: spacing[1], fontSize: fontSize.md, textAlignVertical: 'center' as const },

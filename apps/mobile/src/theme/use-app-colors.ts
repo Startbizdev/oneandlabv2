@@ -1,12 +1,7 @@
-import { useMemo } from 'react';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
-import { getAppColors, syncColorblindTheme, type AppColors } from './colors';
+import type { AppColors } from './colors';
+import { useTheme } from './ThemeProvider';
 
-/** Hook thème : réagit au type daltonien dans les écrans / composants UI. */
+/** Couleurs du thème courant (réagit au réglage daltonisme). */
 export function useAppColors(): AppColors {
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  return useMemo(() => {
-    syncColorblindTheme(colorblindType);
-    return getAppColors();
-  }, [colorblindType]);
+  return useTheme().colors;
 }

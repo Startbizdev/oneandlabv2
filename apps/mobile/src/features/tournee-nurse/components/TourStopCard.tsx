@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { buildNavigationUrl } from '@oneandlab/shared-utils';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -24,8 +22,8 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import { TourStopCareSection } from './TourStopCareSection';
 import { TourStopCompletedStamp } from './TourStopCompletedStamp';
 import { TourStopReorderControls } from './TourStopReorderControls';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
 const WAZE_BRAND = '#33CCFF';
@@ -63,7 +61,7 @@ export function TourStopCard({
   onReschedule,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
   const done = stop.visit_status === 'done' || stop.visit_status === 'skipped';
   const timeLabel =
@@ -322,7 +320,7 @@ export function TourStopCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     cardDone: {
       overflow: 'hidden' as const,
@@ -374,13 +372,13 @@ function buildStyles(c: AppColors) {
     },
     positionText: {
       color: '#fff',
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize['2xs'],
     },
     headText: { flex: 1, minWidth: 0, gap: spacing[1] },
     name: {
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
       letterSpacing: -0.2,
@@ -396,13 +394,13 @@ function buildStyles(c: AppColors) {
     metaLine: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
     },
     metaTime: {
       minWidth: 0,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       flexShrink: 1,
@@ -420,12 +418,12 @@ function buildStyles(c: AppColors) {
     penBtnPressed: { opacity: 0.65 },
     addrStack: { flex: 1, minWidth: 0 },
     complement: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
     },
     dist: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       marginTop: spacing[1.5],
       marginLeft: spacing[2] + 18,

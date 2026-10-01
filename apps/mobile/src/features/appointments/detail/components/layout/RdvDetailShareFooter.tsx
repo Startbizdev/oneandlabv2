@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, Share, StyleSheet, View } from 'react-native';
@@ -8,8 +6,7 @@ import { Share2 } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { ShareForNurseData } from '../../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../../utils/nurse-share-message';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   shareData?: ShareForNurseData | null;
@@ -21,7 +18,7 @@ interface Props {
 /** Partage RDV — CTA gradient (identité Cary). */
 export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, loading }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_RdvDetailShareFooter_tsx_RdvDetailShareFooter_styles');
+  const styles = useStyles(buildStyles);
 
   const shareText = useMemo(
     () => shareTextProp?.trim() || buildNurseShareMessage(shareData),
@@ -60,7 +57,7 @@ export function RdvDetailShareFooter({ shareData, shareText: shareTextProp, load
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     marginTop: spacing[2],
@@ -85,7 +82,7 @@ function buildStyles(c: AppColors) {
     opacity: 0.55,
   },
   btnText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textInverse,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
@@ -13,8 +11,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function boolField(v: unknown, fallback = true): boolean {
   if (v === false || v === 0 || v === '0') return false;
@@ -34,7 +31,7 @@ const WEEK_DAYS = [
 
 export function ProfilePharmacySettingsScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfilePharmacySettingsScreen');
+  const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -134,7 +131,7 @@ function DaysPicker({
   onChange: (days: number[]) => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfilePharmacySettingsScreen_Days');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.daysBlock}>
       <AppText style={styles.daysLabel}>{label}</AppText>
@@ -176,7 +173,7 @@ function SettingRow({
   onChange: (v: boolean) => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildSettingStyles, 'ProfilePharmacySettingsScreen_SettingRow');
+  const styles = useStyles(buildSettingStyles);
 
   return (
     <View style={styles.row}>
@@ -194,10 +191,10 @@ function SettingRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     intro: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: 20,
@@ -211,7 +208,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.surface,
     },
     daysLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
@@ -226,7 +223,7 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.surfaceAlt,
     },
     dayText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
@@ -235,14 +232,14 @@ function buildStyles(c: AppColors) {
       borderColor: c.warning,
     },
     warnText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
   };
 }
 
-function buildSettingStyles(c: AppColors) {
+function buildSettingStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       borderRadius: 12,
@@ -264,13 +261,13 @@ function buildSettingStyles(c: AppColors) {
     },
     textCol: { flex: 1, minWidth: 0 },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
     },
     hint: {
       marginTop: 2,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },

@@ -1,5 +1,4 @@
-import { palette, type AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
+import { palette } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -20,7 +19,7 @@ import {
 } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
-import { spacing, iconSize, AppText } from '@/theme';
+import { spacing, iconSize, AppText, useStyles, type Theme } from '@/theme';
 
 const LIST_CARD_INSET_X = spacing[4];
 
@@ -33,7 +32,7 @@ function MaquetteCardBlock({
   role: RdvListCardViewerRole;
   status: string;
 }) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const maskIdentity = role === 'demande';
   const counterparty = maskIdentity
     ? maskOfferCounterparty(rdvMaquetteAvatarCounterparty(apt, role))
@@ -70,7 +69,7 @@ function MaquetteCardBlock({
 
 function CardNavChevron() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.chevronCorner} pointerEvents="none" accessible={false}>
       <ChevronRight size={iconSize.md} color={c.textSecondary} strokeWidth={2.15} style={styles.chevronIcon} />
@@ -99,7 +98,7 @@ export function RdvListCardBody({
   footer,
 }: RdvListCardBodyProps) {
   useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const role: RdvListCardViewerRole =
     roleProp ?? (showPatientName ? 'nurse' : 'patient');
 
@@ -136,7 +135,7 @@ export function RdvListCardBody({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   const type = buildRdvListCardTypography(c);
   return {
     bodyShell: {

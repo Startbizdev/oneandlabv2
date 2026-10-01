@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useState } from 'react';
@@ -9,8 +7,7 @@ import { Row } from '@/components/layout/primitives';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
 import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   lab: OfferLabPartner;
@@ -19,7 +16,7 @@ interface Props {
 export function OfferLabPartnerSection({
   lab }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_offer_OfferLabPartnerSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [sheetOpen, setSheetOpen] = useState(false);
   const slug = lab.publicSlug?.trim();
 
@@ -55,7 +52,7 @@ export function OfferLabPartnerSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     borderRadius: radius.xl,
@@ -69,12 +66,12 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
   },
   headTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,

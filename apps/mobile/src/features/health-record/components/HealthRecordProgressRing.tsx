@@ -1,12 +1,9 @@
 import { useId } from 'react';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { AppText } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 import { View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   percent: number;
@@ -29,7 +26,7 @@ export function HealthRecordProgressRing({
   const resolvedSize = size ?? (isMini ? 34 : 52);
   const resolvedStroke = strokeWidth ?? (isMini ? 3 : 5);
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'HealthRecordProgressRing');
+  const styles = useStyles(buildStyles);
   const onGradient = tone === 'onGradient';
   const gradientId = useId();
   const clamped = Math.min(100, Math.max(0, percent));
@@ -85,7 +82,7 @@ export function HealthRecordProgressRing({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       alignItems: 'center' as const,
@@ -94,7 +91,7 @@ function buildStyles(c: AppColors) {
     label: {
       position: 'absolute' as const,
       zIndex: 2,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
     },
     labelMini: {

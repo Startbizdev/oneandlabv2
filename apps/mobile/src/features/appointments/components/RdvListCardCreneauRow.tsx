@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Clock } from 'lucide-react-native';
 import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
-import { spacing, AppText } from '@/theme';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 
 const CLOCK_SIZE = 14;
 
@@ -17,7 +15,7 @@ interface Props {
 
 export function RdvListCardCreneauRow({ label, status }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'RdvListCardCreneauRow');
+  const styles = useStyles(buildStyles);
 
   return (
     <Cluster
@@ -44,7 +42,7 @@ export function RdvListCardCreneauRow({ label, status }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   const type = buildRdvListCardTypography(c);
   const labelLine = type.slot.lineHeight;
 

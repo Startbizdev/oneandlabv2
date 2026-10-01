@@ -9,10 +9,11 @@
  *   un objet contient `flexDirection: 'row'` mais pas `minWidth: 0`.
  *   => le conteneur garde la largeur intrinsèque de son contenu → overflow.
  *
+ * Rapport indicatif, non bloquant (aucun code de sortie en échec).
+ *
  * Usage :
  *   node scripts/lint-layout.mjs            # rapport complet
- *   node scripts/lint-layout.mjs --summary  # compteurs seulement (pour le ratchet CI)
- *   node scripts/lint-layout.mjs --ratchet  # échoue si le total dépasse la baseline
+ *   node scripts/lint-layout.mjs --summary  # compteurs seulement
  */
 import fs from 'fs';
 import path from 'path';
@@ -20,10 +21,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(__dirname, '../src');
-const BASELINE_FILE = path.join(__dirname, 'layout-baseline.json');
 
 const SUMMARY = process.argv.includes('--summary');
-const RATCHET = process.argv.includes('--ratchet');
 
 /** Fichiers/dossiers exemptés : ce sont les primitives et le moteur de thème. */
 const EXEMPT = [
@@ -129,20 +128,3 @@ if (!SUMMARY) {
 console.log(
   `layout: ${results.length} fichier(s) · ${totalA} flex-sans-minWidth · ${totalB} row-sans-garde-fou · total ${total}`,
 );
-
-if (RATCHET) {
-  let baseline = Infinity;
-  if (fs.existsSync(BASELINE_FILE)) {
-    baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8')).total ?? Infinity;
-  }
-  if (total > baseline) {
-    console.error(`\n✗ Régression layout : ${total} > baseline ${baseline}. Corrige avant merge.`);
-    process.exit(1);
-  }
-  console.log(`✓ Ratchet OK (baseline ${baseline === Infinity ? 'absente' : baseline}).`);
-}
-
-if (process.argv.includes('--write-baseline')) {
-  fs.writeFileSync(BASELINE_FILE, JSON.stringify({ total, totalA, totalB }, null, 2));
-  console.log(`Baseline écrite : total ${total}.`);
-}

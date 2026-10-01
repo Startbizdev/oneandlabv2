@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -19,7 +17,7 @@ import { RdvListCardBody } from '@/features/appointments/components/RdvListCardB
 import { buildRdvListCardAccessibilityLabel } from '@/features/appointments/components/rdv-list-card-accessibility';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
-import { spacing, animation } from '@/theme';
+import { spacing, animation, useStyles, type Theme } from '@/theme';
 
 interface Props {
   row: AppointmentListRow;
@@ -36,7 +34,7 @@ function sortBatch(apts: Appointment[]) {
 }
 
 function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_nurse_components_NurseDemandesOfferCard_tsx_NurseDemandesOfferCardComponent_styles');
+  const styles = useStyles(buildStyles);
 
   const cardStyles = getAppointmentListCardStyles();
   const scale = useSharedValue(1);
@@ -104,7 +102,7 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
 
 export const NurseDemandesOfferCard = React.memo(NurseDemandesOfferCardComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   inner: {
     paddingHorizontal: spacing[4],

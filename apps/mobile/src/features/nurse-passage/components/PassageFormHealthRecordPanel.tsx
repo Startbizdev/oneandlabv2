@@ -19,8 +19,8 @@ import { ClinicalVitalsPanel } from '@/features/health-record/components/Clinica
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { useAuthStore } from '@/store/auth-store';
 import { PassageFormHealthRecordSectionSheet } from './PassageFormHealthRecordSectionSheet';
-import { elevation, H_PADDING, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, H_PADDING, radius, spacing, iconSize, progressRingSize, AppText, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 type Props = {
   patientId: string;
@@ -159,7 +159,7 @@ function buildStyles(c: AppColors, variant: 'passage' | 'screen' = 'passage') {
       borderColor: c.borderLight,
     },
     bannerText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: 20,
@@ -180,18 +180,18 @@ function buildStyles(c: AppColors, variant: 'passage' | 'screen' = 'passage') {
     },
     heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
     heroTitle: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
     },
     heroSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     disclaimer: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.45,

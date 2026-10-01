@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -16,8 +14,7 @@ import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -28,7 +25,7 @@ interface Props {
 }
 
 export function RelativeQuickAddSheet({ visible, onClose, onCreated, patientId, staffConsent }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_RelativeQuickAddSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [firstName, setFirstName] = useState('');
@@ -120,11 +117,11 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated, patientId, 
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   fields: { gap: spacing[3] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     marginBottom: spacing[2],
@@ -145,14 +142,14 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primaryLight,
   },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
   },
   pillTextActive: {
     color: c.primary,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
 };
 }

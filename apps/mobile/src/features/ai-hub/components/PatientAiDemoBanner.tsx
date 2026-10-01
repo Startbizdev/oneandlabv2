@@ -1,16 +1,14 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Sparkles } from 'lucide-react-native';
-import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { H_PADDING, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 /** Bandeau « version démo » — collé au-dessus du compositeur, orange clair. */
 export function PatientAiDemoBanner() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <Row
@@ -36,7 +34,7 @@ export function PatientAiDemoBanner() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     strip: {
       paddingHorizontal: H_PADDING,
@@ -44,13 +42,13 @@ function buildStyles(_c: AppColors) {
       borderTopWidth: StyleSheet.hairlineWidth,
     },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       letterSpacing: 0.2,
     },
     dot: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       opacity: 0.7,
@@ -58,7 +56,7 @@ function buildStyles(_c: AppColors) {
     message: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs, 1.35),
     },

@@ -1,10 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { iconSize } from '@/theme';
+import { iconSize, useStyles } from '@/theme';
 
 interface Props {
   title: string;
@@ -17,7 +15,7 @@ interface Props {
 
 export function BookingContinueButton({ title, onPress, loading, disabled, fill, style }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'booking_continue_button');
+  const styles = useStyles(buildStyles);
   return (
     <View style={[styles.root, fill && styles.fill, style]}>
       <Button
@@ -33,7 +31,7 @@ export function BookingContinueButton({ title, onPress, loading, disabled, fill,
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     root: { minWidth: 0, alignSelf: 'stretch' as const },
     fill: { width: '100%' as const },

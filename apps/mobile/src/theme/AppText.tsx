@@ -1,8 +1,8 @@
 import React from 'react';
 import { Text, type TextProps, type TextStyle } from 'react-native';
-import { useThemedStyles } from './use-themed-styles';
-import { fontFamily, getTextStyle, type TextVariant } from './typography';
-import type { AppColors } from './colors';
+import { useStyles } from './make-styles';
+import type { Theme } from './theme';
+import { getTextStyle, type TextVariant } from './typography';
 
 const COMPACT_MAX_FONT_MULTIPLIER = 1.2;
 
@@ -21,7 +21,7 @@ export function AppText({
   maxFontSizeMultiplier,
   ...props
 }: AppTextProps) {
-  const styles = useThemedStyles(buildStyles, 'theme_AppText');
+  const styles = useStyles(buildStyles);
   const variantStyle = getTextStyle(variant);
   const resolvedMultiplier = compact
     ? (maxFontSizeMultiplier ?? COMPACT_MAX_FONT_MULTIPLIER)
@@ -36,7 +36,7 @@ export function AppText({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     defaultColor: {
       color: c.textPrimary,

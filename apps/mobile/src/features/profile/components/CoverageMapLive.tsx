@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getAppColors } from '@/theme/colors';
-import { radius } from '@/theme';
+import { radius, useStyles, type Theme } from '@/theme';
 
 interface Props {
   lat: number;
@@ -72,7 +70,7 @@ function buildMapHtml(lat: number, lng: number, radiusKm: number, primary: strin
 
 export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageMapLive_tsx_CoverageMapLive_styles');
+  const styles = useStyles(buildStyles);
 
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const html = useMemo(() => {
@@ -95,7 +93,7 @@ export function CoverageMapLive({ lat, lng, radiusKm, height = 260 }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrap: {
     width: '100%' as const,

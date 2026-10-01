@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { Stethoscope } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -18,8 +16,7 @@ import {
   PatientListRow,
   PatientRowValue,
 } from './PatientListPrimitives';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function actTitle(appt: Appointment, index: number): string {
   if (isBloodTestAppointment(appt.type)) return `Prélèvement #${index + 1}`;
@@ -68,7 +65,7 @@ interface Props {
 }
 
 export function PatientCareSection({ batch, isMultiBatch }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientCareSection_tsx_PatientCareSection_styles');
+  const styles = useStyles(buildStyles);
 
   const categoriesQ = useAppointmentCareCategories();
   const categories = categoriesQ.data;
@@ -109,7 +106,7 @@ export function PatientCareSection({ batch, isMultiBatch }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   act: { paddingBottom: spacing[1] },
@@ -125,7 +122,7 @@ function buildStyles(c: AppColors) {
   },
   actTitle: {
     minWidth: 0,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     flex: 1,

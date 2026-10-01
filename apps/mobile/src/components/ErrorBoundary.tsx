@@ -1,6 +1,6 @@
 import React, { Component, type ReactNode } from 'react';
-import { AppText } from '@/theme';
 import { View } from 'react-native';
+import { AppText, font, useStyles, type Theme } from '@/theme';
 import { Button } from './ui/Button';
 
 interface Props {
@@ -9,6 +9,21 @@ interface Props {
 
 interface State {
   hasError: boolean;
+}
+
+function ErrorFallback({ onRetry }: { onRetry: () => void }) {
+  const styles = useStyles(buildStyles);
+  return (
+    <View style={styles.root}>
+      <AppText style={styles.title}>Une erreur est survenue</AppText>
+      <AppText style={styles.body}>
+        Redémarrez l&apos;application. Si le problème persiste, contactez le support.
+      </AppText>
+      <View style={styles.action}>
+        <Button title="Réessayer" size="lg" fullWidth onPress={onRetry} />
+      </View>
+    </View>
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -20,18 +35,37 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <View className="flex-1 items-center justify-center p-6 bg-white">
-          <AppText className="text-lg font-semibold text-gray-900">Une erreur est survenue</AppText>
-          <AppText className="mt-2 text-sm text-gray-500 text-center">
-            Redémarrez l&apos;application. Si le problème persiste, contactez le support.
-          </AppText>
-          <View className="mt-6 w-full max-w-xs">
-            <Button title="Réessayer" size="lg" fullWidth onPress={() => this.setState({ hasError: false })} />
-          </View>
-        </View>
-      );
+      return <ErrorFallback onRetry={() => this.setState({ hasError: false })} />;
     }
     return this.props.children;
   }
+}
+
+function buildStyles({ colors: c, fontSize, space }: Theme) {
+  return {
+    root: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: space.xl,
+      backgroundColor: c.background,
+    },
+    title: {
+      ...font.headingSemiBold,
+      fontSize: fontSize.lg,
+      color: c.textPrimary,
+      textAlign: 'center',
+    },
+    body: {
+      marginTop: space.sm,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      textAlign: 'center',
+    },
+    action: {
+      marginTop: space.xl,
+      width: '100%',
+      maxWidth: 320,
+    },
+  } as const;
 }

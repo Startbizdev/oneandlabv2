@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useState } from 'react';
 import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useSheetTextInputComponent } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
@@ -57,7 +54,7 @@ function InputComponent(
   ref: React.ForwardedRef<TextInput>,
 ) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'Input');
+  const styles = useStyles(buildStyles);
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
@@ -150,13 +147,13 @@ function InputComponent(
 
 export const Input = React.memo(React.forwardRef(InputComponent));
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: {
     gap: spacing[1],
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     letterSpacing: 0.3,
     color: c.textSecondary,
@@ -179,7 +176,7 @@ function buildStyles(c: AppColors) {
   input: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textPrimary,
     paddingHorizontal: spacing[4],
@@ -212,13 +209,13 @@ function buildStyles(c: AppColors) {
     paddingTop: spacing[3],
   },
   error: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.error,
     letterSpacing: 0.1,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

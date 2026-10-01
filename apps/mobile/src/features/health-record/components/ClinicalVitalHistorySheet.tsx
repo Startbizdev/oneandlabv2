@@ -1,6 +1,5 @@
 import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
 import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
@@ -20,8 +19,8 @@ import {
   formatClinicalVitalHistoryDate,
   formatClinicalVitalRecorderName,
 } from '../utils/clinical-vital-display';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 type Props = {
   visible: boolean;
@@ -41,7 +40,7 @@ export function ClinicalVitalHistorySheet({
   onEdit,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const cfg = vitalType ? clinicalVitalUiConfig(vitalType) : null;
 
   const historyQ = useQuery({
@@ -165,13 +164,13 @@ function HistoryRow({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     emptyWrap: {
       paddingVertical: spacing[4],
     },
     empty: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       textAlign: 'center' as const,
@@ -193,12 +192,12 @@ function buildStyles(_c: AppColors) {
     },
     rowValue: {
       minWidth: 0,
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       flexShrink: 1,
     },
     rowUnit: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
     },
     latestBadge: {
@@ -207,16 +206,16 @@ function buildStyles(_c: AppColors) {
       paddingVertical: 2,
     },
     latestBadgeText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
     },
     rowMeta: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs, 1.35),
     },
     rowNote: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.4),
       marginTop: spacing[0.5],

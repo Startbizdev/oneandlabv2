@@ -1,9 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { radius } from '@/theme';
+import { radius, useStyles, type Theme } from '@/theme';
 
 interface Props {
   radiusKm: number;
@@ -13,7 +11,7 @@ interface Props {
 /** Aperçu visuel du rayon (sans dépendance carte native). */
 export function CoverageMapPreview({ radiusKm, maxRadiusKm }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageMapPreview_tsx_CoverageMapPreview_styles');
+  const styles = useStyles(buildStyles);
 
   const size = 200;
   const cx = size / 2;
@@ -41,7 +39,7 @@ export function CoverageMapPreview({ radiusKm, maxRadiusKm }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrap: {
     alignItems: 'center' as const,

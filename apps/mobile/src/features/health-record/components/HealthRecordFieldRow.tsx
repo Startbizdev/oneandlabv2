@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Platform, View } from 'react-native';
 import { CheckCircle2, CircleDashed } from 'lucide-react-native';
@@ -12,8 +10,7 @@ import {
   healthRecordFieldAccessibilityLabel,
   isHealthRecordValueFilled,
 } from '../utils/health-record-display';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   label: string;
@@ -22,7 +19,7 @@ interface Props {
 
 export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'HealthRecordFieldRow');
+  const styles = useStyles(buildStyles);
   const display = formatHealthRecordDisplay(rawDisplay);
   const filled = isHealthRecordValueFilled(display);
   const a11yLabel = healthRecordFieldAccessibilityLabel(label, display, filled);
@@ -80,13 +77,13 @@ export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
       gap: spacing[1.5],
     },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       letterSpacing: 0.2,
@@ -128,7 +125,7 @@ function buildStyles(c: AppColors) {
     valueFilled: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.45,
@@ -136,7 +133,7 @@ function buildStyles(c: AppColors) {
     valueEmpty: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
       lineHeight: fontSize.sm * 1.45,

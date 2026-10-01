@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type FullWidthSegment<T extends string = string> = {
   id: T;
@@ -29,7 +26,7 @@ export function FullWidthSegmentBar<T extends string>({
   accessibilityRole = 'tablist',
 }: FullWidthSegmentBarProps<T>) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildFullWidthSegmentBarStyles, 'FullWidthSegmentBar');
+  const styles = useStyles(buildFullWidthSegmentBarStyles);
 
   if (segments.length <= 1) return null;
 
@@ -67,7 +64,7 @@ export function FullWidthSegmentBar<T extends string>({
   );
 }
 
-function buildFullWidthSegmentBarStyles(c: AppColors) {
+function buildFullWidthSegmentBarStyles({ colors: c, fontSize }: Theme) {
   return {
     track: {
       minWidth: 0,
@@ -94,7 +91,7 @@ function buildFullWidthSegmentBarStyles(c: AppColors) {
       ...elevation.xs,
     },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
@@ -114,7 +111,7 @@ function buildFullWidthSegmentBarStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
     },
     badgeText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },

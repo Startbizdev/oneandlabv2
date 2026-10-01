@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title?: string;
@@ -20,7 +17,7 @@ interface Props {
 export function DetailPanel({
   title, subtitle, Icon, children, noPadding }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailPanel_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={[styles.panel, elevation.xs]}>
       {title ? (
@@ -47,7 +44,7 @@ export function DetailPanel({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   panel: {
     backgroundColor: c.surface,
@@ -73,12 +70,12 @@ function buildStyles(c: AppColors) {
   },
   headerText: { gap: 2 },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   subtitle: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,

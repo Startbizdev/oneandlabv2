@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import React, { type ReactElement, type ReactNode, useRef } from 'react';
 
@@ -32,7 +30,7 @@ import {
 
 } from '@/components/navigation/liquid-glass-header-inset';
 
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 
 
 
@@ -98,7 +96,7 @@ export function QueryFlatList<T, Item>({
 
 }: Props<T, Item>) {
 
-  const styles = useThemedStyles(buildStyles, 'QueryFlatList');
+  const styles = useStyles(buildStyles);
 
   const sceneInsets = useTabSceneInsets();
 
@@ -252,7 +250,7 @@ export function QueryFlatList<T, Item>({
 
 
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
 
   return {
 

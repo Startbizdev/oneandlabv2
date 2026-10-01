@@ -1,11 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
-import { elevation, spacing } from '@/theme';
+import { elevation, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -23,7 +21,7 @@ export function BookingActionBar({
   primaryLoading,
   primaryDisabled,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingActionBar_tsx_BookingActionBar_styles');
+  const styles = useStyles(buildStyles);
 
   const { bottom } = useSafeAreaInsets();
   const tabSceneBottom = useTabSceneInsetBottom();
@@ -56,7 +54,7 @@ export function BookingActionBar({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   shell: {
     flexShrink: 0,

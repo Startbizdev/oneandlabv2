@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { radius, spacing, AppText } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   label: string;
@@ -28,7 +25,7 @@ export function ProfileToggleRow({
   onValueChange,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileToggleRow_tsx_ProfileToggleRow_styles');
+  const styles = useStyles(buildStyles);
 
   const inactive = busy || disabled;
   const showActiveHighlight = highlightWhenOn && value && !disabled;
@@ -65,7 +62,7 @@ export function ProfileToggleRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   row: {
     alignSelf: 'stretch' as const,
@@ -77,11 +74,11 @@ function buildStyles(c: AppColors) {
   rowBusy: { opacity: 0.55 },
   rowText: { flex: 1, flexShrink: 1, minWidth: 0, gap: 2 },
   rowLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   rowHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
   },
 };

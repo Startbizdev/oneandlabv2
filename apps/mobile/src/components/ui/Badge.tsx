@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated from 'react-native-reanimated';
 import { STATUS_BADGE_COLOR, STATUS_LABELS } from '@oneandlab/shared-utils';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, useStyles, font, type Theme } from '@/theme';
 
 type BadgeVariant = 'primary' | 'success' | 'error' | 'warning' | 'neutral' | 'teal';
 
@@ -58,7 +55,7 @@ function BadgeComponent({
   shape = 'rounded',
 }: BadgeProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_Badge_tsx_BadgeComponent_styles');
+  const styles = useStyles(buildStyles);
 
   const config = variantConfigFor(variant, c);
   const isSmall = size === 'sm';
@@ -140,7 +137,7 @@ function StatusBadgeComponent({
 
 export const StatusBadge = React.memo(StatusBadgeComponent);
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   base: {
     alignSelf: 'flex-start' as const,
@@ -187,7 +184,7 @@ function buildStyles(c: AppColors) {
     height: 10,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     letterSpacing: 0.1,
   },
   labelSm: {

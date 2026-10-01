@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
@@ -9,8 +7,7 @@ import type { PassagePlanningFormState, PlanningMode } from '../utils/passage-pl
 import { IsoDatePicker } from './IsoDatePicker';
 import { PassageMultiDateCalendar } from './PassageMultiDateCalendar';
 import { PassageWeekdayChips } from './PassageWeekdayChips';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   state: PassagePlanningFormState;
@@ -32,7 +29,7 @@ const MODE_OPTIONS: { id: PlanningMode; label: string; hint?: string }[] = [
 
 export function PassagePlanningSection({ state, onChange, passageCount }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   const setMode = (mode: PlanningMode) => onChange({ planningMode: mode });
   const isCustomDates = state.planningMode === 'custom_dates';
@@ -81,7 +78,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
                     },
                   ]}
                 >
-                  <AppText style={{ fontFamily: fontFamily.semiBold, color: c.textPrimary }}>
+                  <AppText style={{ ...font.semiBold, color: c.textPrimary }}>
                     {state.openEnded ? '✓ ' : ''}Passage chronique (sans date de fin)
                   </AppText>
                   <AppText style={[styles.optionHint, { color: c.textSecondary }]}>
@@ -109,7 +106,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
             },
           ]}
         >
-          <AppText style={{ fontFamily: fontFamily.semiBold, color: c.textPrimary }}>{label}</AppText>
+          <AppText style={{ ...font.semiBold, color: c.textPrimary }}>{label}</AppText>
           {hint && state.planningMode === id ? (
             <AppText style={[styles.optionHint, { color: c.textSecondary }]}>{hint}</AppText>
           ) : null}
@@ -171,7 +168,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     periodCard: {
       borderWidth: 1,
@@ -181,13 +178,13 @@ function buildStyles(_c: AppColors) {
       marginBottom: spacing[3],
     },
     periodTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.4,
     },
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.5,
@@ -201,18 +198,18 @@ function buildStyles(_c: AppColors) {
       gap: spacing[1],
     },
     optionHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: fontSize.xs * 1.4,
     },
     planFields: { marginTop: spacing[1], marginBottom: spacing[2] },
     fieldLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       marginBottom: spacing[2],
     },
     manualHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: 20,
       marginTop: spacing[1],
@@ -231,7 +228,7 @@ function buildStyles(_c: AppColors) {
       padding: spacing[3],
     },
     previewText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       textAlign: 'center' as const,
     },

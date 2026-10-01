@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Linking, StyleSheet, View } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { Users } from 'lucide-react-native';
-import { spacing, AppText } from '@/theme';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { fontFamily, fontSize } from '@/theme/typography';
 import {
   beneficiaryBirthLine,
   beneficiaryDisplayName,
@@ -59,7 +56,7 @@ interface Props {
 
 export function PatientInfoSection({ apt, viewer }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientInfoSection_tsx_PatientInfoSection_styles');
+  const styles = useStyles(buildStyles);
 
   const ext = apt as AptExt;
   const hasRelative = Boolean(ext.relative);
@@ -130,7 +127,7 @@ export function PatientInfoSection({ apt, viewer }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   minorBanner: {
     paddingHorizontal: spacing[4],
@@ -138,12 +135,12 @@ function buildStyles(c: AppColors) {
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   minorText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     lineHeight: fontSize.sm * 1.45,
   },
   minorBold: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
 };
 }

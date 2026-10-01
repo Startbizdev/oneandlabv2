@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props<
   TTab extends string = string,
@@ -64,7 +61,7 @@ export function AppointmentsFilterSheet<
   onReset,
 }: Props<TTab, TSegment, TSecondary>) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'AppointmentsFilterSheet');
+  const styles = useStyles(buildStyles);
   const pick = <T extends string>(onChange: (v: T) => void) => (v: T) => {
     onChange(v);
     if (closeOnPick) onClose();
@@ -115,13 +112,13 @@ export function AppointmentsFilterSheet<
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   section: {
     gap: spacing[2],
   },
   sectionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.4,
@@ -132,7 +129,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[2],
   },
   resetText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },

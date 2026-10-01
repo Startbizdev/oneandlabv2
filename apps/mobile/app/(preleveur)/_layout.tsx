@@ -1,13 +1,12 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
+import { useStyles, type Theme } from '@/theme';
 
 export default function PreleveurLayout() {
-  const styles = useThemedStyles(buildStyles, 'PreleveurLayout');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.stackHost}>
@@ -29,7 +28,7 @@ export default function PreleveurLayout() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     stackHost: { flex: 1, backgroundColor: c.surface },
   };

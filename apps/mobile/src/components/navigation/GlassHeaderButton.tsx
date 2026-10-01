@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -12,7 +10,7 @@ import {
   LIQUID_GLASS_HEADER_CONTROL_SIZE,
   LIQUID_GLASS_HEADER_SYMBOL_SIZE,
 } from '@/components/navigation/nav-chrome-tokens';
-import { fontFamily, fontSize, AppText } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   symbol: SFSymbol;
@@ -37,7 +35,7 @@ export function GlassHeaderButton({
   fallback,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'GlassHeaderButton');
+  const styles = useStyles(buildStyles);
   const nativeGlass = useNativeGlassControls();
   const size = LIQUID_GLASS_HEADER_CONTROL_SIZE;
   const showBadge = badge !== undefined && badge > 0;
@@ -108,7 +106,7 @@ export function GlassHeaderButton({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const size = LIQUID_GLASS_HEADER_CONTROL_SIZE;
   const badgeSize = 20;
   return {
@@ -182,7 +180,7 @@ function buildStyles(c: AppColors) {
       paddingHorizontal: 6,
     },
     badgeText: {
-      fontFamily: fontFamily.extraBold,
+      ...font.extraBold,
       fontSize: fontSize['2xs'],
       lineHeight: 12,
       textAlign: 'center' as const,

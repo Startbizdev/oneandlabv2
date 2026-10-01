@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -25,8 +23,8 @@ import {
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
-import { animation, elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { FONT_SIZE_BASE, fontFamily, fontSize, lh } from '@/theme/typography';
+import { animation, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { FONT_SIZE_BASE, lh } from '@/theme/typography';
 import { getTextScaleMultiplier } from '@/theme/text-scale';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -69,7 +67,7 @@ function DayCell({
   onPress: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.DayCell');
+  const styles = useStyles(buildStyles);
   const scale = useSharedValue(1);
   const { weekday, day: dayNum } = formatBookingDayCell(day);
   const isToday = day.isSame(dayjs(), 'day');
@@ -169,7 +167,7 @@ function DayGrid({
   acceptSunday: boolean;
   onChange: (iso: string) => void;
 }) {
-  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.DayGrid');
+  const styles = useStyles(buildStyles);
   const rows = [slide.slice(0, COLS), slide.slice(COLS, DAYS_PER_SLIDE)];
 
   return (
@@ -214,7 +212,7 @@ function PeriodNavigator({
   onNext: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'BookingDateCarousel.PeriodNavigator');
+  const styles = useStyles(buildStyles);
   const canPrev = page > 0;
   const canNext = page < pageCount - 1;
 
@@ -264,7 +262,7 @@ export function BookingDateCarousel({
   acceptSaturday = true,
   acceptSunday = true,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingDateCarousel_tsx_styles');
+  const styles = useStyles(buildStyles);
   const listRef = useRef<FlatList<Dayjs[]>>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [page, setPage] = useState(0);
@@ -408,14 +406,14 @@ export function BookingDateCarousel({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   const weekdaySize = Math.round(FONT_SIZE_BASE['2xs'] * getTextScaleMultiplier());
   const daySize = Math.round(FONT_SIZE_BASE.base * getTextScaleMultiplier());
 
   return {
     wrap: { gap: spacing[2] },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
@@ -447,7 +445,7 @@ function buildStyles(c: AppColors) {
       gap: 2,
     },
     periodLabel: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       textAlign: 'center' as const,
@@ -455,7 +453,7 @@ function buildStyles(c: AppColors) {
       letterSpacing: -0.2,
     },
     periodHint: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize['2xs'],
       color: c.textTertiary,
     },
@@ -507,7 +505,7 @@ function buildStyles(c: AppColors) {
       borderWidth: 1.5,
     },
     weekday: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: weekdaySize,
       color: c.textTertiary,
       textTransform: 'capitalize' as const,
@@ -518,7 +516,7 @@ function buildStyles(c: AppColors) {
       color: c.primary,
     },
     dayNum: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: daySize,
       color: c.textPrimary,
       lineHeight: lh(daySize, 1.22),
@@ -536,7 +534,7 @@ function buildStyles(c: AppColors) {
       borderTopColor: c.borderLight,
     },
     selectedRecapText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.primary,
       textTransform: 'capitalize' as const,

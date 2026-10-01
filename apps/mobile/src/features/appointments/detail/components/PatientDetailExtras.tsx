@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -22,8 +20,7 @@ import {
 } from '@/utils/preleveur-live-banner';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type ReviewRow = {
   id: string;
@@ -54,7 +51,7 @@ function InteractiveStars({
   onChange: (n: number) => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientDetailExtras');
+  const styles = useStyles(buildStyles);
   return (
     <Row wrap gap={spacing[1]}>
       {[1, 2, 3, 4, 5].map((n) => (
@@ -74,7 +71,7 @@ function InteractiveStars({
 export function PatientDetailExtras({
   batch, documents, onRefresh }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_PatientDetailExtras_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [now, setNow] = useState(Date.now());
   const [forms, setForms] = useState<Record<string, { rating: number; comment: string }>>({});
@@ -250,7 +247,7 @@ export function PatientDetailExtras({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   alertCard: {
@@ -266,12 +263,12 @@ function buildStyles(c: AppColors) {
   },
   alertTexts: { gap: 4 },
   alertTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   alertSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: 18,
@@ -285,7 +282,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   resultatsHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -298,24 +295,24 @@ function buildStyles(c: AppColors) {
     gap: spacing[4],
   },
   sectionLabel: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   reviewBlock: { gap: spacing[3] },
   reviewApptTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   reviewComment: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: 20,
   },
   reviewMuted: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

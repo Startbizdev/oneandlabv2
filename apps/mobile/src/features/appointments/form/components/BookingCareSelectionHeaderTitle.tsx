@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
-import { AppText } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 import { View } from 'react-native';
 import type { ReactElement } from 'react';
 import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 interface Props {
   role?: string;
@@ -12,7 +9,7 @@ interface Props {
 }
 
 export function BookingCareSelectionHeaderTitle({ role, embedded }: Props) {
-  const styles = useThemedStyles(buildStyles, 'BookingCareSelectionHeaderTitle');
+  const styles = useStyles(buildStyles);
   return (
     <View style={embedded ? styles.wrapEmbedded : styles.wrap}>
       <AppText
@@ -32,7 +29,7 @@ export function bookingCareSelectionHeaderTitle(role?: string): () => ReactEleme
   return () => <BookingCareSelectionHeaderTitle role={role} />;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       flex: 1,
@@ -43,7 +40,7 @@ function buildStyles(c: AppColors) {
       width: '100%' as const,
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
       letterSpacing: -0.35,

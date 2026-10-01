@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -26,8 +24,7 @@ import {
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type LoginMode = 'code' | 'password';
 type Step = 'email' | 'otp';
@@ -48,7 +45,7 @@ interface Props {
 
 export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_LoginFlow_tsx_LoginFlow_styles');
+  const styles = useStyles(buildStyles);
 
   const [mode, setMode] = useState<LoginMode>('code');
   const [step, setStep] = useState<Step>('email');
@@ -390,7 +387,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   step: { gap: spacing[3] },
   tabs: {
@@ -407,26 +404,26 @@ function buildStyles(c: AppColors) {
     alignItems: 'center' as const,
   },
   tabText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
   },
   backBtn: {
     paddingVertical: spacing[1],
   },
   backText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   forgotBtn: { alignItems: 'center' as const, paddingVertical: spacing[1] },
-  forgotText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
+  forgotText: { ...font.semiBold, fontSize: fontSize.sm },
   infoBox: {
     borderRadius: radius.lg,
     borderWidth: 1,
     padding: spacing[3],
     gap: spacing[2],
   },
-  infoText: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.45 },
-  infoLink: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
+  infoText: { ...font.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.45 },
+  infoLink: { ...font.semiBold, fontSize: fontSize.sm },
 };
 }

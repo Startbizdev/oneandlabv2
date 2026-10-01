@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -12,8 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, elevation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { animation, elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface BookingPremiumStepCtaProps {
   /** `wizard` : pill + 2 lignes. `list` : une ligne, coins modérés (liste RDV). */
@@ -57,7 +54,7 @@ export function BookingPremiumStepCta({
   style,
 }: BookingPremiumStepCtaProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingPremiumStepCta_tsx_styles');
+  const styles = useStyles(buildStyles);
   const isList = variant === 'list';
   const cornerRadius = radius.xl;
   const badgeValue =
@@ -180,7 +177,7 @@ const STEP_BADGE = 40;
 const ARROW_ORB = 44;
 const LIST_ORB = 36;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     width: '100%' as const,
@@ -232,7 +229,7 @@ function buildStyles(c: AppColors) {
     opacity: 0.88,
   },
   stepNum: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize.lg,
     color: c.textLink,
     letterSpacing: -0.5,
@@ -244,7 +241,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.md,
     color: c.onPrimary,
     letterSpacing: -0.15,
@@ -253,7 +250,7 @@ function buildStyles(c: AppColors) {
     fontSize: fontSize.base,
   },
   subtitle: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.onPrimary,
     letterSpacing: 0.1,

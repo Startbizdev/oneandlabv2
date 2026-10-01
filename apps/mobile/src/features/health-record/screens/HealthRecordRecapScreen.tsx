@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRouter } from 'expo-router';
 import { RefreshControl, View } from 'react-native';
@@ -25,11 +23,10 @@ import { useHealthSourceConnection } from '@/features/health-sync/hooks/use-heal
 import { buildHealthMetricStats, buildHealthInsights, isHealthSyncRecent } from '@/features/health-sync/utils/health-metric-stats';
 import { HealthInsightCards } from '@/features/health-sync/components/HealthInsightCards';
 import { useMemo } from 'react';
-import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function HealthRecordRecapScreen() {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordRecapScreen');
+  const styles = useStyles(buildStyles);
   const c = useAppColors();
   const router = useRouter();
   const recapQ = useQuery({
@@ -200,7 +197,7 @@ export function HealthRecordRecapScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     loading: {
     minWidth: 0, flex: 1, padding: spacing[4] },
@@ -227,12 +224,12 @@ function buildStyles(c: AppColors) {
     },
     heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
     heroTitle: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
     },
     heroSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
@@ -240,7 +237,7 @@ function buildStyles(c: AppColors) {
     cta: { marginTop: spacing[1] },
     block: { gap: spacing[3] },
     blockTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       letterSpacing: 0.8,
@@ -264,7 +261,7 @@ function buildStyles(c: AppColors) {
       padding: spacing[3],
     },
     trendText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.45,
@@ -275,7 +272,7 @@ function buildStyles(c: AppColors) {
       padding: spacing[4],
     },
     disclaimer: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.6,

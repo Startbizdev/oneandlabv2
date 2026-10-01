@@ -1,14 +1,11 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AlertTriangle } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { PrescriptionProfileGap } from '../utils/prescription-profile-gaps';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   gaps: PrescriptionProfileGap[];
@@ -24,7 +21,7 @@ export function PrescriptionProfileGapsAlert({
   prescriberRole,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionProfileGapsAlert');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
 
   if (gaps.length === 0) return null;
@@ -103,7 +100,7 @@ function GapRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     box: {
       padding: spacing[3],
@@ -114,19 +111,19 @@ function buildStyles(c: AppColors) {
     },
     body: { minWidth: 0, flex: 1, gap: spacing[2] },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.45,
     },
     group: { gap: spacing[1] },
     groupLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.warning,
       textTransform: 'uppercase' as const,
@@ -138,13 +135,13 @@ function buildStyles(c: AppColors) {
     },
     rowMessage: {
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textPrimary,
       flexShrink: 1,
     },
     rowAction: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
     },

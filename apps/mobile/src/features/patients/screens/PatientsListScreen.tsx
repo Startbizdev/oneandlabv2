@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
 
@@ -50,9 +48,8 @@ import { useAuthStore } from '@/store/auth-store';
 
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 
-import { radius, spacing, AppText } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
-import { fontFamily, fontSize } from '@/theme/typography';
 
 
 
@@ -108,7 +105,7 @@ export function PatientsListScreen({
 
   const c = useAppColors();
 
-  const styles = useThemedStyles(buildStyles, 'PatientsListScreen');
+  const styles = useStyles(buildStyles);
 
   const fabClearance = useScreenFabScrollClearance();
 
@@ -404,7 +401,7 @@ export function PatientsListScreen({
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
 
@@ -460,7 +457,7 @@ function buildStyles(c: AppColors) {
 
     sectionKicker: {
 
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
 
       fontSize: fontSize.xs,
 

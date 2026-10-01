@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRowCenterAll } from '@/theme/layout-styles';
 
 type Props = {
@@ -14,7 +11,7 @@ type Props = {
 
 export function PassageFab({ onPress }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
 
   return (
@@ -32,7 +29,7 @@ export function PassageFab({ onPress }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     wrap: {
       position: 'absolute' as const,
@@ -46,7 +43,7 @@ function buildStyles(_c: AppColors) {
       borderRadius: radius.full,
     },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
     },
   };

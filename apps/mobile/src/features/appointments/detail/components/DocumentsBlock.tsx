@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useState } from 'react';
@@ -19,8 +17,7 @@ import {
   getDocumentTypeLabel,
 } from '../utils/document-labels';
 import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const DOC_ICONS: Record<string, LucideIcon> = {
   carte_vitale: CreditCard,
@@ -43,7 +40,7 @@ interface Props {
 
 function DocIcon({ type }: { type: string }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'DocumentsBlock.DocIcon');
+  const styles = useStyles(buildStyles);
   const Icon = DOC_ICONS[type] ?? FileText;
   return (
     <View style={styles.docIcon}>
@@ -61,7 +58,7 @@ function DocumentRow({
   downloading: boolean;
   onOpen: (doc: MedicalDocumentRow) => void;
 }) {
-  const styles = useThemedStyles(buildStyles, 'DocumentsBlock.DocumentRow');
+  const styles = useStyles(buildStyles);
   const label = getDocumentTypeLabel(doc.document_type);
   const sub = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
 
@@ -101,7 +98,7 @@ export function DocumentsBlock({
   omitCarePhotos = true,
   appointmentId,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_DocumentsBlock_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const scopeKey = appointmentId
@@ -155,7 +152,7 @@ export function DocumentsBlock({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   skeletonRows: {
     marginTop: spacing[3],
@@ -187,12 +184,12 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   docLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   docFile: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

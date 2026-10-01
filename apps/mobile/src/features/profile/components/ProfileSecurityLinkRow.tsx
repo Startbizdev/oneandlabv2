@@ -1,17 +1,14 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Lock } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** Lien visible depuis Mon profil vers mot de passe + biométrie. */
 export function ProfileSecurityLinkRow() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfileSecurityLinkRow_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
 
   return (
@@ -41,7 +38,7 @@ export function ProfileSecurityLinkRow() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     card: {
       borderRadius: radius.xl,
@@ -56,8 +53,8 @@ function buildStyles(_c: AppColors) {
       flexShrink: 0,
     },
     textWrap: { gap: spacing[0.5] },
-    title: { fontFamily: fontFamily.semiBold, fontSize: fontSize.base },
-    sub: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
+    title: { ...font.semiBold, fontSize: fontSize.base },
+    sub: { ...font.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
   };
 }
 

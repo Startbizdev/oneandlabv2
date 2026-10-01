@@ -1,11 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list';
 import { forwardRef, useCallback, type ReactElement } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import type { PatientAiChatMessage } from '../types/patient-ai-conversation';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 const ESTIMATED_ITEM_SIZE = 112;
 
@@ -29,7 +27,7 @@ export const CaryAiChatList = forwardRef<FlashListRef<PatientAiChatMessage>, Car
     ref,
   ) {
     const c = useAppColors();
-    const styles = useThemedStyles(buildStyles);
+    const styles = useStyles(buildStyles);
 
     const renderItem: ListRenderItem<PatientAiChatMessage> = useCallback(
       ({ item }) => renderMessage(item),
@@ -57,7 +55,7 @@ export const CaryAiChatList = forwardRef<FlashListRef<PatientAiChatMessage>, Car
   },
 );
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     list: { minWidth: 0, flex: 1 },
     messageGap: { height: spacing[2.5] },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -8,14 +6,13 @@ import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { api } from '@/api/client';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Review = { rating?: number; comment?: string };
 
 export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_ProPatientReviewSection_tsx_ProPatientReviewSection_styles');
+  const styles = useStyles(buildStyles);
 
   const { data: review, isLoading } = useQuery({
     queryKey: ['reviews', 'appointment', apt.id] as const,
@@ -44,7 +41,7 @@ export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -55,12 +52,12 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   comment: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: 20,

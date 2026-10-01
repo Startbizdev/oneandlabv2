@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Modal, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import { openAppStoreUrl } from '../utils/app-update-policy';
 
@@ -18,7 +15,7 @@ type Props = {
 
 export function ForceAppUpdateModal({ visible, message, storeUrl, force, onDismiss }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_app_update_ForceAppUpdateModal');
+  const styles = useStyles(buildStyles);
   const { appVersion } = getAppMeta();
 
   return (
@@ -47,7 +44,7 @@ export function ForceAppUpdateModal({ visible, message, storeUrl, force, onDismi
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     backdrop: {
       minWidth: 0,
@@ -66,18 +63,18 @@ function buildStyles(_c: AppColors) {
       gap: spacing[3],
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       textAlign: 'center' as const,
     },
     sub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: fontSize.sm * 1.45,
       textAlign: 'center' as const,
     },
     meta: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       textAlign: 'center' as const,
     },

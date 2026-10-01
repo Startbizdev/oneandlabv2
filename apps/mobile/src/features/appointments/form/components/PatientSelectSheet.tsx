@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
@@ -9,8 +7,7 @@ import { Check, Search } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import type { PatientOption } from './FormPatientSection';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 
@@ -23,7 +20,7 @@ interface Props {
 }
 
 function ListSeparator() {
-  const styles = useThemedStyles(buildStyles, 'PatientSelectSheet.ListSeparator');
+  const styles = useStyles(buildStyles);
   return <View style={styles.separator} />;
 }
 
@@ -35,7 +32,7 @@ export function PatientSelectSheet({
   onSelect,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_PatientSelectSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [q, setQ] = useState('');
 
   const filtered = useMemo(() => {
@@ -126,7 +123,7 @@ export function PatientSelectSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   sheetBody: {
     minWidth: 0,
@@ -169,7 +166,7 @@ function buildStyles(c: AppColors) {
     flex: 1,
     flexShrink: 1,
     marginRight: spacing[2],
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -188,7 +185,7 @@ function buildStyles(c: AppColors) {
   empty: {
     paddingHorizontal: H_PAD,
     paddingVertical: spacing[6],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     textAlign: 'center' as const,

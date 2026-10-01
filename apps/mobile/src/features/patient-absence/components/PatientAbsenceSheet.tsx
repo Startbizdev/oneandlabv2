@@ -1,6 +1,4 @@
 import { layoutRowBetween } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,8 +24,7 @@ import {
 } from '../api/patient-absence.service';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type SheetTab = 'declare' | 'history';
 
@@ -62,7 +59,7 @@ export function PatientAbsenceSheet({
   onClose,
   onSaved,
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [tab, setTab] = useState<SheetTab>('declare');
@@ -305,23 +302,23 @@ export function PatientAbsenceSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[4] },
     tabBody: { gap: spacing[3] },
     patientName: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     newAbsenceLink: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primary,
     },
@@ -340,22 +337,22 @@ function buildStyles(c: AppColors) {
     historyType: {
       minWidth: 0,
       flex: 1,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     historyDates: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     historyNote: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
     },
     historyAction: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primary,
       marginTop: spacing[0.5],

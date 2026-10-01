@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { Platform, View } from 'react-native';
 
 import { useAuthStore } from '@/store/auth-store';
 
-import { AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 
 
 
@@ -27,7 +24,7 @@ function formatFirstName(raw?: string | null): string {
 
 export function HeaderGreeting() {
 
-  const styles = useThemedStyles(buildStyles, 'navigation_HeaderGreeting_tsx_HeaderGreeting_styles');
+  const styles = useStyles(buildStyles);
 
   const firstName = useAuthStore((s) => s.user?.first_name);
 
@@ -51,7 +48,7 @@ export function HeaderGreeting() {
 
 
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
 
@@ -69,7 +66,7 @@ function buildStyles(c: AppColors) {
 
       minWidth: 0,
 
-      fontFamily: fontFamily.bold,
+      ...font.bold,
 
       fontSize: Platform.select({ ios: 22, default: fontSize.lg }),
 

@@ -1,13 +1,11 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import { CalendarDays, CalendarRange } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 export type TourCalendarImportScope = 'today' | 'all_upcoming';
 
@@ -50,7 +48,7 @@ export function TourCalendarImportSheet({
   onSelect,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const dateLabel = dayjs(selectedDate).format('dddd D MMMM');
 
   const handleSelect = (scope: TourCalendarImportScope) => {
@@ -93,7 +91,7 @@ export function TourCalendarImportSheet({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[2] },
     option: {
@@ -110,12 +108,12 @@ function buildStyles(_c: AppColors) {
     },
     copy: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     optionTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
     },
     optionSub: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm),
     },

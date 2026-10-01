@@ -1,12 +1,9 @@
 import { layoutRowCenter } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Route } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   stopCount?: number;
@@ -15,7 +12,7 @@ type Props = {
 /** Bandeau CTA « Ma tournée » sur la liste RDV acceptés. */
 export function NurseTourBanner({ stopCount }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const router = useRouter();
 
   return (
@@ -41,7 +38,7 @@ export function NurseTourBanner({ stopCount }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     card: {
       ...layoutRowCenter(spacing[3]),
@@ -59,7 +56,7 @@ function buildStyles(_c: AppColors) {
     },
     body: {
     minWidth: 0, flex: 1, gap: spacing[0.5] },
-    title: { fontFamily: fontFamily.bold, fontSize: fontSize.sm },
-    sub: { fontFamily: fontFamily.regular, fontSize: fontSize.xs },
+    title: { ...font.bold, fontSize: fontSize.sm },
+    sub: { ...font.regular, fontSize: fontSize.xs },
   };
 }

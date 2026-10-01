@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -28,15 +26,14 @@ import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const PATIENT_APPOINTMENTS_FILTERS = {
   limit: APPOINTMENTS_LIST_PAGE_SIZE,
 } as const;
 
 function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
-  const summaryStyles = useThemedStyles(buildSummaryStyles, 'PatientReviewsSummary');
+  const summaryStyles = useStyles(buildSummaryStyles);
   if (reviews.length === 0) return null;
   const withRating = reviews.filter((r) => r.rating != null);
   const avg =
@@ -62,7 +59,7 @@ function PatientReviewsSummary({ reviews }: { reviews: Review[] }) {
   );
 }
 
-function buildSummaryStyles(c: AppColors) {
+function buildSummaryStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     backgroundColor: c.surface,
@@ -73,19 +70,19 @@ function buildSummaryStyles(c: AppColors) {
   },
   left: { gap: 2 },
   count: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['3xl'],
     color: c.primary,
     letterSpacing: -0.5,
   },
   countLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   right: { alignItems: 'flex-end' as const, gap: spacing[1] },
   avgLabel: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
@@ -93,7 +90,7 @@ function buildSummaryStyles(c: AppColors) {
 }
 
 export function PatientReviewsScreen() {
-  const styles = useThemedStyles(buildScreenStyles, 'PatientReviewsScreen');
+  const styles = useStyles(buildScreenStyles);
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
 
@@ -171,7 +168,7 @@ export function PatientReviewsScreen() {
   );
 }
 
-function buildScreenStyles(c: AppColors) {
+function buildScreenStyles({ colors: c, fontSize }: Theme) {
   return {
     list: {
       minWidth: 0,
@@ -185,7 +182,7 @@ function buildScreenStyles(c: AppColors) {
       paddingBottom: spacing[3],
     },
     intro: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.5,

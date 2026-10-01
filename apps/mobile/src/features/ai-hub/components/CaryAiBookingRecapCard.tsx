@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import { buildAiDraftRecapBullets } from '../utils/build-ai-draft-recap-bullets';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import {
@@ -29,7 +27,7 @@ export function CaryAiBookingRecapCard({
   canConfirm = false,
   onConfirm,
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const bullets = useMemo(() => buildAiDraftRecapBullets(draft), [draft]);
   const [preview, setPreview] = useState<{ uri: string; fileName?: string } | null>(null);
 
@@ -103,14 +101,14 @@ export function CaryAiBookingRecapCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     block: {
       minWidth: 0,
       gap: spacing[1.5],
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.3),
       color: c.textPrimary,
@@ -122,7 +120,7 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     bullet: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.35),
       color: c.primary,
@@ -135,13 +133,13 @@ function buildStyles(c: AppColors) {
       gap: spacing[0.5],
     },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize['2xs'],
       lineHeight: lh(fontSize['2xs'], 1.3),
       color: c.textTertiary,
     },
     value: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.35),
       color: c.textPrimary,
@@ -151,7 +149,7 @@ function buildStyles(c: AppColors) {
       textDecorationLine: 'underline' as const,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       lineHeight: lh(fontSize['2xs'], 1.35),
       color: c.textTertiary,

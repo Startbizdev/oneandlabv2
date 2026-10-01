@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import type { AuthUser } from '@oneandlab/shared-types';
@@ -14,7 +12,7 @@ import { StaffPatientKvSection } from './StaffPatientKvSection';
 import { PatientAssigneeRows } from './patient/PatientAssigneeRows';
 import { DetailInfoStack } from './layout/DetailInfoStack';
 import { DetailSection } from './layout/DetailSection';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 function CareInfoStack({
   apt,
@@ -63,7 +61,7 @@ export function RdvUnifiedInfoCard({
   showAssignee = true,
   embedded = false,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_RdvUnifiedInfoCard_tsx_RdvUnifiedInfoCard_styles');
+  const styles = useStyles(buildStyles);
 
   const titleContext = primary.category_name ?? null;
   const categoriesQ = useAppointmentCareCategories();
@@ -102,7 +100,7 @@ export function RdvUnifiedInfoCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrap: { gap: spacing[3] },
 };

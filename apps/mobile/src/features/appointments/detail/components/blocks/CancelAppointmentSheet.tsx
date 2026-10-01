@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,8 +28,7 @@ import {
   carePhotoPickErrorMessage,
   pickCarePhoto,
 } from '@/lib/uploads/pick-care-photo';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -57,7 +54,7 @@ function cancelSheetSubtitle(isPatient: boolean, isBatch: boolean, count: number
 export function CancelAppointmentSheet({
   visible, role, targets, onDone, onClose }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_CancelAppointmentSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
@@ -237,7 +234,7 @@ export function CancelAppointmentSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   summaryCard: {
     borderRadius: radius.lg,
@@ -252,7 +249,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.errorLight,
   },
   warningText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.error,
     lineHeight: fontSize.xs * 1.45,
@@ -277,14 +274,14 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   targetKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.3,
     textTransform: 'uppercase' as const,
   },
   targetName: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -292,7 +289,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   formTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },

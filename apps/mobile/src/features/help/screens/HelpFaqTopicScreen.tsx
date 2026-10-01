@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -10,11 +8,10 @@ import {
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { findHelpFaqTopic } from '@/features/help/help-faq-content';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function HelpFaqTopicScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_help_screens_HelpFaqTopicScreen_tsx_HelpFaqTopicScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const role = useAuthStore((s) => s.user?.role);
@@ -49,7 +46,7 @@ export function HelpFaqTopicScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: {
     paddingHorizontal: spacing[4],
@@ -58,19 +55,19 @@ function buildStyles(c: AppColors) {
     gap: spacing[4],
   },
   question: {
-    fontFamily: fontFamily.semiBold,
+    ...font.headingSemiBold,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     lineHeight: fontSize.lg * 1.35,
   },
   answer: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
     lineHeight: fontSize.base * 1.55,
   },
   missing: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.45,

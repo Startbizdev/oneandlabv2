@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
@@ -7,8 +5,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -28,7 +25,7 @@ export function ProfileImagesBlock({
   onChangeCover,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileImagesBlock_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { picking, pickImage, isPicking } = usePickProfileImage();
 
   const profileSrc = resolveProfileImageUrl(profileImageUrl);
@@ -146,7 +143,7 @@ export function ProfileImagesBlock({
 
 const AVATAR = 112;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -157,7 +154,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[4],
   },
   cardTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -203,7 +200,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.errorMid,
   },
   actionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },
@@ -217,7 +214,7 @@ function buildStyles(c: AppColors) {
     borderTopColor: c.borderLight,
   },
   coverLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Fragment, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -23,8 +21,7 @@ import {
   patientListSubtitle,
   patientPickerOptionFromRow,
 } from '../utils/patient-contact-display';
-import { iconSize, radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { iconSize, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   createOpen: boolean;
@@ -33,7 +30,7 @@ interface Props {
 
 /** Patients du préleveur : créés par lui ou assignés par son laboratoire (scope API `/patients`). */
 export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: setCreateOpen }: Props) {
-  const styles = useThemedStyles(buildStyles, 'PreleveurPatientsListScreen');
+  const styles = useStyles(buildStyles);
   const fabClearance = useScreenFabScrollClearance();
   const router = useRouter();
   const qc = useQueryClient();
@@ -141,7 +138,7 @@ export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: se
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     screen: {
       minWidth: 0,
@@ -165,7 +162,7 @@ function buildStyles(c: AppColors) {
       overflow: 'hidden' as const,
     },
     sectionKicker: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       letterSpacing: 0.6,

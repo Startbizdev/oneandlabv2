@@ -1,8 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { View, StyleSheet, type ViewProps } from 'react-native';
-import { elevation, radius, spacing } from '@/theme';
+import { elevation, radius, spacing, useStyles, type Theme } from '@/theme';
 
 type ElevationLevel = keyof typeof elevation;
 
@@ -22,7 +20,7 @@ function CardComponent({
   style,
   ...props
 }: CardProps) {
-  const styles = useThemedStyles(buildStyles, 'components_ui_Card_tsx_CardComponent_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View
@@ -61,7 +59,7 @@ const paddingStyles = {
   lg: { padding: spacing[5] },
 };
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   base: {
     backgroundColor: c.surface,

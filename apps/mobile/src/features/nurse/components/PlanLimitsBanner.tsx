@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -17,12 +15,11 @@ import {
   type NursePlanLimitsApi,
 } from '@/features/nurse/utils/nurse-plan-limits';
 import { scrollSectionEntering } from '@/lib/platform/list-entering-animation';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PlanLimitsBanner() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_nurse_components_PlanLimitsBanner_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { data } = useQuery({
     queryKey: queryKeys.planLimits.current,
@@ -89,7 +86,7 @@ export function PlanLimitsBanner() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -109,12 +106,12 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   pill: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     letterSpacing: 0.5,
     paddingHorizontal: spacing[2],
@@ -130,12 +127,12 @@ function buildStyles(c: AppColors) {
     color: c.warning,
   },
   countText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   countBig: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize.xl,
     color: c.textLink,
   },

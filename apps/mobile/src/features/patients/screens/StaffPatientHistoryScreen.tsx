@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
@@ -19,7 +17,7 @@ import {
   fetchStaffPatientHistoryAppointments,
 } from '../api/patient-profile.service';
 import { enrichPatientHistoryAppointments } from '../utils/enrich-patient-history-appointments';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import {
   buildTabSceneScrollConfig,
@@ -35,7 +33,7 @@ interface Props {
 
 export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_patients_screens_StaffPatientHistoryScreen_tsx_StaffPatientHistoryScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -153,7 +151,7 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   loading: {
     minWidth: 0,

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { AppText } from '@/theme';
+import { AppText, font } from '@/theme';
 import { Row } from '@/components/layout/primitives';
 import { View, type TextStyle } from 'react-native';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { fontSize, lh } from '@/theme/typography';
 
 export type MessageBlock =
   | { type: 'paragraph'; lines: string[] }
@@ -90,7 +90,7 @@ function renderInlineBold(text: string, style?: TextStyle): ReactNode[] {
       nodes.push(text.slice(last, match.index));
     }
     nodes.push(
-      <AppText key={`b-${index++}`} style={[style, { fontFamily: fontFamily.semiBold }]}>
+      <AppText key={`b-${index++}`} style={[style, { ...font.semiBold }]}>
         {match[1]}
       </AppText>,
     );
@@ -131,7 +131,7 @@ export function CaryMarkdown({
   const blocks = parseMessageBlocks(text ?? '');
 
   const baseStyle: TextStyle = {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     lineHeight: lh(fontSize.base, 1.55),
     ...(inverse ? { color: '#fff' } : null),
@@ -140,7 +140,7 @@ export function CaryMarkdown({
 
   const headingStyle: TextStyle = {
     ...baseStyle,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     lineHeight: lh(fontSize.base, 1.35),
   };
 

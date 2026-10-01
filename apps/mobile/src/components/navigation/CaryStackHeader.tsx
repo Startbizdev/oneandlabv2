@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { getDefaultHeaderHeight, getHeaderTitle } from '@react-navigation/elements';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -14,7 +12,7 @@ import {
 } from '@/components/navigation/header-layout';
 import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
 
-import { fontFamily, fontSize, AppText } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 
 const STATUS_BAR_OFFSET = 0;
 
@@ -23,7 +21,7 @@ const STATUS_BAR_OFFSET = 0;
  */
 export function CaryStackHeader({ options, route, back, navigation }: NativeStackHeaderProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_navigation_CaryStackHeader_tsx_CaryStackHeader_styles');
+  const styles = useStyles(buildStyles);
 
   const insets = useSafeAreaInsets();
   const layout = useWindowDimensions();
@@ -95,7 +93,7 @@ export function CaryStackHeader({ options, route, back, navigation }: NativeStac
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     width: '100%' as const,
@@ -119,7 +117,7 @@ function buildStyles(c: AppColors) {
     alignItems: 'flex-start' as const,
   },
   titleText: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
   },

@@ -1,12 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Modal, StyleSheet, Image, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Download, X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { iconSize, spacing } from '@/theme';
+import { iconSize, spacing, useStyles, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 
@@ -30,7 +28,7 @@ export function FullscreenImageViewer({
   exportBusy = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'FullscreenImageViewer');
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
 
   if (!uri) return null;
@@ -100,7 +98,7 @@ export function FullscreenImageViewer({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     shell: {
       minWidth: 0,

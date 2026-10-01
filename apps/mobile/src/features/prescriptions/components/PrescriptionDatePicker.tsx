@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -7,8 +5,7 @@ import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import dayjs from 'dayjs';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   label?: string;
@@ -30,7 +27,7 @@ export function PrescriptionDatePicker({
   error,
   disabled,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'PrescriptionDatePicker');
+  const styles = useStyles(buildStyles);
   const [iosOpen, setIosOpen] = useState(false);
   const [androidOpen, setAndroidOpen] = useState(false);
   /** État local du spinner iOS — ne pas resynchroniser via useEffect (boucle infinie). */
@@ -113,11 +110,11 @@ export function PrescriptionDatePicker({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[1] },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[0.5],
@@ -133,13 +130,13 @@ function buildStyles(c: AppColors) {
     fieldDisabled: { opacity: 0.6 },
     fieldError: { borderColor: c.error },
     value: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     placeholder: { color: c.textTertiary },
     error: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.error,
       marginTop: spacing[0.5],

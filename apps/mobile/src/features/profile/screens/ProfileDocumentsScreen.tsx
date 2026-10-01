@@ -1,16 +1,13 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 ;
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** Page dédiée documents (route /profile/documents) — patient uniquement */
 export function ProfileDocumentsScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileDocumentsScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <StackChromeScreen>
@@ -33,7 +30,7 @@ export function ProfileDocumentsEmbedded() {
   return <ProfileDocumentsPremiumPanel embedded />;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     content: {
       padding: spacing[4],
@@ -46,7 +43,7 @@ function buildStyles(c: AppColors) {
       padding: spacing[4],
     },
     infoText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.6,

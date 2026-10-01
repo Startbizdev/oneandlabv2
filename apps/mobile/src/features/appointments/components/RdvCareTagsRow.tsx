@@ -1,6 +1,5 @@
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -13,9 +12,8 @@ import {
 } from '@/features/appointments/form/utils/booking-care-catalog';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
-import { buildRdvListCardTypography } from './rdv-list-card-typography';
-import { radius, spacing, AppText } from '@/theme';
-import { fontSize, lh } from '@/theme/typography';
+import { radius, spacing, AppText, font, useStyles, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 interface Props {
   apt: Appointment;
@@ -46,7 +44,7 @@ export function RdvCareTagsRow({
   const c = useAppColors();
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
   const { data: categories = [] } = useAppointmentCareCategories();
-  const styles = useThemedStyles(density === 'compact' ? buildCompactStyles : buildDefaultStyles, 'RdvCareTagsRow');
+  const styles = useStyles(density === 'compact' ? buildCompactStyles : buildDefaultStyles);
   const orbColorMap = useMemo(
     () => buildCareTileOrbColorMap(categories),
     [categories, colorblindType],
@@ -109,11 +107,10 @@ export function RdvCareTagsRow({
   );
 }
 
-function buildDefaultStyles(c: AppColors) { return buildStyles(c, 'default'); }
-function buildCompactStyles(c: AppColors) { return buildStyles(c, 'compact'); }
+function buildDefaultStyles(t: Theme) { return buildStyles(t, 'default'); }
+function buildCompactStyles(t: Theme) { return buildStyles(t, 'compact'); }
 
-function buildStyles(c: AppColors, density: 'default' | 'compact') {
-  const type = buildRdvListCardTypography(c);
+function buildStyles({ colors: c, fontSize }: Theme, density: 'default' | 'compact') {
   const compact = density === 'compact';
   const labelSize = compact ? fontSize.xs : fontSize.sm;
 
@@ -137,7 +134,7 @@ function buildStyles(c: AppColors, density: 'default' | 'compact') {
     label: {
       flexShrink: 1,
       minWidth: 0,
-      fontFamily: type.careTag.fontFamily,
+      ...font.medium,
       fontSize: labelSize,
       lineHeight: lh(labelSize),
       color: c.textSecondary,

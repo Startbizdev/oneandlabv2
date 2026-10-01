@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 
-import { useThemedStyles } from '@/theme/use-themed-styles';
 
 import { useAppColors } from '@/theme/use-app-colors';
 import { layoutRowCenter } from '@/theme/layout-styles';
@@ -145,9 +143,8 @@ import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
 
 import { useToast } from '@/providers/ToastProvider';
 
-import { H_PADDING, spacing, iconSize, AppText } from '@/theme';
+import { H_PADDING, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
-import { fontFamily, fontSize } from '@/theme/typography';
 
 
 
@@ -211,7 +208,7 @@ export function PassageDetailScreen() {
 
   const c = useAppColors();
 
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   const contentTopInset = useStackContentTopInset();
 
@@ -1372,7 +1369,7 @@ export function PassageDetailScreen() {
 
 
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
 
   return {
 
@@ -1419,7 +1416,7 @@ function buildStyles(_c: AppColors) {
 
     sectionLabel: {
 
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
 
       fontSize: fontSize.xs,
 
@@ -1431,7 +1428,7 @@ function buildStyles(_c: AppColors) {
 
     patientName: {
 
-      fontFamily: fontFamily.bold,
+      ...font.heading,
 
       fontSize: fontSize.xl,
 
@@ -1445,7 +1442,7 @@ function buildStyles(_c: AppColors) {
 
     },
 
-    phoneLink: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
+    phoneLink: { ...font.semiBold, fontSize: fontSize.sm },
 
   };
 

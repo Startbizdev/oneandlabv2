@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -7,16 +5,7 @@ import dayjs from 'dayjs';
 import { Route } from 'lucide-react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
-import {
-  radius,
-  spacing,
-  iconSize,
-  AppText,
-  useLayoutMetrics,
-  centeredCopyMaxWidth,
-  centeredActionMaxWidth,
-} from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth, centeredActionMaxWidth, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 
 type Props = {
@@ -33,7 +22,7 @@ function dateLabel(iso: string): string {
 export function TourEmptyPanel({ date }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const copyMaxWidth = centeredCopyMaxWidth(layout);
   const actionMaxWidth = centeredActionMaxWidth(layout);
   const router = useRouter();
@@ -63,7 +52,7 @@ export function TourEmptyPanel({ date }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     wrap: {
       alignItems: 'center' as const,
@@ -82,13 +71,13 @@ function buildStyles(_c: AppColors) {
       marginBottom: spacing[1],
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       textAlign: 'center' as const,
       letterSpacing: -0.4,
     },
     description: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       textAlign: 'center' as const,
       lineHeight: fontSize.sm * 1.55,

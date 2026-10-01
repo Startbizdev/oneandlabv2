@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -15,8 +13,7 @@ import {
   formatPassageTimeLabel,
   resolvePassageRouteListLabels,
 } from '../utils/passage-display';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 
 type Props = {
@@ -43,7 +40,7 @@ export function PassageSimpleListRow({
   onManageAbsence,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
   const absent = isTourStopAbsent(stop);
   const done = !absent && (stop.visit_status === 'done' || stop.status === 'completed');
@@ -204,7 +201,7 @@ export function PassageSimpleListRow({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     cardInner: {
       paddingVertical: spacing[3],
@@ -215,18 +212,18 @@ function buildStyles(_c: AppColors) {
     nameRow: { minWidth: 0, alignSelf: 'stretch' as const },
     nameFlex: { flexShrink: 1, minWidth: 0 },
     name: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       letterSpacing: -0.15,
     },
     meta: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
     },
     metaInline: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
     },
     routeSegment: {

@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { webAppUrl } from '@/config/env';
 
 interface Props {
@@ -21,7 +18,7 @@ interface Props {
 
 export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSubmit, onBack }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_ForgotPasswordPanel_tsx_ForgotPasswordPanel_styles');
+  const styles = useStyles(buildStyles);
 
 
   if (sent) {
@@ -67,16 +64,16 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
-  body: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
-  link: { textAlign: 'center' as const, fontFamily: fontFamily.semiBold, fontSize: fontSize.sm, paddingVertical: spacing[2] },
+  body: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
+  link: { textAlign: 'center' as const, ...font.semiBold, fontSize: fontSize.sm, paddingVertical: spacing[2] },
   backBtn: {
     paddingVertical: spacing[1],
   },
   backText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },

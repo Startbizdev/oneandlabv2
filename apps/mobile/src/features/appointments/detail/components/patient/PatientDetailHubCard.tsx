@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ChevronRight, FileText } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   documentsCount: number;
@@ -16,7 +13,7 @@ interface Props {
 export function PatientDetailHubCard({
   documentsCount, onDocuments }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientDetailHubCard_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <Pressable onPress={onDocuments} style={styles.card}>
       <Cluster
@@ -47,7 +44,7 @@ export function PatientDetailHubCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -67,13 +64,13 @@ function buildStyles(c: AppColors) {
   },
   body: {},
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   subtitle: {
     marginTop: 2,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
@@ -87,7 +84,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   badgeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textInverse,
   },

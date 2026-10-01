@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Keyboard, View } from 'react-native';
@@ -15,8 +13,7 @@ import { updateUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { normalizeSignaturePngBase64 } from '@/features/prescriptions/lib/signature-pad-html';
 
 export type OpenPrescriptionSignatureOptions = {
@@ -47,7 +44,7 @@ export function PrescriptionSignatureSheet({
   onSaved,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PrescriptionSignatureSheet');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const padRef = useRef<PrescriptionSignaturePadHandle>(null);
@@ -191,10 +188,10 @@ export function PrescriptionSignatureSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       marginBottom: spacing[2],

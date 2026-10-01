@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   filled: number;
@@ -12,7 +9,7 @@ interface Props {
 }
 
 export function HealthRecordSectionProgress({ filled, total }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordSectionProgress');
+  const styles = useStyles(buildStyles);
   const safeTotal = Math.max(total, 1);
   const ratio = Math.min(1, Math.max(0, filled / safeTotal));
   const missing = Math.max(0, total - filled);
@@ -51,7 +48,7 @@ export function HealthRecordSectionProgress({ filled, total }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       gap: spacing[1],
@@ -74,7 +71,7 @@ function buildStyles(c: AppColors) {
       minWidth: 6,
     },
     caption: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },

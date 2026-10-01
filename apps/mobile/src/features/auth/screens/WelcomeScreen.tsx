@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -13,15 +11,14 @@ import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSh
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { useAuthStore } from '@/store/auth-store';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
-import { elevation, radius, spacing, useLayoutMetrics, responsiveValue, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, useLayoutMetrics, responsiveValue, AppText, useStyles, font, type Theme } from '@/theme';
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
 export function WelcomeScreen() {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'features_auth_screens_WelcomeScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -146,7 +143,7 @@ export function WelcomeScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -194,14 +191,14 @@ function buildStyles(c: AppColors) {
     maxWidth: '100%' as const,
   },
   audienceKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,
     letterSpacing: 0.2,
   },
   tagline: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     textAlign: 'center' as const,
@@ -209,7 +206,7 @@ function buildStyles(c: AppColors) {
     letterSpacing: -0.4,
   },
   taglineAccent: {
-    fontFamily: fontFamily.extraBold,
+    ...font.extraBold,
     color: c.primary,
   },
   taglineRule: {
@@ -231,7 +228,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[3],
   },
   legal: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,

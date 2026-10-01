@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   CreditCard,
@@ -33,8 +31,7 @@ import { Button } from '@/components/ui/Button';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export const MEDICAL_DOC_ICONS: Record<string, LucideIcon> = {
   carte_vitale: CreditCard,
@@ -116,7 +113,7 @@ export function MedicalDocumentsStackHead({
 }) {
   const c = useAppColors();
   const section = getRdvDetailSectionStyles();
-  const styles = useThemedStyles(buildHeadStyles);
+  const styles = useStyles(buildHeadStyles);
 
   if (loading) {
     return (
@@ -151,7 +148,7 @@ export function MedicalDocumentsStackHead({
 }
 
 export function useMedicalDocumentsStackHeadStyles() {
-  return useThemedStyles(buildHeadStyles);
+  return useStyles(buildHeadStyles);
 }
 
 // --- ligne : [ icône | texte pressable | actions ] (doc RN flexbox + DetailActionList) ---
@@ -182,7 +179,7 @@ function DocumentStackRow({
   actions: ReactNode;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildRowStyles);
+  const styles = useStyles(buildRowStyles);
 
   const iconBg =
     tone === 'ready' ? c.successLight : tone === 'muted' ? c.surfaceAlt : c.primaryLight;
@@ -243,7 +240,7 @@ export function MedicalDocumentOpenRow({
   onReplace: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildRowStyles);
+  const styles = useStyles(buildRowStyles);
   const Icon = MEDICAL_DOC_ICONS[doc.document_type] ?? FileText;
   const label = formatDocumentRowTitle(doc.document_type);
   const hint = buildDocumentRowHint(doc);
@@ -434,7 +431,7 @@ export function MedicalDocumentAddRow({
   onAdd: (type: string) => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildRowStyles);
+  const styles = useStyles(buildRowStyles);
   const Icon = MEDICAL_DOC_ICONS[docType] ?? FileText;
   const label = getDocumentTypeLabel(docType);
   const pick = () => onAdd(docType);
@@ -468,7 +465,7 @@ export function MedicalDocumentAddRow({
 
 // --- styles ---
 
-function buildHeadStyles(c: AppColors) {
+function buildHeadStyles({ colors: c, fontSize }: Theme) {
   return {
     head: {
       paddingHorizontal: spacing[4],
@@ -484,12 +481,12 @@ function buildHeadStyles(c: AppColors) {
     },
     headText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       letterSpacing: -0.2,
     },
     sub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: fontSize.sm * 1.4,
     },
@@ -504,7 +501,7 @@ function buildHeadStyles(c: AppColors) {
       borderTopColor: c.border,
     },
     emptyText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: fontSize.sm * 1.45,
       textAlign: 'center' as const,
@@ -512,7 +509,7 @@ function buildHeadStyles(c: AppColors) {
   };
 }
 
-function buildRowStyles(c: AppColors) {
+function buildRowStyles({ colors: c, fontSize }: Theme) {
   return {
     rowAdd: { backgroundColor: c.surfaceSubtle },
     rowReady: { backgroundColor: c.successSurface },
@@ -528,13 +525,13 @@ function buildRowStyles(c: AppColors) {
     },
     shrinkText: { minWidth: 0, flexShrink: 1 },
     label: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       lineHeight: fontSize.base * 1.3,
     },
     hint: {
       marginTop: spacing[0.5],
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: fontSize.xs * 1.35,
     },

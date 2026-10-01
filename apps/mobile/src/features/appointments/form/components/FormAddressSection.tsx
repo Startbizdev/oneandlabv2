@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import type { AddressPayload } from '../types';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   addressLabel: string;
@@ -30,7 +27,7 @@ export function FormAddressSection({
   onChangeComplement,
   existingAddress,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_FormAddressSection_tsx_FormAddressSection_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.container}>
@@ -60,18 +57,18 @@ export function FormAddressSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
     gap: spacing[2],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   existingAddress: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -80,7 +77,7 @@ function buildStyles(c: AppColors) {
     flex: 1,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

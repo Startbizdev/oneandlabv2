@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -15,8 +13,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const YEARS_OPTIONS = [
   { value: '1', label: '1 an' },
@@ -27,7 +24,7 @@ const YEARS_OPTIONS = [
 ];
 
 export function ProfileNursePresentationScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_nurse_ProfileNursePresentationScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -143,10 +140,10 @@ export function ProfileNursePresentationScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   sectionKicker: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
@@ -156,12 +153,12 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[2],
   },
   fieldLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   chip: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     paddingHorizontal: spacing[3],
@@ -175,7 +172,7 @@ function buildStyles(c: AppColors) {
     color: c.primary,
     borderColor: c.primary,
     backgroundColor: c.primaryLight,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
   },
   card: {
     backgroundColor: c.surface,

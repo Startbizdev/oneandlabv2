@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface FilterChip {
   key: string;
@@ -76,7 +73,7 @@ export function AppointmentsListFilterBar({
   compactTop = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const showAdvanced = Boolean(onOpenFilters);
   const hasChips = chips.length > 0;
 
@@ -163,7 +160,7 @@ export function AppointmentsListFilterBar({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     marginHorizontal: spacing[4],
@@ -202,7 +199,7 @@ function buildStyles(c: AppColors) {
   searchInput: {
     flex: 1,
     minWidth: 0,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textPrimary,
     paddingVertical: 0,
@@ -234,7 +231,7 @@ function buildStyles(c: AppColors) {
     paddingHorizontal: 4,
   },
   filterBadgeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textInverse,
   },
@@ -253,7 +250,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   chipLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
@@ -17,10 +15,10 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
 import { EMPTY_DEMANDE_IMAGE, EMPTY_DEMANDE_IMAGE_HEIGHT, EMPTY_DEMANDE_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 export function NurseDemandesScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_nurse_screens_NurseDemandesScreen_tsx_NurseDemandesScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
@@ -113,7 +111,7 @@ export function NurseDemandesScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {

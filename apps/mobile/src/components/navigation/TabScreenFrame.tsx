@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { useCallback, useState } from 'react';
 import { ScenePullRefreshContext } from '@/components/ui/scene-pull-refresh-context';
@@ -12,6 +10,7 @@ import type { LiquidGlassHeaderVisual } from '@/components/navigation/nav-chrome
 import { LiquidGlassTabHeader } from '@/components/navigation/LiquidGlassTabHeader';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
+import { useStyles, type Theme } from '@/theme';
 
 type Props = {
   title?: ReactNode;
@@ -39,7 +38,7 @@ export function TabScreenFrame({
   floatingAction,
   debugLabel,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'TabScreenFrame');
+  const styles = useStyles(buildStyles);
   const visual: LiquidGlassHeaderVisual =
     headerVisual ?? (headerLeft ? 'large' : 'inline');
   const [sceneRefreshing, setSceneRefreshing] = useState(false);
@@ -85,7 +84,7 @@ export function TabScreenFrame({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     root: {
       flex: 1,

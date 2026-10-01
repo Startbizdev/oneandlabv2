@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { queryClient } from '@/lib/query-client';
 import { persistQueryOptions } from '@/lib/query-persist';
 import { ToastProvider } from './ToastProvider';
-import { AppThemeProvider } from './AppThemeProvider';
+import { ThemeProvider } from '@/theme/ThemeProvider';
 import { ExpoRouterThemeProvider } from './ExpoRouterThemeProvider';
 import { SheetKeyboardAccessory } from '@/components/ui/sheet-keyboard-accessory';
 
@@ -15,7 +15,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <GestureHandlerRootView style={{ minWidth: 0, flex: 1 }}>
       <SafeAreaProvider>
         <PersistQueryClientProvider client={queryClient} persistOptions={persistQueryOptions}>
-          <AppThemeProvider>
+          <ThemeProvider>
             <ExpoRouterThemeProvider>
               <ToastProvider>
                 {/* Hôte unique pour tous les bottom sheets (gorhom) : un seul portail,
@@ -26,7 +26,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 </BottomSheetModalProvider>
               </ToastProvider>
             </ExpoRouterThemeProvider>
-          </AppThemeProvider>
+          </ThemeProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

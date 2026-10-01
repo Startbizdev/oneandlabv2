@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
@@ -8,6 +6,7 @@ import { useRef } from 'react';
 import { Platform, RefreshControl, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { useStyles } from '@/theme';
 
 type ScrollPaddingOptions = {
   extraTop?: number;
@@ -37,7 +36,7 @@ export function StackKeyboardScrollView({
   showsVerticalScrollIndicator = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'StackKeyboardScrollView');
+  const styles = useStyles(buildStyles);
   const innerRef = useRef<ScrollView>(null);
   const resolvedRef = scrollRef ?? innerRef;
   const scrollConfig = useStackScrollConfig(contentContainerStyle, scrollPaddingOptions);
@@ -70,7 +69,7 @@ export function StackKeyboardScrollView({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     scroll: {
       minWidth: 0,

@@ -1,7 +1,5 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo } from 'react';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import {
@@ -39,8 +37,7 @@ import {
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   primary: Appointment;
@@ -49,7 +46,7 @@ interface Props {
 
 function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
   const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  const tagStyles = useThemedStyles(buildCareTagStyles);
+  const tagStyles = useStyles(buildCareTagStyles);
   const { data: categories = [] } = useAppointmentCareCategories();
   const lines = useMemo(() => offerCareTagLines(batch), [batch]);
   const orbColorMap = useMemo(
@@ -91,7 +88,7 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
 
 function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointment[] }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildCardStyles);
+  const styles = useStyles(buildCardStyles);
   const { data: categories = [] } = useAppointmentCareCategories();
   const notes = offerAppointmentNotes(primary);
   const extraOptions = useMemo(
@@ -153,7 +150,7 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
 }
 
 export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
-  const styles = useThemedStyles(buildPreviewStyles);
+  const styles = useStyles(buildPreviewStyles);
   const lab = offerLabPartnerFromAppointment(primary);
 
   return (
@@ -164,7 +161,7 @@ export function OfferAppointmentPreviewBody({ primary, batch }: Props) {
   );
 }
 
-function buildCareTagStyles(c: AppColors) {
+function buildCareTagStyles({ colors: c }: Theme) {
   const type = buildRdvListCardTypography(c);
   return {
     careTagsBlock: {
@@ -191,7 +188,7 @@ function buildCareTagStyles(c: AppColors) {
   };
 }
 
-function buildCardStyles(c: AppColors) {
+function buildCardStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       borderRadius: radius.xl,
@@ -212,14 +209,14 @@ function buildCardStyles(c: AppColors) {
       minWidth: 0,
     },
     notesLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       letterSpacing: 0.4,
       textTransform: 'uppercase' as const,
     },
     notesText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.45,
@@ -227,7 +224,7 @@ function buildCardStyles(c: AppColors) {
   };
 }
 
-function buildPreviewStyles(c: AppColors) {
+function buildPreviewStyles({ colors: c }: Theme) {
   return {
     wrap: { gap: spacing[3] },
   };

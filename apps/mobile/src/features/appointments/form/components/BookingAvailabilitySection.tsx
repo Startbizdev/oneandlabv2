@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useEffect, useMemo } from 'react';
@@ -17,8 +15,8 @@ import {
 } from '../utils/booking-availability-utils';
 import type { AvailabilityType, UrgentTimingMode } from '../utils/availability';
 import { VipScheduledTimePicker } from './VipScheduledTimePicker';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 interface Props {
   scheduledAt: string;
@@ -60,7 +58,7 @@ export function BookingAvailabilitySection({
   onUrgentTimingMode,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingAvailabilitySection_tsx_styles');
+  const styles = useStyles(buildStyles);
   const maxHour = availabilityMaxHour(serviceType);
   const minHour = useMemo(
     () => availabilitySliderMinHour(scheduledAt, maxHour),
@@ -182,11 +180,11 @@ export function BookingAvailabilitySection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -216,7 +214,7 @@ function buildStyles(c: AppColors) {
     width: '100%' as const,
   },
   segmentLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     lineHeight: lh(fontSize.xs, 1.3),
     textAlign: 'center' as const,
@@ -247,18 +245,18 @@ function buildStyles(c: AppColors) {
   vipTextWrap: {
     minWidth: 0, flex: 1, gap: spacing[1] },
   vipTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   vipDesc: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: lh(fontSize.xs, 1.4),
     color: c.textSecondary,
   },
   vipWhenLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
@@ -278,13 +276,13 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surface,
   },
   vipModeTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
     textAlign: 'center' as const,
   },
   vipModeSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize['2xs'],
     color: c.textTertiary,
     textAlign: 'center' as const,

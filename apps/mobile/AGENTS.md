@@ -2,54 +2,42 @@
 
 Documentation complète : [`src/theme/STYLES.md`](src/theme/STYLES.md)
 
+Thème clair uniquement. Titres en Raleway, texte en police système.
+
 ## Pattern composant
 
 ```tsx
-function buildStyles(c: AppColors) {
-  return {
-    surface: {
-      backgroundColor: c.surface,
-    },
-  };
-}
+import { AppText, font, useStyles, type Theme } from '@/theme';
 
 export function MyScreen() {
-  const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'MyScreen');
-  return <Icon color={c.primary} />;
+  const styles = useStyles(buildStyles);
+  return <AppText style={styles.title}>Titre</AppText>;
+}
+
+function buildStyles({ colors: c, fontSize }: Theme) {
+  return {
+    title: { ...font.heading, fontSize: fontSize.lg, color: c.textPrimary },
+  } as const;
 }
 ```
 
-## Primitives layout (obligatoires)
+## Primitives (réutiliser avant d'en créer)
 
 | Composant | Usage |
 |-----------|--------|
-| `Row` | Ligne horizontale sûre (`minWidth: 0` intégré) |
-| `Cluster` | `[leading \| contenu flex \| actions]` |
-| `Stack` | Empilement vertical avec `gap` tokenisé |
-| `Box` | Conteneur générique |
-| `Spacer` | Espace flexible ou fixe |
-
-Import : `@/components/layout/primitives`
-
-## Primitives composant (réutiliser)
-
-| Composant | Usage |
-|-----------|--------|
-| `StackCard` | Carte 2 sections (corps + footer actions séparés) |
+| `Row` / `Cluster` / `Stack` | Layout (`@/components/layout/primitives`) |
 | `ListRowShell` | `[leading \| body flex:1 \| trailing/actions]` |
-| `Button` | Seul bouton texte autorisé |
-| `IconActionButton` | Bouton icône tokenisé |
+| `Button` | Bouton texte |
+| `IconActionButton` | Bouton icône |
 | `FullWidthSegmentBar` | Segmented control pleine largeur |
 
 ## Règles
 
-- Factory plain object — jamais `StyleSheet.create` dans `build*Styles`
-- `useThemedStyles` dans les composants React (plus de `new Proxy`)
-- `useAppColors()` pour icônes / couleurs inline — **pas** `import { colors }`
-- Corps riche + actions : **deux rangées** (`StackCard`) ou `Cluster`, pas une row brute
-- Deux factories nommées si variantes (compact / footer) — pas de `(c) => build(c, flag)`
-- Pas de `flexDirection: 'row'` à la main — utiliser `Row` / `Cluster` / `ListRowShell`
+- Factory hors composant, objets simples (`useStyles` fait le `StyleSheet.create`).
+- Typographie via `font.*` et `fontSize.*` du thème, ou `AppText variant`.
+- Aucune couleur en dur hors `src/theme/` (`oneandlab/no-raw-colors`) : `c.*`, `palette.*`, `hexToRgba`.
+- Pas de `import { colors }` dans un composant React.
+- `flexDirection: 'row'` autorisé ; colonne de texte en row avec `flex: 1` + `minWidth: 0`.
 
 ## Vérification
 

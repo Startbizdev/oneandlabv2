@@ -1,10 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus, type LucideIcon } from 'lucide-react-native';
 import { SCREEN_FAB_DIAMETER } from '@/components/navigation/nav-chrome-tokens';
-import { elevation, spacing, iconSize } from '@/theme';
+import { elevation, spacing, iconSize, useStyles } from '@/theme';
 
 interface ScreenFabProps {
   onPress: () => void;
@@ -28,7 +26,7 @@ export function useScreenFabScrollClearance(gap = spacing[6]): number {
  */
 export function ScreenFab({ onPress, accessibilityLabel, Icon = Plus }: ScreenFabProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ScreenFab');
+  const styles = useStyles(buildStyles);
   const bottom = useScreenFabBottom();
   const size = SCREEN_FAB_DIAMETER;
 
@@ -56,7 +54,7 @@ export function ScreenFab({ onPress, accessibilityLabel, Icon = Plus }: ScreenFa
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     overlay: {
       ...StyleSheet.absoluteFillObject,

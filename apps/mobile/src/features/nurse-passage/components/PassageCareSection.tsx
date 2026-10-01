@@ -1,8 +1,6 @@
 import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -27,8 +25,7 @@ import {
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { queryKeys } from '@/lib/query-keys';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   items: NursePassageNursingItem[];
@@ -59,7 +56,7 @@ function toNursingItem(
 
 export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiPhaseChange }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingMore, setAddingMore] = useState(false);
@@ -300,10 +297,10 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     sectionLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       textTransform: 'uppercase' as const,
       letterSpacing: 0.5,
@@ -318,10 +315,10 @@ function buildStyles(_c: AppColors) {
     },
     careTextCol: {
     minWidth: 0, flex: 1, gap: spacing[0.5] },
-    careName: { fontFamily: fontFamily.medium, fontSize: fontSize.md },
+    careName: { ...font.medium, fontSize: fontSize.md },
     addBtn: { marginTop: spacing[1] },
     backLink: { marginBottom: spacing[2], alignSelf: 'flex-start' as const },
-    backLinkText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.sm },
+    backLinkText: { ...font.semiBold, fontSize: fontSize.sm },
     pickerList: { paddingBottom: spacing[4], gap: spacing[2] },
     pickerRow: {
       ...layoutRowCenter(spacing[3]),
@@ -331,6 +328,6 @@ function buildStyles(_c: AppColors) {
     },
     pickerEmoji: { fontSize: fontSize['2xl'] },
     pickerLabel: {
-    minWidth: 0, flex: 1, fontFamily: fontFamily.medium, fontSize: fontSize.md },
+    minWidth: 0, flex: 1, ...font.medium, fontSize: fontSize.md },
   };
 }

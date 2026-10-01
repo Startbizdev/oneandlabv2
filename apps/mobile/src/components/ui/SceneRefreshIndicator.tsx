@@ -1,8 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ActivityIndicator, View } from 'react-native';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { useAppColors } from '@/theme/use-app-colors';
+import { useStyles, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -14,7 +13,7 @@ type Props = {
  */
 export function SceneRefreshIndicator({ visible }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'SceneRefreshIndicator');
+  const styles = useStyles(buildStyles);
   const { insetTop } = useTabSceneInsets();
 
   if (!visible || insetTop <= 0) return null;
@@ -28,7 +27,7 @@ export function SceneRefreshIndicator({ visible }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     host: {
       position: 'absolute' as const,

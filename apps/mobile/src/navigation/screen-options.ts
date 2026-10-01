@@ -13,8 +13,8 @@ import {
   appTabSceneStyle,
   headerSlotBottomStyle,
 } from '@/components/navigation/header-layout';
-import { colors } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { colors, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 function renderHeaderBackground(
   props?: { style?: StyleProp<ViewStyle> } | null,
@@ -34,7 +34,7 @@ function sharedHeaderVisualOptions(innerBottom = APP_HEADER_INNER_BOTTOM) {
     headerStyle: { backgroundColor: 'transparent' as const },
     headerTintColor: colors.primary,
     headerTitleStyle: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: colors.textPrimary,
     },
@@ -114,7 +114,7 @@ export function stackHeaderOptions(
     headerShadowVisible: false,
     headerTintColor: colors.primary,
     headerTitleStyle: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: colors.textPrimary,
     },

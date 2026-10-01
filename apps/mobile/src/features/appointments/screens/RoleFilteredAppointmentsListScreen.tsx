@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -30,7 +28,7 @@ import {
   type ProStatusFilter,
 } from '@/constants/appointments-list-filters';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import type { Href } from 'expo-router';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
@@ -92,7 +90,7 @@ export function RoleFilteredAppointmentsListScreen({
   bookHref,
   bookLabel,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_RoleFilteredAppointmentsListScreen_tsx_RoleFilteredAppointmentsListScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
@@ -242,7 +240,7 @@ export function RoleFilteredAppointmentsListScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   listContent: {

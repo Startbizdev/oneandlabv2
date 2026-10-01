@@ -1,13 +1,11 @@
-import type { AppColors } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { Camera, FileUp, ImageIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 interface Props {
   label?: string;
@@ -28,7 +26,7 @@ export function CaryAiVoiceDocumentUpload({
   onPick,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={[styles.block, { backgroundColor: c.surfaceAlt, borderColor: hexToRgba(c.primary, 0.2) }]}>
@@ -61,7 +59,7 @@ export function CaryAiVoiceDocumentUpload({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     block: {
       borderRadius: radius.xl,
@@ -70,12 +68,12 @@ function buildStyles(_c: AppColors) {
       gap: spacing[1.5],
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.3),
     },
     sub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs, 1.4),
     },
@@ -93,7 +91,7 @@ function buildStyles(_c: AppColors) {
       minHeight: 72,
     },
     btnLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize['2xs'],
     },
   };

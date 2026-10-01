@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, View } from 'react-native';
 import { SheetModal } from '@/components/ui/SheetModal';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface DayAppointmentsSheetProps<T> {
   visible: boolean;
@@ -27,7 +24,7 @@ export function DayAppointmentsSheet<T>({
   onClose,
   empty,
 }: DayAppointmentsSheetProps<T>) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   return (
     <SheetModal
       visible={visible}
@@ -57,7 +54,7 @@ export function DayAppointmentsSheet<T>({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     emptyWrap: {
       paddingVertical: spacing[8],
@@ -73,7 +70,7 @@ function buildStyles(c: AppColors) {
       alignItems: 'center' as const,
     },
     closeBtnText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textSecondary,
     },

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, type AppStateStatus, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText } from '@/theme';
+import { AppText, font, useStyles, type Theme } from '@/theme';
 
 type NetworkContextValue = { isOnline: boolean };
 
@@ -24,6 +24,7 @@ async function probeConnectivity(signal: AbortSignal): Promise<boolean> {
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const insets = useSafeAreaInsets();
+  const styles = useStyles(buildStyles);
   const failureCountRef = useRef(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const checkInFlightRef = useRef(false);
@@ -89,11 +90,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     <NetworkContext.Provider value={{ isOnline }}>
       {children}
       {!isOnline ? (
-        <View
-          className="absolute left-0 right-0 bg-amber-600 px-4 py-2 z-50"
-          style={{ top: insets.top }}
-        >
-          <AppText className="text-white text-center text-xs font-semibold">
+        <View style={[styles.banner, { top: insets.top }]}>
+          <AppText style={styles.bannerText}>
             Hors ligne — les données peuvent être obsolètes
           </AppText>
         </View>
@@ -104,4 +102,24 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
 export function useNetworkStatus() {
   return useContext(NetworkContext);
+}
+
+function buildStyles({ colors: c, fontSize, space }: Theme) {
+  return {
+    banner: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      zIndex: 50,
+      paddingHorizontal: space.lg,
+      paddingVertical: space.sm,
+      backgroundColor: c.warning,
+    },
+    bannerText: {
+      ...font.semiBold,
+      fontSize: fontSize.xs,
+      color: c.textInverse,
+      textAlign: 'center',
+    },
+  } as const;
 }

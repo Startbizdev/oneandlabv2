@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -9,8 +7,7 @@ import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
 import type { AppointmentHistoryEntry } from '../api/appointment-detail.service';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -25,7 +22,7 @@ const actionLabels: Record<string, string> = {
 };
 
 export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[] }) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_HistoryTimeline_tsx_styles');
+  const styles = useStyles(buildStyles);
   if (!entries.length) return null;
 
   return (
@@ -68,7 +65,7 @@ export function HistoryTimeline({ entries }: { entries: AppointmentHistoryEntry[
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   timeline: {
     gap: 0,
@@ -108,12 +105,12 @@ function buildStyles(c: AppColors) {
     paddingBottom: spacing[4],
   },
   actionLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   metaText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,8 +19,7 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRowCenter } from '@/theme/layout-styles';
 import { useToast } from '@/providers/ToastProvider';
 import { TourLocateAction } from '@/features/tournee-nurse/components/TourLocateAction';
@@ -55,7 +52,7 @@ const StopCard = React.memo(function StopCard({
   onMoveDown,
 }: StopCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'TourneeScreen.StopCard');
+  const styles = useStyles(buildStyles);
   const timeLabel = formatAvailabilityDisplayFr(stop.availability, stop.scheduled_at);
 
   return (
@@ -122,7 +119,7 @@ const StopCard = React.memo(function StopCard({
 
 export function TourneeScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_tournee_screens_TourneeScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
   const [dayOffset, setDayOffset] = useState(0);
@@ -294,12 +291,12 @@ export function TourneeScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     centered: { alignItems: 'center' as const, justifyContent: 'center' as const, gap: spacing[3] },
     loadingText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
     },
@@ -323,21 +320,21 @@ function buildStyles(c: AppColors) {
     navBtnDisabled: { backgroundColor: c.surfaceAlt },
     dateCenter: { minWidth: 0, alignItems: 'center' as const, gap: 2, flex: 1 },
     todayBadge: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       color: c.primary,
       letterSpacing: 0.8,
       textTransform: 'uppercase' as const,
     },
     dateLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       textTransform: 'capitalize' as const,
       textAlign: 'center' as const,
     },
     stopCount: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
@@ -352,7 +349,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.borderLight,
     },
     toolBtnText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
@@ -381,18 +378,18 @@ function buildStyles(c: AppColors) {
       flexShrink: 0,
     },
     stopIndexText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.base,
       color: c.primary,
     },
     stopInfo: { gap: spacing[1], flex: 1, minWidth: 0 },
     stopName: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     stopTime: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
     },
@@ -404,7 +401,7 @@ function buildStyles(c: AppColors) {
     },
     stopAddress: {
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       flex: 1,

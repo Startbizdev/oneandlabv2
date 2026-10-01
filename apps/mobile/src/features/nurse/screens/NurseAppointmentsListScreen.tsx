@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -58,7 +56,7 @@ import {
   EMPTY_RDV_IMAGE_WIDTH,
 } from '@/constants/empty-state-images';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -82,7 +80,7 @@ function rowKey(row: AppointmentListRow): string {
 /** Liste RDV infirmier — ScrollView natif (pattern PatientsListScreen). */
 export function NurseAppointmentsListScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'NurseAppointmentsListScreen');
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent);
   const scrollRef = useRef<ScrollView>(null);
@@ -317,7 +315,7 @@ export function NurseAppointmentsListScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     screen: {
       minWidth: 0,

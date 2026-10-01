@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Row } from '@/components/layout/primitives';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,8 +5,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const NURSE_STATUSES = ['pending', 'confirmed', 'in_progress', 'completed', 'canceled'] as const;
 
@@ -27,7 +24,7 @@ interface Props {
 }
 
 export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AppointmentStatusSelect_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -67,11 +64,11 @@ export function AppointmentStatusSelect({ appointmentId, currentStatus, role }: 
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrapper: { gap: spacing[2] },
   overline: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
@@ -90,7 +87,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primary,
   },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },

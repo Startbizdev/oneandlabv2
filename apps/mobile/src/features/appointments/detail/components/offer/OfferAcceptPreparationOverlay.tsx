@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useRef, useState } from 'react';
 import { Image, Modal, StyleSheet, View } from 'react-native';
@@ -14,8 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { radius, spacing, AppText, useLayoutMetrics, responsiveValue } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useLayoutMetrics, responsiveValue, useStyles, font, type Theme } from '@/theme';
 
 const LOGO = require('../../../../../../assets/logo-cary.png');
 
@@ -36,7 +33,7 @@ interface Props {
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_offer_OfferAcceptPreparationOverlay_tsx_styles');
+  const styles = useStyles(buildStyles);
   const taglineMaxWidth = responsiveValue(layout, { compact: 280, default: 300, wide: 360 });
   const progressMaxWidth = responsiveValue(layout, { compact: 280, default: 320, wide: layout.contentMaxWidth });
   const progress = useSharedValue(0);
@@ -157,7 +154,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -202,20 +199,20 @@ function buildStyles(c: AppColors) {
     height: 44,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize['2xl'],
     color: c.textPrimary,
     textAlign: 'center' as const,
     letterSpacing: -0.4,
   },
   subtitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.primaryDark,
     textAlign: 'center' as const,
   },
   tagline: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,

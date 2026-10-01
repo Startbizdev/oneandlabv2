@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
@@ -8,6 +6,7 @@ import {
   appTabSceneFlatContentStyle,
 } from '@/components/navigation/header-layout';
 import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
+import { useStyles } from '@/theme';
 
 interface Props {
   children: ReactNode;
@@ -19,7 +18,7 @@ interface Props {
 
 /** Conteneur onglet bord à bord — la tab bar native flotte par-dessus. */
 export function ContentSheetShell({ children, style, edgeToEdge = false, debugLabel }: Props) {
-  const styles = useThemedStyles(buildStyles, 'ContentSheetShell');
+  const styles = useStyles(buildStyles);
 
   if (edgeToEdge) {
     return (
@@ -40,7 +39,7 @@ export function ContentSheetShell({ children, style, edgeToEdge = false, debugLa
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     flatBody: appTabSceneFlatContentStyle(),
     shadow: appContentSheetShadowStyle(),

@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { CheckCheck } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
 
 interface Props {
@@ -17,7 +14,7 @@ interface Props {
 export function NotificationsReadAllAction({
   onPress, loading }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_notifications_components_NotificationsReadAllAction_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.wrap}>
       <Pressable
@@ -41,7 +38,7 @@ export function NotificationsReadAllAction({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: {
     paddingRight: HEADER_ACTION_MARGIN_RIGHT,
@@ -60,7 +57,7 @@ function buildStyles(c: AppColors) {
     opacity: 0.88,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
   },

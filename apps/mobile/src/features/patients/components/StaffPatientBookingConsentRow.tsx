@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   checked: boolean;
@@ -13,10 +10,7 @@ type Props = {
 };
 
 export function StaffPatientBookingConsentRow({ checked, onToggle, error }: Props) {
-  const styles = useThemedStyles(
-    buildStyles,
-    'features_patients_components_StaffPatientBookingConsentRow_tsx_styles',
-  );
+  const styles = useStyles(buildStyles);
 
   return (
     <Pressable
@@ -33,7 +27,7 @@ export function StaffPatientBookingConsentRow({ checked, onToggle, error }: Prop
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     consentRow: {
       borderWidth: 1,
@@ -62,14 +56,14 @@ function buildStyles(c: AppColors) {
     checkmark: {
       color: c.textInverse,
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       lineHeight: 16,
     },
     consentText: {
       minWidth: 0,
       flex: 1,
       fontSize: fontSize.sm,
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       color: c.textPrimary,
       lineHeight: 20,
     },

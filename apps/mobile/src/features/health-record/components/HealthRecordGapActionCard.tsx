@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import type { HealthRecordGap } from '../api/health-record.service';
 import { recordGapAction } from '../api/health-record.service';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   gap: HealthRecordGap;
@@ -30,7 +27,7 @@ function gapHref(action: string | null | undefined): string | null {
 }
 
 export function HealthRecordGapActionCard({ gap }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordGapActionCard');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const cta = gap.cta_fr ?? 'En savoir plus';
 
@@ -57,7 +54,7 @@ export function HealthRecordGapActionCard({ gap }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.warningLight ?? c.primaryLight,
@@ -69,7 +66,7 @@ function buildStyles(c: AppColors) {
       gap: spacing[3],
     },
     label: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: 20,

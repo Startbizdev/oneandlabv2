@@ -1,16 +1,14 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
 import { brand, palette } from '@/theme/colors';
 import { hexToRgba } from '@/theme/color-utils';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Platform, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapPin, Route } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
 import { getAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
-import { elevation, radius, spacing, iconSize, progressRingSize, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 import type { NurseTourPayload } from '../api/nurse-tour.service';
 import { countTourActiveRemainingStops } from '@oneandlab/shared-utils';
 
@@ -22,7 +20,7 @@ type Props = {
 };
 
 export function TourSummaryCard({ summary, activeRemaining }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const cardStyles = getAppointmentListCardStyles();
   const total = summary.total_stops;
   const done = summary.done_stops;
@@ -98,7 +96,7 @@ export function TourSummaryCard({ summary, activeRemaining }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   const cardRadius = Platform.select({ ios: radius['2xl'], default: radius.xl });
   return {
     shell: { marginBottom: spacing[2] },
@@ -131,21 +129,21 @@ function buildStyles(_c: AppColors) {
     },
     copy: { flex: 1, minWidth: 0 },
     kicker: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize['2xs'],
       textTransform: 'uppercase' as const,
       letterSpacing: 0.6,
       color: hexToRgba('#FFFFFF', 0.82),
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       lineHeight: lh(fontSize.lg),
       letterSpacing: -0.35,
       color: '#FFFFFF',
     },
     sub: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       color: hexToRgba('#FFFFFF', 0.88),
@@ -160,7 +158,7 @@ function buildStyles(_c: AppColors) {
     metricItem: {
     minWidth: 0, flexShrink: 1 },
     metric: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: hexToRgba('#FFFFFF', 0.92),
     },

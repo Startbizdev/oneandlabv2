@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback } from 'react';
@@ -30,9 +28,8 @@ import { relationshipLabel } from '@/features/patient-relatives/constants/relati
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { fontFamily, fontSize } from '@/theme/typography';
 
 function displayName(r: PatientRelative) {
   return `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.id;
@@ -52,7 +49,7 @@ const RelativeCard = React.memo(function RelativeCard({
   onLongPress,
 }: RelativeCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientRelativesScreen.RelativeCard');
+  const styles = useStyles(buildStyles);
   const rel = relationshipLabel(relativeRelationshipType(item)) || item.relationship;
   const entering = scrollChildEntering(index, 50, 300);
   const Shell = entering ? Animated.View : View;
@@ -102,7 +99,7 @@ export function PatientRelativesScreen({
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
 }) {
-  const styles = useThemedStyles(buildStyles, 'features_patient_screens_PatientRelativesScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const fabClearance = useScreenFabScrollClearance();
   const router = useRouter();
   const { show: toast } = useToast();
@@ -198,11 +195,11 @@ export function PatientRelativesScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   subtitle: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     marginBottom: spacing[2],
@@ -236,7 +233,7 @@ function buildStyles(c: AppColors) {
   },
   info: { gap: spacing[1] },
   name: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
@@ -244,17 +241,17 @@ function buildStyles(c: AppColors) {
     alignSelf: 'flex-start' as const,
   },
   relationText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   meta: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   birth: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },

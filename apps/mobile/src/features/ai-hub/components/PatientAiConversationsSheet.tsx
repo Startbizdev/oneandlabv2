@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, SectionList, Share, StyleSheet, TextInput, View, type SectionListRenderItem } from 'react-native';
@@ -18,8 +16,8 @@ import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { exportAiConversations } from '../api/ai.service';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
 import type { PatientAiConversation } from '../types/patient-ai-conversation';
-import { elevation, H_PADDING, radius, spacing, iconSize, useLayoutMetrics, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { elevation, H_PADDING, radius, spacing, iconSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
+import { lh } from '@/theme/typography';
 
 const SHEET_MAX_WIDTH = 380;
 const SHEET_WIDTH_RATIO = 0.9;
@@ -93,7 +91,7 @@ export function PatientAiConversationsSheet({
   onUnarchive,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PatientAiConversationsSheet');
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
   const layout = useLayoutMetrics();
   const sheetWidth = Math.min(SHEET_MAX_WIDTH, Math.round(layout.width * SHEET_WIDTH_RATIO));
@@ -338,7 +336,7 @@ function useStateVisible(visible: boolean) {
   return [mounted, setMounted] as const;
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
       flex: 1,
@@ -379,7 +377,7 @@ function buildStyles(c: AppColors) {
       paddingBottom: spacing[3],
     },
     headerTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.headingSemiBold,
       fontSize: fontSize.lg,
       lineHeight: lh(fontSize.lg),
       color: c.textPrimary,
@@ -415,7 +413,7 @@ function buildStyles(c: AppColors) {
     searchInput: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
       color: c.textPrimary,
@@ -441,7 +439,7 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[1],
     },
     sectionLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       lineHeight: lh(fontSize.xs),
       color: c.textTertiary,
@@ -453,14 +451,14 @@ function buildStyles(c: AppColors) {
       gap: spacing[2],
     },
     emptyTitle: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.base,
       lineHeight: lh(fontSize.base),
       color: c.textPrimary,
       textAlign: 'center' as const,
     },
     emptyBody: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       lineHeight: lh(fontSize.sm, 1.45),
       color: c.textTertiary,

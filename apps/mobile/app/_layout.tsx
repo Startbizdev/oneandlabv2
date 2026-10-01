@@ -1,7 +1,6 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -9,13 +8,10 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
-  Nunito_400Regular,
-  Nunito_500Medium,
-  Nunito_600SemiBold,
-  Nunito_700Bold,
-  Nunito_800ExtraBold,
-  Nunito_900Black,
-} from '@expo-google-fonts/nunito';
+  Raleway_600SemiBold,
+  Raleway_700Bold,
+  Raleway_800ExtraBold,
+} from '@expo-google-fonts/raleway';
 import { AppProviders } from '@/providers/AppProviders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/auth-store';
@@ -52,10 +48,10 @@ function RootLayoutInner() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" backgroundColor={c.surface} />
+      <StatusBar style="dark" backgroundColor={c.background} />
       <Stack
         key={`${colorblindType}:${textScale}`}
-        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.surface } }}
+        screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.background } }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
@@ -78,12 +74,9 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Nunito_400Regular,
-    Nunito_500Medium,
-    Nunito_600SemiBold,
-    Nunito_700Bold,
-    Nunito_800ExtraBold,
-    Nunito_900Black,
+    Raleway_600SemiBold,
+    Raleway_700Bold,
+    Raleway_800ExtraBold,
   });
 
   useEffect(() => {

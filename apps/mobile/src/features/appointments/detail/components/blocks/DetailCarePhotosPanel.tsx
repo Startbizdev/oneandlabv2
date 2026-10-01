@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useState } from 'react';
@@ -30,8 +28,7 @@ import { isCarePhotoPdf } from '../../utils/care-photo-file';
 import { useToast } from '@/providers/ToastProvider';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { loadCarePhotoLocalUri } from '../../utils/care-photo-image';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   apt: Appointment;
@@ -47,7 +44,7 @@ export function DetailCarePhotosPanel({
   viewerRole = 'nurse',
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_blocks_DetailCarePhotosPanel_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const focused = useIsFocused();
   const appActive = useAppActive();
@@ -232,7 +229,7 @@ export function DetailCarePhotosPanel({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[4] },
   introCard: {
@@ -244,7 +241,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   intro: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.5,
@@ -266,7 +263,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   previewLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
@@ -280,13 +277,13 @@ function buildStyles(c: AppColors) {
     borderColor: c.borderLight,
   },
   emptyTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     textAlign: 'center' as const,
   },
   emptySub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -314,12 +311,12 @@ function buildStyles(c: AppColors) {
     zIndex: 2,
   },
   unreadBadgeText: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textInverse,
   },
   ctaHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,

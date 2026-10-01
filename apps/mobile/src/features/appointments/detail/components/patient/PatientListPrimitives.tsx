@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PatientListCard({
   title,
@@ -19,7 +16,7 @@ export function PatientListCard({
   children: ReactNode;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_patient_PatientListPrimitives_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.card}>
       {title ? (
@@ -54,7 +51,7 @@ export function PatientListRow({
   last?: boolean;
   highlight?: boolean;
 }) {
-  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientListRow');
+  const styles = useStyles(buildStyles);
   return (
     <Row
       align="start"
@@ -80,7 +77,7 @@ export function PatientRowValue({
   sub?: string;
   muted?: boolean;
 }) {
-  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientRowValue');
+  const styles = useStyles(buildStyles);
   return (
     <View style={styles.valueStack}>
       <AppText style={[styles.valueText, muted && styles.valueMuted]}>{text}</AppText>
@@ -94,7 +91,7 @@ export function PatientActionChips({
 }: {
   actions: { label: string; onPress: () => void }[];
 }) {
-  const styles = useThemedStyles(buildStyles, 'PatientListPrimitives.PatientActionChips');
+  const styles = useStyles(buildStyles);
   if (!actions.length) return null;
   return (
     <Row wrap gap={spacing[2]} style={styles.chips}>
@@ -107,7 +104,7 @@ export function PatientActionChips({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -132,7 +129,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   cardTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     letterSpacing: -0.2,
@@ -151,7 +148,7 @@ function buildStyles(c: AppColors) {
   },
   rowLabel: {
     width: 100,
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     paddingTop: 2,
@@ -163,17 +160,17 @@ function buildStyles(c: AppColors) {
   },
   valueStack: { gap: 3 },
   valueText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
   valueMuted: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     color: c.textSecondary,
   },
   valueSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.4,
@@ -190,7 +187,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surfaceAlt,
   },
   chipText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },

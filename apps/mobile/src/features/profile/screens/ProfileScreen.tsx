@@ -1,19 +1,16 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { useAuthStore } from '@/store/auth-store';
 import { ProfileNurseView } from '@/features/profile/views/ProfileNurseView';
 import { ProfilePatientView } from '@/features/profile/views/ProfilePatientView';
 import { ProfilePreleveurView } from '@/features/profile/views/ProfilePreleveurView';
 import { ProfileProView } from '@/features/profile/views/ProfileProView';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /**
  * Profil unifié par rôle — une seule page scrollable, sans doublons avatar / liens redondants.
  */
 export function ProfileScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileScreen_tsx_ProfileScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const role = useAuthStore((s) => s.user?.role);
 
@@ -29,7 +26,7 @@ export function ProfileScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: {
     minWidth: 0,
@@ -39,7 +36,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   error: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textSecondary,
     textAlign: 'center' as const,

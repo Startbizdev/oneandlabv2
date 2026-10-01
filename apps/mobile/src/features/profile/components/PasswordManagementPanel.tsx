@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -11,12 +9,11 @@ import { forgotPassword, updatePassword } from '@/features/auth/api/auth.service
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { validatePasswordStrength, passwordsMatch } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PasswordManagementPanel() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PasswordManagementPanel_styles');
+  const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -119,7 +116,7 @@ export function PasswordManagementPanel() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -138,8 +135,8 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     headerText: { gap: spacing[0.5] },
-    title: { fontFamily: fontFamily.semiBold, fontSize: fontSize.base },
-    sub: { fontFamily: fontFamily.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
+    title: { ...font.semiBold, fontSize: fontSize.base },
+    sub: { ...font.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
   };
 }
 

@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   icon?: LucideIcon;
@@ -39,7 +36,7 @@ export function ProfileNavRow({
   badge,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfileNavRow');
+  const styles = useStyles(buildStyles);
 
   const handlePress = () => {
     if (disabled) return;
@@ -95,7 +92,7 @@ export function ProfileNavRow({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     rowPressed: {
       opacity: 0.92,
@@ -111,17 +108,17 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     titleSuffix: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.35,
@@ -137,7 +134,7 @@ function buildStyles(c: AppColors) {
       flexShrink: 0,
     },
     badgeText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
     },

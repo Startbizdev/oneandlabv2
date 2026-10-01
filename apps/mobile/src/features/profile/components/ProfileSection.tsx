@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { StyleSheet, View, type ViewProps } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props extends ViewProps {
   title: string;
@@ -18,7 +15,7 @@ interface Props extends ViewProps {
 export function ProfileSection({
   title, description, Icon, children, style, ...rest }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_ProfileSection_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <View style={[styles.card, elevation.xs, style]} {...rest}>
       <Cluster
@@ -43,7 +40,7 @@ export function ProfileSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     backgroundColor: c.surface,
@@ -67,12 +64,12 @@ function buildStyles(c: AppColors) {
   },
   headerText: { minWidth: 0, flex: 1, gap: 4 },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   description: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,

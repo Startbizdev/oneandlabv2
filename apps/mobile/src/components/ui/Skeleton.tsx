@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import React, { useEffect, type ReactNode } from 'react';
 import { StyleSheet, type ViewStyle } from 'react-native';
 import Animated, {
@@ -10,7 +8,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { radius } from '@/theme';
+import { radius, useStyles, type Theme } from '@/theme';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
@@ -25,7 +23,7 @@ function SkeletonComponent({
   borderRadius = radius.md,
   style,
 }: SkeletonProps) {
-  const styles = useThemedStyles(buildStyles, 'components_ui_Skeleton_tsx_SkeletonComponent_styles');
+  const styles = useStyles(buildStyles);
 
   const shimmer = useSharedValue(0.5);
 
@@ -79,7 +77,7 @@ function SkeletonGroupComponent({ count = 3, height = 80, gap = 12, style }: Ske
 export const SkeletonGroup = React.memo(SkeletonGroupComponent);
 SkeletonGroup.displayName = 'SkeletonGroup';
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   base: {
     backgroundColor: c.surfaceSubtle,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -9,8 +7,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Row } from '@/components/layout/primitives';
 import type { HealthRecordQuestion } from '../api/health-record.service';
 import { HEALTH_RECORD_OPTIONAL_BADGE, unwrapHealthRecordValue, formatHealthRecordStoredValue } from '../utils/health-record-display';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ENUM_LABELS: Record<string, string> = {
   never: 'Jamais',
@@ -75,7 +72,7 @@ export function HealthRecordQuestionStep({
   onSkip,
   saving,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordQuestionStep');
+  const styles = useStyles(buildStyles);
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');
 
@@ -217,7 +214,7 @@ export function HealthRecordQuestionStep({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: { gap: spacing[4] },
     labelRow: {
@@ -226,13 +223,13 @@ function buildStyles(c: AppColors) {
     label: {
       minWidth: 0,
       flexShrink: 1,
-      fontFamily: fontFamily.semiBold,
+      ...font.headingSemiBold,
       fontSize: fontSize.lg,
       color: c.textPrimary,
       lineHeight: 28,
     },
     currentValue: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },

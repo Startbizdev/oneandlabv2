@@ -1,8 +1,5 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type DetailInfoItem = {
   label: string;
@@ -12,7 +9,7 @@ export type DetailInfoItem = {
 
 /** Liste verticale label au-dessus de la valeur (pas de tableau 2 colonnes). */
 export function DetailInfoStack({ items }: { items: DetailInfoItem[] }) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_layout_DetailInfoStack_tsx_DetailInfoStack_styles');
+  const styles = useStyles(buildStyles);
 
   if (!items.length) return null;
   return (
@@ -27,7 +24,7 @@ export function DetailInfoStack({ items }: { items: DetailInfoItem[] }) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   stack: {
     gap: 0,
@@ -39,19 +36,19 @@ function buildStyles(c: AppColors) {
     marginTop: spacing[3],
   },
   label: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     marginBottom: 4,
   },
   value: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
   valueMuted: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     color: c.textSecondary,
   },
 };

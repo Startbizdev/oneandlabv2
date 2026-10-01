@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,8 +53,7 @@ import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-nav
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -89,7 +86,7 @@ function sortedComments(comments: CarePhotoComment[] | undefined): CarePhotoComm
 export function CarePhotoDiscussionScreen({
   role }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_screens_CarePhotoDiscussionScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { id: appointmentId } = useLocalSearchParams<{ id: string; photoId?: string }>();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -503,7 +500,7 @@ function PhotoThreadBlock({
   onZoom: () => void;
 }) {
   const appColors = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'CarePhotoDiscussionScreen.PhotoThreadBlock');
+  const styles = useStyles(buildStyles);
   const comments = sortedComments(photo.comments);
 
   return (
@@ -555,7 +552,7 @@ function PhotoThreadBlock({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -571,7 +568,7 @@ function buildStyles(c: AppColors) {
     padding: spacing[6],
   },
   errorText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
@@ -605,7 +602,7 @@ function buildStyles(c: AppColors) {
   },
   headerSpacer: { width: 44 },
   headerPatientName: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     letterSpacing: -0.2,
@@ -615,12 +612,12 @@ function buildStyles(c: AppColors) {
     textDecorationLine: 'underline' as const,
   },
   headerTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
   },
   headerSub: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.45,
@@ -641,12 +638,12 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   emptyTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   emptySub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textTertiary,
     textAlign: 'center' as const,
@@ -656,12 +653,12 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   photoBlockLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   photoBlockDate: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     marginTop: -4,
@@ -691,12 +688,12 @@ function buildStyles(c: AppColors) {
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   zoomPillText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textInverse,
   },
   noComments: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     paddingVertical: spacing[1],
@@ -725,19 +722,19 @@ function buildStyles(c: AppColors) {
     marginBottom: 4,
   },
   author: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
   authorMine: { color: 'rgba(255,255,255,0.9)' },
   time: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   timeMine: { color: 'rgba(255,255,255,0.75)' },
   body: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
@@ -771,7 +768,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.surfaceAlt,
     paddingHorizontal: spacing[3],
     paddingVertical: Platform.OS === 'ios' ? spacing[2.5] : spacing[2],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
@@ -788,7 +785,7 @@ function buildStyles(c: AppColors) {
   readOnlyHint: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     textAlign: 'center' as const,

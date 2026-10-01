@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
@@ -9,8 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { RdvCancellationBanner } from './RdvCancellationBanner';
 import { RdvFieldRows } from './RdvFieldRows';
 import { RdvInfoCard } from './RdvInfoCard';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function batchLineTitle(appt: Appointment, index: number, isMulti: boolean): string | null {
   if (!isMulti) return null;
@@ -26,7 +23,7 @@ interface Props {
 }
 
 export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AppointmentBatchSection_tsx_AppointmentBatchSection_styles');
+  const styles = useStyles(buildStyles);
 
   if (!isMultiBatch) {
     const apt = appointments[0];
@@ -66,7 +63,7 @@ export function AppointmentBatchSection({ appointments, role, isMultiBatch }: Pr
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   mergedHeader: {
     paddingHorizontal: spacing[4],
@@ -77,12 +74,12 @@ function buildStyles(c: AppColors) {
     gap: 2,
   },
   mergedTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },
   mergedSub: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
@@ -98,7 +95,7 @@ function buildStyles(c: AppColors) {
   batchTitle: {
     minWidth: 0,
     flex: 1,
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
   },

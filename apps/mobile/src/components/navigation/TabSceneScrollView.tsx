@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import type { ReactNode, RefObject } from 'react';
@@ -18,6 +16,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
+import { useStyles } from '@/theme';
 
 type ScrollPaddingOptions = {
   extraTop?: number;
@@ -56,7 +55,7 @@ export function TabSceneScrollView({
   omitTopInset = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'TabSceneScrollView');
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const scrollInsets = omitTopInset ? { ...sceneInsets, insetTop: 0 } : sceneInsets;
   const innerRef = useRef<ScrollView>(null);
@@ -110,7 +109,7 @@ export function TabSceneScrollView({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     list: {
       minWidth: 0,

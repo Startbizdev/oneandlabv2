@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React from 'react';
@@ -10,8 +8,7 @@ import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -69,7 +66,7 @@ export const LabResultListCard = React.memo(function LabResultListCard({
   onAskCary,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_lab_results_components_LabResultListCard_tsx_styles');
+  const styles = useStyles(buildStyles);
 
   const time = formatTime(item.created_at ?? item.appointment_scheduled_at);
   const body = formatBody(item, role);
@@ -135,7 +132,7 @@ export const LabResultListCard = React.memo(function LabResultListCard({
 const ICON = 40;
 const CHEVRON = 16;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     alignSelf: 'stretch' as const,
@@ -171,13 +168,13 @@ function buildStyles(c: AppColors) {
     marginRight: spacing[2],
   },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     letterSpacing: -0.15,
   },
   time: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: 14,
@@ -186,7 +183,7 @@ function buildStyles(c: AppColors) {
   },
   body: {
     marginTop: spacing[1],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.5,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -9,7 +7,7 @@ import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
 
 export type MoreTabSection = {
@@ -33,7 +31,7 @@ export function RoleMoreTabScreen({
   sections,
   logoutDelay = 330,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_RoleMoreTabScreen_tsx_RoleMoreTabScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const logout = useAuthStore((s) => s.clearSession);
@@ -83,7 +81,7 @@ export function RoleMoreTabScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.surface },
   scroll: {

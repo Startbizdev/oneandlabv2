@@ -10,10 +10,7 @@ import {
   type ReviewFormState,
   type ReviewRow,
 } from './use-patient-review-prompt';
-import { useThemedStyles } from '@/theme/use-themed-styles';
-import type { AppColors } from '@/theme/colors';
-import { fontFamily, fontSize } from '@/theme/typography';
-import { spacing, AppText } from '@/theme';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -36,7 +33,7 @@ export function PatientReviewPromptSheet({
   onCommentChange,
   submitReview,
 }: Props) {
-  const sheetStyles = useThemedStyles(buildSheetStyles, 'PatientReviewPromptSheet');
+  const sheetStyles = useStyles(buildSheetStyles);
   if (!appt) return null;
 
   const proName = revieweeFirstName(appt);
@@ -104,24 +101,24 @@ export function PatientReviewPromptSheet({
   );
 }
 
-function buildSheetStyles(c: AppColors) {
+function buildSheetStyles({ colors: c, fontSize }: Theme) {
   return {
     body: { gap: spacing[3] },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
       textAlign: 'center' as const,
     },
     comment: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.base,
       color: c.textPrimary,
       lineHeight: fontSize.base * 1.45,
     },
     commentMuted: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
       fontStyle: 'italic' as const,

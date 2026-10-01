@@ -1,10 +1,7 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import type { LinkedNurseRow } from '@/features/patients/api/linked-nurses.service';
 import type { NurseAssignmentMode } from '../utils/pro-nurse-assignment';
 
@@ -29,7 +26,7 @@ export function ProNurseAssignmentSection({
   externalPhone,
   onExternalPhoneChange,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'ProNurseAssignmentSection');
+  const styles = useStyles(buildStyles);
 
   const externalActive = !selectedLinkedNurseId && Boolean(externalPhone.trim());
 
@@ -105,7 +102,7 @@ export function ProNurseAssignmentSection({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       gap: spacing[3],
@@ -116,12 +113,12 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.surfaceAlt,
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
     subtitle: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.45,
@@ -142,7 +139,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.primaryMid,
     },
     modeText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       textAlign: 'center' as const,
@@ -152,17 +149,17 @@ function buildStyles(c: AppColors) {
     },
     body: { gap: spacing[3] },
     fieldLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     hint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
     orLabel: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       textAlign: 'center' as const,
@@ -180,7 +177,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.primary,
     },
     nursePillText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },

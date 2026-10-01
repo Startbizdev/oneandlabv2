@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
@@ -13,6 +11,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { useStyles } from '@/theme';
 
 type ScrollPaddingOptions = {
   extraTop?: number;
@@ -43,7 +42,7 @@ export function StackScrollView({
   showsVerticalScrollIndicator = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'StackScrollView');
+  const styles = useStyles(buildStyles);
   const innerRef = useRef<ScrollView>(null);
   const scrollRef = scrollRefProp ?? innerRef;
   const scrollConfig = useStackScrollConfig(contentContainerStyle, scrollPaddingOptions);
@@ -76,7 +75,7 @@ export function StackScrollView({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     scroll: {
       minWidth: 0,

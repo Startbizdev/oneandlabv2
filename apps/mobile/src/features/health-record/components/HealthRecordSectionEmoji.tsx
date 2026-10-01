@@ -1,9 +1,6 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { healthRecordSectionEmoji } from '../utils/health-record-section-emoji';
-import { radius, AppText } from '@/theme';
-import { fontSize } from '@/theme/typography';
+import { radius, AppText, useStyles, type Theme } from '@/theme';
 
 interface Props {
   sectionId: string;
@@ -11,7 +8,7 @@ interface Props {
 }
 
 export function HealthRecordSectionEmoji({ sectionId, size = 'md' }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordSectionEmoji');
+  const styles = useStyles(buildStyles);
   const emoji = healthRecordSectionEmoji(sectionId);
 
   return (
@@ -25,7 +22,7 @@ export function HealthRecordSectionEmoji({ sectionId, size = 'md' }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       width: 40,

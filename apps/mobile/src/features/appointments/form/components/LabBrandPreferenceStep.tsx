@@ -6,8 +6,8 @@ import { fetchPublicLabBrands } from '@/features/appointments/api/lab-brands.ser
 import { queryKeys } from '@/lib/query-keys';
 import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, font } from '@/theme';
+import { fontSize } from '@/theme/typography';
 
 type Props = {
   mode: LabPreferenceMode | '';
@@ -106,7 +106,7 @@ export function LabBrandPreferenceStep({
 function buildStyles(c: ReturnType<typeof useAppColors>) {
   return {
     root: { gap: spacing[3], paddingBottom: spacing[6] },
-    lead: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
+    lead: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
     option: {
       borderWidth: 1,
       borderColor: c.border,
@@ -119,8 +119,8 @@ function buildStyles(c: ReturnType<typeof useAppColors>) {
       borderColor: c.primary,
       backgroundColor: c.primaryLight,
     },
-    optionTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.base, color: c.textPrimary },
-    optionHint: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
+    optionTitle: { ...font.medium, fontSize: fontSize.base, color: c.textPrimary },
+    optionHint: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
     gridWrap: { marginTop: spacing[2] },
     brandCard: {
       width: '30%',
@@ -144,15 +144,15 @@ function buildStyles(c: ReturnType<typeof useAppColors>) {
       justifyContent: 'center',
       backgroundColor: c.surfaceAlt,
     },
-    logoFallbackText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.xs, color: c.textSecondary },
+    logoFallbackText: { ...font.semiBold, fontSize: fontSize.xs, color: c.textSecondary },
     brandName: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textPrimary,
       textAlign: 'center',
       lineHeight: 16,
     },
-    muted: { fontFamily: fontFamily.regular, fontSize: fontSize.sm, color: c.textSecondary },
-    error: { fontFamily: fontFamily.medium, fontSize: fontSize.sm, marginTop: spacing[2] },
+    muted: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary },
+    error: { ...font.medium, fontSize: fontSize.sm, marginTop: spacing[2] },
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }

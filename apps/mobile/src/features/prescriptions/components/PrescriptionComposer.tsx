@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
@@ -43,8 +41,7 @@ import { getPrescriptionProfileGaps } from '@/features/prescriptions/utils/presc
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   patientId: string;
@@ -80,7 +77,7 @@ export function PrescriptionComposer({
   hideProfileGapsAlert = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_prescriptions_components_PrescriptionComposer_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -514,10 +511,10 @@ export function PrescriptionComposer({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     cardTitle: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
       marginBottom: spacing[3],
@@ -530,7 +527,7 @@ function buildStyles(c: AppColors) {
       padding: spacing[3],
     },
     warnText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.warning,
       lineHeight: fontSize.sm * 1.45,
@@ -546,7 +543,7 @@ function buildStyles(c: AppColors) {
       borderColor: c.primaryMid,
     },
     passageDraftReadyText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primaryDark,
       lineHeight: fontSize.sm * 1.45,
@@ -580,16 +577,16 @@ function buildStyles(c: AppColors) {
     checkMark: {
       color: c.textInverse,
       fontSize: fontSize.xs,
-      fontFamily: fontFamily.bold,
+      ...font.bold,
     },
     signRowText: { flex: 1, minWidth: 0 },
     signLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     signHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       marginTop: 2,

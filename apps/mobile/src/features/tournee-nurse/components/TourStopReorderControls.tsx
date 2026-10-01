@@ -1,10 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable } from 'react-native';
 import { ArrowDown, ArrowUp } from 'lucide-react-native';
 import { Stack } from '@/components/layout/primitives';
-import {spacing, iconSize } from '@/theme';
+import { spacing, iconSize, useStyles } from '@/theme';
 
 type Props = {
   canMoveUp: boolean;
@@ -15,7 +13,7 @@ type Props = {
 
 export function TourStopReorderControls({ canMoveUp, canMoveDown, onMoveUp, onMoveDown }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
 
   return (
     <Stack gap={spacing[0.5]} style={styles.wrap}>
@@ -59,7 +57,7 @@ export function TourStopReorderControls({ canMoveUp, canMoveDown, onMoveUp, onMo
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     wrap: {
       flexShrink: 0,

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Cluster } from '@/components/layout/primitives';
@@ -7,8 +5,7 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, type LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface ActionRowCardProps {
   title: string;
@@ -39,7 +36,7 @@ export function ActionRowCard({
   accessibilityHint,
 }: ActionRowCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'components_ui_ActionRowCard_tsx_styles');
+  const styles = useStyles(buildStyles);
   return (
     <Pressable
       onPress={() => {
@@ -85,7 +82,7 @@ export function ActionRowCard({
 const ICON = 40;
 const CHEVRON = 16;
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     alignSelf: 'stretch' as const,
@@ -128,18 +125,18 @@ function buildStyles(c: AppColors) {
     minWidth: 0,
   },
   title: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     letterSpacing: -0.15,
   },
   titleHighlighted: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     color: c.primaryDark,
   },
   body: {
     marginTop: spacing[1],
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     lineHeight: fontSize.xs * 1.5,

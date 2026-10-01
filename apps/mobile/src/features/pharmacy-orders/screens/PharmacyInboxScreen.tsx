@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
@@ -23,13 +21,13 @@ import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 
 const PHARMACY_ORDER_LIST_POLL_MS = 15_000;
 
 export function PharmacyInboxScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyInboxScreen');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const focused = useIsFocused();
   const appActive = useAppActive();
@@ -115,7 +113,7 @@ export function PharmacyInboxScreen() {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     content: {
       paddingHorizontal: spacing[4],

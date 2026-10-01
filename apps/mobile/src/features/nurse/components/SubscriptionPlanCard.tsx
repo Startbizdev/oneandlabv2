@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Platform, View } from 'react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type SubscriptionPlanCardProps = {
   name: string;
@@ -43,7 +40,7 @@ export function SubscriptionPlanCard({
   disabled,
 }: SubscriptionPlanCardProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'SubscriptionPlanCard');
+  const styles = useStyles(buildStyles);
 
   const showRecommended = recommended && !isCurrent;
 
@@ -123,7 +120,7 @@ export function SubscriptionPlanCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       minWidth: 0,
@@ -156,7 +153,7 @@ function buildStyles(c: AppColors) {
       borderRadius: radius.full,
     },
     badgeRecommendedText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       color: c.onPrimary,
       letterSpacing: 0.3,
@@ -168,7 +165,7 @@ function buildStyles(c: AppColors) {
       borderRadius: radius.full,
     },
     badgeCurrentText: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       letterSpacing: 0.3,
@@ -177,7 +174,7 @@ function buildStyles(c: AppColors) {
       minWidth: 0,
     },
     name: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       color: c.textPrimary,
       letterSpacing: -0.2,
@@ -190,7 +187,7 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[1],
     },
     priceAmount: {
-      fontFamily: fontFamily.extraBold,
+      ...font.headingExtraBold,
       fontSize: fontSize['4xl'],
       lineHeight: fontSize['4xl'] * 1.08,
       color: c.textPrimary,
@@ -198,13 +195,13 @@ function buildStyles(c: AppColors) {
       flexShrink: 1,
     },
     priceSuffix: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.base,
       color: c.textSecondary,
       lineHeight: fontSize.base * 1.35,
     },
     tagline: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
@@ -231,13 +228,13 @@ function buildStyles(c: AppColors) {
     featureText: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     footnote: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: fontSize.xs * 1.5,

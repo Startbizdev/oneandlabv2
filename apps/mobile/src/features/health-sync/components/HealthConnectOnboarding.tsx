@@ -1,13 +1,10 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Footprints, Heart, Scale, Sparkles } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { radius, spacing, iconSize, AppText, useLayoutMetrics, responsiveValue } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, responsiveValue, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { getHealthPlatformUiConfig } from '../utils/health-platform-config';
 
@@ -27,7 +24,7 @@ const VALUE_ITEMS = [
 export function HealthConnectOnboarding({ syncing = false, autoPrompting = false, onConnect }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const heroSubMaxWidth = responsiveValue(layout, { compact: 280, default: 300, wide: 340 });
   const platform = getHealthPlatformUiConfig();
 
@@ -86,7 +83,7 @@ export function HealthConnectOnboarding({ syncing = false, autoPrompting = false
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       gap: spacing[4],
@@ -107,14 +104,14 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[1],
     },
     heroTitle: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
       textAlign: 'center' as const,
       letterSpacing: -0.3,
     },
     heroSub: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center' as const,
@@ -142,12 +139,12 @@ function buildStyles(c: AppColors) {
       gap: spacing[0.5],
     },
     rowLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     rowDesc: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
@@ -156,12 +153,12 @@ function buildStyles(c: AppColors) {
       paddingVertical: spacing[2],
     },
     promptingText: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
     privacy: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       textAlign: 'center' as const,

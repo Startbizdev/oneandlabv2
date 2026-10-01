@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -16,6 +14,7 @@ import {
 import { layoutRowCenter } from '@/theme/layout-styles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
+import { useStyles } from '@/theme';
 
 type Props = {
   title?: ReactNode;
@@ -36,7 +35,7 @@ export function LiquidGlassTabHeader({
   style,
   debugLabel,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'LiquidGlassTabHeader');
+  const styles = useStyles(buildStyles);
   const insets = useSafeAreaInsets();
   const padH = APP_HEADER_INNER_H_PADDING;
   const rowMinHeight =
@@ -71,7 +70,7 @@ export function LiquidGlassTabHeader({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     root: {
       position: 'absolute' as const,

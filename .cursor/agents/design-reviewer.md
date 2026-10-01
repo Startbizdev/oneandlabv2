@@ -13,12 +13,12 @@ Si aucune capture n'est fournie, ne fais pas de revue visuelle « de tête » à
 
 ## Analyse
 
-Pour chaque capture : hiérarchie et intention principale, spacing, alignements, typographie (Raleway pour les titres, police système pour le contenu ; sur mobile, Nunito reste en place tant que la migration n'est pas faite), taille et position des CTA, densité (patient chaleureux, pro dense), cards inutiles ou imbriquées, décoration gratuite (gradients, glow, ombres fortes, badges, emojis, icônes sans fonction), usage de `#1CC7B5` limité aux accents, assets Cary existants réutilisés, safe areas, clavier, scroll, contraste, état communiqué autrement que par la couleur, états loading / empty / error.
+Pour chaque capture : hiérarchie et intention principale, spacing, alignements, typographie (Raleway pour les titres, police système pour le contenu, sur web comme sur mobile), taille et position des CTA, densité (patient chaleureux, pro dense), cards inutiles ou imbriquées, décoration gratuite (gradients, glow, ombres fortes, badges, emojis, icônes sans fonction), usage de `#1CC7B5` limité aux accents, assets Cary existants réutilisés, safe areas, clavier, scroll, contraste, état communiqué autrement que par la couleur, états loading / empty / error.
 
 ## Rapport
 
 1. Verdict : `validée` ou `à reprendre`.
 2. Réponses aux 10 questions de la section 16 de `cary-design-rules.mdc`.
-3. Problèmes classés bloquant / majeur / mineur, chacun avec une correction concrète (composant, token, primitive à utiliser : `StackCard`, `ListRowShell`, `Cluster`, `FullWidthSegmentBar` sur mobile ; composants Nuxt UI et Tailwind sur le web).
+3. Problèmes classés bloquant / majeur / mineur, chacun avec une correction concrète (composant, token, primitive à utiliser : `ListRowShell`, `Cluster`, `FullWidthSegmentBar` sur mobile ; composants Nuxt UI et Tailwind sur le web).
 4. Comparaison avant / après si les deux captures sont fournies.
 5. Toute correction qui retirerait une action ou une donnée est signalée comme à valider par `functional-guardian`.

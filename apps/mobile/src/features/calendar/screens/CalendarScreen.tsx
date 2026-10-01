@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
@@ -38,8 +36,7 @@ import {
   type CalendarTypeFilter,
 } from '@/constants/calendar-filters';
 import { NURSE_TAB_OPTIONS, type NurseListTab } from '@/constants/appointments-list-filters';
-import { elevation, radius, spacing, iconSize, gridCellSize, useLayoutMetrics, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, gridCellSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
@@ -85,7 +82,7 @@ export function CalendarScreen({
   listRole: listRoleProp,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
   const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
@@ -426,7 +423,7 @@ export function CalendarScreen({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   scroll: { minWidth: 0, flex: 1 },
@@ -456,7 +453,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   monthLabel: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.md,
     color: c.textPrimary,
     letterSpacing: -0.3,
@@ -464,7 +461,7 @@ function buildStyles(c: AppColors) {
   },
   weekCell: { alignItems: 'center' as const, paddingBottom: spacing[1] },
   weekLabel: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.6,
@@ -492,7 +489,7 @@ function buildStyles(c: AppColors) {
     borderColor: c.primaryMid,
   },
   dayNum: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textPrimary,
   },
@@ -515,7 +512,7 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[3],
   },
   daySummaryText: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.primary,
     textTransform: 'capitalize' as const,

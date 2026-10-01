@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { hexToRgba } from '@/theme/color-utils';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -12,6 +10,7 @@ import {
   LIQUID_GLASS_SPECULAR_TOP,
   type LiquidGlassChromeVariant,
 } from '@/components/navigation/nav-chrome-tokens';
+import { useStyles } from '@/theme';
 
 type Props = {
   style?: StyleProp<ViewStyle>;
@@ -24,7 +23,7 @@ type Props = {
  */
 export function LiquidGlassChrome({ style, variant = 'tab' }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'LiquidGlassChrome');
+  const styles = useStyles(buildStyles);
   const blurIntensity = LIQUID_GLASS_BLUR_INTENSITY[variant] ?? 42;
   const frost = LIQUID_GLASS_FROST_OPACITY[variant] ?? 0.1;
 
@@ -59,7 +58,7 @@ export function LiquidGlassChrome({ style, variant = 'tab' }: Props) {
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles() {
   return {
     root: {
       ...StyleSheet.absoluteFillObject,

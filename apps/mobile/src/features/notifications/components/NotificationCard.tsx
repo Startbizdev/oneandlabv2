@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import React from 'react';
@@ -15,8 +13,7 @@ import {
   formatNotificationTime,
   notificationVisual,
 } from '@/features/notifications/utils/notification-card-meta';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   item: AppNotification;
@@ -25,7 +22,7 @@ interface Props {
 
 export const NotificationCard = React.memo(function NotificationCard({ item, onPress }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'NotificationCard');
+  const styles = useStyles(buildStyles);
   const role = useAuthStore((s) => s.user?.role);
 
   const { label, message } = resolveNotificationDisplayLines(item);
@@ -81,7 +78,7 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
   );
 });
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       alignSelf: 'stretch' as const,
@@ -123,16 +120,16 @@ function buildStyles(c: AppColors) {
     marginRight: spacing[2],
   },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       letterSpacing: -0.15,
     },
     titleUnread: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
     },
     time: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       lineHeight: 14,
@@ -141,7 +138,7 @@ function buildStyles(c: AppColors) {
     },
     body: {
       marginTop: spacing[1],
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       lineHeight: fontSize.xs * 1.5,

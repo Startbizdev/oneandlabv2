@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback } from 'react';
@@ -11,8 +9,7 @@ import { FolderOpen } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { fetchPatientDocuments } from '@/features/patients/api/patient-profile.service';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   patientUserId: string;
@@ -32,7 +29,7 @@ function dossierSubtitle(count: number): string {
 export function WizardPatientDocumentsPanel({
   patientUserId, documentsRoute }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_WizardPatientDocumentsPanel_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
 
   const docsQ = useQuery({
@@ -84,7 +81,7 @@ export function WizardPatientDocumentsPanel({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   card: {
     width: '100%' as const,
@@ -109,7 +106,7 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   loadingTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },

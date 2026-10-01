@@ -6,9 +6,9 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cary",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#F4FAFA"
+      "backgroundColor": "#F6F8F8"
     },
     "ios": {
       "supportsTablet": false,
@@ -63,13 +63,13 @@
             "image": "./assets/splash-logo.png",
             "imageWidth": 250,
             "resizeMode": "contain",
-            "backgroundColor": "#F4FAFA"
+            "backgroundColor": "#F6F8F8"
           },
           "android": {
             "image": "./assets/splash-logo.png",
             "imageWidth": 200,
             "resizeMode": "contain",
-            "backgroundColor": "#F4FAFA"
+            "backgroundColor": "#F6F8F8"
           }
         }
       ],

@@ -1,14 +1,11 @@
-import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { Pressable, View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { MapPin, Star, Store } from 'lucide-react-native';
 import type { PharmacyCatalogItem } from '@oneandlab/shared-types';
 import { PHARMACY_FULFILLMENT_LABELS } from '@oneandlab/shared-constants';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   item: PharmacyCatalogItem;
@@ -30,7 +27,7 @@ export function PharmacyCatalogCard({
   favoriteLoading = false,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyCatalogCard');
+  const styles = useStyles(buildStyles);
 
   const addressLine =
     item.address?.formatted_address ??
@@ -99,7 +96,7 @@ export function PharmacyCatalogCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       padding: spacing[3],
@@ -131,7 +128,7 @@ function buildStyles(c: AppColors) {
     title: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
     },
@@ -139,7 +136,7 @@ function buildStyles(c: AppColors) {
       color: c.primaryDark,
     },
     meta: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
@@ -149,14 +146,14 @@ function buildStyles(c: AppColors) {
     address: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.4,
     },
     modeHint: {
       marginTop: spacing[1],
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.primary,
       textTransform: 'uppercase' as const,

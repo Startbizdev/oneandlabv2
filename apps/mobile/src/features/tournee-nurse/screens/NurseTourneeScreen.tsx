@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
@@ -13,7 +11,7 @@ import {
 import { Row } from '@/components/layout/primitives';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackContentTopInset } from '@/navigation/use-stack-scroll-config';
-import { H_PADDING, spacing } from '@/theme';
+import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 import { useToast } from '@/providers/ToastProvider';
 import { PassageFab } from '@/features/nurse-passage/components/PassageFab';
 import {
@@ -44,7 +42,7 @@ import { countTodayActiveStops, importTourToDeviceCalendar } from '../utils/tour
 
 export function NurseTourneeScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
   const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
@@ -466,7 +464,7 @@ export function NurseTourneeScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
     container: {
       flex: 1,

@@ -1,8 +1,8 @@
 import { isValidElement, type ReactNode } from 'react';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { AppText } from '@/theme';
+import { AppText, font } from '@/theme';
 import { getAppColors } from '@/theme/colors';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { fontSize } from '@/theme/typography';
 
 type HeaderTitleRenderProps = {
   tintColor?: string;
@@ -28,7 +28,7 @@ export function resolveStackHeaderTitle(
       <AppText
         numberOfLines={1}
         style={{
-          fontFamily: fontFamily.bold,
+          ...font.heading,
           fontSize: fontSize.lg,
           color: tintColor ?? c.textPrimary,
         }}

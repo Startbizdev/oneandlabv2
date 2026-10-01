@@ -1,6 +1,4 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -33,8 +31,7 @@ import {
   spreadTabSceneScrollProps,
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 /** Hauteur pill CTA flottant (étape 1). */
@@ -69,7 +66,7 @@ function CareListTile({
   onPress: () => void;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'CareSelectionStep.CareListTile');
+  const styles = useStyles(buildStyles);
 
   return (
     <Pressable
@@ -128,7 +125,7 @@ export function CareSelectionStep({
   loading,
   progressTotal = 3,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_CareSelectionStep_tsx_styles');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -416,7 +413,7 @@ export function CareSelectionStep({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -451,14 +448,14 @@ function buildStyles(c: AppColors) {
     gap: spacing[1],
   },
   metaTitle: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
     letterSpacing: -0.35,
     lineHeight: fontSize.lg * 1.15,
   },
   metaSubtitle: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.4,
@@ -473,12 +470,12 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   metaCount: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },
   metaCountLabel: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
@@ -519,7 +516,7 @@ function buildStyles(c: AppColors) {
     justifyContent: 'center' as const,
   },
   tileLabel: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.base,
     color: c.textPrimary,
     letterSpacing: -0.2,
@@ -529,7 +526,7 @@ function buildStyles(c: AppColors) {
     color: c.primaryDark,
   },
   tileHint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     lineHeight: fontSize.sm * 1.35,
@@ -567,13 +564,13 @@ function buildStyles(c: AppColors) {
     borderTopColor: c.borderLight,
   },
   autreKicker: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
     letterSpacing: 0.2,
   },
   emptyList: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.base,
     color: c.textTertiary,
     textAlign: 'center' as const,

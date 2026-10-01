@@ -1,19 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import { Heart } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import {
-  radius,
-  spacing,
-  iconSize,
-  AppText,
-  useLayoutMetrics,
-  centeredCopyMaxWidth,
-  centeredActionMaxWidth,
-} from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth, centeredActionMaxWidth, useStyles, font, type Theme } from '@/theme';
 import { getHealthPlatformUiConfig } from '../utils/health-platform-config';
 
 interface Props {
@@ -31,7 +20,7 @@ export function HealthDataEmptyPanel({
 }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
-  const styles = useThemedStyles(buildStyles, 'HealthDataEmptyPanel');
+  const styles = useStyles(buildStyles);
   const copyMaxWidth = centeredCopyMaxWidth(layout);
   const actionMaxWidth = centeredActionMaxWidth(layout);
   const platform = getHealthPlatformUiConfig();
@@ -76,7 +65,7 @@ export function HealthDataEmptyPanel({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: {
       alignItems: 'center' as const,
@@ -91,14 +80,14 @@ function buildStyles(c: AppColors) {
       justifyContent: 'center' as const,
     },
     title: {
-      fontFamily: fontFamily.bold,
+      ...font.heading,
       fontSize: fontSize.xl,
       color: c.textPrimary,
       textAlign: 'center' as const,
       letterSpacing: -0.3,
     },
     description: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center' as const,
@@ -115,7 +104,7 @@ function buildStyles(c: AppColors) {
     },
     revokeBtnPressed: { opacity: 0.7 },
     revoke: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.error,
     },

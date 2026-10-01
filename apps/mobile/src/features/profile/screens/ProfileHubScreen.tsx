@@ -1,6 +1,4 @@
-import type { AppColors } from '@/theme/colors';
 import { getAppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -41,8 +39,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { getNotificationsPath } from '@/navigation/notifications-route';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
-import {elevation, radius, spacing, iconSize } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { elevation, radius, spacing, iconSize, useStyles, font, type Theme } from '@/theme';
 
 interface MenuItemProps {
   icon: LucideIcon;
@@ -55,7 +52,7 @@ interface MenuItemProps {
 
 function MenuItem({ icon: Icon, label, onPress, destructive, iconColor, iconBg }: MenuItemProps) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'ProfileHubScreen.MenuItem');
+  const styles = useStyles(buildStyles);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const ic = iconColor ?? (destructive ? c.error : c.primary);
@@ -249,7 +246,7 @@ function getSections(
 }
 
 export function ProfileHubScreen() {
-  const styles = useThemedStyles(buildStyles, 'features_profile_screens_ProfileHubScreen_tsx_styles');
+  const styles = useStyles(buildStyles);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.clearSession);
@@ -309,7 +306,7 @@ export function ProfileHubScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: {
     paddingHorizontal: spacing[4],
@@ -320,7 +317,7 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     letterSpacing: 0.8,
@@ -347,7 +344,7 @@ function buildStyles(c: AppColors) {
     flexShrink: 0,
   },
   menuLabel: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.base,
     color: c.textPrimary,
   },

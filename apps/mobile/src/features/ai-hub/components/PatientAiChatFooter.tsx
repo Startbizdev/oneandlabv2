@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
-import { H_PADDING, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize, lh } from '@/theme/typography';
+import { H_PADDING, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { fontSize, lh } from '@/theme/typography';
 
 interface Props {
   draft: string;
@@ -62,7 +60,7 @@ export function PatientAiChatFooter({
   disclaimer,
   includeTabBarInset = true,
 }: Props) {
-  const styles = useThemedStyles(buildStyles);
+  const styles = useStyles(buildStyles);
   const c = useAppColors();
   const { bottom: safeBottom } = useSafeAreaInsets();
   const tabBarInset = useNativeTabBarInset(0);
@@ -112,7 +110,7 @@ export function PatientAiChatFooter({
   );
 }
 
-function buildStyles(_c: AppColors) {
+function buildStyles({ fontSize }: Theme) {
   return {
     footer: {
       position: 'absolute' as const,
@@ -130,7 +128,7 @@ function buildStyles(_c: AppColors) {
       paddingBottom: spacing[1],
     },
     disclaimer: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize['2xs'],
       lineHeight: lh(fontSize['2xs'], 1.35),
     },

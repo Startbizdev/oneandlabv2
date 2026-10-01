@@ -1,6 +1,4 @@
 import { layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,8 +10,7 @@ import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   userId: string;
@@ -21,7 +18,7 @@ type Props = {
 };
 
 export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Props) {
-  const styles = useThemedStyles(buildStyles, 'ProfilePrescriptionSignatureSection');
+  const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -85,17 +82,17 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     help: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: 20,
       marginBottom: spacing[2],
     },
     empty: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textTertiary,
       marginBottom: spacing[2],

@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View } from 'react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import {
@@ -7,6 +5,7 @@ import {
   appointmentDetailBlockedCopy,
   type AppointmentDetailBlock,
 } from '@/features/appointments/hooks/appointment-detail-result';
+import { useStyles, type Theme } from '@/theme';
 
 
 interface Props {
@@ -24,7 +23,7 @@ export function AppointmentDetailBlockedEmptyState({
   description,
   emoji,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AppointmentDetailBlockedEmptyState_tsx_AppointmentDetailBlockedEmptyState_styles');
+  const styles = useStyles(buildStyles);
 
   const copy = appointmentDetailBlockedCopy(block);
   return (
@@ -48,7 +47,7 @@ export function AppointmentAlreadyAcceptedEmptyState({ onBack }: { onBack: () =>
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   wrap: {
     minWidth: 0,

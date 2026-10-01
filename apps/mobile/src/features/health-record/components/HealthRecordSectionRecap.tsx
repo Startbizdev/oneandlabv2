@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { View } from 'react-native';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { Row } from '@/components/layout/primitives';
@@ -8,8 +6,7 @@ import { isHealthRecordValueFilled } from '../utils/health-record-display';
 import { HealthRecordFieldRow } from './HealthRecordFieldRow';
 import { HealthRecordSectionProgress } from './HealthRecordSectionProgress';
 import { HealthRecordSectionEmoji } from './HealthRecordSectionEmoji';
-import { radius, spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   section: HealthRecordRecapSection;
@@ -19,7 +16,7 @@ interface Props {
 }
 
 export function HealthRecordSectionRecap({ section, onEdit, embedded }: Props) {
-  const styles = useThemedStyles(buildStyles, 'HealthRecordSectionRecap');
+  const styles = useStyles(buildStyles);
   const items = section.items.filter((item) => item?.key);
   const filled = items.filter((i) => isHealthRecordValueFilled(i.display)).length;
   const total = items.length;
@@ -64,7 +61,7 @@ export function HealthRecordSectionRecap({ section, onEdit, embedded }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
@@ -86,7 +83,7 @@ function buildStyles(c: AppColors) {
       marginBottom: spacing[3],
     },
     title: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
     },
@@ -94,7 +91,7 @@ function buildStyles(c: AppColors) {
       gap: spacing[3],
     },
     moreHint: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
       paddingTop: spacing[0.5],

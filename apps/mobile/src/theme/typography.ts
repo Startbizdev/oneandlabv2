@@ -1,13 +1,31 @@
+import type { TextStyle } from 'react-native';
 import { scaleFontSize } from './text-scale';
 
-export const fontFamily = {
-  regular: 'Nunito_400Regular',
-  medium: 'Nunito_500Medium',
-  semiBold: 'Nunito_600SemiBold',
-  bold: 'Nunito_700Bold',
-  extraBold: 'Nunito_800ExtraBold',
-  black: 'Nunito_900Black',
+/** Polices Raleway chargées dans `app/_layout.tsx` (titres uniquement). */
+export const headingFontFamily = {
+  semiBold: 'Raleway_600SemiBold',
+  bold: 'Raleway_700Bold',
+  extraBold: 'Raleway_800ExtraBold',
 } as const;
+
+/**
+ * Rôles typographiques : police système pour le texte (graisse seule),
+ * Raleway pour les titres (pas de `fontWeight` : la graisse est portée par la fonte,
+ * sinon Android retombe sur la police système).
+ */
+export const font = {
+  regular: { fontWeight: '400' },
+  medium: { fontWeight: '500' },
+  semiBold: { fontWeight: '600' },
+  bold: { fontWeight: '700' },
+  extraBold: { fontWeight: '800' },
+  black: { fontWeight: '900' },
+  headingSemiBold: { fontFamily: headingFontFamily.semiBold },
+  heading: { fontFamily: headingFontFamily.bold },
+  headingExtraBold: { fontFamily: headingFontFamily.extraBold },
+} as const satisfies Record<string, TextStyle>;
+
+export type FontRole = keyof typeof font;
 
 /** Tailles de base (avant scale accessibilité « Texte agrandi »). Minimum lisible : 12 px. */
 export const FONT_SIZE_BASE = {
@@ -61,95 +79,95 @@ export const letterSpacing = {
 
 export const textStyles = {
   display: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: FONT_SIZE_BASE['4xl'],
     letterSpacing: letterSpacing.tight,
     lineHeight: FONT_SIZE_BASE['4xl'] * lineHeight.tight,
   },
   h1: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: FONT_SIZE_BASE['3xl'],
     letterSpacing: letterSpacing.tight,
     lineHeight: FONT_SIZE_BASE['3xl'] * lineHeight.tight,
   },
   h2: {
-    fontFamily: fontFamily.bold,
+    ...font.heading,
     fontSize: FONT_SIZE_BASE['2xl'],
     letterSpacing: letterSpacing.tight,
     lineHeight: FONT_SIZE_BASE['2xl'] * lineHeight.snug,
   },
   h3: {
-    fontFamily: fontFamily.semiBold,
+    ...font.headingSemiBold,
     fontSize: FONT_SIZE_BASE.xl,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.xl * lineHeight.snug,
   },
   h4: {
-    fontFamily: fontFamily.semiBold,
+    ...font.headingSemiBold,
     fontSize: FONT_SIZE_BASE.lg,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.lg * lineHeight.snug,
   },
   bodyLarge: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: FONT_SIZE_BASE.md,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.md * lineHeight.normal,
   },
   body: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   bodyMedium: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   bodySemiBold: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.base * lineHeight.normal,
   },
   caption: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: FONT_SIZE_BASE.xs,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.xs * lineHeight.snug,
   },
   sectionTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.sm,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.sm * lineHeight.snug,
   },
   overline: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.xs,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.xs * lineHeight.normal,
   },
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.sm,
     letterSpacing: letterSpacing.normal,
     lineHeight: FONT_SIZE_BASE.sm * lineHeight.snug,
   },
   button: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.base,
     letterSpacing: letterSpacing.normal,
   },
   buttonSm: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: FONT_SIZE_BASE.sm,
     letterSpacing: letterSpacing.normal,
   },
   buttonLg: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: FONT_SIZE_BASE.md,
     letterSpacing: letterSpacing.normal,
   },

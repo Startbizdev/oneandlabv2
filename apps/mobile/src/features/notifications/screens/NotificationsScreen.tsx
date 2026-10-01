@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -39,13 +37,13 @@ import { resolveNotificationNavigation } from '../utils/notification-navigation'
 import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { spacing } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 
 const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
 
 export function NotificationsScreen() {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_notifications_screens_NotificationsScreen_tsx_NotificationsScreen_styles');
+  const styles = useStyles(buildStyles);
 
   const router = useRouter();
   const qc = useQueryClient();
@@ -205,7 +203,7 @@ export function NotificationsScreen() {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   container: {
     minWidth: 0,

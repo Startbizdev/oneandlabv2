@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Stack } from '@/components/layout/primitives';
 import { RdvListCardCreneauRow } from '@/features/appointments/components/RdvListCardCreneauRow';
 import { RdvCareTagsRow } from '@/features/appointments/components/RdvCareTagsRow';
 import { prescriptionAppointmentPickerScheduleLabel } from '../utils/prescription-display';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 ;
 
 interface Props {
@@ -16,7 +13,7 @@ interface Props {
 
 /** Bloc RDV partagé — date, point statut, badges emoji, lot (sélecteur + historique). */
 export function PrescriptionRdvContextRow({ apt, lotLabel }: Props) {
-  const styles = useThemedStyles(buildStyles, 'PrescriptionRdvContextRow');
+  const styles = useStyles(buildStyles);
   const schedule = prescriptionAppointmentPickerScheduleLabel(apt);
   const status = String(apt.status ?? '');
 
@@ -33,14 +30,14 @@ export function PrescriptionRdvContextRow({ apt, lotLabel }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
       minWidth: 0,
       alignSelf: 'stretch' as const,
     },
     lotLabel: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primary,
       letterSpacing: 0.2,

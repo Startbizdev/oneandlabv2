@@ -1,6 +1,5 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useStyles, type Theme } from '@/theme';
 
 interface Props {
   children: React.ReactNode;
@@ -13,7 +12,7 @@ interface Props {
  * Le wrapper `body` (flex:1, minHeight:0) évite le clip tab navigator.
  */
 export function ScreenActionLayout({ children, footer, style }: Props) {
-  const styles = useThemedStyles(buildStyles, 'components_layout_ScreenActionLayout_tsx_ScreenActionLayout_styles');
+  const styles = useStyles(buildStyles);
 
   return (
     <View style={[styles.root, style]}>
@@ -23,7 +22,7 @@ export function ScreenActionLayout({ children, footer, style }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c }: Theme) {
   return {
   root: {
     minWidth: 0,

@@ -1,12 +1,9 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Minus, Plus } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const STEP = 5;
 
@@ -21,7 +18,7 @@ interface Props {
 export function CoverageRadiusControl({
   value, min, max, onChange, disabled }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_profile_components_CoverageRadiusControl_tsx_styles');
+  const styles = useStyles(buildStyles);
   const dec = () => onChange(Math.max(min, value - STEP));
   const inc = () => onChange(Math.min(max, value + STEP));
 
@@ -66,17 +63,17 @@ export function CoverageRadiusControl({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[2] },
   header: {},
   label: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.sm,
     color: c.textSecondary,
   },
   value: {
-    fontFamily: fontFamily.extraBold,
+    ...font.headingExtraBold,
     fontSize: fontSize['2xl'],
     color: c.primary,
     fontVariant: ['tabular-nums' as const],
@@ -108,12 +105,12 @@ function buildStyles(c: AppColors) {
   },
   limits: {},
   limitText: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
   hint: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
     lineHeight: fontSize.xs * 1.5,

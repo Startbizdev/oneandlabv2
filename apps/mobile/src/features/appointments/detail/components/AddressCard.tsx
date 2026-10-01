@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
@@ -13,8 +11,7 @@ import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
-import {spacing, iconSize } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, iconSize, useStyles, font, type Theme } from '@/theme';
 
 export function AddressCard({
   apt,
@@ -24,7 +21,7 @@ export function AddressCard({
   wazePreferred?: boolean;
 }) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_detail_components_AddressCard_tsx_AddressCard_styles');
+  const styles = useStyles(buildStyles);
 
   const label = resolveAppointmentDetailAddressLine(apt);
   const coords = resolveAppointmentMapCoords(apt);
@@ -82,7 +79,7 @@ export function AddressCard({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   addressRow: {
     marginBottom: spacing[3],
@@ -91,7 +88,7 @@ function buildStyles(c: AppColors) {
     marginTop: 2,
   },
   addressText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.base,
     color: c.textPrimary,
     lineHeight: fontSize.base * 1.5,

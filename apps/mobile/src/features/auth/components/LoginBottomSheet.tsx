@@ -1,11 +1,8 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { LoginFlow, type LoginFlowMeta } from '@/features/auth/components/LoginFlow';
-import { spacing, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -22,7 +19,7 @@ export function LoginBottomSheet({
   onEmailNotFound,
   onRegisterPress,
 }: Props) {
-  const styles = useThemedStyles(buildStyles, 'features_auth_components_LoginBottomSheet_tsx_styles');
+  const styles = useStyles(buildStyles);
   const [meta, setMeta] = useState<LoginFlowMeta>({
     mode: 'code',
     step: 'email',
@@ -69,7 +66,7 @@ export function LoginBottomSheet({
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     content: {
       width: '100%' as const,
@@ -80,13 +77,13 @@ function buildStyles(c: AppColors) {
       paddingTop: spacing[1],
     },
     registerText: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center' as const,
     },
     registerAccent: {
-      fontFamily: fontFamily.bold,
+      ...font.bold,
       color: c.primary,
     },
   };

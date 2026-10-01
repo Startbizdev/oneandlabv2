@@ -1,6 +1,4 @@
 import { CarePictogram } from '@/components/ui/CarePictogram';
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { StyleSheet, View } from 'react-native';
@@ -15,8 +13,7 @@ import {
   bookingWizardServiceDisplayName,
   type BookingWizardLotKind,
 } from '../utils/booking-wizard-lot';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface WizardRecapItem {
   serviceId: string;
@@ -37,7 +34,7 @@ export function BookingWizardSegmentContext({
   previousRecaps,
 }: Props) {
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'features_appointments_form_components_BookingWizardSegmentContext_tsx_styles');
+  const styles = useStyles(buildStyles);
   const kind: BookingWizardLotKind = bookingWizardLotKind(activeService);
   const stepLabel = bookingWizardLotStepLabel(kind);
   const title = bookingWizardLotTitle(lotServices, kind);
@@ -90,7 +87,7 @@ export function recapDateLabel(scheduledAt: string | undefined): string | undefi
   return formatDateCompact(scheduledAt) || scheduledAt.slice(0, 10);
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   wrap: { gap: spacing[3] },
   doneBlock: {
@@ -98,19 +95,19 @@ function buildStyles(c: AppColors) {
     paddingVertical: spacing[1],
   },
   doneTitle: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primary,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.4,
   },
   doneLine: {
-    fontFamily: fontFamily.regular,
+    ...font.regular,
     fontSize: fontSize.xs,
     color: c.textSecondary,
     paddingLeft: spacing[5],
   },
-  doneBold: { fontFamily: fontFamily.semiBold, color: c.textPrimary },
+  doneBold: { ...font.semiBold, color: c.textPrimary },
   doneDate: { color: c.textTertiary },
   card: {
     borderRadius: radius.xl,
@@ -130,14 +127,14 @@ function buildStyles(c: AppColors) {
     gap: spacing[2],
   },
   badge: {
-    fontFamily: fontFamily.semiBold,
+    ...font.semiBold,
     fontSize: fontSize.xs,
     color: c.primaryDark,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.35,
   },
   title: {
-    fontFamily: fontFamily.bold,
+    ...font.bold,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.35,
@@ -150,7 +147,7 @@ function buildStyles(c: AppColors) {
     backgroundColor: c.primaryLight,
   },
   pillText: {
-    fontFamily: fontFamily.medium,
+    ...font.medium,
     fontSize: fontSize.xs,
     color: c.primaryDark,
   },

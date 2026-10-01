@@ -1,5 +1,3 @@
-import type { AppColors } from '@/theme/colors';
-import { useThemedStyles } from '@/theme/use-themed-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -52,8 +50,7 @@ import {
   pharmacyOrderStatusLabel,
 } from '../utils/order-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import { radius, spacing, iconSize, AppText } from '@/theme';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type DetailMode = 'sent' | 'received';
 
@@ -69,7 +66,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const orderId = String(id ?? '');
   const router = useRouter();
   const c = useAppColors();
-  const styles = useThemedStyles(buildStyles, 'PharmacyOrderDetailScreen');
+  const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id);
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -520,7 +517,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   );
 }
 
-function buildStyles(c: AppColors) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: { flex: 1, backgroundColor: c.background },
     content: {
@@ -535,18 +532,18 @@ function buildStyles(c: AppColors) {
     summaryTitle: {
       flex: 1,
       minWidth: 0,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
     },
     orderedBy: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.primaryDark,
       lineHeight: fontSize.sm * 1.35,
     },
     summaryDate: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
@@ -558,28 +555,28 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.primaryLight,
     },
     statusText: {
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primaryDark,
     },
     line: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
     patientLink: {
       color: c.primary,
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
     },
     comment: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.45,
     },
     errorLine: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.sm,
       color: c.error,
     },
@@ -588,7 +585,7 @@ function buildStyles(c: AppColors) {
     rejectBlock: { gap: spacing[2], marginTop: spacing[2] },
     chatTitle: {
       marginTop: spacing[2],
-      fontFamily: fontFamily.semiBold,
+      ...font.semiBold,
       fontSize: fontSize.md,
       color: c.textPrimary,
     },
@@ -614,21 +611,19 @@ function buildStyles(c: AppColors) {
       backgroundColor: c.surface,
     },
     author: {
-      fontFamily: fontFamily.medium,
+      ...font.medium,
       fontSize: fontSize.xs,
       color: c.textSecondary,
       marginBottom: spacing[1],
     },
     body: {
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       lineHeight: fontSize.sm * 1.45,
       flexShrink: 1,
     },
     composer: {
-      // Zone de saisie interactive avec bouton d’envoi.
-      // eslint-disable-next-line oneandlab/no-raw-flex-row
       flexDirection: 'row' as const,
       alignItems: 'flex-end' as const,
       gap: spacing[2],
@@ -648,7 +643,7 @@ function buildStyles(c: AppColors) {
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.background,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
@@ -669,7 +664,7 @@ function buildStyles(c: AppColors) {
     },
     composerClosedText: {
       textAlign: 'center' as const,
-      fontFamily: fontFamily.regular,
+      ...font.regular,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
