@@ -223,7 +223,8 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, onUnmounted, watch } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
-import { apiFetch, preloadCsrfToken } from '~/utils/api';
+import { appointmentCreateErrorMessage } from '@oneandlab/shared-api';
+import { apiErrorMessage, apiFetch, preloadCsrfToken } from '~/utils/api';
 import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import { runWithBookingCelebrationOverlay } from '~/composables/useBookingCelebrationOverlay';
 import { bookingDbg, celebrationRotateIconsFromServices } from '~/utils/booking-celebration-debug';
@@ -397,7 +398,7 @@ const bookingCelebrationImageUrls = computed(() => {
   const urls: string[] = [];
 
   function pushSrc(raw: string | null | undefined, category: { name?: string | null; type?: string | null }) {
-    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, null, category);
+    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, category);
     if (resolved && !seen.has(resolved)) {
       seen.add(resolved);
       urls.push(resolved);
@@ -1398,7 +1399,7 @@ const createAppointmentDirectly = async () => {
     clearBookingDraft();
     await navigateAfterPatientBooking(result?.createdIds ?? []);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erreur lors de la création du rendez-vous';
+    error.value = apiErrorMessage(err, appointmentCreateErrorMessage, 'Erreur lors de la création du rendez-vous');
   } finally {
     otpLoading.value = false;
     bookingSubmissionLocked.value = false;
@@ -1509,7 +1510,7 @@ const verifyOTPAndCreate = async () => {
     clearBookingDraft();
     await navigateAfterPatientBooking(apiResult?.createdIds ?? []);
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : 'Erreur lors de la vérification';
+    error.value = apiErrorMessage(err, appointmentCreateErrorMessage, 'Erreur lors de la vérification');
     otpCode.value = [];
   } finally {
     otpLoading.value = false;

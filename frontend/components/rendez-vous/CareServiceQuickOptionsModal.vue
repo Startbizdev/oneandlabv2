@@ -269,7 +269,7 @@ const headerEmoji = computed(() => {
 const headerImageSrc = computed(() => {
   const c = props.category;
   if (!c) return null;
-  return resolveCareCategoryImageSrc(c.image_url ?? null, config.public.apiBase as string, c.icon, c);
+  return resolveCareCategoryImageSrc(c.image_url ?? null, config.public.apiBase as string, c);
 });
 
 const headerIconName = computed(() => {

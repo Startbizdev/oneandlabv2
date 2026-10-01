@@ -2,7 +2,8 @@
  * Composable pour la gestion des rendez-vous
  */
 
-import { apiFetch } from '~/utils/api';
+import { apiErrorMessage, apiFetch } from '~/utils/api';
+import { appointmentCreateErrorResolver } from '@oneandlab/shared-api';
 import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
@@ -226,8 +227,8 @@ export const useAppointments = (scope = 'appointments') => {
         });
         return { success: false, error: error.value || undefined };
       }
-    } catch (err: any) {
-      error.value = err.message || 'Erreur réseau';
+    } catch (err) {
+      error.value = apiErrorMessage(err, appointmentCreateErrorResolver(data), 'Erreur réseau');
       bookingDbg('createAppointment: exception', { message: error.value });
       return { success: false, error: error.value || undefined };
     } finally {

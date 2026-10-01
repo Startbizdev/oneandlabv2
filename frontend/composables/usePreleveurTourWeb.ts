@@ -1,4 +1,5 @@
-import { apiFetch } from '~/utils/api';
+import { ApiHttpError, apiErrorMessage, apiFetch } from '~/utils/api';
+import { isManualOrderLockedError, tourOptimizeErrorMessage } from '@oneandlab/shared-api';
 import {
   computeTourSummaryFromStops,
   resolveTourNextStopId,
@@ -181,11 +182,14 @@ export function usePreleveurTourWeb() {
       });
       if (res?.success && res.data) {
         tour.value = withDerivedTourSummary(res.data as PreleveurTourPayload);
-      } else if (res?.code === 'manual_order_locked') {
-        toast.add({ title: 'Ordre manuel verrouillé', color: 'warning' });
       }
-    } catch {
-      toast.add({ title: 'Tri impossible', color: 'error' });
+    } catch (e) {
+      const locked = e instanceof ApiHttpError && isManualOrderLockedError(e.status, e.code);
+      toast.add({
+        title: apiErrorMessage(e, tourOptimizeErrorMessage, 'Tri impossible'),
+        color: locked ? 'warning' : 'error',
+      });
+      if (locked) await loadTour();
     } finally {
       saving.value = false;
     }

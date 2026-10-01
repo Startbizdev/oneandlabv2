@@ -454,6 +454,7 @@
                   <UFormField
                     label="Téléphone mobile de l'infirmier(ère)"
                     help="Un SMS avec votre nom, celui du patient et le lien Cary sera envoyé."
+                    :error="externalNursePhoneTouched && externalNursePhoneError ? externalNursePhoneError : undefined"
                   >
                     <UInput
                       v-model="externalNursePhone"
@@ -462,6 +463,7 @@
                       placeholder="06 12 34 56 78"
                       :disabled="!!proLinkedNurseId"
                       @update:model-value="onExternalNursePhoneEdit"
+                      @blur="externalNursePhoneTouched = true"
                     />
                   </UFormField>
                 </template>
@@ -512,7 +514,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, watch } from 'vue';
-import { apiFetch } from '~/utils/api';
+import { ApiHttpError, apiErrorMessage, apiFetch } from '~/utils/api';
 import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from '~/utils/care-icons';
 import { runWithBookingCelebrationOverlay } from '~/composables/useBookingCelebrationOverlay';
 import { bookingDbg, celebrationRotateIconsFromServices } from '~/utils/booking-celebration-debug';
@@ -545,6 +547,18 @@ import {
   STAFF_PATIENT_BOOKING_CONSENT_ERROR,
 } from '~/constants/staff-patient-booking-consent';
 import { lookupPatientByContact, adoptStaffPatient } from '~/utils/patient-contact-lookup';
+import {
+  isEmailAlreadyUsedError,
+  patientAdoptErrorMessage,
+  patientCreateErrorMessage,
+  type PatientLookupResult,
+} from '@oneandlab/shared-api';
+import {
+  FRENCH_MOBILE_PHONE_ERROR,
+  NURSE_BLOOD_TEST_AWAITING_LAB_MESSAGE,
+  normalizeFrenchMobilePhone,
+  nurseBookingAwaitsLabConfirmation,
+} from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 
 function patientContactSuppressKey(email: string, phone: string, patientId: string): string {
@@ -587,6 +601,11 @@ const proLinkedNurses = ref<Array<{ id: string; display_name: string; phone?: st
 const proLinkedNursesLoading = ref(false);
 const proLinkedNurseChoice = ref<'linked' | 'external' | ''>('');
 const externalNursePhone = ref('');
+const externalNursePhoneTouched = ref(false);
+const externalNursePhoneError = computed(() => {
+  const raw = externalNursePhone.value.trim();
+  return raw && !normalizeFrenchMobilePhone(raw) ? FRENCH_MOBILE_PHONE_ERROR : '';
+});
 
 const showProNurseAssignment = computed(
   () => isProDashboard.value && hasNursingInSelection.value && step.value >= staffFormWizardStep.value,
@@ -623,6 +642,7 @@ function resetProNurseAssignment() {
   proLinkedNurseId.value = undefined;
   proLinkedNurseChoice.value = '';
   externalNursePhone.value = '';
+  externalNursePhoneTouched.value = false;
 }
 
 function onProLinkedNursePick(id: string | undefined) {
@@ -759,7 +779,7 @@ function buildDashboardWizardSegmentIntro(activeServiceId: string | null): {
 
   const base = String(runtimeConfig.public.apiBase ?? '');
   const img = (svc: SelectedServiceInput) =>
-    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base, svc.icon, svc);
+    resolveCareCategoryImageSrc(svc.category_image_url ?? null, base, svc);
 
   if (isNursingAppointment(rep.type)) {
     const nurs = selectedServices.value.filter((s) => isNursingAppointment(s.type));
@@ -833,7 +853,7 @@ const bookingCelebrationImageUrls = computed(() => {
   const urls: string[] = [];
 
   function pushSrc(raw: string | null | undefined, category: { name?: string | null; type?: string | null }) {
-    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, null, category);
+    const resolved = resolveCareCategoryImageSrc(raw ?? null, base, category);
     if (resolved && !seen.has(resolved)) {
       seen.add(resolved);
       urls.push(resolved);
@@ -1077,21 +1097,20 @@ const selectedPatientSelectLabel = computed(() => {
 });
 
 const duplicatePatientModalOpen = ref(false);
-const duplicatePatientRow = ref<Record<string, unknown> | null>(null);
+const duplicatePatientRow = ref<PatientLookupResult | null>(null);
 const duplicatePatientSuppressKey = ref('');
 const pinnedLookupPatient = ref<Record<string, unknown> | null>(null);
 let patientContactLookupTimer: ReturnType<typeof setTimeout> | null = null;
 
 const duplicatePatientDisplayName = computed(() => {
-  const r = duplicatePatientRow.value as { first_name?: string; last_name?: string } | null;
-  if (!r) return '';
-  return [r.first_name, r.last_name].filter(Boolean).join(' ').trim() || 'Patient';
+  const p = duplicatePatientRow.value?.patient;
+  if (!p) return '';
+  return [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || 'Patient';
 });
 
 const duplicatePatientBirthLabel = computed(() => {
-  const r = duplicatePatientRow.value as { birth_date?: string } | null;
-  const d = r?.birth_date;
-  if (!d || typeof d !== 'string') return null;
+  const d = duplicatePatientRow.value?.patient.birth_date;
+  if (!d) return null;
   const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return d;
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('fr-FR');
@@ -1124,22 +1143,21 @@ async function runPatientContactLookup() {
   }
 
   try {
-    const row = await lookupPatientByContact(apiFetch, email, phone);
+    const found = await lookupPatientByContact(apiFetch, email, phone);
     if (patientMode.value !== 'new' || email !== String(formData.value?.email ?? '').trim() || phone !== String(formData.value?.phone ?? '').trim()) return;
-    if (!row || row.id == null) {
+    if (!found) {
       duplicatePatientModalOpen.value = false;
       duplicatePatientRow.value = null;
       return;
     }
-    const pid = String(row.id);
-    const suppress = patientContactSuppressKey(email, phone, pid);
+    const suppress = patientContactSuppressKey(email, phone, found.patient.id);
     if (duplicatePatientSuppressKey.value === suppress) {
       return;
     }
-    duplicatePatientRow.value = row;
+    duplicatePatientRow.value = found;
     duplicatePatientModalOpen.value = true;
-  } catch {
-    /* silencieux */
+  } catch (e) {
+    console.warn('[booking] patient duplicate lookup failed', e);
   }
 }
 
@@ -1149,29 +1167,39 @@ function dismissDuplicatePatientModal() {
 
 function onDuplicatePatientModalToggle(open: boolean) {
   if (open || patientMode.value !== 'new') return;
-  if (duplicatePatientRow.value?.id == null) return;
+  if (!duplicatePatientRow.value) return;
   duplicatePatientSuppressKey.value = patientContactSuppressKey(
     String(formData.value?.email ?? '').trim(),
     String(formData.value?.phone ?? '').trim(),
-    String(duplicatePatientRow.value.id),
+    duplicatePatientRow.value.patient.id,
   );
   duplicatePatientRow.value = null;
 }
 
-async function confirmAdoptExistingPatientFromLookup() {
-  const row = duplicatePatientRow.value as { id?: string } | null;
-  if (!row?.id) return;
-  const id = String(row.id);
-  duplicatePatientRow.value = null;
-  duplicatePatientModalOpen.value = false;
-  duplicatePatientSuppressKey.value = '';
+const LOOKUP_ADOPTION_CONSENT_HINT = 'Cochez le consentement du patient : son dossier sera utilisé dès la confirmation.';
 
+/** Dossier choisi avant le consentement : adopté dès que la case est cochée. */
+const lookupAdoptionAwaitingConsent = ref<PatientLookupResult | null>(null);
+const adoptingLookupPatient = ref(false);
+
+/** Le serveur exige le contact recherché et le consentement : sans adoption, le dossier reste inaccessible. */
+async function adoptLookupPatient(found: PatientLookupResult) {
+  adoptingLookupPatient.value = true;
   try {
-    await adoptStaffPatient(apiFetch, id);
-  } catch {
-    /* le RDV créera le lien PPA ; l'ordonnance standalone a besoin du lien */
+    await adoptStaffPatient(apiFetch, found.patient.id, found.contact, true);
+  } catch (e) {
+    toast.add({
+      title: 'Dossier non utilisé',
+      description: apiErrorMessage(e, patientAdoptErrorMessage, 'Impossible d’utiliser ce dossier.'),
+      color: 'error',
+    });
+    return;
+  } finally {
+    adoptingLookupPatient.value = false;
   }
 
+  const row: Record<string, unknown> = { ...found.patient };
+  const id = found.patient.id;
   if (!patients.value.some((x) => String(x.id) === id)) {
     patients.value = [...patients.value, row];
   }
@@ -1187,6 +1215,29 @@ async function confirmAdoptExistingPatientFromLookup() {
     icon: 'i-lucide-user-check',
   });
 }
+
+async function confirmAdoptExistingPatientFromLookup() {
+  const found = duplicatePatientRow.value;
+  if (!found || adoptingLookupPatient.value) return;
+  duplicatePatientRow.value = null;
+  duplicatePatientModalOpen.value = false;
+  duplicatePatientSuppressKey.value = '';
+  if (!rgpdConsent.value) {
+    lookupAdoptionAwaitingConsent.value = found;
+    validationError.value = LOOKUP_ADOPTION_CONSENT_HINT;
+    scrollToValidationError('wizard-rgpd-consent');
+    return;
+  }
+  await adoptLookupPatient(found);
+}
+
+watch(rgpdConsent, (given) => {
+  const pending = lookupAdoptionAwaitingConsent.value;
+  if (!given || !pending) return;
+  lookupAdoptionAwaitingConsent.value = null;
+  if (validationError.value === LOOKUP_ADOPTION_CONSENT_HINT) validationError.value = '';
+  void adoptLookupPatient(pending);
+});
 
 function clearPatientFieldsInForm() {
   const fd = formData.value || {};
@@ -1335,13 +1386,25 @@ async function createPatientRecord(payload: Record<string, any>): Promise<string
     }
     throw new Error(res?.error || 'Création du patient impossible');
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg.includes('existe déjà') || msg.includes('déjà avec cet email')) {
-      throw new Error(
-        'Un patient existe déjà avec cet e-mail. Choisissez « Patient existant » ou modifiez l’e-mail.',
-      );
+    if (e instanceof ApiHttpError && isEmailAlreadyUsedError(e.status, e.code) && e.existingPatientId) {
+      await proposeExistingPatientForEmail(e.existingPatientId);
     }
-    throw e instanceof Error ? e : new Error(msg);
+    throw new Error(apiErrorMessage(e, patientCreateErrorMessage, 'Création du patient impossible'));
+  }
+}
+
+/** 409 `EMAIL_ALREADY_USED` : propose le dossier existant via la même recherche que la saisie (contact transmis à l'adoption). */
+async function proposeExistingPatientForEmail(existingPatientId: string) {
+  const email = String(formData.value?.email ?? '').trim();
+  if (!email) return;
+  try {
+    const found = await lookupPatientByContact(apiFetch, email, '');
+    if (!found || found.patient.id !== existingPatientId) return;
+    duplicatePatientSuppressKey.value = '';
+    duplicatePatientRow.value = found;
+    duplicatePatientModalOpen.value = true;
+  } catch (lookupError) {
+    console.warn('[booking] existing patient lookup after 409 failed', lookupError);
   }
 }
 
@@ -1460,6 +1523,7 @@ watch(patientMode, (m, prev) => {
     duplicatePatientModalOpen.value = false;
     duplicatePatientRow.value = null;
     duplicatePatientSuppressKey.value = '';
+    lookupAdoptionAwaitingConsent.value = null;
   }
   if (m === 'new') {
     selectedRelativeId.value = null;
@@ -1488,6 +1552,7 @@ watch(
       (em !== prev[1] || ph !== prev[2] || mode !== prev[0])
     ) {
       duplicatePatientSuppressKey.value = '';
+      lookupAdoptionAwaitingConsent.value = null;
     }
     schedulePatientContactLookup();
   },
@@ -1766,10 +1831,15 @@ async function onUnifiedSubmit(payload: any) {
 
   if (showProNurseAssignment.value && nurseAssignmentMode.value === 'patient_nurse') {
     const linked = proLinkedNurseId.value?.trim() || '';
-    const extPhone = externalNursePhone.value.replace(/\s/g, '').trim();
+    const extPhone = externalNursePhone.value.trim();
     if (!linked && !extPhone) {
       validationError.value =
         'Choisissez un infirmier(ère) dans la liste ou renseignez son numéro de mobile pour l\'invitation SMS.';
+      scrollToValidationError('wizard-pro-nurse-assignment');
+      return;
+    }
+    if (!linked && externalNursePhoneError.value) {
+      externalNursePhoneTouched.value = true;
       scrollToValidationError('wizard-pro-nurse-assignment');
       return;
     }
@@ -1898,7 +1968,7 @@ async function onUnifiedSubmit(payload: any) {
 
     if (isProDashboard.value && nurseAssignmentMode.value === 'patient_nurse') {
       const linkedNurseId = proLinkedNurseId.value?.trim() || '';
-      const extPhone = externalNursePhone.value.replace(/\s/g, '').trim();
+      const extPhone = normalizeFrenchMobilePhone(externalNursePhone.value) ?? externalNursePhone.value.trim();
       let externalInviteAttached = false;
       for (const raw of payloads) {
         const p = raw as Record<string, unknown>;
@@ -1964,7 +2034,9 @@ async function onUnifiedSubmit(payload: any) {
     } else if (!fallbackList) {
       toast.add({
         title: n > 1 ? 'Rendez-vous créés' : 'Rendez-vous créé',
-        description: n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
+        description: nurseBookingAwaitsLabConfirmation(role, payloads)
+          ? NURSE_BLOOD_TEST_AWAITING_LAB_MESSAGE
+          : n > 1 ? `${n} rendez-vous ont été enregistrés.` : 'Le rendez-vous a été enregistré.',
         color: 'success',
         icon: 'i-lucide-check-circle',
       });

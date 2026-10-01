@@ -1,17 +1,15 @@
-import { careArtworkKey, careArtworkWebPath, explicitCareIcon, resolveCareCategoryIcon } from '@oneandlab/shared-utils'
+import { careArtworkKey, careArtworkWebPath, resolveCareCategoryIcon } from '@oneandlab/shared-utils'
 
 /**
  * Image affichée pour une catégorie : image importée par l’admin (`care_categories.image_url`, ex. `/api/categories/care-image?name=…`),
- * sinon illustration 3D livrée avec le front si `category` est fourni. Une icône choisie explicitement par l’admin reste prioritaire.
+ * sinon illustration 3D livrée avec le front si `category` est fourni. L’icône `care_categories.icon` ne sert qu’en l’absence de catégorie.
  * Avec `apiBase` relatif (`/api`), renvoie le chemin tel quel pour que le navigateur reste sur l’origine du front (proxy Nitro).
  */
 export function resolveCareCategoryImageSrc(
   imageUrl: string | null | undefined,
   apiBase?: string | null,
-  icon?: string | null,
   category?: { name?: string | null; type?: string | null },
 ): string | null {
-  if (explicitCareIcon(icon)) return null;
   const raw = imageUrl != null && String(imageUrl).trim() !== '' ? String(imageUrl).trim() : '';
   if (!raw) return category ? careArtworkWebPath(careArtworkKey(category)) : null;
   if (/^https?:\/\//i.test(raw)) return raw;
@@ -48,15 +46,6 @@ export type CareCategoryBadgeVisual = {
   iconColor: string
   tileBg: string
   imageSrc: string | null
-}
-
-function careCategoryImageSrcForDisplay(
-  imageUrl: string | null | undefined,
-  icon: string | null | undefined,
-  apiBase: string | null | undefined,
-  category: { name?: string | null; type: string },
-): string | null {
-  return resolveCareCategoryImageSrc(imageUrl, apiBase, icon, category)
 }
 
 const ACCENT_FALLBACK: CareAccent = {
@@ -200,7 +189,7 @@ export function careListBadgeDisplay(
   })
 
 
-  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase, {
+  const imageSrc = resolveCareCategoryImageSrc(imageFromSource, apiBase, {
     name: categoryRow?.name ?? apt?.category_name,
     type: typeStr,
   })
@@ -269,7 +258,7 @@ export function careListBadgeForCatalogItem(
     type: typeStr,
   })
 
-  const imageSrc = careCategoryImageSrcForDisplay(imageFromSource, iconFromSource, apiBase, {
+  const imageSrc = resolveCareCategoryImageSrc(imageFromSource, apiBase, {
     name: row?.name ?? item?.category_name,
     type: typeStr,
   })

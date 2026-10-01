@@ -207,7 +207,7 @@ function iconFor(svc: SelectedServiceInput): string {
 
 function imageSrcFor(svc: SelectedServiceInput): string | null {
   const cat = categoryFor(svc);
-  return resolveCareCategoryImageSrc(cat?.image_url ?? svc.category_image_url ?? null, config.public.apiBase, cat ? cat.icon : svc.icon, {
+  return resolveCareCategoryImageSrc(cat?.image_url ?? svc.category_image_url ?? null, config.public.apiBase, {
     name: cat?.name ?? svc.name,
     type: cat?.type ?? svc.type,
   });

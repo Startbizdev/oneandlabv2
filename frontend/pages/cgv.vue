@@ -2,6 +2,7 @@
   <div class="min-h-screen bg-[#fafafa]">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
       <NuxtLink
+        v-if="!embedded"
         to="/"
         class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-8"
       >
@@ -146,6 +147,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
+
+const embedded = useEmbeddedView()
 
 useHead({
   title: 'Conditions générales de vente — Cary',

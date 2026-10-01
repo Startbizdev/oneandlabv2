@@ -2,7 +2,8 @@
  * Composable pour la gestion de l'authentification
  */
 
-import { apiFetch } from '~/utils/api';
+import { isSessionRejected } from '@oneandlab/shared-api';
+import { ApiHttpError, apiFetch } from '~/utils/api';
 
 export const useAuth = () => {
   const token = useState<string | null>('auth.token', () => null);
@@ -154,9 +155,9 @@ export const useAuth = () => {
         user.value = null;
       }
       return null;
-    } catch (error: any) {
-      // Si erreur 401 (token invalide), nettoyer
-      if (error?.message?.includes('401') || error?.message?.includes('Token invalide') || error?.message?.includes('Unauthorized')) {
+    } catch (error: unknown) {
+      // Seul un refus de session efface le jeton : une panne serveur (500) ou réseau le conserve.
+      if (error instanceof ApiHttpError && isSessionRejected(error.status, error.code)) {
         if (process.client) {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_user');
@@ -321,15 +322,10 @@ export const useAuth = () => {
       // Si on a un token mais pas d'infos utilisateur complètes, les récupérer
       if (storedToken) {
         // Vérifier la validité du token en récupérant les infos utilisateur
+        // Session refusée : fetchCurrentUser efface déjà le jeton. Panne serveur ou réseau : le profil en cache est conservé.
         const userData = await fetchCurrentUser();
-        if (!userData && storedUser) {
-          // Si le token est invalide mais qu'on a des données en cache, nettoyer
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          token.value = null;
-          user.value = null;
-        } else if (!userData && !storedUser) {
-          // Si pas de données utilisateur et token invalide, nettoyer
+        if (!userData && !storedUser) {
+          // Aucun profil à afficher : session inutilisable
           localStorage.removeItem('auth_token');
           token.value = null;
           user.value = null;

@@ -1,4 +1,5 @@
-import { apiFetch } from '~/utils/api';
+import { nursePassageCreateErrorMessage, nursePassageSeriesErrorMessage } from '@oneandlab/shared-api';
+import { apiErrorMessage, apiFetch } from '~/utils/api';
 import type {
   NursePassageSeries,
   NursePassageSeriesCreateResult,
@@ -26,7 +27,7 @@ export function useNursePassageWeb() {
       return res.data;
     } catch (e) {
       toast.add({
-        title: e instanceof Error ? e.message : 'Création impossible',
+        title: apiErrorMessage(e, nursePassageCreateErrorMessage, 'Création impossible'),
         color: 'error',
       });
       return null;
@@ -55,7 +56,7 @@ export function useNursePassageWeb() {
       return res.data;
     } catch (e) {
       toast.add({
-        title: e instanceof Error ? e.message : 'Mise à jour impossible',
+        title: apiErrorMessage(e, nursePassageSeriesErrorMessage, 'Mise à jour impossible'),
         color: 'error',
       });
       return null;
@@ -79,7 +80,7 @@ export function useNursePassageWeb() {
       return res.data;
     } catch (e) {
       toast.add({
-        title: e instanceof Error ? e.message : 'Génération impossible',
+        title: apiErrorMessage(e, nursePassageSeriesErrorMessage, 'Génération impossible'),
         color: 'error',
       });
       return null;
@@ -97,7 +98,7 @@ export function useNursePassageWeb() {
       return true;
     } catch (e) {
       toast.add({
-        title: e instanceof Error ? e.message : 'Suppression impossible',
+        title: apiErrorMessage(e, nursePassageSeriesErrorMessage, 'Suppression impossible'),
         color: 'error',
       });
       return false;

@@ -118,7 +118,8 @@ definePageMeta({
 });
 
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
-import { apiFetch } from '~/utils/api';
+import { appointmentReassignErrorMessage } from '@oneandlab/shared-api';
+import { ApiHttpError, apiErrorMessage, apiFetch } from '~/utils/api';
 import { cancelAppointmentWithOptionalPhoto } from '~/utils/appointment-cancellation';
 import { MAX_UPLOAD_BYTES } from '~/constants/upload-limits';
 import {
@@ -338,7 +339,17 @@ function applyReassign(appointment: any, loadAppointment: () => Promise<void>) {
         toast.add({ title: 'Erreur', description: res?.error || 'Impossible de réassigner', color: 'error' });
       }
     })
-    .catch((err: any) => toast.add({ title: 'Erreur', description: err?.message || 'Une erreur est survenue', color: 'error' }))
+    .catch(async (err: unknown) => {
+      toast.add({
+        title: 'Réassignation impossible',
+        description: apiErrorMessage(err, appointmentReassignErrorMessage, 'Une erreur est survenue'),
+        color: 'error',
+      });
+      if (err instanceof ApiHttpError && err.status === 403) {
+        reassignValue.value = '';
+        await Promise.all([fetchAssignmentOptions(), loadAppointment()]);
+      }
+    })
     .finally(() => { reassigning.value = false; });
 }
 

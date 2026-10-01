@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ContactClientInfo } from '@oneandlab/shared-api';
 definePageMeta({
   layout: 'default',
 });
@@ -236,6 +237,7 @@ async function onSubmit() {
         email: form.email.trim(),
         contactType: form.contactType,
         message: form.message.trim(),
+        client: { platform: 'web' } satisfies ContactClientInfo,
       },
     })) as { success?: boolean; error?: string; message?: string };
     if (res?.success) {

@@ -219,7 +219,7 @@
                     <UFormField
                       name="icon"
                       label="Icône du soin"
-                      description="Facultatif : sans icône ni image personnalisée, l’illustration 3D du soin s’affiche dans le catalogue, le panier et les étapes du rendez-vous."
+                      description="Facultatif : pictogramme de secours, affiché seulement si l’image du soin ne peut pas être chargée. L’illustration 3D reste l’image par défaut."
                       class="w-full"
                       :ui="{ label: 'text-xs font-medium text-muted', description: 'text-xs text-muted leading-snug' }"
                     >
@@ -253,7 +253,7 @@
                     <UFormField
                       label="Image personnalisée"
                       name="category_image"
-                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — remplace l’illustration 3D et l’icône."
+                      description="JPEG, PNG, WebP ou GIF · max 2 Mo — remplace l’illustration 3D du soin."
                       class="w-full"
                       :ui="{
                         label: 'text-xs font-medium text-muted',
@@ -664,7 +664,7 @@ function categoryListEmoji(cat: { name?: string; icon?: string | null; type?: st
 }
 
 function categoryListImageSrc(cat: any): string | null {
-  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase, cat?.icon, cat);
+  return resolveCareCategoryImageSrc(cat?.image_url ?? null, config.public.apiBase, cat);
 }
 
 const modalCategoryEmoji = computed((): string | null => {
@@ -677,13 +677,9 @@ const modalCategoryEmoji = computed((): string | null => {
   return e || null;
 });
 
-watch(() => categoryForm.value.icon, (icon) => {
-  if (icon && pendingImageFile.value) clearSelectedCategoryImageFile();
-});
-
 const modalCategoryImageSrc = computed(() => {
   if (pendingImageObjectUrl.value) return pendingImageObjectUrl.value;
-  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase, categoryForm.value.icon, categoryForm.value);
+  return resolveCareCategoryImageSrc(editingCategory.value?.image_url ?? null, config.public.apiBase, categoryForm.value);
 });
 
 function onCategoryImageFileChange(e: Event) {
@@ -695,7 +691,6 @@ function onCategoryImageFileChange(e: Event) {
     toast.add({ title: 'Image non acceptée', description: 'Choisissez un JPEG, PNG, WebP ou GIF de moins de 2 Mo.', color: 'red' });
     return;
   }
-  categoryForm.value.icon = '';
   revokePendingImagePreview();
   pendingImageFile.value = file;
   pendingImageObjectUrl.value = URL.createObjectURL(file);

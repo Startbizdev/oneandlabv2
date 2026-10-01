@@ -259,7 +259,8 @@
 <script setup lang="ts">
 import { appointmentTimeFrance, parseAppointmentDateFrance, createAppointmentRequestId, canCancelAppointment } from '@oneandlab/shared-utils';
 const creationRequestId = ref(createAppointmentRequestId());
-import { apiFetch } from '~/utils/api'
+import { appointmentCreateErrorMessage } from '@oneandlab/shared-api'
+import { apiErrorMessage, apiFetch } from '~/utils/api'
 import { AVAILABILITY_MIN_SPAN_HOURS } from '~/constants/availability-slot'
 import { buildReschedulePutPayload, nurseCanRescheduleInPlace } from '~/utils/build-reschedule-payload'
 
@@ -522,7 +523,6 @@ function buildPayload() {
     scheduled_at: scheduledAt,
     address: addressPayload,
     form_data: formData,
-    status: 'confirmed',
     patient_id: a.patient_id || undefined,
     relative_id: a.relative_id || undefined,
     category_id: form.category_id || a.category_id || undefined,
@@ -546,9 +546,6 @@ function buildPayload() {
       payload.assigned_lab_id = uid
     } else if (role === 'subaccount') {
       payload.assigned_lab_id = (labIdFromUser && String(labIdFromUser)) || uid
-    } else {
-      if (a.assigned_lab_id) payload.assigned_lab_id = a.assigned_lab_id
-      if (a.assigned_to) payload.assigned_to = a.assigned_to
     }
   }
   return payload
@@ -636,8 +633,7 @@ async function submit() {
     close()
     emit('done', newId)
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Une erreur est survenue'
-    toast.add({ title: 'Erreur', description: msg, color: 'error' })
+    toast.add({ title: 'Erreur', description: apiErrorMessage(e, appointmentCreateErrorMessage, 'Une erreur est survenue'), color: 'error' })
   } finally {
     saving.value = false
   }

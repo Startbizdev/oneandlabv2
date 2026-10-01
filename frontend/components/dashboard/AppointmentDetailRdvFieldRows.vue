@@ -1134,7 +1134,7 @@ function nursingItemCategoryVisual(item: Record<string, unknown> | null | undefi
       : itemImg != null && String(itemImg).trim() !== ''
         ? String(itemImg)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, row?.icon, {
+  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, {
     name: row?.name ?? String(item?.category_name ?? ''),
     type: 'nursing',
   });
@@ -1238,7 +1238,7 @@ function bloodItemCategoryVisual(item: Record<string, unknown> | null | undefine
       : itemImg != null && String(itemImg).trim() !== ''
         ? String(itemImg)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, row?.icon, {
+  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, {
     name: row?.name ?? String(item?.category_name ?? ''),
     type: 'blood_test',
   });
@@ -1283,7 +1283,7 @@ const careCategoryDisplay = computed(() => {
       : a?.category_image_url != null && String(a.category_image_url).trim() !== ''
         ? String(a.category_image_url)
         : null;
-  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, row?.icon, {
+  const imageSrc = resolveCareCategoryImageSrc(rawImg, config.public.apiBase, {
     name: row?.name ?? a?.category_name ?? null,
     type: typeStr,
   });

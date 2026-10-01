@@ -9,7 +9,8 @@
  *   assigned_to = id du préleveur (doit avoir profiles.lab_id = assigned_lab_id).
  */
 
-import { apiFetch } from '~/utils/api'
+import { appointmentReassignErrorMessage } from '@oneandlab/shared-api'
+import { ApiHttpError, apiErrorMessage, apiFetch } from '~/utils/api'
 
 /** Valeur sentinelle pour "Aucun préleveur" (Combobox n'accepte pas value vide). */
 export const PRELEVEUR_NONE_VALUE = '__aucun__'
@@ -184,12 +185,13 @@ export function useLabAssignment() {
           color: 'error',
         })
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.add({
-        title: 'Erreur',
-        description: err?.message || 'Une erreur est survenue',
+        title: 'Réassignation impossible',
+        description: apiErrorMessage(err, appointmentReassignErrorMessage, 'Une erreur est survenue'),
         color: 'error',
       })
+      if (err instanceof ApiHttpError && err.status === 403) await fetchOptions()
     } finally {
       reassigning.value = false
     }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { apiFetch } from '~/utils/api';
+import { REVIEW_RESPONSE_MAX_LENGTH, isReviewResponseConflict, reviewResponseErrorMessage } from '@oneandlab/shared-api';
+import { ApiHttpError, apiErrorMessage, apiFetch } from '~/utils/api';
 import type { ReceivedReview } from '~/types/reviews';
 
 defineProps<{ appointmentDetailBase: string }>();
@@ -66,13 +67,20 @@ async function submitReply() {
   submitting.value = true;
   responseError.value = '';
   try {
-    const result = await apiFetch<{ success: boolean; error?: string }>(`/reviews/${encodeURIComponent(selectedReview.value.id)}/response`, { method: 'POST', body: { response } });
+    const result = await apiFetch<{ success: boolean; error?: string }>(`/reviews/${encodeURIComponent(selectedReview.value.id)}/response`, { method: 'PUT', body: { response } });
     if (!result.success) throw new Error(result.error || 'Envoi impossible. Réessayez.');
     selectedReview.value.response = response;
     replyOpen.value = false;
     toast.add({ title: 'Réponse envoyée', color: 'success' });
   } catch (error) {
-    responseError.value = error instanceof Error ? error.message : 'Envoi impossible. Votre texte est conservé.';
+    const message = apiErrorMessage(error, reviewResponseErrorMessage, 'Envoi impossible. Votre texte est conservé.');
+    if (error instanceof ApiHttpError && isReviewResponseConflict(error.status, error.code)) {
+      replyOpen.value = false;
+      toast.add({ title: message, color: 'warning' });
+      void loadReviews();
+    } else {
+      responseError.value = message;
+    }
   } finally {
     submitting.value = false;
   }
@@ -103,7 +111,8 @@ onMounted(() => { void Promise.all([loadReviews(), loadStats()]); });
       <template #body>
         <form id="review-reply" class="space-y-4" @submit.prevent="submitReply">
           <blockquote class="rounded-xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ selectedReview?.comment || 'Le patient n’a pas laissé de commentaire.' }}</blockquote>
-          <UFormField label="Votre réponse" :error="responseError || undefined"><UTextarea v-model="responseText" :rows="5" class="w-full" :disabled="submitting" placeholder="Rédigez votre réponse…" /></UFormField>
+          <UFormField label="Votre réponse" :error="responseError || undefined"><UTextarea v-model="responseText" :rows="5" :maxlength="REVIEW_RESPONSE_MAX_LENGTH" class="w-full" :disabled="submitting" placeholder="Rédigez votre réponse…" /></UFormField>
+          <p class="text-right text-xs text-muted">{{ responseText.length }} / {{ REVIEW_RESPONSE_MAX_LENGTH }}</p>
           <p v-if="responseError" role="alert" class="sr-only">{{ responseError }}</p>
         </form>
       </template>

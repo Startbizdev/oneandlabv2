@@ -1,5 +1,6 @@
 // utils/api.ts
 
+import type { ApiErrorMessageResolver } from '@oneandlab/shared-api';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 
 // Cache pour le token CSRF
@@ -120,6 +121,26 @@ function resolveApiBase(): string {
     }
   }
   return apiBase;
+}
+
+/** Réponse HTTP en erreur : message, statut et `code` renvoyés par l'API. */
+export class ApiHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly existingPatientId?: string,
+  ) {
+    super(message);
+    this.name = 'ApiHttpError';
+  }
+}
+
+/** Message propre au domaine (statut + code HTTP), sinon celui du serveur, sinon `fallback`. */
+export function apiErrorMessage(error: unknown, resolve: ApiErrorMessageResolver, fallback: string): string {
+  const specific = error instanceof ApiHttpError ? resolve(error.status, error.code) : null;
+  if (specific) return specific;
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 /**
@@ -302,8 +323,12 @@ export async function apiFetch<T = any>(path: string, options: any = {}): Promis
         }
       }
       
-      const err = new Error(data?.error || data?.message || `Erreur serveur: ${response.status} ${response.statusText}`) as Error & { code?: string };
-      err.code = data?.code;
+      const err = new ApiHttpError(
+        data?.error || data?.message || `Erreur serveur: ${response.status} ${response.statusText}`,
+        response.status,
+        data?.code,
+        typeof data?.existing_patient_id === 'string' ? data.existing_patient_id : undefined,
+      );
       if (dbgApptCreate) {
         bookingDbg('apiFetch POST /appointments: HTTP erreur', {
           status: response.status,
@@ -363,6 +388,9 @@ export async function apiFetch<T = any>(path: string, options: any = {}): Promis
         name: error?.name,
         message: error?.message != null ? String(error.message).slice(0, 200) : '',
       });
+    }
+    if (error instanceof ApiHttpError) {
+      throw error;
     }
     // Extraire le message d'erreur de différentes façons possibles
     let errorMessage = "";

@@ -621,7 +621,7 @@
                 ]"
               >
                 <CareCategoryVisual
-                  :image-src="resolveCareCategoryImageSrc(pref.image_url ?? null, config.public.apiBase, pref.icon, pref)"
+                  :image-src="resolveCareCategoryImageSrc(pref.image_url ?? null, config.public.apiBase, pref)"
                   :icon-name="resolveCareIconFromCategory(pref)"
                   img-class="h-10 w-10 object-contain"
                   icon-class="h-6 w-6"
@@ -793,8 +793,8 @@
                   </div>
                 </div>
 
-                <!-- Commandes pharmacie (pro Pharmacien) -->
-                <template v-if="isPharmacistOwnProfile">
+                <!-- Commandes pharmacie (compte officine) -->
+                <template v-if="isPharmacyOwnProfile">
                   <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 transition-colors" :class="pharmacyAcceptsClickCollect ? 'bg-primary-50/50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800' : 'bg-gray-50/50 dark:bg-gray-800/30'">
                     <div class="flex items-center justify-between gap-3">
                       <div class="min-w-0 flex-1">
@@ -1093,7 +1093,8 @@ import { resolveCareCategoryImageSrc, resolveCareIconFromCategory } from "~/util
 import type { ProfilePersonalInfo } from '#components';
 import { nextTick } from 'vue'
 import { splitProfessionalId, validateProfessionalId, isProIpaEmploi } from '@oneandlab/shared-types'
-import { apiFetch } from '~/utils/api'
+import { coverageZoneSaveErrorMessage } from '@oneandlab/shared-api'
+import { apiErrorMessage, apiFetch } from '~/utils/api'
 import {
   STAFF_PATIENT_BOOKING_CONSENT_LABEL,
 } from '~/constants/staff-patient-booking-consent'
@@ -1107,6 +1108,7 @@ useHead({ title: 'Mon profil' })
 
 const route = useRoute()
 const { user, fetchCurrentUser } = useAuth()
+const { uiFlags: pharmacyUiFlags } = usePharmacyModule()
 const toast = useAppToast()
 
 // Lab édite le profil d'un préleveur : ?userId=xxx
@@ -1414,11 +1416,10 @@ const hasProfilePhotoCard = computed(
 const isProOwnProfile = computed(
   () => user.value?.role === 'pro' && !editingUserId.value && !newPatientMode.value
 )
-const isPharmacistOwnProfile = computed(() => {
-  if (!isProOwnProfile.value) return false
-  const emploi = (profileForm.value.emploi ?? '').trim()
-  return emploi.localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0
-})
+/** Droit calculé par le serveur (`GET /pharmacy-module/config`, emplois receveurs configurés). */
+const isPharmacyOwnProfile = computed(
+  () => isProOwnProfile.value && pharmacyUiFlags.value?.is_pharmacy_account === true
+)
 const pharmacyAcceptsClickCollect = ref(true)
 const pharmacyAcceptsHomeDelivery = ref(true)
 const pharmacyOrdersPaused = ref(false)
@@ -2365,10 +2366,7 @@ const saveProfile = async (fromSaveAll = false) => {
         body.rpps = profileForm.value.rpps.replace(/\s/g, '')
       }
       body.emploi = profileForm.value.emploi?.trim() || null
-      if (
-        isPharmacistOwnProfile.value ||
-        (profileForm.value.emploi ?? '').trim().localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0
-      ) {
+      if (isPharmacyOwnProfile.value) {
         body.pharmacy_accepts_click_collect = !!pharmacyAcceptsClickCollect.value
         body.pharmacy_accepts_home_delivery = !!pharmacyAcceptsHomeDelivery.value
         body.pharmacy_orders_paused = !!pharmacyOrdersPaused.value
@@ -2556,7 +2554,6 @@ const saveCoverage = async (fromSaveAll = false) => {
   }
   if (!fromSaveAll) savingCoverage.value = true
   try {
-    const coverageRole = role.value === 'subaccount' ? 'subaccount' : role.value
     const lat = Number(profileForm.value.address.lat)
     const lng = Number(profileForm.value.address.lng)
     const { ensureSixVertices, toPolygonPayload, maxVertexDistanceKm } = await import('@oneandlab/shared-utils')
@@ -2576,7 +2573,6 @@ const saveCoverage = async (fromSaveAll = false) => {
       radius_km: reach,
       zone_type: 'polygon',
       bounds_json: bounds,
-      role: coverageRole,
     }
     if (effectiveUserId.value && effectiveUserId.value !== user.value?.id) {
       body.owner_id = effectiveUserId.value
@@ -2598,8 +2594,8 @@ const saveCoverage = async (fromSaveAll = false) => {
     }
     toast.add({ title: 'Limite de votre offre', description: response.error || "Impossible d'enregistrer", color: 'red' })
     return false
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err.message || 'Une erreur est survenue', color: 'red' })
+  } catch (err: unknown) {
+    toast.add({ title: 'Erreur', description: apiErrorMessage(err, coverageZoneSaveErrorMessage, 'Une erreur est survenue'), color: 'red' })
     return false
   } finally {
     if (!fromSaveAll) savingCoverage.value = false

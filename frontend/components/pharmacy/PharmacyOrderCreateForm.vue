@@ -175,7 +175,6 @@
 <script setup lang="ts">
 import type { PharmacyFulfillmentMode } from '@oneandlab/shared-types';
 import { PHARMACY_FULFILLMENT_LABELS } from '@oneandlab/shared-constants';
-import { isPharmacyAccount } from '@oneandlab/shared-utils';
 import type { StaffHubPatientItem } from '@oneandlab/shared-types';
 import { apiFetch } from '~/utils/api';
 import { fetchStaffPatientHubSearch } from '~/utils/staff-patient-hub-search';
@@ -199,13 +198,7 @@ const router = useRouter();
 const toast = useAppToast();
 const { user } = useAuth();
 const { createOrder, fetchPharmacies, uiFlags, fetchModuleFlags } = usePharmacyModule();
-const isOwnPharmacy = computed(() => {
-  if (uiFlags.value?.is_pharmacy_account || uiFlags.value?.can_receive) return true;
-  return isPharmacyAccount({
-    role: user.value?.role,
-    emploi: user.value?.emploi ?? null,
-  });
-});
+const isOwnPharmacy = computed(() => uiFlags.value?.is_pharmacy_account === true);
 
 const patientSearch = ref('');
 const debouncedPatientSearch = ref('');

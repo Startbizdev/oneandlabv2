@@ -1,4 +1,5 @@
-import { apiFetch, apiFetchBlob } from '~/utils/api';
+import { ApiHttpError, apiErrorMessage, apiFetch, apiFetchBlob } from '~/utils/api';
+import { isManualOrderLockedError, tourOptimizeErrorMessage } from '@oneandlab/shared-api';
 import type { PatientAbsence } from '@oneandlab/shared-types';
 import {
   appointmentDayFrance,
@@ -243,11 +244,14 @@ export function useNurseTourWeb(options: UseNurseTourWebOptions = {}) {
       });
       if (res?.success && res.data) {
         tour.value = withDerivedTourSummary(res.data as NurseTourPayload);
-      } else if (res?.code === 'manual_order_locked') {
-        toast.add({ title: 'Ordre manuel verrouillé — confirmez pour remplacer', color: 'warning' });
       }
-    } catch {
-      toast.add({ title: 'Tri impossible', color: 'error' });
+    } catch (e) {
+      const locked = e instanceof ApiHttpError && isManualOrderLockedError(e.status, e.code);
+      toast.add({
+        title: apiErrorMessage(e, tourOptimizeErrorMessage, 'Tri impossible'),
+        color: locked ? 'warning' : 'error',
+      });
+      if (locked) await loadTour();
     } finally {
       saving.value = false;
     }

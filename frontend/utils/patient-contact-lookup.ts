@@ -1,48 +1,34 @@
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function isFrenchPhoneLookupFormat(phone: string): boolean {
-  const cleaned = phone.replace(/[\s.\-]/g, '');
-  return /^(\+33|0)[1-9]\d{8}$/.test(cleaned);
-}
+import {
+  buildPatientAdoptBody,
+  lookupPatientByContact as lookupByContact,
+  type PatientLookupContact,
+  type PatientLookupResult,
+} from '@oneandlab/shared-api';
 
 type LookupApiFetch = (
   url: string,
   opts?: { method?: string; body?: unknown },
-) => Promise<{ success?: boolean; error?: string; data?: Record<string, unknown> | null }>;
+) => Promise<{ success?: boolean; error?: string; data?: unknown }>;
 
-/** Email d’abord, puis téléphone si aucun dossier trouvé par email. */
-export async function lookupPatientByContact(
+/** GET /patients/lookup : e-mail d’abord, puis téléphone. Renvoie aussi le contact qui a trouvé le dossier. */
+export function lookupPatientByContact(
   apiFetch: LookupApiFetch,
   email: string,
   phone: string,
-): Promise<Record<string, unknown> | null> {
-  const em = email.trim();
-  const ph = phone.trim();
-  const emailOk = EMAIL_RE.test(em);
-  const phoneOk = isFrenchPhoneLookupFormat(ph);
-  if (!emailOk && !phoneOk) return null;
-
-  if (emailOk) {
-    const res = await apiFetch(`/patients/lookup?email=${encodeURIComponent(em)}`, { method: 'GET' });
-    if (res?.success && res.data && typeof res.data === 'object' && res.data.id != null) {
-      return res.data;
-    }
-  }
-  if (phoneOk) {
-    const res = await apiFetch(`/patients/lookup?phone=${encodeURIComponent(ph)}`, { method: 'GET' });
-    if (res?.success && res.data && typeof res.data === 'object' && res.data.id != null) {
-      return res.data;
-    }
-  }
-  return null;
+): Promise<PatientLookupResult | null> {
+  return lookupByContact((path) => apiFetch(path, { method: 'GET' }), email, phone);
 }
 
+/** POST /patients/adopt : contact recherché + consentement du patient. Lève `ApiHttpError` en cas de refus. */
 export async function adoptStaffPatient(
   apiFetch: LookupApiFetch,
   patientId: string,
-): Promise<boolean> {
-  const id = patientId.trim();
-  if (!id) return false;
-  const res = await apiFetch('/patients/adopt', { method: 'POST', body: { patient_id: id } });
-  return Boolean(res?.success);
+  contact: PatientLookupContact,
+  consent: boolean,
+): Promise<void> {
+  const res = await apiFetch('/patients/adopt', {
+    method: 'POST',
+    body: buildPatientAdoptBody(patientId, contact, consent),
+  });
+  if (!res?.success) throw new Error(res?.error || 'Impossible d’utiliser ce dossier.');
 }

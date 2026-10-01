@@ -290,7 +290,8 @@ definePageMeta({
   role: ['super_admin'],
 });
 
-import { apiFetch } from '~/utils/api';
+import { coverageZoneSaveErrorMessage } from '@oneandlab/shared-api';
+import { apiErrorMessage, apiFetch } from '~/utils/api';
 import { fetchAllUsers } from '~/utils/fetch-all-users';
 import { toPolygonPayload, type CoverageEditorSavePayload, type CoverageVertex } from '@oneandlab/shared-utils';
 import { coverageFormVertices } from '~/utils/coverage-form-geometry';
@@ -448,8 +449,8 @@ async function onMapEditorSave(payload: CoverageEditorSavePayload) {
     mapEditorOpen.value = false;
     toast.add({ title: 'Secteur enregistré', color: 'success' });
     await fetchZones();
-  } catch (error: any) {
-    toast.add({ title: 'Erreur', description: (error as Error).message, color: 'error' });
+  } catch (error: unknown) {
+    toast.add({ title: 'Erreur', description: apiErrorMessage(error, coverageZoneSaveErrorMessage, 'Le secteur n’a pas été enregistré. Réessayez.'), color: 'error' });
   } finally { mapSaving.value = false; }
 }
 
@@ -605,7 +606,6 @@ const saveZone = async () => {
     const bounds = toPolygonPayload(vertices);
     const body = {
       owner_id: zoneForm.value.owner_id,
-      role: zoneForm.value.role,
       center_lat: zoneForm.value.center_lat,
       center_lng: zoneForm.value.center_lng,
       radius_km: zoneForm.value.radius_km,
@@ -639,8 +639,8 @@ const saveZone = async () => {
     editingZone.value = null;
     selectedNurse.value = null;
     await fetchZones();
-  } catch (error: any) {
-    saveError.value = error.message || 'Réessayez sans fermer le formulaire.';
+  } catch (error: unknown) {
+    saveError.value = apiErrorMessage(error, coverageZoneSaveErrorMessage, 'Réessayez sans fermer le formulaire.');
   } finally {
     saving.value = false;
   }

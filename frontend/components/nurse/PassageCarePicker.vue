@@ -49,7 +49,7 @@
               @click="pickCategory(cat)"
             >
               <CareCategoryVisual
-                :image-src="resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat.icon, cat)"
+                :image-src="resolveCareCategoryImageSrc(cat.image_url ?? null, config.public.apiBase, cat)"
                 :icon-name="resolveCareIconFromCategory(cat)"
                 img-class="size-8 shrink-0 object-contain"
                 icon-class="size-5 shrink-0 text-primary-700"
