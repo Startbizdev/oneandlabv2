@@ -1,0 +1,159 @@
+---
+description: Direction artistique et règles de design Cary (mobile RN + web Nuxt) — anti « AI flop », hiérarchie, couleurs, cards, icônes, illustrations, états, animation
+globs: apps/mobile/**/*.{tsx,ts},frontend/**/*.{vue,ts}
+alwaysApply: false
+---
+
+# CARY — DESIGN RULES
+
+## 1. Direction artistique
+
+Cary est une application de santé premium pour patients et professionnels de santé. Le design doit inspirer immédiatement : confiance, sérieux médical, calme, simplicité, précision, modernité, qualité produit.
+
+Niveau de finition visé : Apple Health, Linear, Stripe, Airbnb/Uber (qualité produit mobile). **Ne pas copier leur identité visuelle** : Cary garde la sienne autour de `#1CC7B5`.
+
+Objectif : une vraie application premium conçue par une équipe Product Design, pas un template SaaS ni une interface manifestement générée par IA.
+
+## 2. Interdictions — éviter le « AI flop »
+
+Ne jamais générer automatiquement :
+
+- gradients décoratifs partout, glow effects, glassmorphism gratuit ;
+- cartes imbriquées dans d'autres cartes, une card par information ;
+- ombres fortes, bordures sur chaque élément, énormes border-radius uniformes ;
+- titres marketing dans les écrans fonctionnels ;
+- badges/pills inutiles, icônes décoratives sans fonction ;
+- illustrations génériques (médecin avec laptop…), emojis comme éléments UI ;
+- dashboards remplis de widgets pour remplir l'espace.
+
+Ne pas transformer Cary en dashboard SaaS web compressé dans un téléphone.
+
+## 3. Mobile first / iOS quality
+
+Chaque écran est pensé comme une vraie interface mobile : safe areas, navigation native, gestes, clavier, scroll, bottom sheets, feedback tactile, cibles tactiles ≥ 44 pt, actions principales accessibles au pouce, hiérarchie naturelle de lecture.
+
+Quand une solution native simple existe, la préférer à une UI custom complexe.
+
+Web (`frontend/`) : même exigence en responsive — cibles ≥ 44 px sur mobile, CTA accessibles au pouce, pas de double header, scroll utilisable aux breakpoints 320 / 390 / 768 / 1024.
+
+## 4. Hiérarchie
+
+Chaque écran a **une** intention principale identifiable immédiatement. Structure préférée :
+
+Header / contexte → information principale → contenu / action → informations secondaires → CTA principal si nécessaire.
+
+Ne pas donner la même importance visuelle à toutes les informations. Utiliser l'espace blanc pour créer la hiérarchie.
+
+## 5. Typographie
+
+- **Raleway** : grands titres, titres de sections, chiffres importants lorsque pertinent.
+- **Police système** : contenu, formulaires, descriptions, informations médicales, labels, navigation.
+- Limiter le nombre de tailles et de poids. Ne jamais réduire excessivement le texte pour faire rentrer plus de contenu.
+
+État actuel à connaître :
+
+- Web : conforme (`--font-heading: 'Raleway'` dans `frontend/assets/css/main.css`, texte en police système).
+- Mobile : **tout est encore en Nunito** (`apps/mobile/src/theme/typography.ts`). La bascule vers Raleway + police système doit se faire **au niveau des tokens de `theme/typography.ts`**, en une migration explicite et vérifiée visuellement — jamais écran par écran avec des `fontFamily` en dur, ce qui mélangerait trois polices.
+
+## 6. Couleurs
+
+Brand principal : `#1CC7B5`. Il sert principalement à : CTA principal, état sélectionné, navigation active, progression, accent important, certains éléments de marque. Il ne doit **pas** recouvrir toute l'interface ; les surfaces principales restent sobres et médicales.
+
+Utiliser exclusivement les tokens sémantiques du thème :
+
+- Mobile : `useAppColors()` (`apps/mobile/src/theme/colors.ts`), jamais de hex en dur (`lint:styles --strict-colors`).
+- Web : classes Tailwind `primary-*` et tokens de `frontend/assets/css/main.css` / `app.config.ts`.
+
+success / warning / danger / info ont une signification fonctionnelle constante.
+
+## 7. Cards
+
+Une card n'existe que si elle matérialise réellement un groupe logique. Avant d'en ajouter une : « un simple espace, séparateur ou changement typographique suffit-il ? » Si oui, pas de card.
+
+Les cards importantes ont beaucoup d'air, une hiérarchie claire, peu de décoration et une action évidente si elles sont interactives. Mobile : réutiliser `StackCard` / `ListRowShell` (voir `apps/mobile/AGENTS.md`).
+
+## 8. Iconographie
+
+Priorité absolue : réutiliser les icônes et assets Cary existants avant d'en créer. Inventaire à consulter / tenir à jour :
+
+- Mobile : `apps/mobile/assets/` (logo, icône app, `empty-*.png`, `emptyavis.png`, `emptyproche.png`), `features/onboarding/components/TutorialIllustration.tsx`.
+- Web : `frontend/public/images/` (`care/`, `landing/`, `lab-brands/`, `menuswipe/`).
+- `frontend/public/undraw/` contient des illustrations génériques : ne pas en ajouter de nouvelles.
+
+### Illustrations 3D des soins (référence validée)
+
+26 illustrations 3D, une par type de soin (prise de sang, vaccination, injection, pansement, perfusion, examen des urines, suivi diabète, grossesse, soins palliatifs, « autre »…). C'est **le** visuel à utiliser partout où un soin ou une catégorie de soin est affiché : choix des soins dans la réservation, panier, récap, cartes et détail RDV, tournée, catalogue admin.
+
+- Fichiers : `frontend/public/images/care/<clé>.webp` (web, 256 px) et `apps/mobile/src/assets/care-art/<clé>.png` (mobile, 192 px).
+- Liste des clés et correspondance nom / type → clé : `CARE_ARTWORK_KEYS` et `careArtworkKey()` dans `packages/shared-utils/src/care-artwork.ts`. Ne jamais écrire un chemin `/images/care/...` en dur ni refaire le mapping.
+- Affichage : web `resolveCareCategoryImageSrc()` / `careListBadgeDisplay()` (`frontend/utils/care-icons.ts`) ; mobile `CarePictogram` (`components/ui/CarePictogram.tsx`, map `constants/care-artwork-images.ts`).
+- Priorité conservée : icône choisie par l'admin > image importée par l'admin (`care_categories.image_url`) > illustration 3D Cary.
+- Ajouter un soin : générer l'image dans le même style (fond magenta uni), la traiter avec `python scripts/care-artwork/process.py <dossier>` qui produit les deux formats, ajouter la clé à `CARE_ARTWORK_KEYS` et à `care-artwork-images.ts`, puis lancer `node scripts/test-care-icons.cjs`.
+
+Ne jamais remplacer arbitrairement un asset Cary par une icône générique. Les icônes fonctionnelles appartiennent au même système (web : Lucide via `@iconify-json/lucide`). Une icône doit avoir une fonction ou améliorer réellement la compréhension.
+
+## 9. Illustrations 3D
+
+Autorisées mais rares et intentionnelles : onboarding, empty states importants, succès de réservation, fonctionnalités majeures, pédagogie santé, assistant, permissions, certaines expériences émotionnelles.
+
+Style : 3D premium, formes douces, composition simple, fond propre, palette Cary, détails médicaux subtils, esthétique startup premium contemporaine, cohérence parfaite entre toutes les illustrations.
+
+Interdit : personnages 3D génériques corporate, rendu enfantin, clipart, accumulation d'objets, texte intégré dans l'image, style différent d'un écran à l'autre. Toutes les illustrations appartiennent au **même** univers artistique Cary.
+
+## 10. Génération d'illustrations
+
+Avant de générer une illustration :
+
+1. vérifier si un asset Cary existant peut être utilisé ;
+2. définir précisément sa fonction ;
+3. définir son emplacement et son ratio ;
+4. reprendre la palette Cary ;
+5. conserver le style des illustrations Cary déjà validées (référence : les illustrations de soins `frontend/public/images/care/`).
+
+Ne jamais générer une image simplement pour remplir un espace vide.
+
+## 11. Santé
+
+Une information médicale privilégie toujours la compréhension à l'esthétique : valeur → unité → contexte → état éventuel → action éventuelle.
+
+Ne jamais communiquer un état uniquement par la couleur. Éviter toute présentation pouvant donner une impression de diagnostic lorsque l'information n'en est pas un.
+
+## 12. Patient vs professionnel
+
+- **Patient** : chaleureux, rassurant, pédagogique, simple.
+- **Professionnel** (infirmier, préleveur, laboratoire, pro) : plus dense, opérationnel, rapide, orienté actions.
+
+Même design system Cary, densité d'information différente.
+
+## 13. États
+
+Chaque écran connecté à des données a explicitement : loading, loaded, empty, error. Lorsque pertinent : offline, disabled, permission denied, partial data.
+
+Ne jamais transformer silencieusement une erreur réseau en état vide.
+
+## 14. Animation
+
+Animation = fonction : changement d'état, progression, succès, apparition d'un sheet, continuité entre deux étapes. Pas d'animation décorative permanente. Respecter reduced motion.
+
+## 15. Visual QA obligatoire
+
+Aucune vue n'est validée parce que le code compile :
+
+SCREENSHOT → ANALYSE → REDESIGN SI NÉCESSAIRE → IMPLÉMENTATION → SCREENSHOT → COMPARAISON → CORRECTION → VALIDATION
+
+L'agent est autorisé à refaire la composition d'un écran si l'UX ou la hiérarchie est mauvaise ; il ne se limite pas aux couleurs, radius et fonts. Procédure détaillée : `mobile-visual-qa-ios.mdc` (mobile) et `web-visual-qa.mdc` (web). Toute recomposition reste soumise à `cary-functional-guardian.mdc` : aucune fonctionnalité perdue.
+
+## 16. Questions obligatoires avant validation
+
+1. Est-ce immédiatement compréhensible ?
+2. Quelle est l'action principale ?
+3. Y a-t-il trop d'informations ?
+4. Y a-t-il trop de cards ?
+5. Quelque chose est-il décoratif sans raison ?
+6. Les assets Cary existants ont-ils été utilisés intelligemment ?
+7. L'écran semble-t-il natif sur mobile ?
+8. Est-il cohérent avec les autres écrans Cary ?
+9. Inspire-t-il confiance pour une application médicale ?
+10. Un designer senior aurait-il réellement choisi cette composition ?
+
+Si une réponse est non : continuer le travail. Ne jamais marquer une vue terminée simplement parce qu'elle respecte techniquement le design system.

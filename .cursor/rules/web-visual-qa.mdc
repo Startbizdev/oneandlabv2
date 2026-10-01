@@ -1,0 +1,30 @@
+---
+description: Visual QA obligatoire pour toute vue de la web app Nuxt (captures avant/après Playwright, inventaire VISUAL-QA.md)
+globs: frontend/**/*.{vue,ts}
+alwaysApply: false
+---
+
+# Visual QA web obligatoire (frontend Nuxt)
+
+Une vue web n'est **pas terminée** après typecheck, lint ou build. Même boucle que `mobile-visual-qa-ios.mdc`, adaptée au navigateur.
+
+## Boucle obligatoire pour chaque vue
+
+1. Ouvrir la vue (`npm run web:dev`) dans un état réaliste avec des données de démonstration (fixtures de `frontend/e2e/fixtures` si possible).
+2. Capture **AVANT** (Playwright `page.screenshot({ fullPage: true })` ou navigateur).
+3. Analyser comme un Senior Product Designer : hiérarchie, spacing, alignements, typographie, CTA, densité, cohérence des cards, navigation, scroll, contraste, accessibilité clavier et focus, cohérence avec Cary (`cary-design-rules.mdc`), absence de rendu « AI generated UI ».
+4. Corriger, relancer, capture **APRÈS**, comparer, recommencer jusqu'à un résultat propre.
+5. Seulement ensuite marquer la vue validée.
+
+## États à vérifier (lorsque applicables)
+
+normal · loading · empty · error · données longues · formulaire avec erreurs · modal / sheet / slideover ouverts · breakpoints 320, 390, 768, 1024 et desktop large.
+
+Dark mode : non applicable tant que `colorMode.preference` est forcé à `'light'` dans `frontend/nuxt.config.ts`.
+
+## Inventaire et captures
+
+- Les vues web sont listées dans le même `VISUAL-QA.md` que le mobile, sous une section **Web**, avec la même checklist (light seul tant que le dark est désactivé).
+- Captures dans `artifacts/visual-qa/web/<role>/`, nommées `web-<role>-<view>-<breakpoint>-before.png` / `-after.png`.
+
+**Aucune vue ne peut être déclarée terminée sans capture APRÈS.** La validation fonctionnelle reste régie par `cary-functional-guardian.mdc`.

@@ -1,0 +1,97 @@
+---
+description: Gardien fonctionnel et backend de Cary — aucune refonte UI/UX (mobile ou web) ne doit casser, oublier ou simuler une fonctionnalité
+globs: apps/mobile/**/*.{tsx,ts},frontend/**/*.{vue,ts},backend/**/*.php,packages/**/*.ts
+alwaysApply: false
+---
+
+# CARY — FUNCTIONAL & BACKEND GUARDIAN
+
+## Mission
+
+Garantir qu'aucune refonte UI/UX, migration ou modification de composant ne :
+
+- casse ou oublie une fonctionnalité existante ;
+- déconnecte le frontend (mobile `apps/mobile`, web `frontend`) du backend (`backend/`) ;
+- supprime une donnée métier ou modifie involontairement une règle métier ;
+- transforme une erreur backend en faux succès ;
+- crée une UI sans implémentation réelle derrière, ou un bouton / CTA décoratif sans action ;
+- introduit une régression.
+
+Une vue n'est jamais validée uniquement parce qu'elle est belle.
+
+## 1. Avant toute modification d'une vue : fiche fonctionnelle
+
+Identifier : rôle utilisateur (patient / infirmier / préleveur / laboratoire / pro / admin), objectif, données affichées et modifiables, actions, CTA, formulaires, validations, permissions, hooks, queries, mutations, endpoints API, paramètres envoyés, réponses utilisées, états métier, navigation entrante et sortante, erreurs possibles, loading, empty, permissions système.
+
+Le comportement actuel doit être compris **avant** de modifier l'interface.
+
+## 2. Tracer UI → Backend
+
+Pour chaque fonctionnalité interactive, vérifier toute la chaîne :
+
+USER ACTION → UI COMPONENT → HANDLER → HOOK / SERVICE (mobile : React Query ; web : `frontend/composables` ; partagé : `packages/shared-api`) → API (`backend/api`) → VALIDATION → SERVICE / DB (`backend/lib`, `backend/models`) → RESPONSE → CACHE INVALIDATION → UI UPDATE
+
+Un bouton qui existe n'est pas une fonctionnalité opérationnelle.
+
+## 3. Inventaire `FUNCTIONAL-MATRIX.md`
+
+Maintenir à la racine, pour chaque vue (mobile **et** web, colonne Platform) :
+
+| Platform | View | Feature | UI | API | Backend | Error | Test | Status |
+|----------|------|---------|----|-----|---------|-------|------|--------|
+
+Exemples de features à couvrir : Booking (sélectionner créneau, modifier adresse, confirmer, paiement, succès, annulation) ; Appointment (consulter, annuler, contacter, naviguer) ; Tournée (charger, naviguer, appeler, terminer passage, annuler « terminé »). Et ainsi de suite pour **tout** Cary.
+
+## 4. Avant / après obligatoire
+
+Avant la refonte : inventorier le comportement, les endpoints, les règles métier, les états, les tests existants.
+Après : rejouer exactement les mêmes fonctionnalités. La nouvelle vue fournit au minimum les mêmes capacités, sauf suppression explicitement prévue dans le plan.
+
+## 5. CTA Guardian
+
+Scanner chaque élément interactif (Button, Pressable, Touchable*, Link / NuxtLink, Switch, Input, Select, action de sheet ou de menu, swipe action, item de navigation) et répondre : **que fait-il ?** Sans action réelle, l'écran n'est pas terminé. Aucun faux bouton.
+
+## 6. Backend Guardian
+
+Pour chaque query / mutation : endpoint existant, méthode HTTP correcte, authentification, autorisation par rôle **et** propriété de la ressource, validation input front et back, gestion d'erreurs, statut HTTP, format de réponse, état DB réellement modifié, idempotence si nécessaire, cache invalidé / refetch, UI synchronisée avec la réponse réelle.
+
+Ne jamais simuler un succès côté UI lorsque le backend a échoué (pas d'update optimiste sans rollback sur erreur).
+
+## 7. Règle absolue
+
+Le frontend ne définit jamais seul une règle métier sensible : réservation, paiement, annulation, suppression, permissions, rôles, offres / abonnements, passages, patients, données médicales, consentements, compte utilisateur. Elles sont imposées ou validées côté backend.
+
+## 8. Tests
+
+Chercher d'abord les tests existants (`backend/tests`, `apps/mobile` Jest, `frontend/tests` Vitest, `frontend/e2e` Playwright). Ne jamais supprimer, contourner ou affaiblir un test. Ajouter un test lorsqu'une régression importante est possible. Couvrir au minimum : SUCCESS, ERROR, et lorsque pertinent UNAUTHORIZED, INVALID INPUT, EMPTY.
+
+## 9. Parcours critiques E2E
+
+- **Patient** : inscription → connexion → accueil → réservation → confirmation → consultation RDV → annulation éventuelle.
+- **Professionnel** : connexion → demandes / tournée → ouverture patient / RDV → action métier → confirmation → état mis à jour.
+
+Ils doivent fonctionner après chaque grande phase, sur mobile et sur web (web : `npm run test:e2e:p1 -w oneandlab-frontend`).
+
+## 10. Contrat avec l'agent Design
+
+Le design peut modifier : layout, spacing, typographie, composants, navigation visuelle, hiérarchie, présentation, animations, illustrations.
+
+Il ne peut **pas** silencieusement : supprimer une fonctionnalité, modifier une règle métier, supprimer une donnée, modifier un contrat API, inventer une donnée ou une fonctionnalité backend, transformer une fonctionnalité réelle en mock.
+
+Si une amélioration UX nécessite une modification backend : **STOP**, documenter `BACKEND CHANGE REQUIRED` (besoin UX, comportement actuel, modification proposée, endpoint, impact DB, règles métier, tests nécessaires), puis implémenter backend + tests avant de considérer l'UX terminée.
+
+## 11. Validation finale d'une vue (DONE)
+
+- [ ] design validé · [ ] screenshot validé · [ ] navigation fonctionne
+- [ ] données réelles chargées · [ ] queries fonctionnent · [ ] mutations fonctionnent · [ ] backend vérifié
+- [ ] loading · [ ] empty · [ ] error vérifiés
+- [ ] permissions · [ ] CTA · [ ] formulaires · [ ] validations · [ ] cache / refetch vérifiés
+- [ ] tests passent · [ ] aucune fonctionnalité précédente perdue · [ ] aucune règle métier protégée uniquement côté client
+
+## 12. Gates après chaque domaine
+
+- Mobile : `npm run mobile:verify`
+- Web : `npm run typecheck -w oneandlab-frontend`, `npm run test:unit -w oneandlab-frontend`, e2e du domaine
+- Backend : `npm run test:backend`
+
+Aucune erreur existante masquée. Jamais : `eslint-disable` pour cacher, `as any`, test skippé ou supprimé, mock permanent faisant croire qu'une fonctionnalité marche. Si quelque chose ne fonctionne pas : le signaler et le réparer avant DONE.

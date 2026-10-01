@@ -1,0 +1,40 @@
+---
+description: Conventions backend PHP Cary (endpoints, auth, rôles, validation, transactions, migrations, tests PHPUnit)
+globs: backend/**/*.php,database/**/*.sql
+alwaysApply: false
+---
+
+# Backend PHP Cary
+
+## Structure
+
+- Endpoints : `backend/api/<domaine>/` (fichiers PHP routés par fichier, ex. `appointments/index.php`, `appointments/[id].php`).
+- Logique métier : `backend/lib/` (ex. `AppointmentCancellationPolicy`, `SubscriptionCheckoutPolicy`, `PatientDossierAccess`). Accès DB : `backend/models/`.
+- Un endpoint orchestre ; il ne réimplémente pas une règle déjà présente dans `lib/`. Chercher la policy / le service existant avant d'en écrire un.
+
+## Chaque endpoint privilégié
+
+1. `AuthMiddleware::handle()` pour obtenir l'utilisateur — jamais un `user_id` ou un rôle lu depuis le body ou la query.
+2. `RoleMiddleware::handle($user, [...])` pour le rôle, **puis** vérification de propriété / d'accès à la ressource (ex. `PatientDossierAccess`, `MedicalDocumentAccess`, `LabTeamAccess`, `AppointmentDetailGate`). Le rôle seul ne suffit pas.
+3. `CSRFMiddleware` sur les mutations appelées depuis le web avec cookies.
+4. Valider chaque input avec `Validation::*` ; refuser par défaut (fail-closed).
+5. Prix, statuts, offres, quotas : recalculés côté serveur, jamais acceptés du client.
+
+## Réponses et erreurs
+
+- Format JSON existant `{ success, data }` / `{ success: false, error, code }` (reprendre les helpers du domaine, ex. `ai_json_response`, `AppointmentDetailGate::respond*`) avec un statut HTTP cohérent (400, 401, 403, 404, 409, 500…) ; ne pas changer le contrat d'un endpoint existant sans mettre à jour tous ses appelants mobile et web.
+- Ne jamais renvoyer `success: true` si l'opération n'a pas été réellement persistée.
+- Journaliser via `Logger` (accès aux données médicales déchiffrées : `logDecrypt*`) ; ne jamais exposer de trace, de secret ni de donnée d'un autre utilisateur.
+
+## Base de données
+
+- Requêtes préparées PDO uniquement, aucune concaténation d'input dans le SQL.
+- Opérations multi-étapes dans `DatabaseTransaction::run($db, fn () => ...)`.
+- Pas de requête dans une boucle quand un batch est possible.
+- Migrations : nouveau fichier numéroté dans `database/migrations/` (suite de `NNN_nom.sql`), additif et préservant les données ; toute opération destructive est signalée explicitement avec son risque.
+
+## Tests
+
+- PHPUnit dans `backend/tests/<domaine>/`, lancé par `npm run test:backend` (Docker).
+- Un nouveau dossier de tests doit être ajouté à la suite `All` de `backend/phpunit.xml`, sinon il n'est jamais exécuté.
+- Couvrir succès, erreur, non authentifié / mauvais rôle / ressource d'un autre utilisateur, input invalide.
