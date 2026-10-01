@@ -36,7 +36,7 @@ import {
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
 
 interface Props {
   primary: Appointment;
@@ -44,13 +44,13 @@ interface Props {
 }
 
 function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
-  const c = useAppColors();
+  const theme = useTheme();
   const tagStyles = useStyles(buildCareTagStyles);
   const { data: categories = [] } = useAppointmentCareCategories();
   const lines = useMemo(() => offerCareTagLines(batch), [batch]);
   const orbColorMap = useMemo(
-    () => buildCareTileOrbColorMap(categories, c),
-    [categories, c],
+    () => buildCareTileOrbColorMap(categories, theme),
+    [categories, theme],
   );
   const primaryType = batch[0]?.type ?? 'nursing';
   if (!lines.length) return null;
@@ -59,7 +59,7 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
     <View style={tagStyles.careTagsBlock}>
       <Row wrap align="center" gap={5} style={tagStyles.careTagsWrap}>
         {lines.map((line, idx) => {
-          const tagColors = resolveRdvCareTagColors(line, primaryType, categories, c, orbColorMap);
+          const tagColors = resolveRdvCareTagColors(line, primaryType, categories, theme, orbColorMap);
           return (
             <Row
               key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}

@@ -15,12 +15,14 @@ import {
 import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { stackHeaderOptions } from '@/navigation/screen-options';
+import { useTheme } from '@/theme';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 
 export default function ProfileLayout() {
+  const theme = useTheme();
   return (
     <StackSceneInsetLayout>
-    <Stack screenOptions={stackHeaderOptions()}>
+    <Stack screenOptions={stackHeaderOptions(theme)}>
       <Stack.Screen
         name="index"
         options={{

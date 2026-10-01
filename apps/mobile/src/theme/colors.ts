@@ -1,10 +1,6 @@
 import { getColorblindSemantic } from './colorblind-palette';
 import { contrastForeground } from './color-utils';
-import {
-  DEFAULT_COLORBLIND_TYPE,
-  type ActiveColorblindType,
-  type ColorblindType,
-} from './colorblind-types';
+import type { ActiveColorblindType, ColorblindType } from './colorblind-types';
 
 export type { ColorblindType, ActiveColorblindType } from './colorblind-types';
 export { COLORBLIND_TYPE_OPTIONS, DEFAULT_COLORBLIND_TYPE } from './colorblind-types';
@@ -103,28 +99,6 @@ export const palette = {
   transparent: 'transparent',
 } as const;
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __CARY_COLORBLIND_TYPE__: ColorblindType | undefined;
-}
-
-export function syncColorblindTheme(type: ColorblindType): void {
-  globalThis.__CARY_COLORBLIND_TYPE__ = type;
-}
-
-/** @deprecated Préférer syncColorblindTheme(type). */
-export function syncColorblindGlobal(enabled: boolean): void {
-  syncColorblindTheme(enabled ? DEFAULT_COLORBLIND_TYPE : 'off');
-}
-
-export function getColorblindType(): ColorblindType {
-  return globalThis.__CARY_COLORBLIND_TYPE__ ?? 'off';
-}
-
-export function isColorblindModeEnabled(): boolean {
-  return getColorblindType() !== 'off';
-}
-
 function resolveSemantic(type: ColorblindType) {
   if (type === 'off') return null;
   return getColorblindSemantic(type);
@@ -210,24 +184,5 @@ export function buildAppColors(type: ColorblindType) {
 }
 
 export type AppColors = ReturnType<typeof buildAppColors>;
-
-/** Palette courante (recalculée à chaque accès — type daltonien pris en compte). */
-export function getAppColors(): AppColors {
-  return buildAppColors(getColorblindType());
-}
-
-/**
- * Compat : accès dynamique aux tokens via Proxy.
- * @deprecated Dans les composants React, préférer `useAppColors()` pour réagir au mode daltonien.
- * OK pour config statique (navigation) et StyleSheet module-level en cours de migration.
- */
-export const colors: AppColors = new Proxy({} as AppColors, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string') {
-      return getAppColors()[prop as keyof AppColors];
-    }
-    return undefined;
-  },
-});
 
 export type ColorKey = keyof AppColors;

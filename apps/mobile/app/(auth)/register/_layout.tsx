@@ -2,16 +2,18 @@ import { Stack } from 'expo-router';
 import { REGISTER_META } from '@/features/auth/constants/register-meta';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { stackHeaderOptions } from '@/navigation/screen-options';
+import { useTheme } from '@/theme';
 
 const patient = REGISTER_META.patient;
 const nurse = REGISTER_META.nurse;
 const pro = REGISTER_META.pro;
 
 export default function RegisterLayout() {
+  const theme = useTheme();
   return (
     <Stack
       screenOptions={{
-        ...stackHeaderOptions(),
+        ...stackHeaderOptions(theme),
         headerShown: true,
       }}
     >

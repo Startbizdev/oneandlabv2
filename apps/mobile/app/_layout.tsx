@@ -15,7 +15,6 @@ import {
 import { AppProviders } from '@/providers/AppProviders';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuthStore } from '@/store/auth-store';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
 import { useOnboardingGate } from '@/features/onboarding/hooks/use-onboarding-gate';
 import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
@@ -32,8 +31,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 function RootLayoutInner() {
   const c = useAppColors();
   const hydrate = useAuthStore((s) => s.hydrate);
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
-  const textScale = useAppPreferencesStore((s) => s.textScale);
 
   useEffect(() => {
     void hydrate();
@@ -50,7 +47,6 @@ function RootLayoutInner() {
     <View style={styles.root}>
       <StatusBar style="dark" backgroundColor={c.background} />
       <Stack
-        key={`${colorblindType}:${textScale}`}
         screenOptions={{ headerShown: false, contentStyle: { flex: 1, backgroundColor: c.background } }}
       >
         <Stack.Screen name="index" />

@@ -1,6 +1,5 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native';
-import { getAppColors } from '@/theme/colors';
-import { elevation, hexToRgba, palette, spacing, radius } from '@/theme';
+import { elevation, hexToRgba, palette, spacing, radius, type AppColors } from '@/theme';
 
 /** Padding horizontal interne (titres, actions). */
 export const APP_HEADER_INNER_H_PADDING = spacing[4];
@@ -24,8 +23,7 @@ const contentSheetTopRadius = (): Pick<
 });
 
 /** Calque externe — ombre vers le haut, sans bordure ni overflow (shadow derrière la feuille). */
-export function appContentSheetShadowStyle(): ViewStyle {
-  const c = getAppColors();
+export function appContentSheetShadowStyle(c: AppColors): ViewStyle {
   return {
     minWidth: 0,
     flex: 1,
@@ -36,8 +34,7 @@ export function appContentSheetShadowStyle(): ViewStyle {
 }
 
 /** Surface intérieure — bordure hairline + clip des coins arrondis. */
-export function appContentSheetSurfaceStyle(): ViewStyle {
-  const c = getAppColors();
+export function appContentSheetSurfaceStyle(c: AppColors): ViewStyle {
   return {
     minWidth: 0,
     flex: 1,
@@ -48,16 +45,6 @@ export function appContentSheetSurfaceStyle(): ViewStyle {
     borderColor: APP_CONTENT_SHEET_BORDER,
     ...contentSheetTopRadius(),
   };
-}
-
-/** Stack (vue unique) — ombre seule, sans bordure sur le même calque. */
-export function appContentSheetFrameStyle(): ViewStyle {
-  return appContentSheetShadowStyle();
-}
-
-/** @deprecated Préférer appContentSheetSurfaceStyle sur le conteneur intérieur. */
-export function appContentSheetClipStyle(): ViewStyle {
-  return appContentSheetSurfaceStyle();
 }
 
 /** Respiration interne en bas du header (titre, cloche). */
@@ -74,37 +61,14 @@ export const APP_HEADER_ORB_STROKE = 2.25;
 /** Icône titre onglet. */
 export const APP_HEADER_TITLE_ICON_SIZE = 18;
 
-/** Onglets edge-to-edge — corps plat (fond d'app), sans coins arrondis ni ombre. */
-export function appTabSceneFlatContentStyle(): ViewStyle {
+/** Onglets et stacks edge-to-edge — corps plat (fond d'app), sans coins arrondis ni ombre. */
+export function appFlatContentStyle(c: AppColors): ViewStyle {
   return {
     minWidth: 0,
     flex: 1,
-    backgroundColor: getAppColors().background,
+    backgroundColor: c.background,
   };
-}
-
-/** Stack — fond d'app plat, ou feuille blanche à coins haut arrondis sous le header. */
-export function appStackContentStyle(opts?: { rounded?: boolean }): ViewStyle {
-  const rounded = opts?.rounded !== false;
-  if (!rounded) {
-    return { minWidth: 0, flex: 1, backgroundColor: getAppColors().background };
-  }
-  return appContentSheetFrameStyle();
-}
-
-/** @deprecated Utiliser appStackContentStyle. */
-export function appContentShellStyle(opts?: { rounded?: boolean }): ViewStyle {
-  return appStackContentStyle(opts);
 }
 
 /** Espace entre le bouton retour et le titre (stack). */
 export const APP_HEADER_BACK_TITLE_GAP = spacing[2];
-
-/**
- * Stack — padding bas sans `justifyContent: 'flex-end'` (évite le décalage retour / titre).
- */
-export function headerStackSlotBottomStyle(
-  paddingBottom: number = APP_HEADER_INNER_BOTTOM,
-): ViewStyle {
-  return { paddingBottom };
-}

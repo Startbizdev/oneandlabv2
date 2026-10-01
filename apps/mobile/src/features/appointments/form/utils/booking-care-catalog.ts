@@ -1,4 +1,5 @@
 import type { AppColors } from '@/theme/colors';
+import type { Theme } from '@/theme/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import {
   isAutreBookingCareCategory,
@@ -6,7 +7,7 @@ import {
   sortCareCategoriesForBooking,
 } from '@oneandlab/shared-utils';
 import type { CareCategory } from '@/features/categories/api/categories.service';
-import { isColorblindModeEnabled, palette } from '@/theme/colors';
+import { palette } from '@/theme/colors';
 import {
   DEFAULT_CATALOG_GROUP_THEME,
   STANDARD_CARE_TILE_ORB_COLORS,
@@ -16,6 +17,9 @@ import {
 } from '@/theme/care-catalog-palette';
 
 export type { CatalogGroupTheme } from '@/theme/care-catalog-palette';
+
+/** Couleurs + mode daltonien : les pastilles standard Cary ne s'appliquent qu'hors mode daltonien. */
+export type CarePaletteTheme = Pick<Theme, 'colors' | 'colorblindType'>;
 
 export const CATALOG_GROUP_ORDER = [
   'examens',
@@ -133,16 +137,18 @@ function buildAccessibleCatalogThemes(c: AppColors): Record<string, CatalogGroup
   };
 }
 
-export function catalogGroupTheme(key: string, c: AppColors): CatalogGroupTheme {
-  if (!isColorblindModeEnabled()) {
+export function catalogGroupTheme(key: string, t: CarePaletteTheme): CatalogGroupTheme {
+  const c = t.colors;
+  if (t.colorblindType === 'off') {
     return STANDARD_CATALOG_GROUP_THEMES[key] ?? DEFAULT_CATALOG_GROUP_THEME;
   }
   const themes = buildAccessibleCatalogThemes(c);
   return themes[key] ?? buildThemeFromAccent(c, 'primary');
 }
 
-function careTileOrbPalette(c: AppColors): readonly string[] {
-  if (!isColorblindModeEnabled()) {
+function careTileOrbPalette(t: CarePaletteTheme): readonly string[] {
+  const c = t.colors;
+  if (t.colorblindType === 'off') {
     return STANDARD_CARE_TILE_ORB_COLORS;
   }
   return [
@@ -165,8 +171,8 @@ export function careTileCategoryKey(cat: CareCategory): string {
   return String(cat.id ?? cat.name ?? cat.label ?? '');
 }
 
-function careTileOrbColorAtIndex(index: number, c: AppColors): string {
-  const paletteOrbs = careTileOrbPalette(c);
+function careTileOrbColorAtIndex(index: number, t: CarePaletteTheme): string {
+  const paletteOrbs = careTileOrbPalette(t);
   if (index < paletteOrbs.length) {
     return paletteOrbs[index]!;
   }
@@ -178,7 +184,7 @@ function careTileOrbColorAtIndex(index: number, c: AppColors): string {
  */
 export function buildCareTileOrbColorMap(
   categories: CareCategory[],
-  c: AppColors,
+  t: CarePaletteTheme,
 ): Map<string, string> {
   const byKey = new Map<string, CareCategory>();
   for (const cat of categories) {
@@ -188,7 +194,7 @@ export function buildCareTileOrbColorMap(
   const sortedKeys = [...byKey.keys()].sort((a, b) => a.localeCompare(b));
   const map = new Map<string, string>();
   sortedKeys.forEach((key, index) => {
-    map.set(key, careTileOrbColorAtIndex(index, c));
+    map.set(key, careTileOrbColorAtIndex(index, t));
   });
   return map;
 }
@@ -196,10 +202,10 @@ export function buildCareTileOrbColorMap(
 export function careTileEmojiOrbColor(
   cat: CareCategory,
   colorMap: ReadonlyMap<string, string>,
-  c: AppColors,
+  t: CarePaletteTheme,
 ): string {
   const key = careTileCategoryKey(cat);
-  return colorMap.get(key) ?? careTileOrbColorAtIndex(0, c);
+  return colorMap.get(key) ?? careTileOrbColorAtIndex(0, t);
 }
 
 function sortCatalogGroupKeys(keys: string[]): string[] {
@@ -303,36 +309,37 @@ export function resolveRdvCareTagColors(
   line: { category_id: string | null; label: string },
   appointmentType: string,
   categories: CareCategory[],
-  c: AppColors,
+  t: CarePaletteTheme,
   orbColorMap?: ReadonlyMap<string, string>,
 ): RdvCareTagColors {
+  const c = t.colors;
   // Mode standard : pastilles Cary (teinte marque, fond plus marqué).
-  if (!isColorblindModeEnabled()) {
+  if (t.colorblindType === 'off') {
     return {
       backgroundColor: c.primaryMid,
       borderColor: palette.brand[300],
     };
   }
 
-  const map = orbColorMap ?? buildCareTileOrbColorMap(categories, c);
+  const map = orbColorMap ?? buildCareTileOrbColorMap(categories, t);
   const cat = findCategoryForRdvLine(line, categories);
 
   if (cat) {
-    const theme = catalogGroupTheme(resolveCatalogGroup(cat), c);
+    const theme = catalogGroupTheme(resolveCatalogGroup(cat), t);
     return {
-      backgroundColor: careTileEmojiOrbColor(cat, map, c),
+      backgroundColor: careTileEmojiOrbColor(cat, map, t),
       borderColor: theme.border,
     };
   }
 
   if (isBloodTestAppointment(appointmentType)) {
-    const theme = catalogGroupTheme('examens', c);
+    const theme = catalogGroupTheme('examens', t);
     return { backgroundColor: theme.orb, borderColor: theme.border };
   }
 
-  const theme = catalogGroupTheme('divers', c);
+  const theme = catalogGroupTheme('divers', t);
   return {
-    backgroundColor: careTileOrbColorAtIndex(stableLabelColorIndex(line.label), c),
+    backgroundColor: careTileOrbColorAtIndex(stableLabelColorIndex(line.label), t),
     borderColor: theme.border,
   };
 }

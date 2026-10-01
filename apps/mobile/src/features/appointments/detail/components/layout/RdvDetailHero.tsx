@@ -74,8 +74,8 @@ export function RdvDetailHero({
   const createdMeta = formatAppointmentCreatedAtMeta(primary);
   const email = patientContactEmail(primary, viewer ?? undefined);
   const contactButtons = useMemo(
-    () => buildPatientContactButtons(primary, viewer),
-    [primary, viewer],
+    () => buildPatientContactButtons(c, primary, viewer),
+    [c, primary, viewer],
   );
   const patientAvatar = useMemo(
     () => appointmentBeneficiaryAvatarMeta(primary),

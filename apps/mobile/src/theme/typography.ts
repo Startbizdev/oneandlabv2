@@ -1,5 +1,4 @@
 import type { TextStyle } from 'react-native';
-import { scaleFontSize } from './text-scale';
 
 /** Polices Raleway chargées dans `app/_layout.tsx` (titres uniquement). */
 export const headingFontFamily = {
@@ -44,20 +43,6 @@ export const FONT_SIZE_BASE = {
 } as const;
 
 export type FontSizeKey = keyof typeof FONT_SIZE_BASE;
-
-export function getFontSize(key: FontSizeKey): number {
-  return scaleFontSize(FONT_SIZE_BASE[key]);
-}
-
-/** Échelle typographique courante (respecte le réglage « Texte agrandi »). */
-export const fontSize = new Proxy(FONT_SIZE_BASE, {
-  get(_target, prop: string | symbol) {
-    if (typeof prop === 'string' && prop in FONT_SIZE_BASE) {
-      return getFontSize(prop as FontSizeKey);
-    }
-    return undefined;
-  },
-}) as { readonly [K in FontSizeKey]: number };
 
 export const lineHeight = {
   tight: 1.2,
@@ -175,10 +160,10 @@ export const textStyles = {
 
 export type TextVariant = keyof typeof textStyles;
 
-/** Styles typographiques scalés (réglage « Texte agrandi »). */
-export function getTextStyle(variant: TextVariant) {
+/** Styles typographiques scalés (`scale` = `Theme.scale`, réglage « Texte agrandi »). */
+export function getTextStyle(variant: TextVariant, scale: (px: number) => number) {
   const base = textStyles[variant];
-  const scaledSize = scaleFontSize(base.fontSize);
+  const scaledSize = scale(base.fontSize);
   const baseLineHeight =
     'lineHeight' in base && typeof base.lineHeight === 'number'
       ? base.lineHeight

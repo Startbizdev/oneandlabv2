@@ -2,7 +2,6 @@ export * from './colors';
 export * from './colorblind-types';
 export * from './color-utils';
 export * from './use-app-colors';
-export * from './use-themed-styles';
 export * from './theme';
 export * from './make-styles';
 export { ThemeProvider, useTheme } from './ThemeProvider';

@@ -1,5 +1,4 @@
 import type { AppColors } from '@/theme/colors';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -10,9 +9,8 @@ import {
   buildCareTileOrbColorMap,
   resolveRdvCareTagColors,
 } from '@/features/appointments/form/utils/booking-care-catalog';
-import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
-import { radius, spacing, AppText, font, useStyles, type Theme } from '@/theme';
+import { radius, spacing, AppText, font, useStyles, useTheme, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 interface Props {
@@ -41,13 +39,13 @@ export function RdvCareTagsRow({
   density = 'default',
   badgeCategoryOnly = false,
 }: Props) {
-  const c = useAppColors();
-  const colorblindType = useAppPreferencesStore((s) => s.colorblindType);
+  const theme = useTheme();
+  const c = theme.colors;
   const { data: categories = [] } = useAppointmentCareCategories();
   const styles = useStyles(density === 'compact' ? buildCompactStyles : buildDefaultStyles);
   const orbColorMap = useMemo(
-    () => buildCareTileOrbColorMap(categories, c),
-    [categories, c],
+    () => buildCareTileOrbColorMap(categories, theme),
+    [categories, theme],
   );
 
   const opts: RdvCatalogDisplayOpts | undefined = hideStaffOnlyCares
@@ -77,12 +75,11 @@ export function RdvCareTagsRow({
       align="center"
       gap={compact ? spacing[1] : spacing[1.5]}
       style={styles.wrap}
-      key={colorblindType}
     >
       {items.map((line, idx) => {
         const tagColors = useNeutral
           ? listCareTagColors(c)
-          : resolveRdvCareTagColors(line, apt.type, categories, c, orbColorMap);
+          : resolveRdvCareTagColors(line, apt.type, categories, theme, orbColorMap);
         return (
           <Row
             key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}

@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
-import { getAppColors } from '@/theme/colors';
+import type { AppColors } from '@/theme/colors';
 import {
   patientContactEmail,
   patientPhone,
@@ -48,12 +48,12 @@ export function buildPhoneContactActions(phone?: string | null): PhoneContactAct
 }
 
 export function buildPatientContactButtons(
+  c: AppColors,
   apt: Appointment,
   viewer?: AuthUser | null,
 ): PatientContactButton[] {
   if (viewer?.role === 'patient') return [];
 
-  const c = getAppColors();
   const email = patientContactEmail(apt, viewer ?? undefined);
   const tel = normalizePhone(patientPhone(apt));
   const buttons: PatientContactButton[] = [];

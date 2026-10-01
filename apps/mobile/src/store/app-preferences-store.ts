@@ -5,9 +5,7 @@ import {
   DEFAULT_COLORBLIND_TYPE,
   type ColorblindType,
 } from '@/theme/colorblind-types';
-import { syncColorblindTheme } from '@/theme/colors';
-import { syncTextScale, type TextScale } from '@/theme/text-scale';
-import { clearThemedStyleCache } from '@/theme/themed-style-cache';
+import type { TextScale } from '@/theme/text-scale';
 import type { TutorialRole } from '@oneandlab/onboarding';
 
 export const APP_PREFERENCES_STORAGE_KEY = '@oneandlab/app-preferences';
@@ -31,16 +29,6 @@ export interface AppPreferencesState {
   isOnboardingCompleted: (role: TutorialRole) => boolean;
 }
 
-function applyColorblindType(type: ColorblindType) {
-  syncColorblindTheme(type);
-  clearThemedStyleCache();
-}
-
-function applyTextScale(scale: TextScale) {
-  syncTextScale(scale);
-  clearThemedStyleCache();
-}
-
 export const useAppPreferencesStore = create<AppPreferencesState>()(
   persist(
     (set, get) => ({
@@ -50,14 +38,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       pushNotificationsEnabled: true,
       expoPushToken: null,
       onboardingCompleted: {},
-      setColorblindType: (colorblindType) => {
-        applyColorblindType(colorblindType);
-        set({ colorblindType, colorblindMode: colorblindType !== 'off' });
-      },
-      setTextScale: (textScale) => {
-        applyTextScale(textScale);
-        set({ textScale });
-      },
+      setColorblindType: (colorblindType) =>
+        set({ colorblindType, colorblindMode: colorblindType !== 'off' }),
+      setTextScale: (textScale) => set({ textScale }),
       setColorblindMode: (enabled) => {
         const current = get().colorblindType;
         const next: ColorblindType = enabled
@@ -108,12 +91,6 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           state.onboardingCompleted = {};
         }
         return state as AppPreferencesState;
-      },
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          applyColorblindType(state.colorblindType);
-          applyTextScale(state.textScale ?? 'normal');
-        }
       },
     },
   ),

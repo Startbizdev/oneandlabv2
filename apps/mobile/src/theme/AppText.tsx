@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, type TextProps, type TextStyle } from 'react-native';
 import { useStyles } from './make-styles';
 import type { Theme } from './theme';
+import { useTheme } from './ThemeProvider';
 import { getTextStyle, type TextVariant } from './typography';
 
 const COMPACT_MAX_FONT_MULTIPLIER = 1.2;
@@ -21,8 +22,9 @@ export function AppText({
   maxFontSizeMultiplier,
   ...props
 }: AppTextProps) {
+  const theme = useTheme();
   const styles = useStyles(buildStyles);
-  const variantStyle = getTextStyle(variant);
+  const variantStyle = getTextStyle(variant, theme.scale);
   const resolvedMultiplier = compact
     ? (maxFontSizeMultiplier ?? COMPACT_MAX_FONT_MULTIPLIER)
     : maxFontSizeMultiplier;

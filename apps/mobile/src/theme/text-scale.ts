@@ -18,34 +18,6 @@ const MULTIPLIERS: Record<TextScale, number> = {
   large: 1.125,
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __CARY_TEXT_SCALE__: TextScale | undefined;
-}
-
-export function syncTextScale(scale: TextScale): void {
-  globalThis.__CARY_TEXT_SCALE__ = scale;
-}
-
-export function getTextScale(): TextScale {
-  return globalThis.__CARY_TEXT_SCALE__ ?? 'normal';
-}
-
-syncTextScale('normal');
-
 export function getTextScaleMultiplierFor(scale: TextScale): number {
   return MULTIPLIERS[scale];
-}
-
-export function getTextScaleMultiplier(): number {
-  return getTextScaleMultiplierFor(getTextScale());
-}
-
-export function scaleFontSize(basePx: number): number {
-  return Math.round(basePx * getTextScaleMultiplier());
-}
-
-/** Scale layout (minHeight, hit targets) avec le réglage « Texte agrandi ». */
-export function scaleLayoutSize(basePx: number): number {
-  return scaleFontSize(basePx);
 }

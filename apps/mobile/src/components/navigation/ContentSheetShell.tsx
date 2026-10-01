@@ -3,10 +3,10 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import {
   appContentSheetShadowStyle,
   appContentSheetSurfaceStyle,
-  appTabSceneFlatContentStyle,
+  appFlatContentStyle,
 } from '@/components/navigation/header-layout';
 import { tabSceneLayoutHandler } from '@/lib/debug/tab-scene-layout-debug';
-import { useStyles } from '@/theme';
+import { useStyles, type Theme } from '@/theme';
 
 interface Props {
   children: ReactNode;
@@ -39,10 +39,10 @@ export function ContentSheetShell({ children, style, edgeToEdge = false, debugLa
   );
 }
 
-function buildStyles() {
+function buildStyles({ colors: c }: Theme) {
   return {
-    flatBody: appTabSceneFlatContentStyle(),
-    shadow: appContentSheetShadowStyle(),
-    surface: appContentSheetSurfaceStyle(),
+    flatBody: appFlatContentStyle(c),
+    shadow: appContentSheetShadowStyle(c),
+    surface: appContentSheetSurfaceStyle(c),
   };
 }

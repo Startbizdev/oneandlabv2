@@ -190,8 +190,8 @@ export function RdvAppointmentInfoSection({
   );
 
   const contactButtons = useMemo(
-    () => buildPatientContactButtons(apt, viewer),
-    [apt, viewer],
+    () => buildPatientContactButtons(c, apt, viewer),
+    [c, apt, viewer],
   );
 
   const needsCare = expectsCareRows(apt, omitCareFields, batch);

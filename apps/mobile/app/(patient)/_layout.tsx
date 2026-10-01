@@ -6,17 +6,18 @@ import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
-import { useStyles, type Theme } from '@/theme';
+import { useStyles, useTheme, type Theme } from '@/theme';
 
 export default function PatientLayout() {
+  const theme = useTheme();
   const styles = useStyles(buildStyles);
 
   return (
     <View style={styles.stackHost}>
       <StackSceneInsetLayout>
-      <Stack screenOptions={stackHeaderOptions()}>
+      <Stack screenOptions={stackHeaderOptions(theme)}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={onboardingScreenOptions()} />
+        <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
         <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
         <Stack.Screen
@@ -27,13 +28,13 @@ export default function PatientLayout() {
           name="appointment/[id]/history"
           options={{ title: 'Historique' }}
         />
-        <Stack.Screen name="booking/new" options={bookingWizardScreenOptions()} />
+        <Stack.Screen name="booking/new" options={bookingWizardScreenOptions(theme)} />
         <Stack.Screen name="relatives/[id]" options={{ title: 'Proche' }} />
         <Stack.Screen
           name="relatives/[id]/documents"
           options={{ title: 'Documents' }}
         />
-        <Stack.Screen name="notifications" options={notificationsScreenOptions()} />
+        <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
         <Stack.Screen name="resultats" options={{
           title: 'Résultats',
           headerTitle: tabHeaderTitle('Résultats', 'doc.text.magnifyingglass', FileText),
