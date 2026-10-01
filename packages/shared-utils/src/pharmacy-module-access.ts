@@ -22,10 +22,8 @@ export function canOrderPharmacy(user: PharmacyAccessUser, config: PharmacyModul
   ].includes(role);
 }
 
-export function isPharmacyAccount(
-  user: PharmacyAccessUser,
-  receivers: string[] = ['Pharmacien'],
-): boolean {
+/** `receivers` : `pharmacy_receiver_emplois` de la configuration serveur. */
+export function isPharmacyAccount(user: PharmacyAccessUser, receivers: string[]): boolean {
   if ((user.role ?? '') !== 'pro') return false;
   const emploi = (user.emploi ?? '').trim();
   if (!emploi) return false;
@@ -45,10 +43,10 @@ export function canReceivePharmacyOrders(
   return true;
 }
 
-export function canShowOrderTab(user: PharmacyAccessUser, flags: PharmacyModuleUiFlags): boolean {
+export function canShowOrderTab(flags: PharmacyModuleUiFlags): boolean {
   return flags.module_enabled && flags.can_order;
 }
 
-export function canShowReceiveTab(user: PharmacyAccessUser, flags: PharmacyModuleUiFlags): boolean {
+export function canShowReceiveTab(flags: PharmacyModuleUiFlags): boolean {
   return flags.module_enabled && flags.can_receive;
 }

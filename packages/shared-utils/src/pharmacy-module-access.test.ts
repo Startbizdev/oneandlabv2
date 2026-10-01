@@ -57,9 +57,15 @@ export function runPharmacyModuleAccessTests(run: (name: string, fn: () => void)
   });
 
   run('compte pharmacie détecté même en pause', () => {
-    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Pharmacien' }), true);
-    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Médecin généraliste' }), false);
-    assert.equal(isPharmacyAccount({ role: 'nurse', emploi: 'Pharmacien' }), false);
+    const receivers = baseConfig().pharmacy_receiver_emplois;
+    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Pharmacien' }, receivers), true);
+    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Médecin généraliste' }, receivers), false);
+    assert.equal(isPharmacyAccount({ role: 'nurse', emploi: 'Pharmacien' }, receivers), false);
+  });
+
+  run('compte pharmacie selon les emplois receveurs configurés', () => {
+    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Pharmacien' }, ['Préparateur']), false);
+    assert.equal(isPharmacyAccount({ role: 'pro', emploi: 'Préparateur' }, ['Préparateur']), true);
   });
 
   run('pharmacien peut recevoir si actif', () => {
@@ -99,9 +105,9 @@ export function runPharmacyModuleAccessTests(run: (name: string, fn: () => void)
       can_receive: false,
       is_pharmacy_account: false,
     };
-    assert.equal(canShowOrderTab({ role: 'nurse' }, flags), true);
-    assert.equal(canShowReceiveTab({ role: 'pro', emploi: 'Pharmacien' }, flags), false);
+    assert.equal(canShowOrderTab(flags), true);
+    assert.equal(canShowReceiveTab(flags), false);
     flags.can_receive = true;
-    assert.equal(canShowReceiveTab({ role: 'pro', emploi: 'Pharmacien' }, flags), true);
+    assert.equal(canShowReceiveTab(flags), true);
   });
 }

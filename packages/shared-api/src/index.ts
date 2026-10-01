@@ -2,6 +2,10 @@
  * Contrat API — source: frontend/utils/api.ts
  */
 
+export * from './api-error-messages';
+export * from './contact-client';
+export * from './patient-adopt';
+
 /** Routes publiques sans CSRF */
 export const PUBLIC_API_ROUTES = [
   '/auth/check-email',
@@ -25,12 +29,22 @@ export const CSRF_ERROR_CODES = [
   'CSRF_TOKEN_INVALID',
 ] as const;
 
+/**
+ * Session refusée par `AuthMiddleware` (jeton absent, invalide, expiré ou compte introuvable).
+ * Une panne serveur pendant l'authentification répond 500 : elle ne doit pas déconnecter.
+ */
+export function isSessionRejected(status: number | null | undefined, code: string | null | undefined): boolean {
+  return status === 401 && code === 'UNAUTHORIZED';
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
   code?: string;
+  /** 409 `EMAIL_ALREADY_USED` de `POST /patients` : dossier déjà porteur de l'e-mail. */
+  existing_patient_id?: string;
   pagination?: {
     page: number;
     limit: number;

@@ -134,11 +134,13 @@ function formatParisTimeFromScheduledAt(scheduledAt: string | null | undefined):
   try {
     const d = parseAppointmentDateFrance(scheduledAt);
     if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleTimeString('fr-FR', {
-      timeZone: 'Europe/Paris',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return d
+      .toLocaleTimeString('fr-FR', {
+        timeZone: 'Europe/Paris',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      .replace(':', 'h');
   } catch {
     return null;
   }
@@ -165,8 +167,7 @@ export function formatPassageTimeSlotLabel(
   if (slot === 'custom') {
     const raw = String(customTime ?? '').trim();
     if (raw) return raw.slice(0, 5).replace(':', 'h');
-    const fromSchedule = formatParisTimeFromScheduledAt(scheduledAt);
-    return fromSchedule ? fromSchedule.replace(':', 'h') : '—';
+    return formatParisTimeFromScheduledAt(scheduledAt) ?? '—';
   }
   return formatParisTimeFromScheduledAt(scheduledAt) ?? '—';
 }
@@ -530,20 +531,23 @@ export type TourStopListRow<T extends PassageTourListTimeInput & { stop_id: stri
   | { kind: 'section'; key: string; label: string; slot: PassageTimeSlot | 'other' }
   | { kind: 'stop'; key: string; stop: T; index: number };
 
-/** Liste aplatie (en-têtes + stops) pour FlatList mobile. */
+/** Liste aplatie (en-têtes + stops) pour FlatList mobile ; sans en-tête si un seul créneau. */
 export function flattenTourStopsWithSlotSections<T extends PassageTourListTimeInput & { stop_id: string }>(
   stops: T[],
 ): TourStopListRow<T>[] {
   const groups = groupTourStopsByPassageSlot(stops);
+  const withSections = groups.length > 1;
   const rows: TourStopListRow<T>[] = [];
   let globalIndex = 0;
   for (const group of groups) {
-    rows.push({
-      kind: 'section',
-      key: `section-${group.slot}`,
-      label: group.label,
-      slot: group.slot,
-    });
+    if (withSections) {
+      rows.push({
+        kind: 'section',
+        key: `section-${group.slot}`,
+        label: group.label,
+        slot: group.slot,
+      });
+    }
     for (const stop of group.stops) {
       rows.push({ kind: 'stop', key: stop.stop_id, stop, index: globalIndex });
       globalIndex += 1;

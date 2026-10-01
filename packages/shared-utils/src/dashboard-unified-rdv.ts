@@ -362,7 +362,6 @@ function dashboardSingleServicePayload(
     payload.assigned_lab_id = ctx.creatorUserId;
   }
   if (ctx.creatorRole === 'nurse' && isNursingAppointment(svc.type)) {
-    payload.status = 'confirmed';
     payload.assigned_nurse_id = ctx.creatorUserId;
   }
   return applyStaffPatientBookingConsent(payload, ctx);
@@ -428,10 +427,6 @@ function dashboardMergedBloodPayload(
   ) {
     payload.assigned_lab_id = ctx.creatorUserId;
   }
-  if (ctx.creatorRole === 'nurse') {
-    payload.status = 'confirmed';
-    payload.assigned_nurse_id = ctx.creatorUserId;
-  }
   return applyStaffPatientBookingConsent(payload, ctx);
 }
 
@@ -493,10 +488,20 @@ function dashboardMergedNursingPayload(
   };
   if (ctx.creationBatchId) payload.creation_batch_id = ctx.creationBatchId;
   if (ctx.creatorRole === 'nurse') {
-    payload.status = 'confirmed';
     payload.assigned_nurse_id = ctx.creatorUserId;
   }
   return applyStaffPatientBookingConsent(payload, ctx);
+}
+
+export const NURSE_BLOOD_TEST_AWAITING_LAB_MESSAGE =
+  'Prise de sang envoyée : en attente de confirmation du laboratoire.';
+
+/** Prise de sang créée par un infirmier : elle reste en attente jusqu'à la confirmation du laboratoire (serveur). */
+export function nurseBookingAwaitsLabConfirmation(creatorRole: string | undefined, payloads: readonly object[]): boolean {
+  return (
+    creatorRole === 'nurse' &&
+    payloads.some((p) => 'type' in p && typeof p.type === 'string' && isBloodTestAppointment(p.type))
+  );
 }
 
 export function buildDashboardAppointmentPayloads(

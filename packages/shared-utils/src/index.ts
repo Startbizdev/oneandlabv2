@@ -38,3 +38,4 @@ export * from './pharmacy-module-access';
 export * from './pharmacy-order-list';
 
 export * from './booking-paris-clock';
+export * from './french-mobile-phone';

@@ -88,6 +88,9 @@ export interface Appointment {
   scheduled_at: string;
   started_at?: string;
   completed_at?: string;
+  /** Code motif (`CANCELLATION_REASONS`) et commentaire saisis à l'annulation. */
+  cancellation_reason?: string | null;
+  cancellation_comment?: string | null;
   created_at: string;
   updated_at: string;
   /** Snooze modal offre (appointment_offers.modal_snoozed_until). */

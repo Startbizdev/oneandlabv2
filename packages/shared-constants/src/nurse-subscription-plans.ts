@@ -21,7 +21,7 @@ export const NURSE_PLANS: Record<NursePlanSlug, NursePlanDefinition> = {
     name: 'Découverte',
     priceLabel: '0 €',
     priceSuffix: '/mois',
-    tagline: 'Pour démarrer, jusqu’à 10 rendez-vous par mois.',
+    tagline: 'Pour démarrer sur Cary, sans engagement.',
     features: [
       "Rayon d'intervention jusqu'à 20 km.",
       'Fiche professionnelle visible par les patients.',
