@@ -9,8 +9,7 @@ import {
 } from 'expo-iap';
 import { PATIENT_VIP_FEE_LABEL, PATIENT_VIP_IAP_PRODUCT_ID } from '@oneandlab/shared-constants';
 import { completePatientBookingDraftIap } from '@/features/appointments/api/booking-draft.service';
-import { handleApiError } from '@/lib/errors/handle-api-error';
-import { useToast } from '@/providers/ToastProvider';
+import { logVipPaymentIssue, VipPaymentError } from '../utils/vip-payment-error';
 
 async function verifyVipPurchaseOnServer(draftId: string, purchase: Purchase): Promise<string[]> {
   if (Platform.OS === 'ios') {
@@ -44,14 +43,30 @@ async function verifyVipPurchaseOnServer(draftId: string, purchase: Purchase): P
   throw new Error('IAP disponible uniquement sur iOS et Android');
 }
 
+function isUserCancelled(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === ErrorCode.UserCancelled
+  );
+}
+
+/** Les erreurs rejetées sont des `VipPaymentError` : message patient, détail technique journalisé. */
 export function usePatientVipIap() {
-  const { show: toast } = useToast();
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [storeLoading, setStoreLoading] = useState(false);
   const pendingDraftRef = useRef<string | null>(null);
   const resolveRef = useRef<((ids: string[]) => void) | null>(null);
-  const rejectRef = useRef<((err: Error) => void) | null>(null);
+  const rejectRef = useRef<((err: VipPaymentError) => void) | null>(null);
   const finishRef = useRef<((purchase: Purchase) => Promise<void>) | null>(null);
+
+  const settle = useCallback((outcome: { ids: string[] } | { error: VipPaymentError }) => {
+    if ('ids' in outcome) resolveRef.current?.(outcome.ids);
+    else rejectRef.current?.(outcome.error);
+    resolveRef.current = null;
+    rejectRef.current = null;
+  }, []);
 
   const { connected, products, fetchProducts, finishTransaction } = useIAP({
     onPurchaseSuccess: async (purchase) => {
@@ -65,15 +80,10 @@ export function usePatientVipIap() {
         const ids = await verifyVipPurchaseOnServer(draftId, purchase);
         await finishRef.current?.(purchase);
         pendingDraftRef.current = null;
-        resolveRef.current?.(ids);
-        resolveRef.current = null;
-        rejectRef.current = null;
-        toast('Horaire VIP confirmé', { type: 'success' });
+        settle({ ids });
       } catch (error) {
-        rejectRef.current?.(error instanceof Error ? error : new Error(String(error)));
-        rejectRef.current = null;
-        resolveRef.current = null;
-        handleApiError(error, toast, 'patient-vip-iap');
+        logVipPaymentIssue(`server verification failed for draft ${draftId}`, error);
+        settle({ error: new VipPaymentError('not_finalized', error) });
       } finally {
         setPurchaseLoading(false);
       }
@@ -82,23 +92,12 @@ export function usePatientVipIap() {
       setPurchaseLoading(false);
       pendingDraftRef.current = null;
       if (error.code === ErrorCode.UserCancelled) {
-        rejectRef.current?.(new Error('USER_CANCELLED'));
-        rejectRef.current = null;
-        resolveRef.current = null;
+        settle({ error: new VipPaymentError('cancelled', error) });
         return;
       }
-      let message = error.message || 'Achat impossible';
-      if (error.code === ErrorCode.EmptySkuList) {
-        message =
-          Platform.OS === 'ios'
-            ? `Produit App Store introuvable. Vérifiez que ${PATIENT_VIP_IAP_PRODUCT_ID} est actif (consommable) dans App Store Connect.`
-            : `Produit Google Play introuvable. Vérifiez ${PATIENT_VIP_IAP_PRODUCT_ID} (achat unique).`;
-      }
-      const err = new Error(message);
-      rejectRef.current?.(err);
-      rejectRef.current = null;
-      resolveRef.current = null;
-      toast(message, { type: 'error' });
+      logVipPaymentIssue(`purchase error ${error.code}`, error);
+      const kind = error.code === ErrorCode.EmptySkuList ? 'unavailable' : 'failed';
+      settle({ error: new VipPaymentError(kind, error) });
     },
   });
 
@@ -111,6 +110,8 @@ export function usePatientVipIap() {
     setStoreLoading(true);
     try {
       await fetchProducts({ skus: [PATIENT_VIP_IAP_PRODUCT_ID], type: 'inapp' });
+    } catch (error) {
+      logVipPaymentIssue('fetchProducts failed', error);
     } finally {
       setStoreLoading(false);
     }
@@ -131,15 +132,12 @@ export function usePatientVipIap() {
   const purchaseVipForDraft = useCallback(
     (draftId: string): Promise<string[]> => {
       if (!connected) {
-        toast('Boutique indisponible, réessayez dans un instant', { type: 'error' });
-        return Promise.reject(new Error('Boutique indisponible'));
+        logVipPaymentIssue('store not connected', { draftId });
+        return Promise.reject(new VipPaymentError('unavailable'));
       }
       if (!storeProduct) {
-        toast(
-          `Produit « ${PATIENT_VIP_IAP_PRODUCT_ID} » introuvable. Testez avec un build natif EAS (pas Expo Go).`,
-          { type: 'error' },
-        );
-        return Promise.reject(new Error('Produit introuvable'));
+        logVipPaymentIssue(`product ${PATIENT_VIP_IAP_PRODUCT_ID} not returned by the store`, { draftId });
+        return Promise.reject(new VipPaymentError('unavailable'));
       }
 
       return new Promise<string[]>((resolve, reject) => {
@@ -155,24 +153,19 @@ export function usePatientVipIap() {
             ios: { sku },
             google: { skus: [sku] },
           },
-        }).catch((error) => {
+        }).catch((error: unknown) => {
           setPurchaseLoading(false);
           pendingDraftRef.current = null;
-          if (
-            error &&
-            typeof error === 'object' &&
-            'code' in error &&
-            (error as { code: string }).code === ErrorCode.UserCancelled
-          ) {
-            reject(new Error('USER_CANCELLED'));
+          if (isUserCancelled(error)) {
+            settle({ error: new VipPaymentError('cancelled', error) });
             return;
           }
-          handleApiError(error, toast, 'patient-vip-purchase');
-          reject(error instanceof Error ? error : new Error(String(error)));
+          logVipPaymentIssue('requestPurchase failed', error);
+          settle({ error: new VipPaymentError('failed', error) });
         });
       });
     },
-    [connected, storeProduct, toast],
+    [connected, storeProduct, settle],
   );
 
   return {

@@ -1,28 +1,28 @@
 import {
-  APPOINTMENTS_TAB_TRIGGER,
+  ACCOUNT_TAB_TRIGGER,
   createRoleTabsLayout,
-  MORE_TAB_TRIGGER,
+  HOME_TAB_TRIGGER,
 } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default createRoleTabsLayout([
-  { name: 'appointments', ...APPOINTMENTS_TAB_TRIGGER },
+  { name: 'appointments', ...HOME_TAB_TRIGGER },
+  {
+    name: 'results',
+    label: 'Résultats',
+    sf: { default: 'doc.text.magnifyingglass', selected: 'doc.text.magnifyingglass' },
+    androidIcon: 'science',
+  },
   {
     name: 'book',
-    accessibilityLabel: 'Réserver',
+    label: 'Réserver',
     sf: { default: 'calendar.badge.plus', selected: 'calendar.badge.plus' },
     androidIcon: 'event-available',
   },
   {
-    name: 'relatives',
-    accessibilityLabel: 'Proches',
-    sf: { default: 'heart', selected: 'heart.fill' },
-    androidIcon: 'favorite',
-  },
-  {
     name: 'ai',
-    accessibilityLabel: 'Assistant Cary',
-    sf: { default: 'face.smiling', selected: 'face.smiling' },
-    androidIcon: 'sentiment-satisfied',
+    label: 'Assistant',
+    sf: { default: 'sparkles', selected: 'sparkles' },
+    androidIcon: 'auto-awesome',
   },
-  { name: 'more', ...MORE_TAB_TRIGGER },
+  { name: 'more', ...ACCOUNT_TAB_TRIGGER },
 ]);

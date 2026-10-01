@@ -17,10 +17,11 @@ import {
   useTabSceneInsets,
 } from '@/components/navigation/liquid-glass-header-inset';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentCta';
-import { NurseTourBanner } from '@/features/nurse/components/NurseTourBanner';
-import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
+import { NurseSegmentChips } from '@/features/nurse/components/NurseSegmentChips';
+import { NurseTodayTourCard } from '@/features/nurse/components/NurseTodayTourCard';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { offerPreviewFromListRow } from '@/utils/appointment-batch';
@@ -138,20 +139,14 @@ export function NurseAppointmentsListScreen() {
   });
 
   const filterChips = useMemo(() => {
-    const chips: Array<{ key: string; label: string; onRemove: () => void }> = [];
-    if (tab !== 'soins') {
-      const tabLabel = NURSE_TAB_OPTIONS.find((t) => t.value === tab)?.label ?? tab;
-      chips.push({ key: 'tab', label: tabLabel, onRemove: () => setTab('soins') });
-    }
-    if (segment !== 'tous') {
-      const label = NURSE_SEGMENT_OPTIONS.find((s) => s.value === segment)?.label ?? segment;
-      chips.push({ key: 'segment', label, onRemove: () => setSegment('tous') });
-    }
-    return chips;
-  }, [segment, tab]);
+    if (tab === 'soins') return [];
+    const tabLabel = NURSE_TAB_OPTIONS.find((t) => t.value === tab)?.label ?? tab;
+    return [{ key: 'tab', label: tabLabel, onRemove: () => setTab('soins') }];
+  }, [tab]);
 
-  const advancedCount = (tab !== 'soins' ? 1 : 0) + (segment !== 'tous' ? 1 : 0);
+  const advancedCount = tab !== 'soins' ? 1 : 0;
   const isInitialLoading = query.isPending && !query.data;
+  const isInitialError = query.isError && !query.data;
 
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -231,6 +226,9 @@ export function NurseAppointmentsListScreen() {
         scrollEventThrottle={200}
       >
         <View style={styles.scrollHeader}>
+          {tab === 'soins' && (segment === 'acceptes' || segment === 'tous') ? (
+            <NurseTodayTourCard />
+          ) : null}
           <AppointmentsListSearchHost
             embedded
             followedByBookCta
@@ -240,15 +238,20 @@ export function NurseAppointmentsListScreen() {
             advancedFilterCount={advancedCount}
             chips={filterChips}
           />
+          <NurseSegmentChips value={segment} onChange={setSegment} />
           <BookAppointmentCta href="/(nurse)/appointments/new" />
-          {tab === 'soins' && (segment === 'acceptes' || segment === 'tous') ? (
-            <NurseTourBanner stopCount={filtered.length || undefined} />
-          ) : null}
-          <PlanLimitsBanner />
         </View>
 
         {isInitialLoading ? (
           <SkeletonList count={4} itemHeight={116} gap={12} />
+        ) : isInitialError ? (
+          <View style={styles.emptyWrap}>
+            <ErrorState
+              title="Rendez-vous indisponibles"
+              error={query.error}
+              onRetry={() => void refetch()}
+            />
+          </View>
         ) : displayRows.length === 0 ? (
           <View style={styles.emptyWrap}>
             <EmptyState

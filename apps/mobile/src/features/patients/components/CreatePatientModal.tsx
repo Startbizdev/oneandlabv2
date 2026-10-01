@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -82,7 +82,7 @@ export function CreatePatientModal({
     resetDuplicate,
   } = usePatientDuplicateDetection(email, phone, visible && detectDuplicates);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setFirstName('');
     setLastName('');
     setEmail('');
@@ -93,11 +93,11 @@ export function CreatePatientModal({
     setPatientBookingConsent(false);
     setError(null);
     resetDuplicate();
-  };
+  }, [resetDuplicate]);
 
   useEffect(() => {
     if (!visible) reset();
-  }, [visible]);
+  }, [visible, reset]);
 
   const submit = async () => {
     if (duplicateOpen && duplicateRow) {

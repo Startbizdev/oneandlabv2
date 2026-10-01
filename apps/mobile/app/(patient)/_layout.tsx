@@ -1,7 +1,5 @@
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { Activity, FileText, Star } from 'lucide-react-native';
-import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
@@ -29,6 +27,7 @@ export default function PatientLayout() {
           options={{ title: 'Historique' }}
         />
         <Stack.Screen name="booking/new" options={bookingWizardScreenOptions(theme)} />
+        <Stack.Screen name="relatives/index" options={{ title: 'Mes proches' }} />
         <Stack.Screen name="relatives/[id]" options={{ title: 'Proche' }} />
         <Stack.Screen
           name="relatives/[id]/documents"
@@ -37,13 +36,13 @@ export default function PatientLayout() {
         <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
         <Stack.Screen name="resultats" options={{
           title: 'Résultats',
-          headerTitle: tabHeaderTitle('Résultats', 'doc.text.magnifyingglass', FileText),
+          headerTitle: tabHeaderTitle('Résultats'),
         }} />
         <Stack.Screen
           name="reviews"
           options={{
             title: 'Mes avis',
-            headerTitle: tabHeaderTitle('Mes avis', PROFILE_HEADER_SF.reviews, Star),
+            headerTitle: tabHeaderTitle('Mes avis'),
           }}
         />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
@@ -52,7 +51,7 @@ export default function PatientLayout() {
           name="health-data"
           options={{
             title: 'Mes données santé',
-            headerTitle: tabHeaderTitle('Mes données santé', 'heart.text.square', Activity),
+            headerTitle: tabHeaderTitle('Mes données santé'),
           }}
         />
         <Stack.Screen name="health-record/index" options={{ title: 'Mon carnet de santé' }} />

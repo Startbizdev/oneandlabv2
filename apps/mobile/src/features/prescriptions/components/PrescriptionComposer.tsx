@@ -417,7 +417,7 @@ export function PrescriptionComposer({
       <View style={styles.actions}>
         <Button
           title={deferSaveForPassage ? 'Générer l’ordonnance' : 'Générer le PDF'}
-          leftIcon={<FileOutput size={iconSize.sm} color={c.textInverse} strokeWidth={2} />}
+          leftIcon={<FileOutput size={iconSize.sm} color={c.onPrimary} strokeWidth={2} />}
           loading={generateMut.isPending}
           disabled={!canGenerate}
           onPress={onPressGenerate}

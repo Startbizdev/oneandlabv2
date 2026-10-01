@@ -8,6 +8,7 @@ import type { ClinicalVitalReading, ClinicalVitalType } from '@oneandlab/shared-
 import { clinicalVitalUiConfig } from '@oneandlab/shared-types';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { Stack } from '@/components/layout/primitives';
 import {
@@ -57,7 +58,7 @@ export function ClinicalVitalHistorySheet({
       visible={visible}
       onClose={onClose}
       title={title}
-      subtitle="Historique des mesures"
+      subtitle={unit ? `50 dernières mesures · en ${unit}` : '50 dernières mesures'}
       snapPoints={['88%']}
       stackBehavior="switch"
       footer={
@@ -69,9 +70,11 @@ export function ClinicalVitalHistorySheet({
       {historyQ.isLoading ? (
         <SkeletonList count={5} itemHeight={72} gap={spacing[2]} />
       ) : historyQ.isError ? (
-        <AppText style={[styles.empty, { color: c.error }]}>
-          {historyQ.error instanceof Error ? historyQ.error.message : 'Erreur'}
-        </AppText>
+        <ErrorState
+          title="Historique indisponible"
+          error={historyQ.error}
+          onRetry={() => void historyQ.refetch()}
+        />
       ) : !historyQ.data?.history.length ? (
         <Stack gap={spacing[3]} style={styles.emptyWrap}>
           <AppText style={[styles.empty, { color: c.textSecondary }]}>

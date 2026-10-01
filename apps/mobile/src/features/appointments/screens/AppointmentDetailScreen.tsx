@@ -12,6 +12,7 @@ import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
 import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
+import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { DetailSidebarActions } from '../detail/components/DetailSidebarActions';
@@ -47,7 +48,7 @@ import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-nav
 import { beneficiaryDisplayName } from '@/utils/beneficiary-display-name';
 import { StackScrollView } from '@/components/navigation/StackScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { spacing, useStyles, type Theme } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 import { HeartPulse, MessageCircle } from 'lucide-react-native';
 
 interface Props {
@@ -194,18 +195,13 @@ export function AppointmentDetailScreen({ role }: Props) {
   }
 
   if (s.detailError) {
-    const blockedMessage =
-      s.detailError instanceof Error
-        ? s.detailError.message
-        : 'Impossible d’ouvrir ce rendez-vous.';
     return (
       <StackChromeScreen>
-        <View style={styles.blocked}>
-          <AppointmentDetailBlockedEmptyState
-            onBack={() => router.back()}
-            description={blockedMessage}
-          />
-        </View>
+        <AppointmentDetailLoadError
+          error={s.detailError}
+          onRetry={() => void s.retryDetail()}
+          onBack={() => router.back()}
+        />
       </StackChromeScreen>
     );
   }
@@ -353,6 +349,8 @@ export function AppointmentDetailScreen({ role }: Props) {
               role={role}
               docs={s.allDocuments}
               loading={s.docsLoading}
+              error={s.docsError}
+              onRetry={s.retryDocs}
               omitCarePhotos={hasCareGallery}
             />
           ) : null}
@@ -362,8 +360,7 @@ export function AppointmentDetailScreen({ role }: Props) {
 
       <CancelAppointmentSheet
         visible={cancelOpen && !canceled}
-        role={role}
-        targets={[primary]}
+        target={primary}
         onDone={() => router.back()}
         onClose={() => setCancelOpen(false)}
       />
@@ -371,7 +368,7 @@ export function AppointmentDetailScreen({ role }: Props) {
   );
 }
 
-function buildStyles({ colors: c }: Theme) {
+function buildStyles() {
   return {
   scroll: {
     minWidth: 0,
@@ -389,12 +386,6 @@ function buildStyles({ colors: c }: Theme) {
   tabBody: { gap: spacing[3] },
   edgeBleed: {
     marginHorizontal: -spacing[4],
-  },
-  blocked: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-    justifyContent: 'center' as const,
   },
 };
 }

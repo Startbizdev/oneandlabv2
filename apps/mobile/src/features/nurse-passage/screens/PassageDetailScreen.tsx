@@ -49,13 +49,17 @@ import {
   resolveAppointmentMapCoords,
 } from '@/features/appointments/detail/utils/appointment-address-display';
 import {
-  buildNavigationUrl,
   canCancelAppointment,
   resolvePassageCustomTime,
   resolvePassageTimeRange,
 } from '@oneandlab/shared-utils';
 
 import { updateNurseTourStopStatus } from '@/features/tournee-nurse/api/nurse-tour.service';
+import {
+  buildTourNavigationUrl,
+  cachedNurseNavAppPref,
+  openTourNavigation,
+} from '@/features/tournee-nurse/utils/tour-navigation';
 
 import { useAuthStore } from '@/store/auth-store';
 
@@ -546,8 +550,12 @@ export function PassageDetailScreen() {
   }, [apt, atHome, patient?.address, user?.address]);
 
   const canLaunchNavigation = useMemo(
-    () => Boolean(navigationTarget && buildNavigationUrl('waze', navigationTarget)),
-    [navigationTarget],
+    () =>
+      Boolean(
+        navigationTarget &&
+          buildTourNavigationUrl(cachedNurseNavAppPref(qc, stopId), navigationTarget),
+      ),
+    [navigationTarget, qc, stopId],
   );
 
   const filteredDocs = useMemo(
@@ -758,12 +766,11 @@ export function PassageDetailScreen() {
       toast('Adresse indisponible', { type: 'error' });
       return;
     }
-    const url = buildNavigationUrl('waze', navigationTarget);
-    if (!url) {
-      toast('Adresse indisponible', { type: 'error' });
+    const opened = await openTourNavigation(cachedNurseNavAppPref(qc, stopId), navigationTarget);
+    if (!opened) {
+      toast('Impossible d’ouvrir la navigation', { type: 'error' });
       return;
     }
-    void Linking.openURL(url);
     if (!stopId) return;
     try {
       await updateNurseTourStopStatus(stopId, 'en_route');

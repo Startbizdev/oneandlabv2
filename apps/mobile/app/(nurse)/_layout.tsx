@@ -1,8 +1,6 @@
 import { Fragment } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { FileText, QrCode, Star } from 'lucide-react-native';
-import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
@@ -37,16 +35,16 @@ export default function NurseLayout() {
         name="appointment/[id]/prescription"
         options={{ title: "Prescription d'actes infirmiers", animation: 'slide_from_right' }}
       />
-      <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
+      <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Nouveau créneau' }} />
       <Stack.Screen name="reviews" options={{
         title: 'Mes avis',
-        headerTitle: tabHeaderTitle('Mes avis', PROFILE_HEADER_SF.reviews, Star),
+        headerTitle: tabHeaderTitle('Mes avis'),
       }} />
       <Stack.Screen
         name="qr-code"
         options={{
           title: 'QR code',
-          headerTitle: tabHeaderTitle('QR code', PROFILE_HEADER_SF.qrCode, QrCode),
+          headerTitle: tabHeaderTitle('QR code'),
         }}
       />
       <Stack.Screen name="abonnement" options={{ headerTitleAlign: 'left' }} />
@@ -60,13 +58,9 @@ export default function NurseLayout() {
       <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
       <Stack.Screen name="resultats" options={{
         title: 'Résultats',
-        headerTitle: tabHeaderTitle('Résultats', 'doc.text.magnifyingglass', FileText),
+        headerTitle: tabHeaderTitle('Résultats'),
       }} />
       <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen
-        name="tournee/index"
-        options={{ headerShown: false, animation: 'slide_from_right' }}
-      />
       <Stack.Screen name="passage/new" options={{ title: 'Prise en charge' }} />
       <Stack.Screen name="passage/patient-pick" options={{ title: 'Choisir un patient' }} />
       <Stack.Screen name="passage/[seriesId]" options={{ title: 'Détail passage' }} />

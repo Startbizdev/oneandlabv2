@@ -12,6 +12,11 @@ import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.s
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
+import {
+  THIRD_PARTY_EMAIL_INPUT,
+  THIRD_PARTY_NAME_INPUT,
+  THIRD_PARTY_PHONE_INPUT,
+} from '../constants/third-party-input-props';
 import { useToast } from '@/providers/ToastProvider';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { normalizePatientGender, patientGenderIsSet } from '@/utils/patient-gender';
@@ -222,20 +227,19 @@ export function FormPatientSection({
                   Vous pouvez corriger les coordonnées avant la prise de rendez-vous.
                 </AppText>
               )}
-              <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} />
-              <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} />
+              <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} {...THIRD_PARTY_NAME_INPUT} />
+              <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} {...THIRD_PARTY_NAME_INPUT} />
               <Input
                 label={emailOptional ? 'Email (optionnel)' : 'Email'}
                 value={email}
                 onChangeText={(v) => onChange('email', v)}
-                keyboardType="email-address"
-                autoCapitalize="none"
+                {...THIRD_PARTY_EMAIL_INPUT}
               />
               <Input
                 label="Téléphone"
                 value={phone}
                 onChangeText={(v) => onChange('phone', v)}
-                keyboardType="phone-pad"
+                {...THIRD_PARTY_PHONE_INPUT}
               />
               <GenderSelect
                 label="Genre"
@@ -256,20 +260,19 @@ export function FormPatientSection({
               onUseExisting={adoptDuplicate}
             />
           ) : null}
-          <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} />
-          <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} />
+          <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} {...THIRD_PARTY_NAME_INPUT} />
+          <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} {...THIRD_PARTY_NAME_INPUT} />
           <Input
             label={emailOptional ? 'Email (optionnel)' : 'Email'}
             value={email}
             onChangeText={(v) => onChange('email', v)}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            {...THIRD_PARTY_EMAIL_INPUT}
           />
           <Input
             label="Téléphone"
             value={phone}
             onChangeText={(v) => onChange('phone', v)}
-            keyboardType="phone-pad"
+            {...THIRD_PARTY_PHONE_INPUT}
           />
           <View style={styles.genderRow}>
             <AppText style={styles.fieldLabel}>Genre</AppText>

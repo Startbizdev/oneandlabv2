@@ -50,8 +50,8 @@ interface Props {
   onEnsureCategoryReady?: (cat: CareCategory) => Promise<CareCategory>;
   formDataByService?: Record<string, BookingServiceFormSlice | undefined>;
   loading?: boolean;
-  /** Estimation du nombre d’étapes après validation (min. 3). */
-  progressTotal?: number;
+  /** Phases stables du parcours (la sélection des soins est la première). */
+  phases: readonly string[];
 }
 
 function CareListTile({
@@ -123,7 +123,7 @@ export function CareSelectionStep({
   onEnsureCategoryReady,
   formDataByService,
   loading,
-  progressTotal = 3,
+  phases,
 }: Props) {
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
@@ -271,7 +271,8 @@ export function CareSelectionStep({
       <View style={styles.listHeader}>
         <BookingWizardProgress
           current={1}
-          total={progressTotal}
+          total={phases.length}
+          phases={phases}
           label="Choix des soins"
         />
 
@@ -306,7 +307,7 @@ export function CareSelectionStep({
       filterTab,
       filterTabs,
       hasSelection,
-      progressTotal,
+      phases,
       selectionCount,
       styles,
     ],

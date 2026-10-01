@@ -28,6 +28,7 @@ import {
   useMedicalDocumentsStackHeadStyles,
 } from '@/features/documents/components/medical-documents-stack';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { APPOINTMENT_DETAIL_DOC_ORDER } from '../../form/constants/appointment-document-fields';
 
 function orderedDocTypesForRole(role: string, apt: Appointment): readonly string[] {
@@ -49,6 +50,9 @@ interface Props {
   role: string;
   docs: MedicalDocumentRow[];
   loading?: boolean;
+  /** Échec du chargement des documents (affiche « Réessayer » au lieu d'une liste vide). */
+  error?: unknown;
+  onRetry?: () => void;
   omitCarePhotos?: boolean;
   embedded?: boolean;
 }
@@ -63,6 +67,8 @@ export function RdvDocumentsPremiumPanel({
   role,
   docs,
   loading,
+  error,
+  onRetry,
   omitCarePhotos = true,
 }: Props) {
   const c = useAppColors();
@@ -170,6 +176,16 @@ export function RdvDocumentsPremiumPanel({
         title="Documents médicaux"
         subtitle=""
         loading
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        error={error}
+        title="Documents indisponibles"
+        onRetry={onRetry}
       />
     );
   }

@@ -90,7 +90,13 @@ function DayCell({
       }}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={day.locale('fr').format('dddd D MMMM')}
+      accessibilityLabel={[
+        day.locale('fr').format('dddd D MMMM'),
+        isToday ? "aujourd'hui" : null,
+        disabled ? 'indisponible' : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}
       accessibilityState={{ selected, disabled }}
       style={[
         animStyle,
@@ -223,6 +229,7 @@ function PeriodNavigator({
         style={[styles.navBtn, !canPrev && styles.navBtnDisabled]}
         accessibilityRole="button"
         accessibilityLabel="Période précédente"
+        accessibilityState={{ disabled: !canPrev }}
       >
         <ChevronLeft size={iconSize.mdSm} color={canPrev ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
@@ -245,6 +252,7 @@ function PeriodNavigator({
         style={[styles.navBtn, !canNext && styles.navBtnDisabled]}
         accessibilityRole="button"
         accessibilityLabel="Période suivante"
+        accessibilityState={{ disabled: !canNext }}
       >
         <ChevronRight size={iconSize.mdSm} color={canNext ? c.primary : c.textTertiary} strokeWidth={2.5} />
       </Pressable>
@@ -426,8 +434,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...elevation.xs,
     },
     navBtn: {
-      width: 34,
-      height: 34,
+      width: 44,
+      height: 44,
       borderRadius: radius.md,
       backgroundColor: c.primaryLight,
       alignItems: 'center' as const,

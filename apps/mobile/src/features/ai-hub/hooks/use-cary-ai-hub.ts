@@ -118,6 +118,15 @@ async function applyAttachmentToDraft(
   });
 }
 
+/** Dernier envoi en échec : le message utilisateur reste affiché, avec « Réessayer » / « Modifier ». */
+export type CaryAiSendFailure = {
+  conversationId: string;
+  userMessageId: string;
+  text: string;
+  attachment?: PatientAiChatAttachment;
+  error: unknown;
+};
+
 export type CaryAiHubInit = {
   conversationType?: string;
   patientId?: string;
@@ -184,6 +193,9 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   const [pendingAttachment, setPendingAttachment] = useState<PatientAiChatAttachment | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [sendFailure, setSendFailure] = useState<CaryAiSendFailure | null>(null);
+  const [initError, setInitError] = useState<unknown>(null);
+  const [initAttempt, setInitAttempt] = useState(0);
   const initDone = useRef(false);
   const confirmInFlight = useRef(false);
   const sendMessageRef = useRef<(text: string, options?: CaryAiSendOptions | string) => Promise<void>>(
@@ -232,6 +244,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     (async () => {
       try {
         setLoading(true);
+        setInitError(null);
         const quick = await fetchAiQuickSuggestions(init?.patientId);
         if (cancelled) return;
         setSuggestions(quick.suggestions);
@@ -276,21 +289,23 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
             void sendMessageRef.current(init.initialMessage!, conv.id);
           }, 300);
         }
-      } catch {
+      } catch (initFailure) {
         if (!cancelled) {
-          const fallback = await createAiConversation({ conversation_type: 'general' }).catch(() => null);
-          if (fallback) {
-            const detail = await fetchAiConversationDetail(fallback.id).catch(() => null);
-            if (detail) {
-              const mapped = mapConversation(detail.conversation, detail.messages);
-              const hydrated = await hydrateMessageAttachments(mapped.messages);
-              const withAttachments = { ...mapped, messages: hydrated };
-              setConversations([withAttachments]);
-              setActiveId(fallback.id);
-              setActiveDraft(
-                isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages),
-              );
-            }
+          console.warn('[cary-ai] init failed, trying a new general conversation', initFailure);
+          try {
+            const fallback = await createAiConversation({ conversation_type: 'general' });
+            const detail = await fetchAiConversationDetail(fallback.id);
+            const mapped = mapConversation(detail.conversation, detail.messages);
+            const hydrated = await hydrateMessageAttachments(mapped.messages);
+            const withAttachments = { ...mapped, messages: hydrated };
+            if (cancelled) return;
+            setConversations([withAttachments]);
+            setActiveId(fallback.id);
+            setActiveDraft(
+              isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages),
+            );
+          } catch (fallbackFailure) {
+            if (!cancelled) setInitError(fallbackFailure);
           }
         }
       } finally {
@@ -301,7 +316,9 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     return () => {
       cancelled = true;
     };
-  }, [init?.conversationType, init?.initialMessage, init?.patientId]);
+  }, [init?.conversationType, init?.initialMessage, init?.patientId, initAttempt]);
+
+  const retryInit = useCallback(() => setInitAttempt((n) => n + 1), []);
 
   const appendLocalMessage = useCallback(
     (convId: string, msg: PatientAiChatMessage) => {
@@ -476,10 +493,13 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
           ),
         );
       } catch (e) {
-        appendLocalMessage(convId, {
-          id: assistantLocalId,
-          role: 'assistant',
-          text: e instanceof Error ? e.message : 'Cary est momentanément indisponible.',
+        console.warn('[cary-ai] send failed', e);
+        setSendFailure({
+          conversationId: convId,
+          userMessageId: userLocalId,
+          text: trimmed,
+          attachment: attachment ?? undefined,
+          error: e,
         });
       } finally {
         setStreamingText('');
@@ -491,11 +511,40 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
 
   sendMessageRef.current = sendMessage;
 
+  const removeLocalMessage = useCallback((convId: string, messageId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, messages: c.messages.filter((m) => m.id !== messageId) } : c)),
+    );
+  }, []);
+
+  /** Renvoie le message en échec (le message local est remplacé par le nouvel envoi). */
+  const retryFailedSend = useCallback(() => {
+    const failure = sendFailure;
+    if (!failure) return;
+    removeLocalMessage(failure.conversationId, failure.userMessageId);
+    setSendFailure(null);
+    void sendMessage(failure.text, {
+      conversationIdOverride: failure.conversationId,
+      attachment: failure.attachment,
+    });
+  }, [removeLocalMessage, sendFailure, sendMessage]);
+
+  /** Retire le message en échec et le rend au compositeur pour modification. */
+  const editFailedSend = useCallback((): string => {
+    const failure = sendFailure;
+    if (!failure) return '';
+    removeLocalMessage(failure.conversationId, failure.userMessageId);
+    setSendFailure(null);
+    if (failure.attachment) setPendingAttachment(failure.attachment);
+    return failure.text;
+  }, [removeLocalMessage, sendFailure]);
+
   const selectConversation = useCallback(
     async (id: string) => {
       if (awaitingReply || id === activeId) return;
       setActiveId(id);
       setActiveDraft(null);
+      setSendFailure(null);
       await loadConversationMessages(id);
     },
     [activeId, awaitingReply, loadConversationMessages],
@@ -508,6 +557,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
         setActiveId(id);
         setActiveDraft(null);
       }
+      setSendFailure(null);
       await loadConversationMessages(id);
     },
     [activeId, awaitingReply, loadConversationMessages],
@@ -521,6 +571,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     setConversations((prev) => [mapped, ...prev.filter((c) => c.id !== mapped.id)]);
     setActiveId(conv.id);
     setActiveDraft(null);
+    setSendFailure(null);
   }, [awaitingReply]);
 
   const deleteConversation = useCallback(
@@ -789,6 +840,11 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
 
   return {
     loading,
+    initError,
+    retryInit,
+    sendFailure,
+    retryFailedSend,
+    editFailedSend,
     conversations,
     activeConversation,
     activeId,

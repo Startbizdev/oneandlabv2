@@ -2,7 +2,7 @@ import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { AppColors } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { type LucideIcon } from 'lucide-react-native';
+import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { useRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
@@ -104,9 +104,7 @@ function ActionRow({
           }
           trailing={
             action.showChevron !== false ? (
-              <AppText style={styles.chevron} accessibilityElementsHidden>
-                ›
-              </AppText>
+              <ChevronRight size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
             ) : undefined
           }
           disabled={disabled}
@@ -152,11 +150,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     ...font.regular,
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs * 1.35,
-  },
-  chevron: {
-    fontSize: fontSize.xl,
-    lineHeight: 24,
-    color: c.textTertiary,
   },
   rowDestructive: {
     backgroundColor: c.errorLight,

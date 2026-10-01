@@ -3,7 +3,10 @@ import { useCallback, useState } from 'react';
 import { ScenePullRefreshContext } from '@/components/ui/scene-pull-refresh-context';
 import { SceneRefreshIndicator } from '@/components/ui/SceneRefreshIndicator';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
-import { StackHeaderInsetProvider } from '@/components/navigation/liquid-glass-header-inset';
+import {
+  LiquidGlassHeaderInsetProvider,
+  StackHeaderInsetProvider,
+} from '@/components/navigation/liquid-glass-header-inset';
 import { LiquidGlassTabHeader } from '@/components/navigation/LiquidGlassTabHeader';
 import { TabScreenShell } from '@/components/navigation/TabScreenShell';
 import { StackGlassBackButton } from '@/navigation/StackGlassBackButton';
@@ -15,6 +18,8 @@ type Props = {
   headerRight?: ReactNode;
   children: ReactNode;
   shellStyle?: StyleProp<ViewStyle>;
+  /** Écran affiché comme onglet : le contenu doit dégager la tab bar native. */
+  aboveTabBar?: boolean;
 };
 
 /** Stack — header glass flottant (même modèle que les onglets) + scroll edge-to-edge. */
@@ -24,6 +29,7 @@ export function StackScreenFrame({
   headerRight,
   children,
   shellStyle,
+  aboveTabBar = false,
 }: Props) {
   const styles = useStyles(buildStyles);
   const [sceneRefreshing, setSceneRefreshing] = useState(false);
@@ -31,14 +37,20 @@ export function StackScreenFrame({
     setSceneRefreshing(visible);
   }, []);
 
+  const shell = (
+    <TabScreenShell edgeToEdge style={[styles.body, shellStyle]}>
+      {children}
+    </TabScreenShell>
+  );
+
   return (
     <View style={styles.root} collapsable={false}>
       <ScenePullRefreshContext.Provider value={bindSceneRefresh}>
-        <StackHeaderInsetProvider>
-          <TabScreenShell edgeToEdge style={[styles.body, shellStyle]}>
-            {children}
-          </TabScreenShell>
-        </StackHeaderInsetProvider>
+        {aboveTabBar ? (
+          <LiquidGlassHeaderInsetProvider visual="inline">{shell}</LiquidGlassHeaderInsetProvider>
+        ) : (
+          <StackHeaderInsetProvider>{shell}</StackHeaderInsetProvider>
+        )}
 
         <SceneRefreshIndicator visible={sceneRefreshing} />
 

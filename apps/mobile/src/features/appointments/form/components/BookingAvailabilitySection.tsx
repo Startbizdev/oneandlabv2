@@ -6,6 +6,8 @@ import { Row } from '@/components/layout/primitives';
 import { Clock, FastForward, Sun } from 'lucide-react-native';
 import {
   PATIENT_VIP_FEE_LABEL,
+  PATIENT_VIP_MAX_HOUR,
+  PATIENT_VIP_MIN_HOUR,
 } from '@oneandlab/shared-constants';
 import { BookingTimeRangeSlider } from './BookingTimeRangeSlider';
 import {
@@ -15,6 +17,8 @@ import {
 } from '../utils/booking-availability-utils';
 import type { AvailabilityType, UrgentTimingMode } from '../utils/availability';
 import { VipScheduledTimePicker } from './VipScheduledTimePicker';
+import { vipStoreLabel } from '../utils/booking-wizard-titles';
+import { BookingLegalLinks } from './BookingLegalLinks';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
@@ -40,6 +44,7 @@ const BASE_TABS = [
   { id: 'custom' as const, label: 'Créneau horaire', icon: Clock },
 ];
 const VIP_TAB = { id: 'urgent' as const, label: 'Prioritaire', icon: Clock };
+const VIP_LEGAL_SLUGS = ['cgv', 'confidentialite'] as const;
 
 export function BookingAvailabilitySection({
   scheduledAt,
@@ -135,10 +140,11 @@ export function BookingAvailabilitySection({
             <View style={styles.vipTextWrap}>
               <AppText style={styles.vipTitle}>Horaire prioritaire · {vipFeeLabel}</AppText>
               <AppText style={styles.vipDesc}>
-                Demande prioritaire entre 6h et 19h. Le supplément est réglé via {Platform.OS === 'ios' ? 'l’App Store' : 'Google Play'}. La prise en charge reste à confirmer par le professionnel.
+                Demande prioritaire entre {PATIENT_VIP_MIN_HOUR}h et {PATIENT_VIP_MAX_HOUR}h. Le supplément est réglé via {vipStoreLabel()} au moment de réserver. La prise en charge reste à confirmer par le professionnel.
               </AppText>
             </View>
           </Row>
+          <BookingLegalLinks slugs={VIP_LEGAL_SLUGS} />
 
           <AppText style={styles.vipWhenLabel}>Quand ?</AppText>
           <Row gap={spacing[2]}>

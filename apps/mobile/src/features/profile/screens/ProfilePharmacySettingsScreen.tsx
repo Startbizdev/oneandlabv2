@@ -1,17 +1,20 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Switch, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Store, Truck, PauseCircle } from 'lucide-react-native';
 import { ProfileSubScreenLayout } from './ProfileSubScreenLayout';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
+import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
+import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { Row } from '@/components/layout/primitives';
 import { Card } from '@/components/ui/Card';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function boolField(v: unknown, fallback = true): boolean {
   if (v === false || v === 0 || v === '0') return false;
@@ -19,18 +22,19 @@ function boolField(v: unknown, fallback = true): boolean {
   return fallback;
 }
 
+const DEFAULT_DAYS = [1, 2, 3, 4, 5, 6];
+
 const WEEK_DAYS = [
-  { id: 1, label: 'L' },
-  { id: 2, label: 'M' },
-  { id: 3, label: 'M' },
-  { id: 4, label: 'J' },
-  { id: 5, label: 'V' },
-  { id: 6, label: 'S' },
-  { id: 7, label: 'D' },
+  { id: 1, label: 'L', name: 'Lundi' },
+  { id: 2, label: 'M', name: 'Mardi' },
+  { id: 3, label: 'M', name: 'Mercredi' },
+  { id: 4, label: 'J', name: 'Jeudi' },
+  { id: 5, label: 'V', name: 'Vendredi' },
+  { id: 6, label: 'S', name: 'Samedi' },
+  { id: 7, label: 'D', name: 'Dimanche' },
 ];
 
 export function ProfilePharmacySettingsScreen() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const qc = useQueryClient();
@@ -39,8 +43,8 @@ export function ProfilePharmacySettingsScreen() {
   const [clickCollect, setClickCollect] = useState(true);
   const [homeDelivery, setHomeDelivery] = useState(true);
   const [ordersPaused, setOrdersPaused] = useState(false);
-  const [clickCollectDays, setClickCollectDays] = useState<number[]>([1, 2, 3, 4, 5, 6]);
-  const [homeDeliveryDays, setHomeDeliveryDays] = useState<number[]>([1, 2, 3, 4, 5, 6]);
+  const [clickCollectDays, setClickCollectDays] = useState<number[]>(DEFAULT_DAYS);
+  const [homeDeliveryDays, setHomeDeliveryDays] = useState<number[]>(DEFAULT_DAYS);
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(userId),
@@ -48,15 +52,23 @@ export function ProfilePharmacySettingsScreen() {
     enabled: !!userId,
   });
 
-  useEffect(() => {
-    const p = profileQ.data;
-    if (!p) return;
-    setClickCollect(boolField(p.pharmacy_accepts_click_collect));
-    setHomeDelivery(boolField(p.pharmacy_accepts_home_delivery));
-    setOrdersPaused(boolField(p.pharmacy_orders_paused, false));
-    setClickCollectDays(p.pharmacy_click_collect_days_json?.length ? p.pharmacy_click_collect_days_json : [1, 2, 3, 4, 5, 6]);
-    setHomeDeliveryDays(p.pharmacy_home_delivery_days_json?.length ? p.pharmacy_home_delivery_days_json : [1, 2, 3, 4, 5, 6]);
-  }, [profileQ.data]);
+  const { dirty } = useProfileDraft(userId || undefined, profileQ.data,
+    { clickCollect, homeDelivery, ordersPaused, clickCollectDays, homeDeliveryDays },
+    (p) => ({
+      clickCollect: boolField(p.pharmacy_accepts_click_collect),
+      homeDelivery: boolField(p.pharmacy_accepts_home_delivery),
+      ordersPaused: boolField(p.pharmacy_orders_paused, false),
+      clickCollectDays: p.pharmacy_click_collect_days_json?.length ? p.pharmacy_click_collect_days_json : DEFAULT_DAYS,
+      homeDeliveryDays: p.pharmacy_home_delivery_days_json?.length ? p.pharmacy_home_delivery_days_json : DEFAULT_DAYS,
+    }),
+    (d) => {
+      setClickCollect(d.clickCollect);
+      setHomeDelivery(d.homeDelivery);
+      setOrdersPaused(d.ordersPaused);
+      setClickCollectDays(d.clickCollectDays);
+      setHomeDeliveryDays(d.homeDeliveryDays);
+    },
+  );
 
   const saveMut = useMutation({
     mutationFn: async () =>
@@ -74,10 +86,20 @@ export function ProfilePharmacySettingsScreen() {
     onError: (e) => handleApiError(e, toast, 'pharmacy-profile-settings'),
   });
 
-  const onSave = useCallback(() => saveMut.mutate(), [saveMut]);
+  // Tant que la configuration serveur n'est pas chargée, aucun formulaire (donc aucun envoi de valeurs par défaut).
+  if (profileQ.isLoading || profileQ.isError || !profileQ.data) {
+    return (
+      <ProfileLoadState
+        loading={profileQ.isLoading || !userId}
+        refreshing={profileQ.isFetching}
+        error={profileQ.error}
+        onRetry={() => void profileQ.refetch()}
+      />
+    );
+  }
 
   return (
-    <ProfileSubScreenLayout onSave={onSave} saving={saveMut.isPending}>
+    <ProfileSubScreenLayout onSave={() => saveMut.mutate()} saving={saveMut.isPending} dirty={dirty}>
       <AppText style={styles.intro}>
         Indiquez les modes de commande que votre officine accepte. Vous pouvez activer les deux ou un seul.
       </AppText>
@@ -148,9 +170,13 @@ function DaysPicker({
                     : [...value, day.id].sort((a, b) => a - b),
                 )
               }
+              hitSlop={4}
+              accessibilityRole="checkbox"
+              accessibilityLabel={day.name}
+              accessibilityState={{ checked: active }}
               style={[styles.day, active && { backgroundColor: c.primary, borderColor: c.primary }]}
             >
-              <AppText style={[styles.dayText, active && { color: c.textInverse }]}>{day.label}</AppText>
+              <AppText style={[styles.dayText, active && { color: c.onPrimary }]}>{day.label}</AppText>
             </Pressable>
           );
         })}
@@ -185,7 +211,7 @@ function SettingRow({
           <AppText style={styles.label}>{label}</AppText>
           <AppText style={styles.hint}>{hint}</AppText>
         </View>
-        <Switch value={value} onValueChange={onChange} />
+        <ToggleSwitch value={value} onValueChange={onChange} accessibilityLabel={label} />
       </Row>
     </View>
   );
@@ -202,7 +228,7 @@ function buildStyles({ colors: c, fontSize, scale }: Theme) {
     daysBlock: {
       gap: spacing[2],
       padding: spacing[3],
-      borderRadius: 12,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.surface,
@@ -217,7 +243,7 @@ function buildStyles({ colors: c, fontSize, scale }: Theme) {
       height: 36,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      borderRadius: 18,
+      borderRadius: radius.full,
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.surfaceAlt,
@@ -242,7 +268,7 @@ function buildStyles({ colors: c, fontSize, scale }: Theme) {
 function buildSettingStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
-      borderRadius: 12,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.surface,
@@ -254,7 +280,7 @@ function buildSettingStyles({ colors: c, fontSize }: Theme) {
     iconWrap: {
       width: 40,
       height: 40,
-      borderRadius: 10,
+      borderRadius: radius.sm,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       backgroundColor: c.primaryLight,

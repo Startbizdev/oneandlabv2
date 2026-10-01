@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import type { LinkedNurseRow } from '@/features/patients/api/linked-nurses.service';
 import type { NurseAssignmentMode } from '../utils/pro-nurse-assignment';
+import { THIRD_PARTY_PHONE_INPUT } from '../constants/third-party-input-props';
 
 interface Props {
   mode: NurseAssignmentMode;
@@ -91,7 +92,7 @@ export function ProNurseAssignmentSection({
             onChangeText={onExternalPhoneChange}
             editable={!selectedLinkedNurseId}
             placeholder="06 12 34 56 78"
-            keyboardType="phone-pad"
+            {...THIRD_PARTY_PHONE_INPUT}
           />
           <AppText style={styles.hint}>
             Un SMS avec votre nom, celui du patient et le lien Cary sera envoyé.

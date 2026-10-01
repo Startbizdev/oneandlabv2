@@ -1,6 +1,5 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
@@ -8,15 +7,9 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { Bell } from 'lucide-react-native';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { NOTIFICATION_POLL_INTERVAL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
 import {
@@ -35,14 +28,11 @@ import {
 } from '../lib/notifications-cache';
 import { resolveNotificationNavigation } from '../utils/notification-navigation';
 import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { spacing, useStyles, type Theme } from '@/theme';
+import { useStyles, type Theme } from '@/theme';
 
 const FEED_QUERY_KEY = queryKeys.notifications.feed(NOTIFICATIONS_PAGE_SIZE);
 
 export function NotificationsScreen() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   const router = useRouter();
@@ -77,7 +67,6 @@ export function NotificationsScreen() {
   );
 
   const hasUnread = items.some((n) => !n.read_at);
-  const hasMore = Boolean(feedQ.hasNextPage);
 
   const invalidateFeed = useCallback(() => {
     void qc.invalidateQueries({ queryKey: FEED_QUERY_KEY });
@@ -88,11 +77,26 @@ export function NotificationsScreen() {
     mutationFn: markNotificationRead,
     onMutate: (id) => {
       const wasUnread = items.some((n) => n.id === id && !n.read_at);
-      if (wasUnread) decrementUnreadNotificationsCount(qc);
-      return { wasUnread };
+      const prev = qc.getQueryData(FEED_QUERY_KEY);
+      if (wasUnread) {
+        decrementUnreadNotificationsCount(qc);
+        const now = new Date().toISOString();
+        qc.setQueryData(FEED_QUERY_KEY, (old: typeof feedQ.data) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? now } : n)),
+            })),
+          };
+        });
+      }
+      return { wasUnread, prev };
     },
     onError: (_err, _id, ctx) => {
       if (ctx?.wasUnread) {
+        if (ctx.prev) qc.setQueryData(FEED_QUERY_KEY, ctx.prev);
         void qc.invalidateQueries({ queryKey: queryKeys.notifications.unread });
       }
     },
@@ -156,48 +160,15 @@ export function NotificationsScreen() {
     [markRead, pharmacyCanReceive, role, router],
   );
 
-  const loadMore = useCallback(() => {
-    if (feedQ.hasNextPage && !feedQ.isFetchingNextPage) {
-      void feedQ.fetchNextPage();
-    }
-  }, [feedQ]);
-
-  const { refreshing, onRefresh } = useManualRefresh(() => feedQ.refetch());
-  const sceneInsets = useTabSceneInsets();
-  const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent);
-
   return (
     <StackChromeScreen headerRight={headerRightNode}>
       <View style={styles.container}>
-        {feedQ.isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color={c.primary} />
-          </View>
-        ) : items.length === 0 ? (
-          <View style={[styles.centered, styles.emptyPad]}>
-            <EmptyState
-              Icon={Bell}
-              title="Rien de nouveau"
-              description="Les rappels et messages arriveront ici."
-            />
-          </View>
-        ) : (
-          <NotificationsFeed
-            items={items}
-            hasUnread={hasUnread}
-            hasMore={hasMore}
-            refreshing={refreshing}
-            loadingMore={feedQ.isFetchingNextPage}
-            onRefresh={onRefresh}
-            onPressItem={onPressItem}
-            onLoadMore={loadMore}
-            pageSize={NOTIFICATIONS_PAGE_SIZE}
-            contentContainerStyle={listScrollConfig.contentContainerStyle}
-            scrollIndicatorInsets={listScrollConfig.scrollIndicatorInsets}
-            contentInsetAdjustmentBehavior={listScrollConfig.contentInsetAdjustmentBehavior}
-            refreshProgressOffset={listScrollConfig.refreshProgressOffset}
-          />
-        )}
+        <NotificationsFeed
+          query={feedQ}
+          items={items}
+          pageSize={NOTIFICATIONS_PAGE_SIZE}
+          onPressItem={onPressItem}
+        />
       </View>
     </StackChromeScreen>
   );
@@ -205,24 +176,10 @@ export function NotificationsScreen() {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-  container: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-  },
-  centered: {
-    minWidth: 0,
-    flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  emptyPad: {
-    paddingHorizontal: spacing[4],
-  },
-  listContent: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[10],
-  },
-};
+    container: {
+      minWidth: 0,
+      flex: 1,
+      backgroundColor: c.background,
+    },
+  };
 }

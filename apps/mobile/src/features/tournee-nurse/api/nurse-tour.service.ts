@@ -1,9 +1,10 @@
 import { apiRequest } from '@/api/client';
 import type { PatientAbsence } from '@oneandlab/shared-types';
+import type { NavAppPref } from '@oneandlab/shared-utils';
 
+export type { NavAppPref };
 export type TourVisitStatus = 'todo' | 'en_route' | 'on_site' | 'done' | 'skipped';
 export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
-export type NavAppPref = 'waze' | 'google_maps' | 'apple_maps' | 'system';
 
 export interface NurseTourStop {
   stop_id: string;

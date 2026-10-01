@@ -1,5 +1,7 @@
 import { ActivityIndicator, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { FormScreen } from '@/components/layout/FormScreen';
+import { AppointmentDetailLoadError } from '@/features/appointments/detail/components/AppointmentDetailLoadError';
 import { Button } from '@/components/ui/Button';
 import { FormScheduleSection } from '@/features/appointments/form/components/FormScheduleSection';
 import { usePatientEditSchedule } from '@/features/appointments/patient-schedule/hooks/usePatientEditSchedule';
@@ -14,8 +16,21 @@ interface Props {
 
 export function PatientEditScheduleScreen({ appointmentId }: Props) {
   const styles = useStyles(buildStyles);
+  const router = useRouter();
   const r = usePatientEditSchedule(appointmentId);
   const scrollConfig = useStackScrollConfig(styles.content);
+
+  if (r.loadError) {
+    return (
+      <StackChromeScreen title="Modifier le créneau">
+        <AppointmentDetailLoadError
+          error={r.loadError}
+          onRetry={() => void r.retryLoad()}
+          onBack={() => router.back()}
+        />
+      </StackChromeScreen>
+    );
+  }
 
   if (r.loading || !r.apt) {
     return (

@@ -46,32 +46,6 @@ export function HeaderTitleText({ title }: HeaderTitleProps) {
 
 
 
-/** @deprecated Préférer `HeaderTitleText` — icônes retirées du header. */
-
-export function HeaderTitleWithIcon({
-
-  title,
-
-  symbol: _symbol,
-
-  fallbackIcon: _fallbackIcon,
-
-}: {
-
-  title: string;
-
-  symbol?: SFSymbol;
-
-  fallbackIcon?: LucideIcon;
-
-}) {
-
-  return <HeaderTitleText title={title} />;
-
-}
-
-
-
 /** Titre header stack — compat React Navigation. */
 
 export function tabHeaderTitle(

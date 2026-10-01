@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
-import dayjs from 'dayjs';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { ErrorState } from '@/components/ui/ErrorState';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -22,6 +22,10 @@ import { PatientAbsenceSheet } from '@/features/patient-absence/components/Patie
 import { deletePatientAbsence } from '@/features/patient-absence/api/patient-absence.service';
 import { countTourActiveRemainingStops, flattenTourStopsWithSlotSections, isTourStopAbsent } from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
+import { todayTourDate } from '../hooks/nurse-tour-query';
+import { useNurseTourStopCompletion } from '../hooks/use-nurse-tour-stop-status';
+import { NurseNextPassageCard } from '../components/NurseNextPassageCard';
+import { nursePassageDetailHref } from '../utils/passage-detail-href';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
 import {
   TourCalendarImportSheet,
@@ -43,7 +47,7 @@ export function NurseTourneeScreen() {
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
-  const [date, setDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [date, setDate] = useState(todayTourDate);
   const [locating, setLocating] = useState(false);
   const [exportingCalendar, setExportingCalendar] = useState(false);
   const [rescheduleStop, setRescheduleStop] = useState<NurseTourStop | null>(null);
@@ -65,32 +69,31 @@ export function NurseTourneeScreen() {
     tour,
     isLoading,
     isFetching,
+    isError,
+    error,
     refetch,
     dayCounts,
-    refreshCoords,
+    refreshOrigin,
     moveStop,
     optimize,
     resetOrder,
-    setStatus,
     reschedule,
+    nextStop,
   } = useNurseTour(date);
-
-  useEffect(() => {
-    void refreshCoords();
-  }, [refreshCoords]);
+  const { markDone, reopen } = useNurseTourStopCompletion(date);
+  const isToday = date === todayTourDate();
 
   useFocusEffect(
     useCallback(() => {
-      void refreshCoords();
-      void refetch();
-    }, [refreshCoords, refetch]),
+      void refreshOrigin().then(() => refetch());
+    }, [refreshOrigin, refetch]),
   );
 
   useEffect(() => {
     setManualOrderActive(false);
   }, [date]);
 
-  const displayStops = tour?.stops ?? [];
+  const displayStops = useMemo(() => tour?.stops ?? [], [tour?.stops]);
   const tourListRows = useMemo(
     () => flattenTourStopsWithSlotSections(displayStops),
     [displayStops],
@@ -101,15 +104,20 @@ export function NurseTourneeScreen() {
   const handleLocate = useCallback(async () => {
     setLocating(true);
     try {
-      await refreshCoords();
-      await refetch();
-      showToast('Position actualisée', { type: 'success' });
-    } catch {
-      showToast('GPS indisponible', { type: 'error' });
+      const located = await refreshOrigin();
+      if (!located) {
+        showToast('GPS indisponible', { type: 'error' });
+        return;
+      }
+      const result = await refetch();
+      showToast(
+        result.isError ? 'Tournée non actualisée' : 'Position actualisée',
+        { type: result.isError ? 'error' : 'success' },
+      );
     } finally {
       setLocating(false);
     }
-  }, [refreshCoords, refetch, showToast]);
+  }, [refreshOrigin, refetch, showToast]);
 
   const handleOptimize = useCallback(
     async (mode: TourSortMode, force?: boolean) => {
@@ -139,25 +147,7 @@ export function NurseTourneeScreen() {
 
   const openPassageDetail = useCallback(
     (stop: NurseTourStop) => {
-      if (stop.passage_series_id) {
-        router.push({
-          pathname: '/(nurse)/passage/[seriesId]',
-          params: {
-            seriesId: stop.passage_series_id,
-            appointment_id: stop.appointment_id,
-            stop_id: stop.stop_id,
-          },
-        } as never);
-        return;
-      }
-      router.push({
-        pathname: '/(nurse)/passage/[seriesId]',
-        params: {
-          seriesId: 'rdv',
-          appointment_id: stop.appointment_id,
-          stop_id: stop.stop_id,
-        },
-      } as never);
+      router.push(nursePassageDetailHref(stop) as never);
     },
     [router],
   );
@@ -309,6 +299,9 @@ export function NurseTourneeScreen() {
             activeRemaining={countTourActiveRemainingStops(displayStops)}
           />
         ) : null}
+        {isToday && tour && nextStop ? (
+          <NurseNextPassageCard tour={tour} stop={nextStop} onMarkDone={markDone} />
+        ) : null}
         {hasStops ? (
           <TourPassageSectionHeader
             sortActive={sortFilterActive}
@@ -319,7 +312,18 @@ export function NurseTourneeScreen() {
         ) : null}
       </View>
     ),
-    [absentCount, displayStops, hasStops, showTourSummary, sortFilterActive, tour, styles.listHeader],
+    [
+      absentCount,
+      displayStops,
+      hasStops,
+      isToday,
+      markDone,
+      nextStop,
+      showTourSummary,
+      sortFilterActive,
+      tour,
+      styles.listHeader,
+    ],
   );
 
   return (
@@ -346,6 +350,14 @@ export function NurseTourneeScreen() {
 
         {isLoading ? (
           <TourLoadingSkeleton />
+        ) : isError && !tour ? (
+          <View style={styles.errorWrap}>
+            <ErrorState
+              title="Tournée indisponible"
+              error={error}
+              onRetry={() => void refetch()}
+            />
+          </View>
         ) : (
           <FlatList
             data={tourListRows}
@@ -381,7 +393,7 @@ export function NurseTourneeScreen() {
                   stop.visit_status === 'done' ||
                   stop.visit_status === 'skipped' ||
                   stop.status === 'completed';
-                void setStatus(stop.stop_id, isDone ? 'todo' : 'done');
+                void (isDone ? reopen(stop) : markDone(stop));
               };
               return (
                 <PassageSimpleListRow
@@ -488,6 +500,12 @@ function buildStyles({ colors: c }: Theme) {
     listEmpty: {
       minWidth: 0,
       flexGrow: 1,
+    },
+    errorWrap: {
+      flex: 1,
+      minWidth: 0,
+      justifyContent: 'center' as const,
+      paddingHorizontal: H_PADDING,
     },
   };
 }

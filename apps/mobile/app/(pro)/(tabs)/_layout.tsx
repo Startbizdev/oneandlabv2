@@ -1,9 +1,10 @@
 import { SHOW_PRESCRIPTIONS_TAB_NAV, prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
 import {
-  APPOINTMENTS_TAB_TRIGGER,
-  CALENDAR_TAB_TRIGGER,
+  AGENDA_TAB_TRIGGER,
   createRoleTabsLayout,
+  HOME_TAB_TRIGGER,
   MORE_TAB_TRIGGER,
+  PATIENTS_TAB_TRIGGER,
 } from '@/components/navigation/RoleNativeTabsLayout';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -12,28 +13,17 @@ export default createRoleTabsLayout(() => {
   const showPrescriptions = SHOW_PRESCRIPTIONS_TAB_NAV && prescriptionGenerationEnabled(user);
 
   return [
-  {
-    name: 'index',
-    hidden: true,
-    accessibilityLabel: 'Accueil',
-    sf: { default: 'house', selected: 'house.fill' },
-    androidIcon: 'home',
-  },
-  { name: 'appointments', ...APPOINTMENTS_TAB_TRIGGER },
-  {
-    name: 'patients',
-    accessibilityLabel: 'Patients',
-    sf: { default: 'person.2', selected: 'person.2.fill' },
-    androidIcon: 'people',
-  },
-  {
-    name: 'prescriptions',
-    hidden: !showPrescriptions,
-    accessibilityLabel: 'Prescriptions',
-    sf: { default: 'doc.text', selected: 'doc.text.fill' },
-    androidIcon: 'description',
-  },
-  { name: 'calendar', ...CALENDAR_TAB_TRIGGER },
-  { name: 'more', ...MORE_TAB_TRIGGER },
-];
+    { name: 'appointments', ...HOME_TAB_TRIGGER },
+    { name: 'patients', ...PATIENTS_TAB_TRIGGER },
+    { name: 'calendar', ...AGENDA_TAB_TRIGGER },
+    // Juste avant « Plus » : son apparition selon les droits ne décale pas les autres onglets.
+    {
+      name: 'prescriptions',
+      hidden: !showPrescriptions,
+      label: 'Prescriptions',
+      sf: { default: 'doc.text', selected: 'doc.text.fill' },
+      androidIcon: 'description',
+    },
+    { name: 'more', ...MORE_TAB_TRIGGER },
+  ];
 });

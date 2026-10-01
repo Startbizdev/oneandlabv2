@@ -19,6 +19,8 @@ import {
   deleteClinicalVital,
   updateClinicalVital,
 } from '../api/clinical-vitals.service';
+import { validateClinicalVital, type ClinicalVitalFieldErrors } from '../utils/clinical-vital-bounds';
+import { getErrorMessage } from '@/lib/errors/handle-api-error';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
@@ -48,6 +50,7 @@ export function ClinicalVitalEditSheet({
   const [value, setValue] = useState('');
   const [valueSecondary, setValueSecondary] = useState('');
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<ClinicalVitalFieldErrors>({});
 
   const config = useMemo(() => CLINICAL_VITAL_UI.find((x) => x.type === vitalType), [vitalType]);
 
@@ -60,21 +63,16 @@ export function ClinicalVitalEditSheet({
       reading?.value_secondary != null ? String(reading.value_secondary) : '',
     );
     setNotes(reading?.notes ?? '');
+    setErrors({});
   }, [visible, reading, initialType]);
 
   const saveMut = useMutation({
-    mutationFn: async () => {
-      const num = parseFloat(value.replace(',', '.'));
-      if (!Number.isFinite(num)) throw new Error('Valeur invalide');
+    mutationFn: async (parsed: { value: number; valueSecondary: number | null }) => {
       const payload = {
         vital_type: vitalType,
-        value: num,
+        value: parsed.value,
         notes: notes.trim() || null,
-        ...(config?.has_secondary
-          ? {
-              value_secondary: parseFloat(valueSecondary.replace(',', '.')),
-            }
-          : {}),
+        ...(parsed.valueSecondary !== null ? { value_secondary: parsed.valueSecondary } : {}),
         ...(context
           ? { context_type: context.type, context_id: context.id ?? null }
           : {}),
@@ -103,6 +101,22 @@ export function ClinicalVitalEditSheet({
     },
   });
 
+  const onSave = () => {
+    const unit = config?.unit ?? '';
+    const result = validateClinicalVital(vitalType, unit, value, valueSecondary, Boolean(config?.has_secondary));
+    if (!result.ok) {
+      setErrors(result.errors);
+      return;
+    }
+    setErrors({});
+    saveMut.mutate({ value: result.value, valueSecondary: result.valueSecondary });
+  };
+
+  const selectType = (type: ClinicalVitalType) => {
+    setVitalType(type);
+    setErrors({});
+  };
+
   const title = isEdit
     ? `Modifier — ${config?.label_fr ?? 'Constante'}`
     : config?.label_fr ?? 'Nouvelle constante';
@@ -125,7 +139,7 @@ export function ClinicalVitalEditSheet({
           <Button
             title={isEdit ? 'Enregistrer' : 'Ajouter'}
             loading={saveMut.isPending}
-            onPress={() => saveMut.mutate()}
+            onPress={onSave}
           />
           {isEdit ? (
             <Button
@@ -149,7 +163,8 @@ export function ClinicalVitalEditSheet({
                   title={`${item.emoji} ${item.label_fr}`}
                   variant={active ? 'primary' : 'secondary'}
                   size="sm"
-                  onPress={() => setVitalType(item.type)}
+                  onPress={() => selectType(item.type)}
+                  accessibilityState={{ selected: active }}
                 />
               );
             })}
@@ -161,25 +176,37 @@ export function ClinicalVitalEditSheet({
             <Input
               label={`Systolique (${config.unit})`}
               value={value}
-              onChangeText={setValue}
+              onChangeText={(v) => {
+                setValue(v);
+                setErrors((e) => ({ ...e, value: undefined }));
+              }}
               keyboardType="decimal-pad"
               placeholder="120"
+              error={errors.value}
             />
             <Input
               label={`Diastolique (${config.unit})`}
               value={valueSecondary}
-              onChangeText={setValueSecondary}
+              onChangeText={(v) => {
+                setValueSecondary(v);
+                setErrors((e) => ({ ...e, valueSecondary: undefined }));
+              }}
               keyboardType="decimal-pad"
               placeholder="80"
+              error={errors.valueSecondary}
             />
           </Stack>
         ) : (
           <Input
             label={`Valeur (${config?.unit ?? ''})`}
             value={value}
-            onChangeText={setValue}
+            onChangeText={(v) => {
+              setValue(v);
+              setErrors((e) => ({ ...e, value: undefined }));
+            }}
             keyboardType="decimal-pad"
             placeholder="—"
+            error={errors.value}
           />
         )}
 
@@ -191,9 +218,9 @@ export function ClinicalVitalEditSheet({
           numberOfLines={3}
         />
 
-        {saveMut.isError ? (
-          <AppText style={styles.error}>
-            {saveMut.error instanceof Error ? saveMut.error.message : 'Erreur'}
+        {saveMut.error || deleteMut.error ? (
+          <AppText style={styles.error} accessibilityRole="alert">
+            {getErrorMessage(saveMut.error ?? deleteMut.error)}
           </AppText>
         ) : null}
       </Stack>

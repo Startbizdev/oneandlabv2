@@ -27,6 +27,8 @@ import { fetchStaffPatientHubSearch } from '../api/staff-hub-search.service';
 import type { PatientRow } from '../api/fetch-all-patients';
 
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
 
 import { SkeletonPatientList } from '@/components/ui/skeletons';
 
@@ -154,19 +156,22 @@ export function PatientsListScreen({
   const { refreshing, onRefresh } = useManualRefresh(hubQ.refetch);
 
 
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+
   const removeMut = useMutation({
 
     mutationFn: deletePatient,
 
     onSuccess: () => {
-
+      setPendingDelete(null);
       void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
-
       toast('Patient supprimé', { type: 'success' });
-
     },
 
-    onError: (e) => handleApiError(e, toast, 'deletePatient'),
+    onError: (e) => {
+      setPendingDelete(null);
+      handleApiError(e, toast, 'deletePatient');
+    },
 
   });
 
@@ -204,7 +209,7 @@ export function PatientsListScreen({
 
                 style: 'destructive' as const,
 
-                onPress: () => removeMut.mutate(p.id),
+                onPress: () => setPendingDelete({ id: p.id, name }),
 
               },
 
@@ -238,7 +243,7 @@ export function PatientsListScreen({
 
     },
 
-    [router, user?.id, removeMut, rolePrefix],
+    [router, user?.id, rolePrefix],
 
   );
 
@@ -329,6 +334,14 @@ export function PatientsListScreen({
 
           <SkeletonPatientList count={8} />
 
+        ) : hubQ.isError && !hubQ.data ? (
+          <View style={styles.emptyWrap}>
+            <ErrorState
+              title="Patients indisponibles"
+              error={hubQ.error}
+              onRetry={() => void hubQ.refetch()}
+            />
+          </View>
         ) : items.length === 0 ? (
 
           <View style={styles.emptyWrap}>
@@ -391,6 +404,15 @@ export function PatientsListScreen({
 
         }}
 
+      />
+
+      <DeletePatientConfirmSheet
+        patientName={pendingDelete?.name ?? null}
+        loading={removeMut.isPending}
+        onConfirm={() => {
+          if (pendingDelete) removeMut.mutate(pendingDelete.id);
+        }}
+        onClose={() => setPendingDelete(null)}
       />
 
     </View>

@@ -174,7 +174,7 @@ function getSections(
         items: [
           { icon: CalendarDays, label: 'Mes rendez-vous', onPress: () => navigate('/(patient)/(tabs)/appointments') },
           { icon: CalendarDays, label: 'Réserver un RDV', onPress: () => navigate('/(patient)/(tabs)/book'), ...menuIcons.teal },
-          { icon: Heart, label: 'Mes proches', onPress: () => navigate('/(patient)/(tabs)/relatives'), ...menuIcons.heart },
+          { icon: Heart, label: 'Mes proches', onPress: () => navigate('/(patient)/relatives'), ...menuIcons.heart },
           { icon: Users, label: 'Mes donneurs de soins', onPress: () => navigate('/profile/care-origins'), ...menuIcons.teal },
           { icon: Star, label: 'Mes avis', onPress: () => navigate('/(patient)/reviews'), ...menuIcons.warning },
         ],

@@ -8,6 +8,11 @@ function sameValue(left: unknown, right: unknown): boolean {
   return keys.length === Object.keys(b).length && keys.every(key => Object.prototype.hasOwnProperty.call(b, key) && sameValue(a[key], b[key]));
 }
 
+/** True when a field of `current` differs from the server snapshot (keys in `ignore` excluded). */
+export function isDraftDirty<T extends object>(current: T, server: T, ignore: readonly (keyof T)[] = []): boolean {
+  return (Object.keys(server) as (keyof T)[]).some(key => !ignore.includes(key) && !sameValue(current[key], server[key]));
+}
+
 /** Refresh untouched fields while preserving edits made since the previous server response. */
 export class ProfileDraft<T extends object> {
   private subject: string | null = null;

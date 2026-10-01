@@ -37,6 +37,7 @@ import {
   type ProNurseAssignment,
 } from '../utils/pro-nurse-assignment';
 import { fetchLinkedNurses } from '@/features/patients/api/linked-nurses.service';
+import { fetchPublicLabBrands } from '@/features/appointments/api/lab-brands.service';
 import { isNursingAppointment } from '@oneandlab/shared-utils';
 import { servicesInActiveLot } from '../utils/booking-wizard-lot';
 import { bookingWizardProgressHint } from '../utils/booking-wizard-progress-label';
@@ -55,8 +56,24 @@ import { useWizardProfileDocuments } from './useWizardProfileDocuments';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { useMultiAppointmentWizard } from './useAppointmentForm';
 import { NEW_PATIENT_ID } from '../types';
+import {
+  bookingWizardPersonalIndex,
+  bookingWizardPhaseIndex,
+  bookingWizardReviewIndex,
+  bookingWizardSectionAt,
+  bookingWizardSubStepLabel,
+  type BookingWizardSection,
+} from '../utils/booking-wizard-steps';
+import { logVipPaymentIssue, VipPaymentError } from '../utils/vip-payment-error';
 
-export type BookingWizardSection = 'slot-datetime' | 'documents' | 'personal';
+export type { BookingWizardSection } from '../utils/booking-wizard-steps';
+
+/** Résultat affiché par l'écran de succès patient. */
+export type BookingCreatedResult = {
+  appointmentIds: string[];
+  warning?: string;
+  fallbackList: boolean;
+};
 
 export function useBookingWizard(opts: {
   mode: 'patient' | 'dashboard';
@@ -86,6 +103,8 @@ export function useBookingWizard(opts: {
     opts.initialRelativeId ?? null,
   );
   const [validationError, setValidationError] = useState('');
+  const [returnToReview, setReturnToReview] = useState(false);
+  const [created, setCreated] = useState<BookingCreatedResult | null>(null);
   const [filesByService, setFilesByService] = useState<
     Record<string, Record<string, DocumentFileRef | undefined>>
   >({});
@@ -93,6 +112,7 @@ export function useBookingWizard(opts: {
     Record<string, DocumentFileRef | undefined>
   >({});
   const submissionLockedRef = useRef(false);
+  const retrySubmitRef = useRef<() => void>(() => undefined);
 
   const [nurseAssignmentMode, setNurseAssignmentMode] = useState<NurseAssignmentMode>('cary_dispatch');
   const [proLinkedNurseId, setProLinkedNurseId] = useState('');
@@ -140,6 +160,17 @@ export function useBookingWizard(opts: {
     [wizard.selectedServices, opts.role],
   );
   const formWizardStep = needsLabPreferenceStep ? 2 : 1;
+
+  const labBrandsQ = useQuery({
+    queryKey: queryKeys.labBrands.public(),
+    queryFn: fetchPublicLabBrands,
+    enabled: needsLabPreferenceStep && labPreferenceMode === 'brand_choice',
+  });
+  const labSummary = !needsLabPreferenceStep
+    ? null
+    : labPreferenceMode === 'brand_choice'
+      ? `Réseau choisi : ${labBrandsQ.data?.find((b) => b.id === preferredLabBrandId)?.name ?? 'laboratoire sélectionné'}`
+      : 'Cary vous met en relation avec un laboratoire';
 
   const staffPatientIdForLinkedNurses =
     opts.mode === 'dashboard' &&
@@ -215,8 +246,8 @@ export function useBookingWizard(opts: {
             opts.mode === 'dashboard' ? wizard.selectedPatientId : undefined,
           );
           if (res.success && res.data) rel = res.data;
-        } catch {
-          /* liste locale */
+        } catch (error) {
+          console.warn('[booking-wizard] fiche du proche indisponible, liste locale utilisée', error);
         }
       }
       if (!rel) return;
@@ -349,20 +380,14 @@ export function useBookingWizard(opts: {
     });
   }, [profileDocsQ.data]);
 
-  const section = useMemo((): BookingWizardSection => {
-    const n = slotRows.length;
-    const nDoc = documentsSlotRows.length;
-    const i = wizardIndex;
-    if (n === 0) return 'personal';
-    if (i < n) return 'slot-datetime';
-    if (nDoc > 0 && i < n + nDoc) return 'documents';
-    return 'personal';
-  }, [slotRows.length, documentsSlotRows.length, wizardIndex]);
-
-  const maxWizardIndex = useMemo(
-    () => slotRows.length + documentsSlotRows.length,
-    [slotRows.length, documentsSlotRows.length],
+  const section = useMemo(
+    (): BookingWizardSection =>
+      bookingWizardSectionAt(wizardIndex, slotRows.length, documentsSlotRows.length),
+    [slotRows.length, documentsSlotRows.length, wizardIndex],
   );
+
+  const personalWizardIndex = bookingWizardPersonalIndex(slotRows.length, documentsSlotRows.length);
+  const maxWizardIndex = bookingWizardReviewIndex(slotRows.length, documentsSlotRows.length);
 
   /** Recaler l’index si le nombre de sous-étapes change (web: nouveau.vue). */
   useEffect(() => {
@@ -370,7 +395,7 @@ export function useBookingWizard(opts: {
     setWizardIndex((i) => (i > maxWizardIndex ? Math.max(0, maxWizardIndex) : i));
   }, [step, maxWizardIndex, formWizardStep]);
 
-  const isFinalWizardStep = section === 'personal';
+  const isFinalWizardStep = section === 'review';
 
   const profileAddressLoadedRef = useRef(false);
 
@@ -381,16 +406,13 @@ export function useBookingWizard(opts: {
     void wizard.loadProfileAddress(user.id);
   }, [opts.mode, section, user?.id, wizard.loadProfileAddress]);
 
-  const wizardStepCount = useMemo(() => {
-    const n = slotRows.length;
-    const nDoc = documentsSlotRows.length;
-    return Math.max(1, n + nDoc + 1);
-  }, [slotRows.length, documentsSlotRows.length]);
-
-  const wizardStepCurrent = useMemo(() => {
-    if (section === 'personal') return wizardStepCount;
-    return wizardIndex + 1;
-  }, [section, wizardIndex, wizardStepCount]);
+  const phaseIndex = bookingWizardPhaseIndex(step, formWizardStep, section);
+  const subStepLabel = bookingWizardSubStepLabel(
+    section,
+    wizardIndex,
+    slotRows.length,
+    documentsSlotRows.length,
+  );
 
   const activeSlotServiceId = useMemo(() => {
     if (section !== 'slot-datetime') return null;
@@ -415,13 +437,8 @@ export function useBookingWizard(opts: {
   );
 
   const wizardProgressHint = useMemo(
-    () =>
-      bookingWizardProgressHint(
-        wizard.selectedServices,
-        slotRows.length,
-        documentsSlotRows.length,
-      ),
-    [wizard.selectedServices, slotRows.length, documentsSlotRows.length],
+    () => bookingWizardProgressHint(wizard.selectedServices, slotRows.length),
+    [wizard.selectedServices, slotRows.length],
   );
 
   const previousRecaps = useMemo((): WizardRecapItem[] => {
@@ -458,6 +475,7 @@ export function useBookingWizard(opts: {
 
   const wizardPageTitle = useMemo(() => {
     if (step === 1 && needsLabPreferenceStep) return 'Votre laboratoire';
+    if (section === 'review') return 'Vérifier et confirmer';
     if (section === 'personal') return 'Informations personnelles';
     if (section === 'documents') return 'Documents de votre rendez-vous';
     return 'Date de votre rendez-vous';
@@ -485,17 +503,52 @@ export function useBookingWizard(opts: {
     }
     setValidationError('');
     setStep(formWizardStep);
-    setWizardIndex(0);
-  }, [wizard.selectedServices, labPreferenceMode, preferredLabBrandId, formWizardStep]);
+    setWizardIndex(returnToReview ? maxWizardIndex : 0);
+    setReturnToReview(false);
+  }, [
+    wizard.selectedServices,
+    labPreferenceMode,
+    preferredLabBrandId,
+    formWizardStep,
+    returnToReview,
+    maxWizardIndex,
+  ]);
 
   const backToCareSelection = useCallback(() => {
     setStep(0);
     setWizardIndex(0);
     setValidationError('');
+    setReturnToReview(false);
   }, []);
+
+  const backToReview = useCallback(() => {
+    setValidationError('');
+    setStep(formWizardStep);
+    setWizardIndex(maxWizardIndex);
+    setReturnToReview(false);
+  }, [formWizardStep, maxWizardIndex]);
+
+  /** Depuis le récapitulatif : ouvre une étape puis y revient après validation. */
+  const editFromReview = useCallback(
+    (target: { kind: 'lab' } | { kind: 'slot'; index: number } | { kind: 'personal' }) => {
+      setValidationError('');
+      setReturnToReview(true);
+      if (target.kind === 'lab') {
+        setStep(1);
+        return;
+      }
+      setStep(formWizardStep);
+      setWizardIndex(target.kind === 'slot' ? target.index : personalWizardIndex);
+    },
+    [formWizardStep, personalWizardIndex],
+  );
 
   const wizardPrev = useCallback(() => {
     setValidationError('');
+    if (returnToReview) {
+      backToReview();
+      return;
+    }
     if (step === 1 && needsLabPreferenceStep) {
       backToCareSelection();
       return;
@@ -513,7 +566,15 @@ export function useBookingWizard(opts: {
       return;
     }
     backToCareSelection();
-  }, [step, needsLabPreferenceStep, formWizardStep, wizardIndex, backToCareSelection]);
+  }, [
+    returnToReview,
+    backToReview,
+    step,
+    needsLabPreferenceStep,
+    formWizardStep,
+    wizardIndex,
+    backToCareSelection,
+  ]);
 
   const setPersonalFile = useCallback((key: string, file: DocumentFileRef | undefined) => {
     setPersonalFiles((prev) => ({ ...prev, [key]: file }));
@@ -592,47 +653,47 @@ export function useBookingWizard(opts: {
         );
         const draftRes = await createPatientBookingDraft(draftFd);
         if (!draftRes.success || !draftRes.data?.draft_id) {
-          throw new Error(draftRes.error ?? 'Échec enregistrement du brouillon');
+          logVipPaymentIssue('booking draft creation failed', draftRes.error);
+          throw new VipPaymentError('unavailable', draftRes.error);
         }
         const appointmentIds = await patientVipIap.purchaseVipForDraft(draftRes.data.draft_id);
-        return { id: appointmentIds[0], warning: undefined };
+        return { appointmentIds, warning: undefined, fallbackList: false };
       }
 
       const result = await createMultipleAppointments(payloads, bookingBatchAttempt.current);
       return {
-        id: result.createdIds[0],
+        appointmentIds: result.createdIds,
         warning: result.warning,
         fallbackList: result.fallbackList === true,
       };
     },
     onError: (e) => {
-      if (e instanceof Error && e.message === 'USER_CANCELLED') return;
-      handleApiError(e, toast, 'bookingWizard');
-    },
-    onSuccess: ({ id, warning, fallbackList }) => {
-      toast(
-        warning ?? 'Rendez-vous créé',
-        { type: warning || fallbackList ? 'warning' : 'success' },
-      );
-      qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      if (fallbackList || !id) {
-        if (opts.mode === 'patient') {
-          router.replace('/(patient)/(tabs)/appointments' as never);
-        } else {
-          router.replace(`${opts.basePath}/appointments` as never);
-        }
+      if (e instanceof VipPaymentError) {
+        if (e.kind === 'cancelled') return;
+        toast(e.message, {
+          type: 'error',
+          action:
+            e.kind === 'not_finalized'
+              ? { label: 'Contacter le support', onPress: () => router.push('/profile/support') }
+              : { label: 'Réessayer', onPress: () => retrySubmitRef.current() },
+        });
         return;
       }
-      if (opts.mode === 'patient') {
-        router.replace(`/(patient)/appointment/${id}` as never);
-      } else {
-        router.replace(`${opts.basePath}/appointment/${id}` as never);
-      }
+      handleApiError(e, toast, 'bookingWizard');
+    },
+    onSuccess: ({ appointmentIds, warning, fallbackList }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      setCreated({
+        appointmentIds,
+        warning,
+        fallbackList: fallbackList || appointmentIds.length === 0,
+      });
     },
   });
 
   const validateCurrentStep = useCallback(() => {
-    if (section === 'personal' && showProNurseAssignment) {
+    const target = section === 'review' ? 'personal' : section;
+    if (target === 'personal' && showProNurseAssignment) {
       const nurseErr = validateProNurseAssignment(getProNurseAssignment());
       if (nurseErr) {
         setValidationError(nurseErr);
@@ -645,7 +706,7 @@ export function useBookingWizard(opts: {
     const address = patient.address
       ? { ...patient.address, complement: wizard.addressComplement || undefined }
       : null;
-    const missing = validateBookingWizardSubstep(section, {
+    const missing = validateBookingWizardSubstep(target, {
       slotRows,
       documentsSlotRows,
       wizardIndex,
@@ -665,7 +726,7 @@ export function useBookingWizard(opts: {
           : missing.map((m, i) => `${i + 1}. ${m}`).join('\n');
       setValidationError(msg);
       const needsConsent =
-        section === 'personal' &&
+        target === 'personal' &&
         !consent &&
         missing.some(
           (m) =>
@@ -702,21 +763,28 @@ export function useBookingWizard(opts: {
     getProNurseAssignment,
   ]);
 
+  const submitPatientBooking = useCallback(() => {
+    if (submissionLockedRef.current || submitMut.isPending) return;
+    submissionLockedRef.current = true;
+    submitMut.mutate(undefined, {
+      onSettled: () => {
+        submissionLockedRef.current = false;
+      },
+    });
+  }, [submitMut]);
+  useEffect(() => {
+    retrySubmitRef.current = submitPatientBooking;
+  }, [submitPatientBooking]);
+
   const wizardNext = useCallback(() => {
     void (async () => {
-      if (isFinalWizardStep && opts.mode === 'patient' && selectedRelativeId) {
+      if (section === 'personal' && opts.mode === 'patient' && selectedRelativeId) {
         await applyRelativeToForm(selectedRelativeId);
       }
+      if (!validateCurrentStep()) return;
       if (isFinalWizardStep) {
-        if (!validateCurrentStep()) return;
         if (opts.mode === 'patient') {
-          if (submissionLockedRef.current || submitMut.isPending) return;
-          submissionLockedRef.current = true;
-          submitMut.mutate(undefined, {
-            onSettled: () => {
-              submissionLockedRef.current = false;
-            },
-          });
+          submitPatientBooking();
         } else {
           if (wizard.saving) return;
           wizard.setPersonalFiles(personalFiles);
@@ -724,26 +792,36 @@ export function useBookingWizard(opts: {
         }
         return;
       }
-      if (!validateCurrentStep()) return;
-      if (wizardIndex < maxWizardIndex) {
-        setWizardIndex((i) => i + 1);
-      } else {
+      if (returnToReview) {
+        setReturnToReview(false);
         setWizardIndex(maxWizardIndex);
+        return;
       }
+      setWizardIndex((i) => Math.min(i + 1, maxWizardIndex));
     })();
   }, [
+    section,
     isFinalWizardStep,
     validateCurrentStep,
     maxWizardIndex,
-    wizardIndex,
-    submitMut,
+    returnToReview,
+    submitPatientBooking,
     opts.mode,
-    opts.role,
     selectedRelativeId,
     applyRelativeToForm,
     personalFiles,
     wizard,
   ]);
+
+  const vipPaymentRequired = useMemo(
+    () =>
+      opts.mode === 'patient' &&
+      patientBookingNeedsVipPayment(
+        enrichFormDataByServiceForVip(wizard.formDataByService, wizard.selectedServices),
+        wizard.selectedServices,
+      ),
+    [opts.mode, wizard.formDataByService, wizard.selectedServices],
+  );
 
   return {
     step,
@@ -754,19 +832,25 @@ export function useBookingWizard(opts: {
     confirmStep0,
     confirmLabPreferenceStep,
     backToCareSelection,
+    editFromReview,
+    returnToReview,
     wizardPrev,
     wizardNext,
+    created,
+    vipPaymentRequired,
+    vipPriceLabel: patientVipIap.localizedVipPrice,
     needsLabPreferenceStep,
     labPreferenceMode,
     setLabPreferenceMode,
     preferredLabBrandId,
     setPreferredLabBrandId,
+    labSummary,
     formWizardStep,
     section,
     isFinalWizardStep,
     wizardPageTitle,
-    wizardStepCount,
-    wizardStepCurrent,
+    phaseIndex,
+    subStepLabel,
     activeService,
     activeLotServices,
     activeSlotServiceId,
@@ -792,7 +876,6 @@ export function useBookingWizard(opts: {
     relativesLoading: relativesQ.isLoading,
     saving: wizard.saving || submitMut.isPending || patientVipIap.purchaseLoading,
     validationError,
-    submit: () => submitMut.mutate(),
     showProNurseAssignment,
     nurseAssignmentMode,
     setNurseAssignmentMode,

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/providers/ToastProvider';
+import { handleApiError } from '@/lib/errors/handle-api-error';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -29,6 +31,7 @@ export function PassageFormHealthRecordSectionSheet({
 }: Props) {
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
+  const { show: toast } = useToast();
   const [stepIndex, setStepIndex] = useState(0);
 
   const recapQ = useQuery({
@@ -71,14 +74,22 @@ export function PassageFormHealthRecordSectionSheet({
     },
   });
 
-  const handleAnswer = async (value: unknown) => {
+  const handleAnswer = (value: unknown) => {
     if (!current) return;
-    await saveMut.mutateAsync({ [current.key]: { value } });
-    if (stepIndex < questions.length - 1) {
-      setStepIndex((i) => i + 1);
-    } else {
-      onClose();
-    }
+    saveMut.mutate(
+      { [current.key]: { value } },
+      {
+        onSuccess: () => {
+          if (stepIndex < questions.length - 1) {
+            setStepIndex((i) => i + 1);
+          } else {
+            onClose();
+          }
+        },
+        onError: (error) =>
+          handleApiError(error, toast, 'passage-health-record-answer', 'Réponse non enregistrée'),
+      },
+    );
   };
 
   const title = section?.label_fr ?? 'Carnet de santé';
@@ -121,7 +132,7 @@ export function PassageFormHealthRecordSectionSheet({
             key={current.key}
             question={current}
             initialValue={savedAnswers[current.key]}
-            onAnswer={(value) => void handleAnswer(value)}
+            onAnswer={handleAnswer}
             onSkip={() => {
               if (stepIndex < questions.length - 1) setStepIndex((i) => i + 1);
               else onClose();

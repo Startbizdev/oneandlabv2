@@ -1,5 +1,8 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Input } from '@/components/ui/Input';
 import {
   buildTabSceneScrollConfig,
   spreadTabSceneScrollProps,
@@ -14,18 +17,20 @@ import {
   HelpCircle,
   LayoutGrid,
   LifeBuoy,
+  Search,
   Settings,
   Sparkles,
   User,
+  X,
   type LucideIcon,
 } from 'lucide-react-native';
 import { getOnboardingHref } from '@/features/onboarding/utils/onboarding-route';
 import { isTutorialRole } from '@oneandlab/onboarding';
-import { getHelpFaqForRole, type HelpFaqItem } from '@/features/help/help-faq-content';
+import { getHelpFaqForRole, searchHelpFaq, type HelpFaqItem } from '@/features/help/help-faq-content';
 import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { useAuthStore } from '@/store/auth-store';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   'Onglets principaux': LayoutGrid,
@@ -57,7 +62,10 @@ export function HelpScreen() {
 
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
-  const faq = getHelpFaqForRole(role);
+  const faq = useMemo(() => getHelpFaqForRole(role), [role]);
+  const [query, setQuery] = useState('');
+  const searching = query.trim().length > 0;
+  const results = useMemo(() => searchHelpFaq(faq, query), [faq, query]);
   const sceneInsets = useTabSceneInsets();
   const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
@@ -67,10 +75,62 @@ export function HelpScreen() {
         {...spreadTabSceneScrollProps(scrollConfig)}
         contentContainerStyle={scrollConfig.contentContainerStyle}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
       <AppText style={styles.lead}>{faq.intro}</AppText>
 
-      {role && isTutorialRole(role) ? (
+      <Input
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Rechercher une question"
+        accessibilityLabel="Rechercher dans l’aide"
+        returnKeyType="search"
+        autoCorrect={false}
+        leftIcon={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+        rightIcon={
+          searching ? (
+            <Pressable
+              onPress={() => setQuery('')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Effacer la recherche"
+            >
+              <X size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
+            </Pressable>
+          ) : undefined
+        }
+      />
+
+      {searching ? (
+        results.length > 0 ? (
+          <ProfileNavCard title={`${results.length} réponse${results.length > 1 ? 's' : ''}`}>
+            {results.map((item, index) => (
+              <View key={item.slug}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <ProfileNavRow
+                  icon={HelpCircle}
+                  title={item.question}
+                  subtitle={answerPreview(item.answer)}
+                  onPress={() => router.push(`/profile/help/${item.slug}` as never)}
+                  iconColor={c.textSecondary}
+                  iconBg={c.surfaceAlt}
+                />
+              </View>
+            ))}
+          </ProfileNavCard>
+        ) : (
+          <EmptyState
+            Icon={Search}
+            title="Aucune réponse trouvée"
+            description="Essayez un autre mot, ou écrivez-nous : nous vous répondrons."
+            actionLabel="Contacter le support"
+            onAction={() => router.push('/profile/support' as never)}
+          />
+        )
+      ) : null}
+
+      {!searching && role && isTutorialRole(role) ? (
         <ProfileNavCard title="Prise en main">
           <ProfileNavRow
             icon={Sparkles}
@@ -83,7 +143,7 @@ export function HelpScreen() {
         </ProfileNavCard>
       ) : null}
 
-      {faq.sections.map((section) => (
+      {!searching && faq.sections.map((section) => (
         <ProfileNavCard key={section.slug} title={section.title}>
           {section.items.map((item: HelpFaqItem, index) => (
             <View key={item.slug}>

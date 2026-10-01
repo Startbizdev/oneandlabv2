@@ -53,6 +53,12 @@ import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-nav
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { appointmentTimeFrance } from '@oneandlab/shared-utils';
+import {
+  ConversationDaySeparator,
+  withConversationDaySeparators,
+} from '../detail/components/conversation/ConversationDaySeparator';
 import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
@@ -386,9 +392,9 @@ export function CarePhotoDiscussionScreen({
                       accessibilityLabel="Envoyer le message"
                     >
                       {sendMut.isPending ? (
-                        <ActivityIndicator size="small" color={c.textInverse} />
+                        <ActivityIndicator size="small" color={c.onPrimary} />
                       ) : (
-                        <Send size={iconSize.md} color={c.textInverse} strokeWidth={2.25} />
+                        <Send size={iconSize.md} color={c.onPrimary} strokeWidth={2.25} />
                       )}
                     </Pressable>
                   </>
@@ -410,13 +416,12 @@ export function CarePhotoDiscussionScreen({
         >
           {threadQ.isLoading ? (
             <SkeletonList count={2} itemHeight={140} gap={spacing[4]} />
-          ) : threadQ.isError ? (
-            <View style={styles.emptyCard}>
-              <AppText style={styles.emptyTitle}>Discussion indisponible</AppText>
-              <AppText style={styles.emptySub}>
-                {threadQ.error instanceof Error ? threadQ.error.message : 'Erreur de chargement'}
-              </AppText>
-            </View>
+          ) : threadQ.isError && !threadQ.data ? (
+            <ErrorState
+              error={threadQ.error}
+              title="Discussion indisponible"
+              onRetry={() => void threadQ.refetch()}
+            />
           ) : photos.length === 0 && !threadQ.data?.thread?.comments?.length ? (
             <View style={styles.emptyCard}>
               <AppText style={styles.emptyTitle}>Envoyez un premier message pour commencer</AppText>
@@ -430,22 +435,29 @@ export function CarePhotoDiscussionScreen({
             <>
               {threadQ.data?.thread?.comments?.length ? (
                 <View style={styles.thread}>
-                  {sortedComments(threadQ.data.thread.comments).map((c) => {
-                    const mine = isMine(c.author_id);
+                  {withConversationDaySeparators(
+                    sortedComments(threadQ.data.thread.comments),
+                    (comment) => comment.id,
+                  ).map((item) => {
+                    if (item.kind === 'day') {
+                      return <ConversationDaySeparator key={item.key} label={item.label} />;
+                    }
+                    const comment = item.message;
+                    const mine = isMine(comment.author_id);
                     return (
                       <View
-                        key={c.id}
+                        key={item.key}
                         style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}
                       >
                         <Row justify="between" gap={spacing[2]} style={styles.bubbleMeta}>
                           <AppText style={[styles.author, mine && styles.authorMine]}>
-                            {c.author_name}
+                            {comment.author_name}
                           </AppText>
                           <AppText style={[styles.time, mine && styles.timeMine]}>
-                            {formatShortDate(c.created_at)}
+                            {appointmentTimeFrance(comment.created_at)}
                           </AppText>
                         </Row>
-                        <AppText style={[styles.body, mine && styles.bodyMine]}>{c.body}</AppText>
+                        <AppText style={[styles.body, mine && styles.bodyMine]}>{comment.body}</AppText>
                       </View>
                     );
                   })}
@@ -726,20 +738,20 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     fontSize: fontSize.xs,
     color: c.textSecondary,
   },
-  authorMine: { color: hexToRgba(c.textInverse, 0.9) },
+  authorMine: { color: hexToRgba(c.onPrimary, 0.9) },
   time: {
     ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
   },
-  timeMine: { color: hexToRgba(c.textInverse, 0.75) },
+  timeMine: { color: hexToRgba(c.onPrimary, 0.75) },
   body: {
     ...font.regular,
     fontSize: fontSize.sm,
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.45,
   },
-  bodyMine: { color: c.textInverse },
+  bodyMine: { color: c.onPrimary },
   composerBar: {
     minWidth: 0,
     paddingHorizontal: spacing[3],

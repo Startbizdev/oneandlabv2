@@ -1,21 +1,29 @@
 import { ForceAppUpdateModal } from '@/features/app-update/components/ForceAppUpdateModal';
+import { OptionalAppUpdateSheet } from '@/features/app-update/components/OptionalAppUpdateSheet';
 import { useAppUpdateGate } from '@/features/app-update/hooks/use-app-update-gate';
 
-/** Bloque l’app si une mise à jour store obligatoire est requise. */
+/** Mise à jour obligatoire : bloque l'app. Facultative : feuille fermable. */
 export function AppUpdateGate() {
   const { requirement, updateState, dismissOptional } = useAppUpdateGate();
 
   if (!updateState || requirement === 'none') return null;
 
-  const force = requirement === 'force';
+  if (requirement === 'force') {
+    return (
+      <ForceAppUpdateModal
+        message={updateState.message}
+        storeUrl={updateState.storeUrl}
+        latestVersion={updateState.latestVersion}
+      />
+    );
+  }
 
   return (
-    <ForceAppUpdateModal
-      visible
-      force={force}
+    <OptionalAppUpdateSheet
       message={updateState.message}
       storeUrl={updateState.storeUrl}
-      onDismiss={force ? undefined : () => void dismissOptional()}
+      latestVersion={updateState.latestVersion}
+      onDismiss={() => void dismissOptional()}
     />
   );
 }

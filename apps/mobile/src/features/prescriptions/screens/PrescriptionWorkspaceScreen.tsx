@@ -8,6 +8,7 @@ import { FilePenLine, History, PlusCircle } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { fetchMedicalDocuments } from '@/features/appointments/detail/api/appointment-detail.service';
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
@@ -349,6 +350,12 @@ export function PrescriptionWorkspaceScreen({
         <View style={[styles.section, styles.historySection]}>
           {historyQ.isLoading ? (
             <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
+          ) : historyQ.isError && historyRows.length === 0 ? (
+            <ErrorState
+              title="Ordonnances indisponibles"
+              error={historyQ.error}
+              onRetry={() => void historyQ.refetch()}
+            />
           ) : historyRows.length === 0 ? (
             <EmptyState
               Icon={FilePenLine}

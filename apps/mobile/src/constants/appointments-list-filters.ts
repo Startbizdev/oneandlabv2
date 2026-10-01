@@ -43,11 +43,6 @@ export function normalizeNurseSegment(raw: string): NurseSegment {
 /** Patient — prochains / passés (filtrage client). */
 export type PatientListTab = 'upcoming' | 'past';
 
-export const PATIENT_TAB_OPTIONS: Array<{ label: string; value: PatientListTab }> = [
-  { label: 'Prochains', value: 'upcoming' },
-  { label: 'Terminés', value: 'past' },
-];
-
 /** Pro — statuts simplifiés. */
 export type ProStatusFilter = 'all' | 'pending' | 'active' | 'done';
 

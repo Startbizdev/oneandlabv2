@@ -10,7 +10,9 @@ import {
   MapPin,
   Pill,
   Settings,
+  Trash2,
   User,
+  Users,
 } from 'lucide-react-native';
 import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
@@ -145,6 +147,20 @@ export default function ProfileLayout() {
         options={{
           title: 'Commandes pharmacie',
           headerTitle: tabHeaderTitle('Commandes pharmacie', PROFILE_HEADER_SF.profile, Pill),
+        }}
+      />
+      <Stack.Screen
+        name="care-origins"
+        options={{
+          title: 'Mes donneurs de soins',
+          headerTitle: tabHeaderTitle('Mes donneurs de soins', PROFILE_HEADER_SF.profile, Users),
+        }}
+      />
+      <Stack.Screen
+        name="delete-account"
+        options={{
+          title: 'Supprimer mon compte',
+          headerTitle: tabHeaderTitle('Supprimer mon compte', PROFILE_HEADER_SF.security, Trash2),
         }}
       />
       <Stack.Screen name="coverage" options={{ headerShown: false }} />

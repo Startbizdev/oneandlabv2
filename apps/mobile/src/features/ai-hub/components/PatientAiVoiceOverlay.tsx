@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
+import { CaryAiEmergencyLine } from '@/features/ai-hub/components/CaryAiDisclosureCard';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
 import { canConfirmAiDraftRecap, shouldShowAiDraftRecap } from '../utils/should-show-ai-draft-recap';
@@ -425,7 +426,13 @@ export function PatientAiVoiceOverlay({
         />
 
         <View style={[styles.shell, { paddingTop: insets.top }]}>
-          <Row justify="end" style={styles.header}>
+          <Row justify="between" align="center" gap={spacing[3]} style={styles.header}>
+            <View style={styles.disclosure}>
+              <AppText style={[styles.disclosureText, { color: c.textSecondary }]}>
+                Assistant automatique, ne remplace pas un avis médical.
+              </AppText>
+              <CaryAiEmergencyLine compact />
+            </View>
             <Pressable
               onPress={handleClose}
               hitSlop={12}
@@ -546,6 +553,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderTopWidth: StyleSheet.hairlineWidth,
     },
     header: { paddingHorizontal: H_PADDING, paddingBottom: spacing[1] },
+    disclosure: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+    disclosureText: {
+      ...font.regular,
+      fontSize: fontSize.xs,
+      lineHeight: lh(fontSize.xs, 1.35),
+    },
     closeBtn: {
       width: 44,
       height: 44,

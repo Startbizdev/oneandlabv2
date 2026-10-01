@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CalendarX2 } from 'lucide-react-native';
@@ -16,10 +16,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { patientDisplayName } from '@/utils/appointment-detail-display';
-import {
-  cancelAppointment,
-  cancelAppointmentsPatientBatch,
-} from '../../api/appointment-detail.service';
+import { cancelAppointment } from '../../api/appointment-detail.service';
 import {
   StaffCancellationFields,
   type StaffCancellationValues,
@@ -32,27 +29,16 @@ import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from 
 
 interface Props {
   visible: boolean;
-  role: string;
-  /** RDV à annuler (lot patient = plusieurs). */
-  targets: Appointment[];
+  /** RDV à annuler (côté soignant / pro : motif obligatoire). */
+  target: Appointment;
   onDone: () => void;
   onClose: () => void;
 }
 
 const EMPTY_STAFF: StaffCancellationValues = { reason: '', comment: '' };
 
-function cancelSheetSubtitle(isPatient: boolean, isBatch: boolean, count: number): string {
-  if (isBatch) {
-    return `${count} rendez-vous seront définitivement annulés.`;
-  }
-  if (isPatient) {
-    return 'Cette action est définitive et ne peut pas être annulée.';
-  }
-  return 'Indiquez la raison avant de confirmer l’annulation.';
-}
-
-export function CancelAppointmentSheet({
-  visible, role, targets, onDone, onClose }: Props) {
+/** Annulation côté soignant / pro — l’annulation patient passe par `PatientCancelAppointmentSheet`. */
+export function CancelAppointmentSheet({ visible, target, onDone, onClose }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
@@ -60,17 +46,8 @@ export function CancelAppointmentSheet({
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
   const [sheetVisible, setSheetVisible] = useState(false);
   const pickingPhotoRef = useRef(false);
-  const isPatient = role === 'patient';
-  const isBatch = targets.length > 1;
   const canSubmitStaff = staffCancellationCanSubmit(staff.reason, staff.comment);
-
-  const presentKey = useMemo(
-    () => targets.map((t) => t.id).join(',') || 'cancel',
-    [targets],
-  );
-
-  const primaryTarget = targets[0];
-  const targetLabel = primaryTarget ? patientDisplayName(primaryTarget) : null;
+  const targetLabel = patientDisplayName(target);
 
   useEffect(() => {
     if (visible) {
@@ -127,39 +104,25 @@ export function CancelAppointmentSheet({
   }, []);
 
   const mut = useMutation({
-    mutationFn: async () => {
-      if (isPatient) {
-        return cancelAppointmentsPatientBatch(targets.map((t) => t.id));
-      }
-      const first = targets[0];
-      if (!first) throw new Error('NO_TARGET');
-      return cancelAppointment(first.id, {
+    mutationFn: () =>
+      cancelAppointment(target.id, {
         reason: staff.reason,
         comment: staff.comment.trim(),
         photoUri: staff.photoUri,
         photoName: staff.photoName,
         photoMimeType: staff.photoMimeType,
-      }).then((r) => ({
-        ok: r.ok,
-        canceled: r.ok ? 1 : 0,
-        error: r.error,
-      }));
-    },
+      }),
     onSuccess: (r) => {
       if (!r.ok) {
         toast(r.error ?? 'Annulation impossible', { type: 'error' });
         return;
       }
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-      const n = r.canceled;
-      toast(n > 1 ? `${n} rendez-vous annulés` : 'Rendez-vous annulé', { type: 'success' });
+      toast('Rendez-vous annulé', { type: 'success' });
       onDone();
     },
     onError: (e) => handleApiError(e, toast, 'cancelAppointment'),
   });
-
-  const title = isBatch ? 'Annuler le lot' : 'Annuler le rendez-vous';
-  const subtitle = cancelSheetSubtitle(isPatient, isBatch, targets.length);
 
   const footer = (
     <View style={styles.footer}>
@@ -169,7 +132,7 @@ export function CancelAppointmentSheet({
         size="lg"
         fullWidth
         loading={mut.isPending}
-        disabled={!isPatient && !canSubmitStaff}
+        disabled={!canSubmitStaff}
         onPress={() => mut.mutate()}
       />
       <Button title="Retour" variant="outline" size="lg" fullWidth onPress={onClose} />
@@ -179,11 +142,11 @@ export function CancelAppointmentSheet({
   return (
     <SheetModal
       visible={sheetVisible}
-      presentKey={presentKey}
+      presentKey={target.id}
       onClose={onClose}
       onDismissed={handleSheetDismissed}
-      title={title}
-      subtitle={subtitle}
+      title="Annuler le rendez-vous"
+      subtitle="Indiquez la raison avant de confirmer l’annulation."
       footer={footer}
     >
       <View style={styles.summaryCard}>
@@ -193,14 +156,10 @@ export function CancelAppointmentSheet({
           style={styles.warningStrip}
           leading={<AlertTriangle size={iconSize.sm} color={c.error} strokeWidth={2.25} />}
         >
-          <AppText style={styles.warningText}>
-            {isBatch
-              ? `${targets.length} rendez-vous seront définitivement annulés.`
-              : 'Cette action est irréversible.'}
-          </AppText>
+          <AppText style={styles.warningText}>Cette action est irréversible.</AppText>
         </Cluster>
 
-        {targetLabel && !isBatch ? (
+        {targetLabel ? (
           <>
             <View style={styles.summaryDivider} />
             <Cluster
@@ -224,12 +183,10 @@ export function CancelAppointmentSheet({
         ) : null}
       </View>
 
-      {!isPatient ? (
-        <View style={styles.formSection}>
-          <AppText style={styles.formTitle}>Motif d'annulation</AppText>
-          <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={beginPhotoPick} />
-        </View>
-      ) : null}
+      <View style={styles.formSection}>
+        <AppText style={styles.formTitle}>Motif d'annulation</AppText>
+        <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={beginPhotoPick} />
+      </View>
     </SheetModal>
   );
 }

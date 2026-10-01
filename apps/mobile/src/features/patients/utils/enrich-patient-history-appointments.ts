@@ -2,7 +2,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import type { PatientProfile } from '../api/patient-profile.service';
 import { beneficiaryFirstName, beneficiaryLastName } from '@/utils/beneficiary-display-name';
 
-type AptExt = Appointment & {
+type HistoryAppointment = Appointment & {
   relative?: { first_name?: string; last_name?: string };
   beneficiary_profile_image_url?: string | null;
   beneficiary_gender?: string | null;
@@ -10,37 +10,37 @@ type AptExt = Appointment & {
 
 /** Complète nom / photo bénéficiaire quand le payload liste est incomplet (dossier patient connu). */
 export function enrichPatientHistoryAppointments(
-  appointments: Appointment[],
+  appointments: HistoryAppointment[],
   profile: Pick<PatientProfile, 'first_name' | 'last_name' | 'gender' | 'profile_image_url'> | undefined,
-): Appointment[] {
+): HistoryAppointment[] {
   if (!profile) return appointments;
 
   return appointments.map((apt) => {
-    const ext = apt as AptExt;
     const hasName =
       Boolean(beneficiaryFirstName(apt)) ||
       Boolean(beneficiaryLastName(apt)) ||
-      Boolean(ext.relative?.first_name?.trim());
+      Boolean(apt.relative?.first_name?.trim());
 
-    if (!hasName && (profile.first_name?.trim() || profile.last_name?.trim())) {
-      const fd = { ...((apt.form_data ?? {}) as Record<string, unknown>) };
-      if (!String(fd.first_name ?? '').trim()) fd.first_name = profile.first_name ?? '';
-      if (!String(fd.last_name ?? '').trim()) fd.last_name = profile.last_name ?? '';
+    if (!hasName && apt.form_data && (profile.first_name?.trim() || profile.last_name?.trim())) {
       return {
         ...apt,
-        form_data: fd,
+        form_data: {
+          ...apt.form_data,
+          first_name: String(apt.form_data.first_name ?? '').trim() || profile.first_name || '',
+          last_name: String(apt.form_data.last_name ?? '').trim() || profile.last_name || '',
+        },
         beneficiary_profile_image_url:
-          ext.beneficiary_profile_image_url ?? profile.profile_image_url ?? null,
-        beneficiary_gender: ext.beneficiary_gender ?? profile.gender ?? null,
-      } as unknown as Appointment;
+          apt.beneficiary_profile_image_url ?? profile.profile_image_url ?? null,
+        beneficiary_gender: apt.beneficiary_gender ?? profile.gender ?? null,
+      };
     }
 
-    if (ext.beneficiary_profile_image_url == null && profile.profile_image_url) {
+    if (apt.beneficiary_profile_image_url == null && profile.profile_image_url) {
       return {
         ...apt,
         beneficiary_profile_image_url: profile.profile_image_url,
-        beneficiary_gender: ext.beneficiary_gender ?? profile.gender ?? null,
-      } as unknown as Appointment;
+        beneficiary_gender: apt.beneficiary_gender ?? profile.gender ?? null,
+      };
     }
 
     return apt;

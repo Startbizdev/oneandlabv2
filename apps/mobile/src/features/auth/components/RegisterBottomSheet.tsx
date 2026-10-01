@@ -7,17 +7,17 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
+import { REGISTER_META } from '@/features/auth/constants/register-meta';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const REGISTER_ROLE_META: {
   role: RegisterRole;
-  label: string;
   icon: LucideIcon;
   accent: 'primary' | 'success' | 'warning';
 }[] = [
-  { role: 'patient', label: 'Patient', icon: User, accent: 'primary' },
-  { role: 'nurse', label: 'Infirmier ou infirmière', icon: HeartPulse, accent: 'success' },
-  { role: 'pro', label: 'Médecin ou soignant', icon: Stethoscope, accent: 'warning' },
+  { role: 'patient', icon: User, accent: 'primary' },
+  { role: 'nurse', icon: HeartPulse, accent: 'success' },
+  { role: 'pro', icon: Stethoscope, accent: 'warning' },
 ];
 
 function roleIconColors(c: AppColors, accent: 'primary' | 'success' | 'warning') {
@@ -52,9 +52,11 @@ export function RegisterBottomSheet({
 
   const roleItems: SettingsRowProps[] = REGISTER_ROLE_META.map((item) => {
     const ic = roleIconColors(c, item.accent);
+    const meta = REGISTER_META[item.role];
     return {
       icon: item.icon,
-      label: item.label,
+      label: meta.headerTitle,
+      description: meta.headerSubtitle,
       iconColor: ic.iconColor,
       iconBg: ic.iconBg,
       onPress: () => onSelectRole(item.role),
@@ -86,10 +88,15 @@ export function RegisterBottomSheet({
           </Cluster>
         ) : null}
 
-        <SettingsSection title="Profil" items={roleItems} />
+        <SettingsSection title="Je suis…" items={roleItems} />
+
+        <AppText style={styles.preleveurNote}>
+          Préleveur ? Votre accès est créé par votre laboratoire : connectez-vous avec l&apos;e-mail
+          qu&apos;il a enregistré.
+        </AppText>
 
         {onLoginPress ? (
-          <Pressable onPress={onLoginPress} style={styles.loginLink} hitSlop={8}>
+          <Pressable onPress={onLoginPress} style={styles.loginLink} accessibilityRole="button">
             <AppText style={styles.loginText}>
               Déjà un compte ?{' '}
               <AppText style={styles.loginAccent}>Se connecter</AppText>
@@ -128,10 +135,17 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     color: c.textPrimary,
     lineHeight: fontSize.sm * 1.4,
   },
+  preleveurNote: {
+    ...font.regular,
+    fontSize: fontSize.xs,
+    lineHeight: fontSize.xs * 1.5,
+    color: c.textTertiary,
+    paddingHorizontal: spacing[1],
+  },
   loginLink: {
+    minHeight: 44,
     alignItems: 'center' as const,
-    paddingTop: spacing[1],
-    paddingBottom: spacing[1],
+    justifyContent: 'center' as const,
   },
   loginText: {
     ...font.regular,

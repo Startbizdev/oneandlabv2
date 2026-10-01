@@ -6,6 +6,11 @@ import { ActivityIndicator, Keyboard, Platform, StyleSheet, View } from 'react-n
 import { Smile } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { handleApiError } from '@/lib/errors/handle-api-error';
+import { useToast } from '@/providers/ToastProvider';
+import { CaryAiDisclosureCard } from '../components/CaryAiDisclosureCard';
+import { CaryAiSendFailureNotice } from '../components/CaryAiSendFailureNotice';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import {
   PatientAiChatFooter,
@@ -195,6 +200,11 @@ export function CaryAiHubScreen({
 
   const {
     loading,
+    initError,
+    retryInit,
+    sendFailure,
+    retryFailedSend,
+    editFailedSend,
     conversations,
     activeConversation,
     activeId,
@@ -224,8 +234,10 @@ export function CaryAiHubScreen({
     attaching,
   } = useCaryAiHub(init);
 
-  const messages = activeConversation?.messages ?? [];
+  const messages = useMemo(() => activeConversation?.messages ?? [], [activeConversation?.messages]);
   const welcomeMessageId = messages[0]?.id;
+  const activeSendFailure = sendFailure && sendFailure.conversationId === activeId ? sendFailure : null;
+  const composerBlocked = awaitingReply || !activeId || Boolean(activeSendFailure);
 
   const { scrollToEnd, onContentSizeChange } = useCaryAiChatScroll(listRef, {
     messageCount: messages.length,
@@ -314,9 +326,9 @@ export function CaryAiHubScreen({
     [closeVoiceMode, confirmDraft, voiceOpen],
   );
 
-  const showSuggestions = messages.length <= 1 && !awaitingReply && suggestions.length > 0;
+  const showSuggestions = messages.length <= 1 && !composerBlocked && suggestions.length > 0;
   const canSend =
-    !awaitingReply &&
+    !composerBlocked &&
     !attaching &&
     (draft.trim().length > 0 || Boolean(pendingAttachment?.medicalDocumentId));
 
@@ -361,11 +373,19 @@ export function CaryAiHubScreen({
     return () => clearTimeout(timer);
   }, [convSearch]);
 
+  const { show: showToast } = useToast();
+  const runConversationAction = useCallback(
+    (action: Promise<unknown>, context: string) => {
+      action.catch((e: unknown) => handleApiError(e, showToast, context));
+    },
+    [showToast],
+  );
+
   useEffect(() => {
     if (historyOpen) {
-      void refreshConversationsList(showArchived);
+      runConversationAction(refreshConversationsList(showArchived), 'ai-list-conversations');
     }
-  }, [historyOpen, showArchived, refreshConversationsList]);
+  }, [historyOpen, showArchived, refreshConversationsList, runConversationAction]);
 
   const sheetConversations = useMemo(() => {
     if (!searchIds) return conversations;
@@ -460,6 +480,13 @@ export function CaryAiHubScreen({
 
   const listFooter = (
     <>
+      {activeSendFailure ? (
+        <CaryAiSendFailureNotice
+          error={activeSendFailure.error}
+          onRetry={retryFailedSend}
+          onEdit={() => setDraft(editFailedSend())}
+        />
+      ) : null}
       {awaitingReply ? (
         <Row align="end" gap={spacing[2]} style={styles.typingRow}>
           <AssistantAvatar styles={styles} />
@@ -479,7 +506,15 @@ export function CaryAiHubScreen({
   if (loading && !activeConversation) {
     return (
       <View style={[styles.screen, styles.centered]}>
-        <ActivityIndicator color={c.primary} />
+        <ActivityIndicator color={c.primary} accessibilityLabel="Chargement de Cary" />
+      </View>
+    );
+  }
+
+  if (initError && !activeConversation) {
+    return (
+      <View style={[styles.screen, styles.centered]}>
+        <ErrorState title="Cary est indisponible" error={initError} onRetry={retryInit} />
       </View>
     );
   }
@@ -492,9 +527,10 @@ export function CaryAiHubScreen({
           messages={messages}
           contentContainerStyle={listContentStyle}
           renderMessage={renderMessage}
+          listHeader={<CaryAiDisclosureCard />}
           listFooter={listFooter}
           onContentSizeChange={onContentSizeChange}
-          extraData={`${showSuggestions}-${activeId}-${awaitingReply}-${activeDraft?.status}-${activeDraft?.updated_at}-${messages.length}-${streamingText.length}-${confirmingDraft}`}
+          extraData={`${showSuggestions}-${activeId}-${awaitingReply}-${activeSendFailure?.userMessageId ?? ''}-${activeDraft?.status}-${activeDraft?.updated_at}-${messages.length}-${streamingText.length}-${confirmingDraft}`}
         />
 
         <PatientAiChatFooter
@@ -510,7 +546,7 @@ export function CaryAiHubScreen({
           onFocusInput={() => scrollToEnd(true)}
           onFooterLayout={onFooterLayout}
           canSend={canSend}
-          disabled={awaitingReply}
+          disabled={composerBlocked}
           disclaimer={disclaimer}
           includeTabBarInset={includeTabBarInset}
         />
@@ -542,17 +578,17 @@ export function CaryAiHubScreen({
         onClose={() => onHistoryOpenChange(false)}
         conversations={sheetConversations}
         activeId={activeId}
-        onSelectConversation={(id) => void selectConversation(id)}
-        onNewConversation={() => void startNewConversation()}
-        onDeleteConversation={(id) => void deleteConversation(id)}
-        onRefresh={() => void refreshConversationsList(showArchived)}
+        onSelectConversation={(id) => runConversationAction(selectConversation(id), 'ai-select-conversation')}
+        onNewConversation={() => runConversationAction(startNewConversation(), 'ai-new-conversation')}
+        onDeleteConversation={(id) => runConversationAction(deleteConversation(id), 'ai-delete-conversation')}
+        onRefresh={() => runConversationAction(refreshConversationsList(showArchived), 'ai-list-conversations')}
         searchQuery={convSearch}
         onSearchChange={setConvSearch}
         showArchived={showArchived}
         onToggleArchived={() => setShowArchived((v) => !v)}
-        onTogglePin={(id) => void togglePinConversation(id)}
-        onArchive={(id) => void archiveConversation(id)}
-        onUnarchive={(id) => void unarchiveConversation(id)}
+        onTogglePin={(id) => runConversationAction(togglePinConversation(id), 'ai-pin-conversation')}
+        onArchive={(id) => runConversationAction(archiveConversation(id), 'ai-archive-conversation')}
+        onUnarchive={(id) => runConversationAction(unarchiveConversation(id), 'ai-unarchive-conversation')}
       />
 
       <MedicalDocumentPreviewModal

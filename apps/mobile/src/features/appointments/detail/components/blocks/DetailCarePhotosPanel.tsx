@@ -21,6 +21,7 @@ import { latestCarePhoto } from '../../utils/care-photo-thread-digest';
 import { useCarePhotoUnread } from '../../hooks/use-care-photo-unread';
 import type { AppointmentDetailRole } from '../../utils/appointment-detail-role-config';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import type { CarePhotoRow } from '../../api/appointment-detail.service';
@@ -134,14 +135,13 @@ export function DetailCarePhotosPanel({
     );
   }
 
-  if (q.isError) {
+  if (q.isError && q.data === undefined) {
     return (
-      <View style={styles.emptyCard}>
-        <AppText style={styles.emptyTitle}>Échange indisponible</AppText>
-        <AppText style={styles.emptySub}>
-          {q.error instanceof Error ? q.error.message : 'Erreur de chargement'}
-        </AppText>
-      </View>
+      <ErrorState
+        error={q.error}
+        title="Échange indisponible"
+        onRetry={() => void q.refetch()}
+      />
     );
   }
 
@@ -192,7 +192,7 @@ export function DetailCarePhotosPanel({
               size="lg"
               fullWidth
               leftIcon={
-                <MessageCircle size={iconSize.md} color={c.textInverse} strokeWidth={2.25} />
+                <MessageCircle size={iconSize.md} color={c.onPrimary} strokeWidth={2.25} />
               }
               onPress={onPrimaryPress}
             />

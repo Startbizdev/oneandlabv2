@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
+import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
 import { PrescriptionSection } from '../detail/components/PrescriptionSection';
 import { fetchMedicalDocuments } from '../detail/api/appointment-detail.service';
 import { useAppointmentDetail } from '../hooks/use-appointment-detail';
@@ -57,6 +58,19 @@ export function AppointmentPrescriptionScreen({ role }: Props) {
     return (
       <StackChromeScreen title={title}>
         <AppointmentDetailBlockedEmptyState onBack={() => router.back()} block={detailBlock} />
+      </StackChromeScreen>
+    );
+  }
+
+  const loadError = (!apt && detailQ.error) || (!docsQ.data && docsQ.error) || null;
+  if (loadError) {
+    return (
+      <StackChromeScreen title={title}>
+        <AppointmentDetailLoadError
+          error={loadError}
+          onRetry={() => void (apt ? docsQ.refetch() : detailQ.refetch())}
+          onBack={() => router.back()}
+        />
       </StackChromeScreen>
     );
   }

@@ -2,17 +2,23 @@ import { useEffect } from 'react';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import {
-  obtainExpoPushToken,
+  getPushPermissionStatus,
+  obtainExpoPushTokenIfGranted,
   registerPushTokenWithBackend,
 } from '../services/push-token.service';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 
-/** Push désactivé dans Expo Go (SDK 53+) — nécessite un development build. */
+/**
+ * Enregistre le token push quand la permission système est déjà accordée.
+ * Ne déclenche jamais la fenêtre système : la demande passe par `PushPermissionPrompt`
+ * ou par le réglage Notifications. Push désactivé dans Expo Go (SDK 53+).
+ */
 export function usePushTokenRegistration() {
   const token = useAuthStore((s) => s.token);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const pushEnabled = useAppPreferencesStore((s) => s.pushNotificationsEnabled);
+  const setPushEnabled = useAppPreferencesStore((s) => s.setPushNotificationsEnabled);
   const setExpoPushToken = useAppPreferencesStore((s) => s.setExpoPushToken);
 
   useEffect(() => {
@@ -22,14 +28,21 @@ export function usePushTokenRegistration() {
 
     void (async () => {
       try {
-        const pushToken = await obtainExpoPushToken();
+        const status = await getPushPermissionStatus();
+        if (status === 'denied') {
+          setPushEnabled(false);
+          return;
+        }
+        const pushToken = await obtainExpoPushTokenIfGranted();
         if (pushToken) {
           await registerPushTokenWithBackend(pushToken);
           setExpoPushToken(pushToken);
         }
-      } catch {
-        /* push non critique */
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('[push] enregistrement du token impossible', e);
+        }
       }
     })();
-  }, [token, isHydrated, pushEnabled, setExpoPushToken]);
+  }, [token, isHydrated, pushEnabled, setPushEnabled, setExpoPushToken]);
 }

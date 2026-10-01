@@ -1,162 +1,98 @@
-
-
 import type { ReactNode } from 'react';
-
 import { StyleSheet, View } from 'react-native';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Button } from '@/components/ui/Button';
-
-import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-
+import { FormScreen, FORM_ACTION_BAR_HEIGHT } from '@/components/layout/FormScreen';
 import {
-
   buildTabSceneScrollConfig,
-
   spreadTabSceneScrollProps,
-
   useTabSceneInsets,
-
 } from '@/components/navigation/liquid-glass-header-inset';
-
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-
+import { UnsavedChangesGuard } from '@/features/profile/components/UnsavedChangesGuard';
 import { spacing, useStyles, type Theme } from '@/theme';
 
-
-
 interface Props {
-
   children: ReactNode;
-
   saveTitle?: string;
-
   onSave?: () => void;
-
   saving?: boolean;
-
   hideSave?: boolean;
-
+  /**
+   * Modifications non enregistrées. Renseigné : « Enregistrer » n'est actif qu'en cas de modification
+   * et quitter l'écran demande confirmation.
+   */
+  dirty?: boolean;
+  /** Empêche l'enregistrement (ex. données serveur pas encore chargées). */
+  saveDisabled?: boolean;
+  /** Sheets et modales rendues hors du scroll. */
+  overlay?: ReactNode;
 }
 
-
-
-/** Écran secondaire profil : header glass flottant + formulaire scrollable. */
-
+/** Écran secondaire profil : header glass flottant, formulaire scrollable, « Enregistrer » collé en bas. */
 export function ProfileSubScreenLayout({
-
   children,
-
   saveTitle = 'Enregistrer',
-
   onSave,
-
   saving,
-
   hideSave,
-
+  dirty,
+  saveDisabled,
+  overlay,
 }: Props) {
-
   const styles = useStyles(buildStyles);
-
-
-
   const { bottom } = useSafeAreaInsets();
-
   const sceneInsets = useTabSceneInsets();
-
-  const bottomInset = Math.max(bottom, spacing[2]);
-
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content, {
-
-    extraBottom: bottomInset + spacing[4],
-
-  });
-
+  const bottomInset = sceneInsets.insetBottom > 0 ? sceneInsets.insetBottom : Math.max(bottom, spacing[2]);
   const showSave = !hideSave && !!onSave;
-
-
+  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content, {
+    extraBottom: showSave ? FORM_ACTION_BAR_HEIGHT + bottomInset + spacing[4] : bottomInset + spacing[4],
+  });
+  const tracksChanges = dirty !== undefined;
 
   return (
-
     <StackChromeScreen>
-
-      <KeyboardScrollView
-
-        style={styles.scroll}
-
+      <FormScreen
         {...spreadTabSceneScrollProps(scrollConfig)}
-
         contentContainerStyle={scrollConfig.contentContainerStyle}
-
-        bottomOffset={bottomInset}
-
         keyboardShouldPersistTaps="handled"
-
-        showsVerticalScrollIndicator={false}
-
+        footer={
+          showSave ? (
+            <View style={[styles.saveBar, { paddingBottom: bottomInset }]}>
+              <Button
+                title={saveTitle}
+                loading={saving}
+                disabled={saveDisabled || (tracksChanges && !dirty)}
+                onPress={onSave}
+                fullWidth
+                size="lg"
+              />
+            </View>
+          ) : undefined
+        }
       >
-
         {children}
-
-        {showSave ? (
-
-          <View style={styles.saveBlock}>
-
-            <Button title={saveTitle} loading={saving} onPress={onSave} fullWidth size="lg" />
-
-          </View>
-
-        ) : null}
-
-      </KeyboardScrollView>
-
+      </FormScreen>
+      {overlay}
+      {tracksChanges ? <UnsavedChangesGuard dirty={!!dirty && !saving} /> : null}
     </StackChromeScreen>
-
   );
-
 }
-
-
 
 function buildStyles({ colors: c }: Theme) {
-
   return {
-
-  scroll: {
-
-    minWidth: 0,
-
-    flex: 1,
-
-  },
-
-  content: {
-
-    minWidth: 0,
-
-    padding: spacing[4],
-
-    gap: spacing[4],
-
-    flexGrow: 1,
-
-  },
-
-  saveBlock: {
-
-    marginTop: spacing[2],
-
-    paddingTop: spacing[3],
-
-    borderTopWidth: StyleSheet.hairlineWidth,
-
-    borderTopColor: c.borderLight,
-
-  },
-
-};
-
+    content: {
+      minWidth: 0,
+      padding: spacing[4],
+      gap: spacing[4],
+      flexGrow: 1,
+    },
+    saveBar: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[3],
+      backgroundColor: c.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+    },
+  };
 }
-

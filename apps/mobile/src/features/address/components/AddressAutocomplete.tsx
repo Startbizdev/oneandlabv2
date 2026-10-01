@@ -31,6 +31,7 @@ export function AddressAutocomplete({
   const [query, setQuery] = useState(value?.label ?? '');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [open, setOpen] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<View>(null);
@@ -71,15 +72,24 @@ export function AddressAutocomplete({
   const runSearch = useCallback(async (text: string) => {
     if (text.trim().length < 3) {
       setSuggestions([]);
+      setSearchFailed(false);
       return;
     }
     setLoading(true);
+    setSearchFailed(false);
     try {
       const res = await searchAddresses(text, 10);
+      if (!res.success) {
+        console.warn('[address-autocomplete] recherche refusée', res.error);
+        setSearchFailed(true);
+      }
       setSuggestions(res.success && res.data ? res.data : []);
       setOpen(true);
-    } catch {
+    } catch (err) {
+      console.warn('[address-autocomplete] recherche impossible', err);
       setSuggestions([]);
+      setSearchFailed(true);
+      setOpen(true);
     } finally {
       setLoading(false);
     }
@@ -106,9 +116,11 @@ export function AddressAutocomplete({
   };
 
   const clear = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     onChange(null);
     setQuery('');
     setSuggestions([]);
+    setSearchFailed(false);
     setOpen(false);
   };
 
@@ -121,13 +133,21 @@ export function AddressAutocomplete({
           onChangeText={onQueryChange}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Tapez au moins 3 caractères…"
-          editable={!value}
+          textContentType="fullStreetAddress"
+          autoComplete="street-address"
+          autoCorrect={false}
           leftIcon={<MapPin size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
           rightIcon={
             loading ? (
-              <ActivityIndicator size="small" color={c.primary} />
-            ) : value ? (
-              <Pressable onPress={clear} hitSlop={8}>
+              <ActivityIndicator size="small" color={c.primary} accessibilityLabel="Recherche d'adresses en cours" />
+            ) : value || query ? (
+              <Pressable
+                onPress={clear}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Effacer l'adresse"
+                style={styles.clearBtn}
+              >
                 <X size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : null
@@ -142,6 +162,8 @@ export function AddressAutocomplete({
             <Pressable
               key={`${s.label}-${i}`}
               onPress={() => select(s)}
+              accessibilityRole="button"
+              accessibilityLabel={[s.label, s.postcode, s.city].filter(Boolean).join(', ')}
               style={[styles.suggestion, i === 0 && styles.suggestionFirst]}
             >
               <AppText style={styles.suggestionLabel}>{s.label}</AppText>
@@ -155,7 +177,23 @@ export function AddressAutocomplete({
         </View>
       ) : null}
 
-      {open && query.length >= 3 && !loading && suggestions.length === 0 ? (
+      {open && !loading && searchFailed ? (
+        <View style={styles.errorRow}>
+          <AppText accessibilityRole="alert" style={styles.errorText}>
+            Recherche d&apos;adresse indisponible. Vérifiez votre connexion.
+          </AppText>
+          <Pressable
+            onPress={() => void runSearch(query)}
+            accessibilityRole="button"
+            accessibilityLabel="Relancer la recherche d'adresse"
+            style={styles.retryBtn}
+          >
+            <AppText style={styles.retryText}>Réessayer</AppText>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {open && query.length >= 3 && !loading && !searchFailed && suggestions.length === 0 ? (
         <AppText style={styles.noResult}>Aucune adresse trouvée</AppText>
       ) : null}
 
@@ -206,6 +244,35 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     fontSize: fontSize.xs,
     color: c.textTertiary,
     paddingHorizontal: spacing[1],
+  },
+  clearBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  errorRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing[2],
+    paddingHorizontal: spacing[1],
+  },
+  errorText: {
+    minWidth: 0,
+    flex: 1,
+    ...font.regular,
+    fontSize: fontSize.xs,
+    color: c.error,
+  },
+  retryBtn: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing[2],
+  },
+  retryText: {
+    ...font.semiBold,
+    fontSize: fontSize.sm,
+    color: c.primary,
   },
 };
 }

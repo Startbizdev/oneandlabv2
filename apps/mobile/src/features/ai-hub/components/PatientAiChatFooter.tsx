@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
+import { CaryAiEmergencyLine } from './CaryAiDisclosureCard';
 import { FONT_SIZE_BASE, H_PADDING, lh, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
@@ -78,11 +79,14 @@ export function PatientAiChatFooter({
           { backgroundColor: c.surface, borderTopColor: c.borderLight },
         ]}
       >
-        {!inputFocused && disclaimer ? (
+        {!inputFocused ? (
           <View style={[styles.disclaimerWrap, { backgroundColor: c.surfaceAlt }]}>
-            <AppText style={[styles.disclaimer, { color: c.textTertiary }]}>
-              {disclaimer}
-            </AppText>
+            {disclaimer ? (
+              <AppText style={[styles.disclaimer, { color: c.textTertiary }]}>
+                {disclaimer}
+              </AppText>
+            ) : null}
+            <CaryAiEmergencyLine compact />
           </View>
         ) : null}
         <PatientAiChatComposer
@@ -122,6 +126,7 @@ function buildStyles({ fontSize }: Theme) {
       borderTopWidth: StyleSheet.hairlineWidth,
     },
     disclaimerWrap: {
+      gap: spacing[0.5],
       paddingHorizontal: H_PADDING,
       paddingTop: spacing[1.5],
       paddingBottom: spacing[1],

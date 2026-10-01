@@ -20,6 +20,8 @@ import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
 import { animation, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const THUMB = 24;
+/** Zone tactile autour de chaque poignée (≥ 44 pt). */
+const THUMB_HIT = 44;
 
 interface Props {
   min: number;
@@ -134,12 +136,26 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
   }));
 
   const loThumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: loX.value - THUMB / 2 }],
+    transform: [{ translateX: loX.value - THUMB_HIT / 2 }],
   }));
 
   const hiThumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: hiX.value - THUMB / 2 }],
+    transform: [{ translateX: hiX.value - THUMB_HIT / 2 }],
   }));
+
+  const thumbA11y = (edge: 'lo' | 'hi') => ({
+    accessible: true,
+    accessibilityRole: 'adjustable' as const,
+    accessibilityLabel: edge === 'lo' ? 'Début de la plage horaire' : 'Fin de la plage horaire',
+    accessibilityValue: { text: formatBookingHour(edge === 'lo' ? range[0] : range[1]) },
+    accessibilityActions: [{ name: 'increment' as const }, { name: 'decrement' as const }],
+    onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => {
+      const step = e.nativeEvent.actionName === 'increment' ? 1 : e.nativeEvent.actionName === 'decrement' ? -1 : 0;
+      if (step === 0) return;
+      if (edge === 'lo') applyRange(range[0] + step, range[1]);
+      else applyRange(range[0], range[1] + step);
+    },
+  });
 
   const valid = isAvailabilityRangeValid(range);
   const ticks = useMemo(() => [min, max], [min, max]);
@@ -164,14 +180,18 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
         </Animated.View>
 
         <GestureDetector gesture={loGesture}>
-          <Animated.View style={[styles.thumb, loThumbStyle]}>
-            <View style={styles.thumbDot} />
+          <Animated.View style={[styles.thumbHit, loThumbStyle]} {...thumbA11y('lo')}>
+            <View style={styles.thumb}>
+              <View style={styles.thumbDot} />
+            </View>
           </Animated.View>
         </GestureDetector>
 
         <GestureDetector gesture={hiGesture}>
-          <Animated.View style={[styles.thumb, hiThumbStyle]}>
-            <View style={styles.thumbDot} />
+          <Animated.View style={[styles.thumbHit, hiThumbStyle]} {...thumbA11y('hi')}>
+            <View style={styles.thumb}>
+              <View style={styles.thumbDot} />
+            </View>
           </Animated.View>
         </GestureDetector>
       </View>
@@ -209,7 +229,15 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     color: c.textTertiary,
   },
   trackShell: {
-    height: THUMB + 4,
+    height: THUMB_HIT,
+    justifyContent: 'center' as const,
+  },
+  thumbHit: {
+    position: 'absolute' as const,
+    top: 0,
+    width: THUMB_HIT,
+    height: THUMB_HIT,
+    alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   trackBase: {
@@ -224,8 +252,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     overflow: 'hidden' as const,
   },
   thumb: {
-    position: 'absolute' as const,
-    top: 2,
     width: THUMB,
     height: THUMB,
     borderRadius: THUMB / 2,

@@ -88,7 +88,7 @@ export async function releaseAndFetchShareForNurse(appointmentId: string) {
 /** Annulation patient (lot possible) — sans photo obligatoire. */
 export async function cancelAppointmentsPatientBatch(
   appointmentIds: string[],
-): Promise<{ ok: boolean; canceled: number; error?: string }> {
+): Promise<{ ok: boolean; canceled: number; failed: number; error?: string }> {
   let canceled = 0;
   let lastErr = '';
   for (const appointmentId of appointmentIds) {
@@ -99,8 +99,11 @@ export async function cancelAppointmentsPatientBatch(
     if (res.success) canceled += 1;
     else lastErr = res.error ?? lastErr;
   }
-  if (canceled === 0) return { ok: false, canceled: 0, error: lastErr || 'Annulation impossible' };
-  return { ok: true, canceled };
+  const failed = appointmentIds.length - canceled;
+  if (canceled === 0) {
+    return { ok: false, canceled: 0, failed, error: lastErr || 'Annulation impossible' };
+  }
+  return { ok: true, canceled, failed, error: failed > 0 ? lastErr || undefined : undefined };
 }
 
 export async function uploadCarePhoto(

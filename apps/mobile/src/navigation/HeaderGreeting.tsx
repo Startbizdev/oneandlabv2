@@ -14,7 +14,11 @@ function formatFirstName(raw?: string | null): string {
 
   if (!trimmed) return 'vous';
 
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+  // Majuscule à chaque partie (« jean-pierre » → « Jean-Pierre »), sans toucher au reste.
+  return trimmed
+    .split(/([\s-]+)/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
 
 }
 

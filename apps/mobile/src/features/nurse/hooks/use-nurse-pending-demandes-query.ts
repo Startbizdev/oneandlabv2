@@ -23,7 +23,7 @@ export function useNursePendingDemandesQuery(enabled = true) {
     queryKey: queryKeys.appointments.list(NURSE_DEMANDES_LIST_FILTERS),
     queryFn: async () => {
       const res = await fetchAppointments(NURSE_DEMANDES_LIST_FILTERS);
-      if (!res.success) return [];
+      if (!res.success) throw new Error(res.error ?? 'Erreur chargement des demandes');
       return res.data ?? [];
     },
     enabled: enabled && isHydrated && isNurse && Boolean(myId),

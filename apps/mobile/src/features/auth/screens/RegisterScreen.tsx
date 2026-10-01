@@ -1,36 +1,37 @@
-import {
-  PROFESSIONAL_ID_LABEL,
-  getProfessionalIdDisplay,
-  isProIpaEmploi,
-  resolveRegistrationRole,
-  splitProfessionalId,
-  validateProfessionalId,
-} from '@oneandlab/shared-types';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { Shield } from 'lucide-react-native';
 import { FormScreen } from '@/components/layout/FormScreen';
-import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
-import { GenderSelect } from '@/features/auth/components/GenderSelect';
+import { OtpCodeStep } from '@/features/auth/components/OtpCodeStep';
+import { RegisterConsentFields } from '@/features/auth/components/RegisterConsentFields';
+import { RegisterRoleFields } from '@/features/auth/components/RegisterRoleFields';
 import { REGISTER_META } from '@/features/auth/constants/register-meta';
 import {
   guestToUser,
   submitRegistrationRequest,
   type RegisterRole,
 } from '@/features/auth/api/registration.service';
-import { verifyOtp } from '@/features/auth/api/auth.service';
-import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
+import { parseRequestOtpResponse, requestOtp, verifyOtp } from '@/features/auth/api/auth.service';
+import {
+  buildGuestToUserPayload,
+  buildRegistrationRequestPayload,
+} from '@/features/auth/utils/build-registration-payload';
+import {
+  formatMissingItems,
+  getProfessionalIdFieldError,
+  getRegisterMissingItems,
+} from '@/features/auth/utils/register-form-validation';
 import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
-import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
+import { offerBiometricEnrollmentAfterLogin } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -63,6 +64,8 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   const [professionalId, setProfessionalId] = useState('');
   const [proRpps, setProRpps] = useState('');
   const [emploi, setEmploi] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptHealthData, setAcceptHealthData] = useState(false);
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -88,80 +91,43 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     }
   }, [step, email, role, navigation, meta]);
 
-  const canSubmitPatient =
-    email.trim() && firstName.trim() && lastName.trim() && birthDate.trim() && gender;
-  const canSubmitNurse =
-    email.trim() &&
-    firstName.trim() &&
-    lastName.trim() &&
-    !validateProfessionalId(professionalId) &&
-    gender;
-  const canSubmitPro = (() => {
-    if (!email.trim() || !firstName.trim() || !lastName.trim() || !emploi.trim()) return false;
-    if (emploi.trim() === 'Autre') return true;
-    if (isProIpaEmploi(emploi)) return !validateProfessionalId(proRpps) && !!gender.trim();
-    return proRpps.replace(/\s/g, '').length >= 11;
-  })();
-  const canSubmit =
-    role === 'patient' ? canSubmitPatient : role === 'nurse' ? canSubmitNurse : canSubmitPro;
+  const formValues = {
+    role,
+    email,
+    firstName,
+    lastName,
+    birthDate,
+    gender,
+    professionalId,
+    proRpps,
+    emploi,
+    acceptTerms,
+    acceptHealthData,
+  };
+  const missingItems = getRegisterMissingItems(formValues);
+  const professionalIdError = getProfessionalIdFieldError(formValues);
+  const canSubmit = missingItems.length === 0;
 
   async function onSubmitForm() {
     if (!canSubmit) return;
     setLoading(true);
+    const payloadInput = { ...formValues, phone, address };
     try {
       if (role === 'patient') {
-        const body: Parameters<typeof guestToUser>[0] = {
-          email: email.trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone: phone.trim() || undefined,
-          birth_date: birthDate.trim(),
-          gender,
-        };
-        if (address?.label) {
-          body.address = {
-            label: address.label,
-            lat: address.lat,
-            lng: address.lng,
-          };
-        }
-        const res = await guestToUser(body);
+        const res = await guestToUser(buildGuestToUserPayload(payloadInput));
         const uid = res.data?.user_id ?? (res as { user_id?: string }).user_id;
         const sid = res.data?.session_id ?? (res as { session_id?: string }).session_id;
         if (!res.success || !uid) throw new Error(res.error ?? 'Impossible de créer le compte');
         setUserId(uid);
         setSessionId(sid ?? '');
+        setOtp('');
         setStep('otp');
         setTimeout(() => otpRef.current?.focus(), 400);
-        toast('Compte créé', { message: 'Un code a été envoyé à votre email', type: 'success' });
       } else {
-        const effectiveRole =
-          role === 'pro' ? resolveRegistrationRole('pro', emploi) : (role as 'nurse' | 'pro');
-        const payload = {
-          role: effectiveRole,
-          email: email.trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone: phone.trim() || undefined,
-          address: address?.label?.trim()
-            ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
-            : undefined,
-          ...(effectiveRole === 'nurse'
-            ? (() => {
-                const split = splitProfessionalId(
-                  role === 'pro' ? proRpps : professionalId,
-                );
-                return {
-                  ...(split.rpps ? { rpps: split.rpps } : {}),
-                  ...(split.adeli ? { adeli: split.adeli } : {}),
-                  gender,
-                };
-              })()
-            : { rpps: proRpps.replace(/\s/g, ''), emploi: emploi.trim() }),
-        };
+        const payload = buildRegistrationRequestPayload(payloadInput);
         const res = await submitRegistrationRequest(payload);
         if (!res.success) throw new Error(res.error ?? "Impossible d'envoyer la demande");
-        router.replace(`/(auth)/register/merci?type=${effectiveRole}` as never);
+        router.replace(`/(auth)/register/merci?type=${payload.role}` as never);
       }
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
@@ -170,15 +136,30 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     }
   }
 
-  async function onVerifyOtp() {
-    const cleaned = otp.replace(/[^0-9]/g, '');
-    if (cleaned.length !== 6) {
+  /** Le compte existe déjà (créé par guest-to-user) : un nouveau code invalide le précédent. */
+  async function onResendCode(): Promise<boolean> {
+    try {
+      const res = await requestOtp(email.trim());
+      const { userId: uid, sessionId: sid } = parseRequestOtpResponse(res);
+      if (!res.success || !uid) throw new Error(res.error ?? "Impossible d'envoyer le code");
+      setUserId(uid);
+      setSessionId(sid ?? '');
+      setOtp('');
+      return true;
+    } catch (e) {
+      toast('Code non envoyé', { message: (e as Error).message, type: 'error' });
+      return false;
+    }
+  }
+
+  async function onVerifyOtp(code: string) {
+    if (code.length !== 6) {
       toast('Code incomplet', { message: 'Entrez les 6 chiffres', type: 'error' });
       return;
     }
     setLoading(true);
     try {
-      const res = await verifyOtp(userId, cleaned, sessionId || undefined);
+      const res = await verifyOtp(userId, code, sessionId || undefined);
       const token = (res as { token?: string }).token;
       const user = (res as { user?: unknown }).user;
       if (!res.success || !token) throw new Error(res.error ?? 'Code incorrect');
@@ -191,7 +172,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
         return;
       }
       const sessionUser = (me ?? user) as Parameters<typeof setSession>[1];
-      offerBiometricEnrollment(token, sessionUser, () => router.replace(getRoleHome(r)));
+      void offerBiometricEnrollmentAfterLogin(token, sessionUser, () => router.replace(getRoleHome(r)));
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
       setOtp('');
@@ -203,16 +184,19 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
   if (step === 'otp' && role === 'patient') {
     return (
       <FormScreen contentContainerStyle={styles.content}>
-        <Input
+        <OtpCodeStep
           ref={otpRef}
-          label="Code à 6 chiffres"
           value={otp}
           onChangeText={setOtp}
-          keyboardType="number-pad"
-          maxLength={6}
-          placeholder="000000"
+          onSubmit={(code) => void onVerifyOtp(code)}
+          submitLabel="Valider le code"
+          loading={loading}
+          onResend={onResendCode}
+          onChangeEmail={() => {
+            setOtp('');
+            setStep('form');
+          }}
         />
-        <Button title="Valider le code" loading={loading} onPress={onVerifyOtp} fullWidth size="lg" />
       </FormScreen>
     );
   }
@@ -237,60 +221,44 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             </View>
           </Row>
           <Input
-            label="Téléphone"
+            label="Téléphone (optionnel)"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
+            autoComplete="tel"
             placeholder="06 12 34 56 78"
           />
 
-          {role === 'patient' ? (
-            <>
-              <BirthDatePicker value={birthDate} onChange={setBirthDate} />
-              <GenderSelect value={gender} onChange={setGender} />
-            </>
-          ) : null}
-
-          {role === 'nurse' ? (
-            <>
-              <GenderSelect value={gender} onChange={setGender} label="Genre" />
-              <Input
-                label={PROFESSIONAL_ID_LABEL}
-                value={professionalId}
-                onChangeText={setProfessionalId}
-                keyboardType="number-pad"
-                maxLength={11}
-                placeholder="123456789 ou 12345678901"
-                hint="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
-              />
-            </>
-          ) : null}
-
-          {role === 'pro' ? (
-            <>
-              <ProEmploiSelect value={emploi} onChange={setEmploi} />
-              {isProIpaEmploi(emploi) ? (
-                <GenderSelect value={gender} onChange={setGender} label="Genre" />
-              ) : null}
-              <Input
-                label={isProIpaEmploi(emploi) ? PROFESSIONAL_ID_LABEL : 'Numéro RPPS'}
-                value={proRpps}
-                onChangeText={setProRpps}
-                keyboardType="number-pad"
-                maxLength={11}
-                placeholder={isProIpaEmploi(emploi) ? '123456789 ou 12345678901' : '12345678901'}
-                hint={
-                  isProIpaEmploi(emploi)
-                    ? '9 chiffres (Adeli) ou 11 chiffres (RPPS)'
-                    : emploi.trim() === 'Autre'
-                      ? 'Facultatif pour la catégorie Autre'
-                      : '11 chiffres'
-                }
-              />
-            </>
-          ) : null}
+          <RegisterRoleFields
+            role={role}
+            birthDate={birthDate}
+            onBirthDateChange={setBirthDate}
+            gender={gender}
+            onGenderChange={setGender}
+            professionalId={professionalId}
+            onProfessionalIdChange={setProfessionalId}
+            proRpps={proRpps}
+            onProRppsChange={setProRpps}
+            emploi={emploi}
+            onEmploiChange={setEmploi}
+            professionalIdError={professionalIdError}
+          />
 
           <AddressAutocomplete value={address} onChange={setAddress} label="Adresse (optionnel)" />
+
+          <RegisterConsentFields
+            role={role}
+            acceptTerms={acceptTerms}
+            onAcceptTermsChange={setAcceptTerms}
+            acceptHealthData={acceptHealthData}
+            onAcceptHealthDataChange={setAcceptHealthData}
+          />
+
+          {!canSubmit ? (
+            <AppText style={styles.missing} accessibilityLiveRegion="polite">
+              Pour continuer, il manque {formatMissingItems(missingItems)}.
+            </AppText>
+          ) : null}
 
           <Button
             title={meta.submit}
@@ -301,7 +269,11 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
             size="lg"
           />
 
-          <Pressable onPress={() => router.replace('/(auth)/welcome')} style={styles.loginLink}>
+          <Pressable
+            onPress={() => router.replace({ pathname: '/(auth)/welcome', params: { login: '1' } })}
+            accessibilityRole="button"
+            style={styles.loginLink}
+          >
             <AppText style={styles.loginLinkText}>
               Déjà un compte ? <AppText style={styles.loginLinkAccent}>Se connecter</AppText>
             </AppText>
@@ -322,7 +294,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     gap: spacing[3],
   },
   half: { minWidth: 0, flex: 1 },
-  loginLink: { alignItems: 'center' as const, paddingTop: spacing[2] },
+  missing: {
+    ...font.medium,
+    fontSize: fontSize.sm,
+    lineHeight: fontSize.sm * 1.45,
+    color: c.textSecondary,
+  },
+  loginLink: { minHeight: 44, alignItems: 'center' as const, justifyContent: 'center' as const },
   loginLinkText: {
     ...font.regular,
     fontSize: fontSize.sm,
@@ -334,4 +312,3 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
 };
 }
-

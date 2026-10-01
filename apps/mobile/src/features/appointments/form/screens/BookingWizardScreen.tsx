@@ -1,45 +1,35 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View, type ScrollView } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { Alert, View, type ScrollView } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { BookingWizardChrome } from '../components/BookingWizardChrome';
-import { Plus } from 'lucide-react-native';
-import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { FormScreen } from '@/components/layout/FormScreen';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { LabBrandPreferenceStep } from '../components/LabBrandPreferenceStep';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
-import { isPatientEmailOptionalForBookingRole } from '../utils/booking-wizard-role-rules';
-import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
-import { useAuthStore } from '@/store/auth-store';
+import { bookingWizardPhases } from '../utils/booking-wizard-steps';
+import { selectionRequiresFasting } from '../utils/booking-review-summary';
 import { CareSelectionStep } from '../components/CareSelectionStep';
-import { FormScheduleSection } from '../components/FormScheduleSection';
-import { PreferredNurseGenderButtons } from '../components/PreferredNurseGenderButtons';
+import { BookingSlotStep } from '../components/BookingSlotStep';
 import { Button } from '@/components/ui/Button';
-import { ProNurseAssignmentSection } from '../components/ProNurseAssignmentSection';
-import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
-import { FormPatientSection } from '../components/FormPatientSection';
 import { FormDocumentsSection } from '../components/FormDocumentsSection';
-import { WizardDocumentFields } from '../components/WizardDocumentFields';
-import { WizardPatientDocumentsPanel } from '../components/WizardPatientDocumentsPanel';
-import { PERSONAL_DOC_FIELDS } from '../constants/appointment-document-fields';
-import { GenderSelect } from '@/features/auth/components/GenderSelect';
-import { normalizePatientGender } from '@/utils/patient-gender';
 import { BookingWizardProgress } from '../components/BookingWizardProgress';
 import { BookingWizardSegmentContext } from '../components/BookingWizardSegmentContext';
+import { BookingPersonalStep } from '../components/BookingPersonalStep';
+import { BookingReviewStep } from '../components/BookingReviewStep';
+import { BookingSuccessView } from '../components/BookingSuccessView';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
-import { NEW_PATIENT_ID } from '../types';
-import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
-import { buildAvailabilityFormPatch, parseAvailabilityField, type AvailabilityType, type UrgentTimingMode } from '../utils/availability';
-import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
+import { useBookingLeaveGuard } from '../hooks/use-booking-leave-guard';
+import { PATIENT_VIP_FEE_LABEL } from '@oneandlab/shared-constants';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   mode: 'patient' | 'dashboard';
@@ -49,15 +39,22 @@ interface Props {
   embeddedInTab?: boolean;
 }
 
-export function BookingWizardScreen({
-  mode, role, basePath, embeddedInTab = false }: Props) {
+/** Une nouvelle session repart d'un assistant vierge (onglet Réserver après une demande envoyée). */
+export function BookingWizardScreen(props: Props) {
+  const [session, setSession] = useState(0);
+  const restart = useCallback(() => setSession((s) => s + 1), []);
+  return <BookingWizardFlow key={session} {...props} onRestart={restart} />;
+}
+
+function BookingWizardFlow({
+  mode, role, basePath, embeddedInTab = false, onRestart }: Props & { onRestart: () => void }) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const router = useRouter();
   const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
   }>();
-  const user = useAuthStore((s) => s.user);
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
   const formScrollRef = useRef<ScrollView>(null);
 
@@ -84,19 +81,77 @@ export function BookingWizardScreen({
   });
   const w = bw.wizard;
   const scrollConfig = useStackScrollConfig(styles.formContent);
+  const phases = bookingWizardPhases(mode);
+
+  const leaveGuard = useBookingLeaveGuard({
+    enabled: (bw.step > 0 || w.selectedServices.length > 0) && !bw.saving && !bw.created,
+    canStepBack: bw.step > 0 && !bw.created,
+    onStepBack: bw.wizardPrev,
+    embeddedInTab,
+  });
 
   const chromeProps = {
     step: bw.step,
     role,
-    wizardPageTitle: bw.wizardPageTitle,
+    wizardPageTitle: bw.created ? 'Demande envoyée' : bw.wizardPageTitle,
     onWizardBack: bw.wizardPrev,
     embeddedInTab,
+    hideBack: Boolean(bw.created),
   } as const;
+
+  const leaveSheet = (
+    <ConfirmSheet
+      visible={leaveGuard.confirmVisible}
+      title="Quitter la réservation ?"
+      message="Les soins et informations saisis ne seront pas conservés."
+      confirmLabel="Quitter"
+      cancelLabel="Continuer la réservation"
+      tone="destructive"
+      onConfirm={leaveGuard.leave}
+      onClose={leaveGuard.stay}
+    />
+  );
+
+  const requiresFasting = selectionRequiresFasting(w.selectedServices, w.formDataByService);
+
+  if (bw.created) {
+    const ids = bw.created.appointmentIds;
+    const singleId = !bw.created.fallbackList && ids.length === 1 ? ids[0] : null;
+    const goTo = (href: Href) => {
+      if (embeddedInTab) {
+        router.push(href);
+        onRestart();
+      } else {
+        router.replace(href);
+      }
+    };
+    const goToList = () => goTo('/(patient)/(tabs)/appointments');
+    return (
+      <BookingWizardChrome {...chromeProps}>
+        <View style={styles.screen}>
+          <BookingSuccessView
+            appointmentCount={Math.max(1, ids.length)}
+            warning={bw.created.warning}
+            requiresFasting={requiresFasting}
+            primaryAction={
+              singleId
+                ? {
+                    label: 'Voir mon rendez-vous',
+                    onPress: () => goTo({ pathname: '/(patient)/appointment/[id]', params: { id: singleId } }),
+                  }
+                : { label: 'Voir mes rendez-vous', onPress: goToList }
+            }
+            secondaryAction={singleId ? { label: "Retour à l'accueil", onPress: goToList } : undefined}
+          />
+        </View>
+      </BookingWizardChrome>
+    );
+  }
 
   if (w.loading) {
     return (
       <BookingWizardChrome {...chromeProps}>
-        <View style={styles.screenCare}>
+        <View style={styles.screen}>
           <SkeletonCareSelectionStep />
         </View>
       </BookingWizardChrome>
@@ -106,22 +161,31 @@ export function BookingWizardScreen({
   if (bw.step === 0) {
     return (
       <BookingWizardChrome {...chromeProps}>
-        <View style={styles.screenCare}>
-          <CareSelectionStep
-            nursingCategories={w.nursingCategories}
-            bloodCategories={w.bloodCategories}
-            allCategories={w.allCategories}
-            selectedServices={w.selectedServices}
-            onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
-            onQuickAdd={w.quickAddService}
-            onRemove={w.removeService}
-            onContinue={bw.confirmStep0}
-            onEnsureCategoryReady={w.ensureCategoryReady}
-            formDataByService={w.formDataByService}
-            loading={w.saving}
-            progressTotal={Math.max(3, bw.wizardStepCount)}
-          />
+        <View style={styles.screen}>
+          {w.categoriesError && w.allCategories.length === 0 ? (
+            <ErrorState
+              error={w.categoriesError}
+              title="Soins indisponibles"
+              onRetry={w.retryCategories}
+            />
+          ) : (
+            <CareSelectionStep
+              nursingCategories={w.nursingCategories}
+              bloodCategories={w.bloodCategories}
+              allCategories={w.allCategories}
+              selectedServices={w.selectedServices}
+              onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
+              onQuickAdd={w.quickAddService}
+              onRemove={w.removeService}
+              onContinue={bw.confirmStep0}
+              onEnsureCategoryReady={w.ensureCategoryReady}
+              formDataByService={w.formDataByService}
+              loading={w.saving}
+              phases={phases}
+            />
+          )}
         </View>
+        {leaveSheet}
       </BookingWizardChrome>
     );
   }
@@ -135,11 +199,17 @@ export function BookingWizardScreen({
           backgroundColor={c.background}
           footer={
             <BookingActionBar
-              title="Continuer"
+              title={bw.returnToReview ? 'Revenir au récapitulatif' : 'Continuer'}
               onPrimary={bw.confirmLabPreferenceStep}
             />
           }
         >
+          <BookingWizardProgress
+            current={1}
+            total={phases.length}
+            phases={phases}
+            label="Laboratoire"
+          />
           <LabBrandPreferenceStep
             mode={bw.labPreferenceMode}
             brandId={bw.preferredLabBrandId}
@@ -148,6 +218,7 @@ export function BookingWizardScreen({
             validationError={bw.validationError}
           />
         </FormScreen>
+        {leaveSheet}
       </BookingWizardChrome>
     );
   }
@@ -158,60 +229,8 @@ export function BookingWizardScreen({
 
   const svc = bw.activeService;
   const svcId = svc?.id ?? '';
-  const fd = (w.formDataByService[svcId] ?? {}) as Record<string, unknown>;
-  const availability = parseAvailabilityField(fd.availability, {
-    availability_type: fd.availability_type,
-    availabilityRange: fd.availabilityRange,
-    urgentHour: fd.urgentHour,
-    urgentMinute: fd.urgentMinute,
-    urgentTimingMode: fd.urgentTimingMode,
-  });
-  const setFd = (patch: Record<string, unknown>) => {
-    w.setFormDataByService((prev) => ({ ...prev, [svcId]: { ...prev[svcId], ...patch } }));
-  };
-  const patchVipSchedule = (patch: {
-    type?: AvailabilityType;
-    range?: [number, number];
-    mode?: UrgentTimingMode;
-    hour?: number;
-    minute?: number;
-  }) => {
-    w.setFormDataByService((prev) => {
-      const slice = { ...(prev[svcId] ?? {}) };
-      const parsed = parseAvailabilityField(slice.availability, {
-        availability_type: slice.availability_type,
-        availabilityRange: slice.availabilityRange,
-        urgentHour: slice.urgentHour,
-        urgentMinute: slice.urgentMinute,
-        urgentTimingMode: slice.urgentTimingMode,
-      });
-      const type = patch.type ?? parsed.type;
-      const range = patch.range ?? parsed.range;
-      const mode = patch.mode ?? parsed.urgentTimingMode;
-      const hour = patch.hour ?? parsed.urgentHour;
-      const minute = patch.minute ?? parsed.urgentMinute;
-      return {
-        ...prev,
-        [svcId]: {
-          ...slice,
-          ...buildAvailabilityFormPatch(
-            type,
-            range,
-            type === 'urgent' ? { mode, hour, minute } : undefined,
-          ),
-        },
-      };
-    });
-  };
-  const showVipTab = mode === 'patient' && svc ? isBloodTestAppointment(svc.type) : false;
-
-  const skipRx = svc ? bw.careSkipsPrescription(svc.category_id) : false;
-  const hideNurseGender = mode === 'dashboard' && role === 'nurse';
-  const showNurseGenderOnSlot =
-    bw.section === 'slot-datetime' &&
-    svc &&
-    isNursingAppointment(svc.type) &&
-    !hideNurseGender;
+  const isReview = bw.section === 'review';
+  const vipPriceLabel = bw.vipPaymentRequired ? (bw.vipPriceLabel ?? PATIENT_VIP_FEE_LABEL) : null;
 
   const consentError =
     bw.section === 'personal' &&
@@ -224,492 +243,173 @@ export function BookingWizardScreen({
           bw.validationError.includes('consentement')),
     );
 
+  const beneficiaryName = [w.form.watch('first_name'), w.form.watch('last_name')].filter(Boolean).join(' ');
+  const beneficiaryDetail =
+    mode === 'patient'
+      ? bw.selectedRelativeId
+        ? 'Rendez-vous pour un proche'
+        : 'Pour vous'
+      : String(w.form.watch('phone') || w.form.watch('email') || '');
+  const addressLabel = String(w.form.watch('address') ?? '').trim();
+
   return (
     <BookingWizardChrome {...chromeProps}>
-      <View style={styles.screenWizard}>
+      <View style={styles.screen}>
         <FormScreen
           ref={formScrollRef}
           contentContainerStyle={scrollConfig.contentContainerStyle}
           {...spreadTabSceneScrollProps(scrollConfig)}
           backgroundColor={c.background}
-        footer={
-          <BookingActionBar
-            {...bookingWizardFooterCtaCopy(bw.isFinalWizardStep)}
-            onPrimary={bw.wizardNext}
-            primaryLoading={bw.saving}
-            primaryDisabled={bw.saving || (mode === 'dashboard' && bw.isFinalWizardStep && w.patientMode === 'existing' && (w.patientProfileLoading || w.patientProfileError))}
-          />
-        }
-      >
-        <BookingWizardProgress
-          current={bw.wizardStepCurrent}
-          total={bw.wizardStepCount}
-          label={bw.section === 'slot-datetime' ? 'Créneau' : bw.section === 'documents' ? 'Documents' : 'Infos'}
-          hint={bw.wizardProgressHint || undefined}
-        />
-
-        {svc && (bw.section === 'slot-datetime' || bw.section === 'documents') ? (
-          <BookingWizardSegmentContext
-            activeService={svc}
-            lotServices={bw.activeLotServices}
-            previousRecaps={bw.previousRecaps}
-          />
-        ) : null}
-
-        {bw.profileDocsError && (bw.section === 'documents' || bw.section === 'personal') ? (
-          <View style={styles.errorBox}>
-            <AppText accessibilityRole="alert" style={styles.errorText}>Documents enregistrés indisponibles.</AppText>
-            <Button title="Recharger les documents" variant="outline" onPress={bw.retryProfileDocs} />
-          </View>
-        ) : null}
-        {bw.validationError ? (
-          <View style={styles.errorBox}>
-            <AppText style={styles.errorText}>{bw.validationError}</AppText>
-          </View>
-        ) : null}
-
-        {bw.section === 'slot-datetime' && svc ? (
-          <Animated.View entering={FadeInDown.delay(60).duration(260).springify()} style={styles.section}>
-            <FormScheduleSection
-        autoAdvanceClosedDay
-              scheduledAt={String(fd.scheduled_at ?? '')}
-              serviceType={svc.type}
-              availabilityType={availability.type}
-              range={availability.range}
-              showVipTab={showVipTab}
-              urgentHour={availability.urgentHour}
-              urgentMinute={availability.urgentMinute}
-              urgentTimingMode={availability.urgentTimingMode}
-              onScheduledAt={(v) => setFd({ scheduled_at: v })}
-              onAvailabilityType={(t) =>
-                patchVipSchedule({
-                  type: t,
-                  range: availability.range,
-                  mode: availability.urgentTimingMode,
-                  hour: availability.urgentHour,
-                  minute: availability.urgentMinute,
-                })
+          footer={
+            <BookingActionBar
+              {...bookingWizardFooterCtaCopy({
+                section: bw.section,
+                mode,
+                returnToReview: bw.returnToReview,
+                vipPriceLabel,
+              })}
+              onPrimary={bw.wizardNext}
+              primaryLoading={bw.saving}
+              primaryDisabled={
+                bw.saving ||
+                (mode === 'dashboard' &&
+                  isReview &&
+                  w.patientMode === 'existing' &&
+                  (w.patientProfileLoading || w.patientProfileError))
               }
-              onRange={(r) =>
-                patchVipSchedule({
-                  type: availability.type,
-                  range: r,
-                  mode: availability.urgentTimingMode,
-                  hour: availability.urgentHour,
-                  minute: availability.urgentMinute,
-                })
-              }
-              onUrgentHour={(h) => patchVipSchedule({ type: 'urgent', hour: h })}
-              onUrgentMinute={(m) => patchVipSchedule({ type: 'urgent', minute: m })}
-              onUrgentTimingMode={(m) => patchVipSchedule({ type: 'urgent', mode: m })}
             />
-            {showNurseGenderOnSlot ? (
-              <PreferredNurseGenderButtons
-                value={String(fd.preferred_nurse_gender ?? 'any')}
-                onChange={(v) => setFd({ preferred_nurse_gender: v })}
-              />
-            ) : null}
-          </Animated.View>
-        ) : null}
+          }
+        >
+          <BookingWizardProgress
+            current={bw.phaseIndex + 1}
+            total={phases.length}
+            phases={phases}
+            label={bw.subStepLabel || phases[bw.phaseIndex]}
+            hint={bw.wizardProgressHint || undefined}
+          />
 
-        {bw.section === 'documents' && svcId ? (
-          <Animated.View entering={FadeInDown.delay(60).duration(260).springify()}>
-            <FormDocumentsSection
-              serviceType={svc?.type}
-              files={bw.filesByService[svcId] ?? {}}
-              profileDocs={bw.profileDocs}
-              profileDocsLoading={bw.profileDocsLoading}
-              onPick={(key, file) => bw.setServiceFiles(svcId, key, file)}
-              skipPrescription={skipRx}
-              showProfileSummary={mode === 'patient'}
+          {svc && (bw.section === 'slot-datetime' || bw.section === 'documents') ? (
+            <BookingWizardSegmentContext
+              activeService={svc}
+              lotServices={bw.activeLotServices}
+              previousRecaps={bw.previousRecaps}
             />
-          </Animated.View>
-        ) : null}
+          ) : null}
 
-        {bw.section === 'personal' ? (
-          <Animated.View entering={FadeInDown.delay(60).duration(260).springify()} style={styles.section}>
-            {mode === 'patient' ? (
-              <>
-                <AppText style={styles.sectionLabel}>Pour qui est ce rendez-vous ?</AppText>
-                <Row wrap gap={spacing[2]} align="center">
-                  <Pressable
-                    onPress={() => bw.setSelectedRelativeId(null)}
-                    style={[styles.relativePill, !bw.selectedRelativeId && styles.relativePillActive]}
-                  >
-                    <AppText
-                      style={[
-                        styles.relativePillText,
-                        !bw.selectedRelativeId && styles.relativePillTextActive,
-                      ]}
-                    >
-                      Pour moi
-                    </AppText>
-                  </Pressable>
-                  {bw.relatives.map((r: PatientRelative) => {
-                    const on = bw.selectedRelativeId === r.id;
-                    const label = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.id;
-                    return (
-                      <Pressable
-                        key={r.id}
-                        onPress={() => bw.setSelectedRelativeId(r.id)}
-                        style={[styles.relativePill, on && styles.relativePillActive]}
-                      >
-                        <AppText style={[styles.relativePillText, on && styles.relativePillTextActive]}>
-                          {label}
-                        </AppText>
-                      </Pressable>
-                    );
-                  })}
-                  <Pressable
-                    onPress={() => setRelativeSheetOpen(true)}
-                    style={styles.addRelativeBtn}
-                  >
-                    <Row gap={4} align="center">
-                      <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
-                      <AppText style={styles.addRelativeText}>Proche</AppText>
-                    </Row>
-                  </Pressable>
-                </Row>
-                {bw.selectedRelativeId ? (
-                  <View style={styles.selfCard}>
-                    <AppText style={styles.selfName}>
-                      {[w.form.watch('first_name'), w.form.watch('last_name')].filter(Boolean).join(' ') ||
-                        'Proche'}
-                    </AppText>
-                    <AppText style={styles.selfEmail}>Rendez-vous pour un proche</AppText>
-                  </View>
-                ) : null}
-                {!bw.selectedRelativeId && user ? (
-                  <View style={styles.selfCard}>
-                    <AppText style={styles.selfName}>
-                      {user.first_name} {user.last_name}
-                    </AppText>
-                    <AppText style={styles.selfEmail}>{user.email}</AppText>
-                  </View>
-                ) : null}
-                <View style={styles.identityBlock}>
-                  <GenderSelect
-                    label="Genre"
-                    value={normalizePatientGender(w.form.watch('gender'))}
-                    onChange={(v) => w.form.setValue('gender', v)}
-                  />
-                  <BirthDatePicker
-                    value={w.form.watch('birth_date')}
-                    onChange={(v) => w.form.setValue('birth_date', v)}
-                  />
-                </View>
-              </>
-            ) : (
-              <>
-                <FormPatientSection
-                  patients={w.patientOptions}
-                  patientsLoading={w.patientsLoading}
-                  patientsError={w.patientsError}
-                  retryPatients={w.retryPatients}
-                  patientProfileLoading={w.patientProfileLoading}
-                  patientProfileError={w.patientProfileError}
-                  retryPatientProfile={w.retryPatientProfile}
-                  patientMode={w.patientMode}
-                  onPatientModeChange={w.setPatientMode}
-                  selectedPatientId={w.selectedPatientId}
-                  onSelectPatient={w.onSelectPatient}
-                  onAdoptLookupPatient={w.adoptLookupPatient}
-                  firstName={w.form.watch('first_name')}
-                  lastName={w.form.watch('last_name')}
-                  email={w.form.watch('email')}
-                  phone={w.form.watch('phone')}
-                  gender={w.form.watch('gender')}
-                  birthDate={w.form.watch('birth_date')}
-                  onChange={(field, value) => w.form.setValue(field as 'first_name', value)}
-                  emailOptional={isPatientEmailOptionalForBookingRole(role)}
-                />
-                {w.patientMode === 'existing' && w.selectedPatientId ? (
-                  <>
-                    <AppText style={styles.sectionLabel}>Bénéficiaire du rendez-vous</AppText>
-                    <Row wrap gap={spacing[2]} align="center">
-                      <Pressable
-                        onPress={() => bw.setSelectedRelativeId(null)}
-                        style={[styles.relativePill, !bw.selectedRelativeId && styles.relativePillActive]}
-                      >
-                        <AppText style={[styles.relativePillText, !bw.selectedRelativeId && styles.relativePillTextActive]}>
-                          Titulaire
-                        </AppText>
-                      </Pressable>
-                      {bw.relatives.map((r: PatientRelative) => {
-                        const active = bw.selectedRelativeId === r.id;
-                        const label = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || 'Proche';
-                        return (
-                          <Pressable
-                            key={r.id}
-                            onPress={() => bw.setSelectedRelativeId(r.id)}
-                            style={[styles.relativePill, active && styles.relativePillActive]}
-                          >
-                            <AppText style={[styles.relativePillText, active && styles.relativePillTextActive]}>
-                              {label}
-                            </AppText>
-                          </Pressable>
-                        );
-                      })}
-                      <Pressable
-                        onPress={() => {
-                          if (!bw.consent) {
-                            onConsentMissing();
-                            return;
-                          }
-                          setRelativeSheetOpen(true);
-                        }}
-                        style={styles.addRelativeBtn}
-                      >
-                        <Row gap={4} align="center">
-                          <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
-                          <AppText style={styles.addRelativeText}>Nouveau proche</AppText>
-                        </Row>
-                      </Pressable>
-                    </Row>
-                  </>
-                ) : null}
-                {bw.staffPatientUserId && (role === 'nurse' || role === 'pro') ? (
-                  <WizardPatientDocumentsPanel
-                    patientUserId={bw.staffPatientUserId}
-                    documentsRoute={`${basePath}/patient/${bw.staffPatientUserId}/documents`}
-                  />
-                ) : w.patientMode === 'new' || w.selectedPatientId === NEW_PATIENT_ID ? (
-                  <WizardDocumentFields
-                    title="Documents du patient"
-                    subtitle="Vitale, mutuelle et attestation — enregistrés avec la fiche patient"
-                    fields={PERSONAL_DOC_FIELDS}
-                    files={bw.personalFiles}
-                    onChange={bw.setPersonalFile}
-                  />
-                ) : null}
-              </>
-            )}
+          {bw.profileDocsError && (bw.section === 'documents' || bw.section === 'personal') ? (
+            <View style={styles.errorBox}>
+              <AppText accessibilityRole="alert" style={styles.errorText}>Documents enregistrés indisponibles.</AppText>
+              <Button title="Recharger les documents" variant="outline" onPress={bw.retryProfileDocs} />
+            </View>
+          ) : null}
+          {bw.validationError ? (
+            <View style={styles.errorBox}>
+              <AppText accessibilityRole="alert" style={styles.errorText}>{bw.validationError}</AppText>
+            </View>
+          ) : null}
 
-            {mode === 'patient' ? (
-              <WizardDocumentFields
-                title="Vos documents"
-                subtitle={
-                  bw.selectedRelativeId
-                    ? 'Documents du proche enregistrés sur votre compte'
-                    : 'Vitale, mutuelle et attestation déjà enregistrés si présents'
-                }
-                fields={PERSONAL_DOC_FIELDS}
-                files={bw.personalFiles}
+          {bw.section === 'slot-datetime' && svc ? (
+            <BookingSlotStep
+              mode={mode}
+              role={role}
+              service={svc}
+              formDataByService={w.formDataByService}
+              setFormDataByService={w.setFormDataByService}
+              vipFeeLabel={bw.vipPriceLabel ?? undefined}
+            />
+          ) : null}
+
+          {bw.section === 'documents' && svcId ? (
+            <Animated.View entering={FadeInDown.delay(60).duration(260).springify()}>
+              <FormDocumentsSection
+                serviceType={svc?.type}
+                files={bw.filesByService[svcId] ?? {}}
                 profileDocs={bw.profileDocs}
-                onChange={bw.setPersonalFile}
-                loadingProfile={bw.profileDocsLoading}
+                profileDocsLoading={bw.profileDocsLoading}
+                onPick={(key, file) => bw.setServiceFiles(svcId, key, file)}
+                skipPrescription={svc ? bw.careSkipsPrescription(svc.category_id) : false}
+                showProfileSummary={mode === 'patient'}
               />
-            ) : null}
+            </Animated.View>
+          ) : null}
 
-            <AddressAutocomplete
-              value={w.form.watch('address')}
-              complement={w.addressComplement}
-              onChange={w.onAddressChange}
-              onComplementChange={w.onComplementChange}
-            />
-
-            {bw.showProNurseAssignment ? (
-              <ProNurseAssignmentSection
-                mode={bw.nurseAssignmentMode}
-                onModeChange={bw.setNurseAssignmentMode}
-                linkedNurses={bw.linkedNurses}
-                linkedNursesLoading={bw.linkedNursesLoading}
-                selectedLinkedNurseId={bw.proLinkedNurseId}
-                onSelectLinkedNurse={bw.onSelectLinkedNurse}
-                externalPhone={bw.externalNursePhone}
-                onExternalPhoneChange={bw.onExternalNursePhoneChange}
+          {bw.section === 'personal' ? (
+            <Animated.View entering={FadeInDown.delay(60).duration(260).springify()} style={styles.section}>
+              <BookingPersonalStep
+                bw={bw}
+                mode={mode}
+                role={role}
+                basePath={basePath}
+                consentError={consentError}
+                onAddRelative={() => setRelativeSheetOpen(true)}
+                onConsentMissing={onConsentMissing}
               />
-            ) : null}
+            </Animated.View>
+          ) : null}
 
-            {mode === 'patient' ? (
-              <Pressable
-                onPress={() => bw.setConsent(!bw.consent)}
-                style={[styles.consentRow, consentError && styles.consentRowError]}
-              >
-                <Row align="start" gap={spacing[3]}>
-                  <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                    {bw.consent ? <AppText style={styles.checkmark}>✓</AppText> : null}
-                  </View>
-                  <AppText style={styles.consentText}>
-                    J&apos;accepte la politique de confidentialité et consens au traitement de mes données de
-                    santé. J&apos;autorise Cary à partager les informations de mon profil et les éléments
-                    nécessaires à la prise de rendez-vous avec les professionnels de santé de mon secteur.
-                  </AppText>
-                </Row>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => bw.setConsent(!bw.consent)}
-                style={[styles.consentRow, consentError && styles.consentRowError]}
-              >
-                <Row align="start" gap={spacing[3]}>
-                  <View style={[styles.checkbox, bw.consent && styles.checkboxActive]}>
-                    {bw.consent ? <AppText style={styles.checkmark}>✓</AppText> : null}
-                  </View>
-                  <AppText style={styles.consentText}>{STAFF_PATIENT_BOOKING_CONSENT_LABEL}</AppText>
-                </Row>
-              </Pressable>
-            )}
-          </Animated.View>
-        ) : null}
-      </FormScreen>
+          {isReview ? (
+            <Animated.View entering={FadeInDown.delay(60).duration(260).springify()}>
+              <BookingReviewStep
+                mode={mode}
+                selectedServices={w.selectedServices}
+                categories={bw.allCategories}
+                formDataByService={w.formDataByService}
+                slotRows={bw.slotRows}
+                labSummary={bw.labSummary}
+                beneficiary={{
+                  name: beneficiaryName || (mode === 'patient' ? 'Vous' : 'Patient à renseigner'),
+                  detail: beneficiaryDetail,
+                }}
+                address={addressLabel ? { label: addressLabel, complement: w.addressComplement } : null}
+                vipPriceLabel={vipPriceLabel}
+                requiresFasting={requiresFasting}
+                onEditServices={bw.backToCareSelection}
+                onEditLab={() => bw.editFromReview({ kind: 'lab' })}
+                onEditSlot={(index) => bw.editFromReview({ kind: 'slot', index })}
+                onEditPersonal={() => bw.editFromReview({ kind: 'personal' })}
+              />
+            </Animated.View>
+          ) : null}
+        </FormScreen>
 
-      <RelativeQuickAddSheet
-        visible={relativeSheetOpen}
-        onClose={() => setRelativeSheetOpen(false)}
-        patientId={mode === 'dashboard' ? w.selectedPatientId : undefined}
-        staffConsent={mode === 'dashboard' ? bw.consent : undefined}
-        onCreated={(id, created) => {
-          bw.setSelectedRelativeId(id);
-          if (created) void bw.applyRelativeToForm(id, created);
-        }}
-      />
+        <RelativeQuickAddSheet
+          visible={relativeSheetOpen}
+          onClose={() => setRelativeSheetOpen(false)}
+          patientId={mode === 'dashboard' ? w.selectedPatientId : undefined}
+          staffConsent={mode === 'dashboard' ? bw.consent : undefined}
+          onCreated={(id, created) => {
+            bw.setSelectedRelativeId(id);
+            if (created) void bw.applyRelativeToForm(id, created);
+          }}
+        />
       </View>
+      {leaveSheet}
     </BookingWizardChrome>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  screenWizard: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.background },
-  screenCare: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.background },
-  formContent: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
-    gap: spacing[4],
-  },
-  section: { gap: spacing[4] },
-  sectionLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  errorBox: {
-    backgroundColor: c.errorLight,
-    borderRadius: radius.lg,
-    padding: spacing[3],
-    borderWidth: 1,
-    borderColor: c.errorMid,
-  },
-  errorText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.error,
-    lineHeight: fontSize.sm * 1.45,
-  },
-  relativePill: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  relativePillActive: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  relativePillText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  relativePillTextActive: { color: c.textInverse },
-  addRelativeBtn: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: c.primaryMid,
-    borderStyle: 'dashed' as const,
-  },
-  addRelativeText: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.primary,
-  },
-  selfCard: {
-    backgroundColor: c.surfaceAlt,
-    borderRadius: radius.lg,
-    padding: spacing[3],
-    gap: 2,
-  },
-  selfName: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  selfEmail: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  identityBlock: { gap: spacing[3] },
-  fieldLabel: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  genderRow: { gap: spacing[2] },
-  genderPills: { minWidth: 0 },
-  genderPill: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  genderPillActive: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  genderPillText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  genderPillTextActive: { color: c.textInverse },
-  consentRow: {
-    padding: spacing[3],
-    marginHorizontal: -spacing[3],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  consentRowError: {
-    borderColor: c.errorMid,
-    backgroundColor: c.errorLight,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    marginTop: 1,
-    flexShrink: 0,
-  },
-  checkboxActive: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  checkmark: {
-    ...font.bold,
-    fontSize: fontSize.xs,
-    color: c.textInverse,
-  },
-  consentText: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.55,
-  },
-};
+    screen: { minWidth: 0, flex: 1, minHeight: 0, backgroundColor: c.background },
+    formContent: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[4],
+      gap: spacing[4],
+    },
+    section: { gap: spacing[4] },
+    errorBox: {
+      backgroundColor: c.errorLight,
+      borderRadius: radius.lg,
+      padding: spacing[3],
+      gap: spacing[2],
+      borderWidth: 1,
+      borderColor: c.errorMid,
+    },
+    errorText: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.error,
+      lineHeight: fontSize.sm * 1.45,
+    },
+  };
 }
-

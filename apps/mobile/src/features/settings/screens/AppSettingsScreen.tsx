@@ -1,13 +1,14 @@
-import { useCallback, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
+import { useState } from 'react';
+import { View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { Eye, Smartphone, Type } from 'lucide-react-native';
-import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
+import { Bell, Eye, Info, Settings } from 'lucide-react-native';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
+import { getAppMeta } from '@/features/help/utils/app-meta';
 import {
-  getPushPermissionStatus,
   obtainExpoPushToken,
   openNotificationSettings,
   registerPushTokenWithBackend,
@@ -15,13 +16,18 @@ import {
 } from '@/features/notifications/services/push-token.service';
 import { useToast } from '@/providers/ToastProvider';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
-import {
-  COLORBLIND_TYPE_OPTIONS,
-  type ActiveColorblindType,
-} from '@/theme/colorblind-types';
+import { COLORBLIND_TYPE_OPTIONS, type ActiveColorblindType } from '@/theme/colorblind-types';
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
 import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
+import { SettingsChoiceGroup } from '../components/SettingsChoiceGroup';
+import { usePushPermissionStatus } from '../hooks/use-push-permission-status';
+
+const COLORBLIND_CHOICES = COLORBLIND_TYPE_OPTIONS.map((o) => ({
+  value: o.value,
+  label: o.label,
+  description: o.hint,
+}));
 
 export function AppSettingsScreen() {
   const c = useAppColors();
@@ -39,62 +45,73 @@ export function AppSettingsScreen() {
   const setTextScale = useAppPreferencesStore((s) => s.setTextScale);
   const textScale = useAppPreferencesStore((s) => s.textScale);
 
+  const { status: osPermission, refresh: refreshPermission } = usePushPermissionStatus();
   const [pushBusy, setPushBusy] = useState(false);
-  const [colorblindBusy, setColorblindBusy] = useState(false);
 
   const isExpoGo = Constants.appOwnership === 'expo';
-  const pushHint = isExpoGo
-    ? 'Notifications push complètes avec un build de développement'
-    : pushEnabled
-      ? 'Alertes Cary sur cet appareil'
-      : 'Notifications push désactivées';
+  const osDenied = osPermission === 'denied';
+  const pushActive = pushEnabled && (osPermission === 'granted' || osPermission === null);
+  const meta = getAppMeta();
+
+  const pushHint = !Device.isDevice
+    ? 'Indisponible sur simulateur'
+    : osDenied
+      ? 'Autorisation refusée dans les réglages de l’appareil'
+      : isExpoGo
+        ? 'Notifications push complètes avec un build de développement'
+        : pushActive
+          ? 'Rappels de rendez-vous, messages et résultats sur cet appareil'
+          : 'Désactivées sur cet appareil';
+
+  const enablePush = async () => {
+    if (!Device.isDevice) {
+      toast('Appareil requis', {
+        message: 'Les notifications push ne fonctionnent pas sur simulateur.',
+        type: 'info',
+      });
+      return;
+    }
+    if (osDenied) {
+      toast('Autorisation refusée', {
+        message: 'Activez les notifications dans les réglages de l’appareil.',
+        type: 'info',
+      });
+      openNotificationSettings();
+      return;
+    }
+    const token = await obtainExpoPushToken();
+    await refreshPermission();
+    if (!token) {
+      toast('Activation impossible', {
+        message: isExpoGo
+          ? 'Utilisez un build de développement pour les notifications push.'
+          : 'Autorisation refusée ou configuration manquante.',
+        type: 'error',
+      });
+      setPushEnabled(false);
+      return;
+    }
+    if (!isExpoGo) {
+      await registerPushTokenWithBackend(token);
+    }
+    setExpoPushToken(token);
+    setPushEnabled(true);
+    toast('Notifications activées', { type: 'success' });
+  };
+
+  const disablePush = async () => {
+    setPushEnabled(false);
+    if (expoPushToken && !isExpoGo) {
+      await unregisterPushTokenWithBackend(expoPushToken);
+    }
+    setExpoPushToken(null);
+    toast('Notifications désactivées', { type: 'info' });
+  };
 
   const onPushToggle = async (next: boolean) => {
     setPushBusy(true);
     try {
-      if (next) {
-        setPushEnabled(true);
-        if (!Device.isDevice) {
-          toast('Appareil requis', {
-            message: 'Les notifications push ne fonctionnent pas sur simulateur.',
-            type: 'info',
-          });
-          return;
-        }
-        const status = await getPushPermissionStatus();
-        if (status === 'denied') {
-          toast('Autorisation refusée', {
-            message: 'Activez les notifications dans les réglages de l’appareil.',
-            type: 'info',
-          });
-          openNotificationSettings();
-          return;
-        }
-        const token = await obtainExpoPushToken();
-        if (!token) {
-          toast('Activation impossible', {
-            message: isExpoGo
-              ? 'Utilisez un build de développement pour les notifications push.'
-              : 'Permission refusée ou configuration manquante.',
-            type: 'error',
-          });
-          setPushEnabled(false);
-          return;
-        }
-        if (!isExpoGo) {
-          await registerPushTokenWithBackend(token);
-        }
-        setExpoPushToken(token);
-        toast('Notifications activées', { type: 'success' });
-        return;
-      }
-
-      setPushEnabled(false);
-      if (expoPushToken && !isExpoGo) {
-        await unregisterPushTokenWithBackend(expoPushToken);
-      }
-      setExpoPushToken(null);
-      toast('Notifications désactivées', { type: 'info' });
+      await (next ? enablePush() : disablePush());
     } catch (err) {
       toast('Erreur', {
         message: err instanceof Error ? err.message : 'Réessayez plus tard.',
@@ -105,295 +122,163 @@ export function AppSettingsScreen() {
     }
   };
 
-  const onColorblindToggle = useCallback(
-    (next: boolean) => {
-      if (next === colorblindMode) return;
-      setColorblindBusy(true);
-      setColorblindMode(next);
-      toast(next ? 'Couleurs accessibles activées' : 'Couleurs standard restaurées', {
-        message: next
-          ? 'L’interface se met à jour dans toute l’application.'
-          : 'La palette Cary d’origine est rétablie.',
-        type: 'info',
-      });
-      setColorblindBusy(false);
-    },
-    [colorblindMode, setColorblindMode, toast],
-  );
+  const onColorblindToggle = (next: boolean) => {
+    if (next === colorblindMode) return;
+    setColorblindMode(next);
+    toast(next ? 'Couleurs accessibles activées' : 'Couleurs standard restaurées', {
+      message: next
+        ? 'L’interface se met à jour dans toute l’application.'
+        : 'La palette Cary d’origine est rétablie.',
+      type: 'info',
+    });
+  };
 
-  const onTypeSelect = useCallback(
-    (type: ActiveColorblindType) => {
-      if (type === colorblindType) return;
-      setColorblindBusy(true);
-      setColorblindType(type);
-      const label = COLORBLIND_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
-      toast(`Profil ${label}`, {
-        message: 'Palette adaptée appliquée.',
-        type: 'info',
-      });
-      setColorblindBusy(false);
-    },
-    [colorblindType, setColorblindType, toast],
-  );
+  const onTypeSelect = (type: ActiveColorblindType) => {
+    if (type === colorblindType) return;
+    setColorblindType(type);
+    const label = COLORBLIND_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
+    toast(`Profil ${label}`, { message: 'Palette adaptée appliquée.', type: 'info' });
+  };
 
-  const onTextScaleSelect = useCallback(
-    (scale: TextScale) => {
-      if (scale === textScale) return;
-      setTextScale(scale);
-      toast(scale === 'large' ? 'Texte agrandi activé' : 'Taille de texte standard', {
-        message: 'L’interface se met à jour dans toute l’application.',
-        type: 'info',
-      });
-    },
-    [textScale, setTextScale, toast],
-  );
+  const onTextScaleSelect = (scale: TextScale) => {
+    if (scale === textScale) return;
+    setTextScale(scale);
+    toast(scale === 'large' ? 'Texte agrandi activé' : 'Taille de texte standard', {
+      message: 'L’interface se met à jour dans toute l’application.',
+      type: 'info',
+    });
+  };
 
   return (
     <ProfileSubScreenLayout hideSave>
-      <View style={[styles.card, elevation.xs]}>
-        <Cluster
-          gap={spacing[3]}
-          style={styles.cardHeader}
-          leading={
-            <View style={styles.iconWrap}>
-              <Smartphone size={iconSize.md} color={c.primary} strokeWidth={2} />
-            </View>
-          }
-        >
-          <AppText style={styles.cardTitle}>Application</AppText>
-        </Cluster>
+      <SettingsSection
+        title="Notifications"
+        items={[
+          {
+            icon: Bell,
+            label: 'Notifications push',
+            description: pushHint,
+            trailing: (
+              <ToggleSwitch
+                value={pushActive}
+                disabled={pushBusy}
+                onValueChange={(v) => void onPushToggle(v)}
+                accessibilityLabel="Notifications push"
+              />
+            ),
+          },
+          {
+            icon: Settings,
+            label: 'Ouvrir les réglages de l’appareil',
+            description: 'Autorisation, sons et badges des notifications',
+            onPress: openNotificationSettings,
+            iconAccent: 'settings',
+          },
+        ]}
+      />
 
-        <ProfileToggleRow
-          label="Notifications push"
-          hint={pushHint}
-          value={pushEnabled}
-          busy={pushBusy}
-          onValueChange={(v) => void onPushToggle(v)}
+      <SettingsChoiceGroup
+        title="Affichage"
+        caption="Taille du texte"
+        options={TEXT_SCALE_OPTIONS}
+        selected={textScale}
+        onSelect={onTextScaleSelect}
+      />
+
+      <SettingsSection
+        title="Accessibilité"
+        items={[
+          {
+            icon: Eye,
+            label: 'Couleurs accessibles',
+            description: 'Adapte les teintes de l’app si certaines couleurs se ressemblent',
+            trailing: (
+              <ToggleSwitch
+                value={colorblindMode}
+                onValueChange={onColorblindToggle}
+                accessibilityLabel="Couleurs accessibles"
+              />
+            ),
+          },
+        ]}
+      />
+
+      {colorblindMode ? (
+        <SettingsChoiceGroup
+          caption="Quelles couleurs confondez-vous le plus ?"
+          options={COLORBLIND_CHOICES}
+          selected={colorblindType}
+          onSelect={onTypeSelect}
         />
+      ) : null}
 
-        <View style={[styles.divider, { backgroundColor: c.border }]} />
-
-        <View style={styles.typeBlock}>
-          <Row gap={spacing[2]} align="center">
-            <Type size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
-            <AppText style={[styles.typeLabel, { color: c.textSecondary }]}>Taille du texte</AppText>
-          </Row>
-          <View style={styles.typeRow}>
-            {TEXT_SCALE_OPTIONS.map((opt) => {
-              const active = textScale === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => onTextScaleSelect(opt.value)}
-                  style={[
-                    styles.typeChip,
-                    {
-                      backgroundColor: active ? c.primaryLight : c.surfaceAlt,
-                      borderColor: active ? c.primary : c.border,
-                    },
-                  ]}
-                >
-                  <AppText
-                    style={[
-                      styles.typeChipTitle,
-                      { color: active ? c.primaryDark : c.textPrimary },
-                    ]}
-                  >
-                    {opt.label}
-                  </AppText>
-                  <AppText style={[styles.typeChipHint, { color: c.textTertiary }]}>
-                    {opt.description}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: c.border }]} />
-
-        <ProfileToggleRow
-          label="Couleurs accessibles"
-          hint="Adapte les teintes de l’app si certaines couleurs se ressemblent"
-          value={colorblindMode}
-          busy={colorblindBusy}
-          onValueChange={(v) => void onColorblindToggle(v)}
-        />
-
-        {colorblindMode ? (
-          <View style={styles.typeBlock}>
-            <AppText style={[styles.typeLabel, { color: c.textSecondary }]}>
-              Quelles couleurs confondez-vous le plus ?
-            </AppText>
-            <View style={styles.typeRow}>
-              {COLORBLIND_TYPE_OPTIONS.map((opt) => {
-                const active = colorblindType === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    onPress={() => onTypeSelect(opt.value)}
-                    style={[
-                      styles.typeChip,
-                      {
-                        backgroundColor: active ? c.primaryLight : c.surfaceAlt,
-                        borderColor: active ? c.primary : c.border,
-                      },
-                    ]}
-                  >
-                    <AppText
-                      style={[
-                        styles.typeChipTitle,
-                        { color: active ? c.primaryDark : c.textPrimary },
-                      ]}
-                    >
-                      {opt.label}
-                    </AppText>
-                    <AppText style={[styles.typeChipHint, { color: c.textTertiary }]}>
-                      {opt.hint}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
-        <Row wrap gap={spacing[2]} style={styles.swatchRow}>
+      <View style={[styles.previewCard, elevation.xs]}>
+        <AppText style={styles.previewTitle}>Aperçu des couleurs de statut</AppText>
+        <Row wrap gap={spacing[2]}>
           <View style={[styles.swatch, { backgroundColor: c.successLight }]}>
             <AppText style={[styles.swatchLabel, { color: c.success }]}>Succès</AppText>
-            <AppText style={[styles.swatchValue, { color: c.success }]}>●</AppText>
           </View>
           <View style={[styles.swatch, { backgroundColor: c.errorLight }]}>
             <AppText style={[styles.swatchLabel, { color: c.error }]}>Erreur</AppText>
-            <AppText style={[styles.swatchValue, { color: c.error }]}>●</AppText>
           </View>
           <View style={[styles.swatch, { backgroundColor: c.warningLight }]}>
             <AppText style={[styles.swatchLabel, { color: c.warning }]}>Alerte</AppText>
-            <AppText style={[styles.swatchValue, { color: c.warning }]}>●</AppText>
           </View>
           <View style={[styles.swatch, { backgroundColor: c.primaryLight }]}>
             <AppText style={[styles.swatchLabel, { color: c.primary }]}>Primaire</AppText>
-            <AppText style={[styles.swatchValue, { color: c.primary }]}>●</AppText>
           </View>
         </Row>
+        <AppText style={styles.infoText}>
+          Chaque statut reste aussi décrit par un libellé texte : la couleur n’est qu’un complément
+          visuel.
+        </AppText>
       </View>
 
-      <Cluster
-        gap={spacing[3]}
-        style={[styles.infoCard, elevation.xs, { backgroundColor: c.surfaceSubtle }]}
-        leading={<Eye size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />}
-      >
-        <AppText style={[styles.infoText, { color: c.textSecondary }]}>
-          Cary ajuste les couleurs des statuts, badges et boutons pour les rendre plus faciles à
-          lire. Chaque statut reste aussi décrit par un libellé texte — la couleur n’est qu’un
-          complément visuel.
-        </AppText>
-      </Cluster>
-
-      {Platform.OS === 'ios' && pushEnabled ? (
-        <AppText
-          style={[styles.link, { color: c.textLink }]}
-          onPress={() => void Linking.openSettings()}
-          accessibilityRole="link"
-        >
-          Ouvrir les réglages iOS des notifications
-        </AppText>
-      ) : null}
+      <SettingsSection
+        title="À propos"
+        items={[
+          {
+            icon: Info,
+            label: 'Version de l’application',
+            value: meta.buildNumber !== '—' ? `${meta.appVersion} (${meta.buildNumber})` : meta.appVersion,
+            iconAccent: 'muted',
+          },
+        ]}
+      />
     </ProfileSubScreenLayout>
   );
 }
 
 function buildStyles({ colors: c, fontSize, scale }: Theme) {
   return {
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    padding: spacing[4],
-    gap: spacing[1],
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  cardTitle: {
-    ...font.headingSemiBold,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-  },
-  swatchRow: {
-    marginTop: spacing[2],
-  },
-  swatch: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.md,
-    minWidth: 88,
-  },
-  swatchLabel: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    marginBottom: 4,
-  },
-  swatchValue: {
-    ...font.bold,
-    fontSize: fontSize.xs,
-  },
-  cardHeader: {
-    marginBottom: spacing[2],
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: spacing[2],
-  },
-  typeBlock: {
-    gap: spacing[2],
-    marginTop: spacing[2],
-  },
-  typeLabel: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-  },
-  typeRow: {
-    gap: spacing[2],
-  },
-  typeChip: {
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing[3],
-    gap: 2,
-  },
-  typeChipTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-  },
-  typeChipHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    lineHeight: fontSize.xs * 1.4,
-  },
-  infoCard: {
-    borderRadius: radius.lg,
-    padding: spacing[4],
-    marginTop: spacing[4],
-  },
-  infoText: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    lineHeight: scale(20),
-  },
-  link: {
-    marginTop: spacing[4],
-    textAlign: 'center' as const,
-    ...font.medium,
-    fontSize: fontSize.sm,
-  },
-};
+    previewCard: {
+      backgroundColor: c.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      padding: spacing[4],
+      gap: spacing[3],
+    },
+    previewTitle: {
+      ...font.semiBold,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+    },
+    swatch: {
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[2],
+      borderRadius: radius.md,
+      minWidth: 88,
+    },
+    swatchLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.xs,
+    },
+    infoText: {
+      ...font.regular,
+      fontSize: fontSize.sm,
+      lineHeight: scale(20),
+      color: c.textSecondary,
+    },
+  };
 }

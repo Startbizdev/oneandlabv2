@@ -13,7 +13,6 @@ const transpiled = ts.transpileModule(source, {
 }).outputText;
 
 const mod = { exports: {} };
-// eslint-disable-next-line no-new-func
 new Function('exports', 'module', transpiled)(mod.exports, mod);
 
 const {

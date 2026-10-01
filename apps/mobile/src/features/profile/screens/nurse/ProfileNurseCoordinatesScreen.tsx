@@ -24,7 +24,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 function buildFieldStyles({ colors: c, fontSize }: Theme) {
   return {
@@ -42,7 +42,7 @@ function buildFieldStyles({ colors: c, fontSize }: Theme) {
     emailRow: {
       paddingVertical: spacing[3],
       paddingHorizontal: spacing[3],
-      borderRadius: 12,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: c.borderLight,
       backgroundColor: c.surfaceAlt,
@@ -72,6 +72,7 @@ export function ProfileNurseCoordinatesScreen() {
   const [professionalId, setProfessionalId] = useState('');
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
+  const [errors, setErrors] = useState<{ gender?: string; professionalId?: string }>({});
 
   const q = useQuery({
     queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
@@ -79,7 +80,7 @@ export function ProfileNurseCoordinatesScreen() {
     enabled: !!user?.id,
   });
 
-  useProfileDraft(user?.id, q.data, { firstName, lastName, phone, gender, professionalId, address, addressComplement },
+  const { dirty } = useProfileDraft(user?.id, q.data, { firstName, lastName, phone, gender, professionalId, address, addressComplement },
     d => {
       const parsed = parseProfileAddress(d.address);
       return { firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', gender: d.gender ?? '', professionalId: getProfessionalIdDisplay(d.rpps, d.adeli), address: parsed, addressComplement: parsed?.complement ?? '' };
@@ -94,9 +95,6 @@ export function ProfileNurseCoordinatesScreen() {
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!gender.trim()) throw new Error('GENDER_REQUIRED');
-      const profErr = validateProfessionalId(professionalId);
-      if (profErr) throw new Error(`PROFESSIONAL_ID:${profErr}`);
       const split = splitProfessionalId(professionalId);
       const addr = address?.label
         ? {
@@ -119,35 +117,30 @@ export function ProfileNurseCoordinatesScreen() {
     },
     onSuccess: async () => {
       await fetchMe();
-      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      await qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
       toast('Coordonnées enregistrées', { type: 'success' });
     },
-    onError: (e) => {
-      if (e instanceof Error && e.message === 'GENDER_REQUIRED') {
-        toast('Genre requis', {
-          type: 'error',
-          message: 'Indiquez Homme, Femme ou Autre pour le matching des RDV soins.',
-        });
-        return;
-      }
-      if (e instanceof Error && e.message.startsWith('PROFESSIONAL_ID:')) {
-        toast('Identifiant invalide', {
-          type: 'error',
-          message: e.message.replace('PROFESSIONAL_ID:', ''),
-        });
-        return;
-      }
-      handleApiError(e, toast, 'updateUser');
-    },
+    onError: (e) => handleApiError(e, toast, 'updateUser'),
   });
 
-  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
+  const onSave = () => {
+    const next = {
+      gender: gender.trim() ? undefined : 'Indiquez Homme, Femme ou Autre pour le matching des RDV soins.',
+      professionalId: validateProfessionalId(professionalId) ?? undefined,
+    };
+    setErrors(next);
+    if (next.gender || next.professionalId) return;
+    save.mutate();
+  };
+
+  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} error={q.error} onRetry={() => void q.refetch()} />;
 
   return (
     <ProfileSubScreenLayout
       saving={save.isPending}
-      onSave={() => save.mutate()}
+      onSave={onSave}
       saveTitle="Enregistrer"
+      dirty={dirty}
     >
       <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
       <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
@@ -163,14 +156,25 @@ export function ProfileNurseCoordinatesScreen() {
         <AppText style={fieldStyles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
       </View>
       <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-      <GenderSelect value={gender} onChange={setGender} />
+      <GenderSelect
+        value={gender}
+        onChange={(v) => {
+          setGender(v);
+          setErrors((e) => ({ ...e, gender: undefined }));
+        }}
+        error={errors.gender}
+      />
       <Input
         label={PROFESSIONAL_ID_LABEL}
         value={professionalId}
-        onChangeText={setProfessionalId}
+        onChangeText={(v) => {
+          setProfessionalId(v);
+          setErrors((e) => ({ ...e, professionalId: undefined }));
+        }}
         keyboardType="number-pad"
         maxLength={11}
         hint="9 chiffres (Adeli) ou 11 chiffres (RPPS)"
+        error={errors.professionalId}
       />
       <AddressAutocomplete
         value={address}

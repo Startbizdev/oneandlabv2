@@ -11,6 +11,7 @@ import {
   type PharmacyOrderListSegment,
 } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { PharmacyOrderCard } from '../components/PharmacyOrderCard';
 import { fetchPharmacyOrders } from '../api/pharmacy-orders.service';
@@ -52,7 +53,7 @@ export function PharmacyInboxScreen() {
     [router],
   );
 
-  const orders = ordersQ.data ?? [];
+  const orders = useMemo(() => ordersQ.data ?? [], [ordersQ.data]);
   const counts = useMemo(() => countPharmacyOrdersBySegment(orders), [orders]);
   const filteredOrders = useMemo(
     () => filterPharmacyOrdersBySegment(orders, segment),
@@ -86,13 +87,11 @@ export function PharmacyInboxScreen() {
 
         {ordersQ.isLoading ? (
           <ActivityIndicator style={styles.loader} color={c.primary} />
-        ) : ordersQ.isError ? (
-          <EmptyState
-            Icon={Inbox}
-            title="Chargement impossible"
-            description={ordersQ.error instanceof Error ? ordersQ.error.message : 'Réessayez dans un instant.'}
-            actionLabel="Réessayer"
-            onAction={() => void ordersQ.refetch()}
+        ) : ordersQ.isError && !ordersQ.data ? (
+          <ErrorState
+            title="Commandes indisponibles"
+            error={ordersQ.error}
+            onRetry={() => void ordersQ.refetch()}
           />
         ) : filteredOrders.length === 0 ? (
           <EmptyState Icon={Inbox} title={emptyTitle} description={emptyDescription} />

@@ -78,6 +78,23 @@ export function StackHeaderInsetProvider({ children }: { children: ReactNode }) 
   return <TabSceneInsetsContext.Provider value={value}>{children}</TabSceneInsetsContext.Provider>;
 }
 
+/**
+ * Contenu placé sous un bandeau fixe déjà décalé sous le header (ex. segments) :
+ * remplace l'inset haut, garde l'inset bas de la tab bar.
+ */
+export function TabSceneInsetTopOverride({
+  insetTop,
+  children,
+}: {
+  insetTop: number;
+  children: ReactNode;
+}) {
+  const parent = useContext(TabSceneInsetsContext);
+  const value = useMemo<TabSceneInsets>(() => ({ ...parent, insetTop }), [parent, insetTop]);
+
+  return <TabSceneInsetsContext.Provider value={value}>{children}</TabSceneInsetsContext.Provider>;
+}
+
 /** @deprecated Alias — préférer `LiquidGlassHeaderInsetProvider`. */
 export const TabSceneInsetsProvider = LiquidGlassHeaderInsetProvider;
 

@@ -1,16 +1,19 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { appointmentTimeFrance } from '@oneandlab/shared-utils';
+import type { AppointmentConversationMessage } from '@oneandlab/shared-types';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { Row } from '@/components/layout/primitives';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Paperclip, Send, WifiOff } from 'lucide-react-native';
+import { MessageCircle, Paperclip, Send } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -28,8 +31,35 @@ import {
   postAppointmentConversationAttachment,
   postAppointmentConversationMessage,
 } from '../detail/api/conversation.service';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { roleRoutePrefix } from '@/navigation/role-route-prefix';
+import {
+  ATTACHMENT_PLACEHOLDER_BODY,
+  ConversationMessageBubble,
+  conversationAttachmentLink,
+  type ConversationAttachmentLink,
+} from '../detail/components/conversation/ConversationMessageBubble';
+import {
+  ConversationDaySeparator,
+  withConversationDaySeparators,
+} from '../detail/components/conversation/ConversationDaySeparator';
+import { useLeaveConversation } from '../detail/hooks/use-leave-conversation';
+import { spacing, iconSize, useStyles, font, type Theme } from '@/theme';
+
+type OutboxMessage = {
+  localId: string;
+  body: string;
+  created_at: string;
+  status: 'sending' | 'failed';
+};
+
+type ThreadEntry =
+  | { source: 'server'; created_at: string; message: AppointmentConversationMessage }
+  | { source: 'outbox'; created_at: string; message: OutboxMessage };
+
+type SendPayload = {
+  body: string;
+  file?: { uri: string; name: string; type: string };
+  localId?: string;
+};
 
 export function AppointmentConversationScreen() {
   const { id, messageId, fromNotification } = useLocalSearchParams<{
@@ -45,17 +75,18 @@ export function AppointmentConversationScreen() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [draft, setDraft] = useState('');
+  const [outbox, setOutbox] = useState<OutboxMessage[]>([]);
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const headerHeight = useHeaderHeight();
   const sceneInsets = useTabSceneInsets();
   const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
   const navigation = useNavigation();
-  const router = useRouter();
+  const leaveConversation = useLeaveConversation(appointmentId, userRole, fromNotification);
   const focused = useIsFocused();
   const appActive = useAppActive();
 
-  const { data, error, isLoading, isError, refetch } = useQuery({
+  const { data, error, isLoading, refetch } = useQuery({
     queryKey: queryKeys.appointments.conversation(appointmentId),
     queryFn: async () => {
       const res = await fetchAppointmentConversation(appointmentId);
@@ -68,7 +99,7 @@ export function AppointmentConversationScreen() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: async (payload: { body: string; file?: { uri: string; name: string; type: string } }) => {
+    mutationFn: async (payload: SendPayload) => {
       const response = payload.file
         ? await postAppointmentConversationAttachment(appointmentId, payload.file, payload.body)
         : await postAppointmentConversationMessage(appointmentId, payload.body);
@@ -76,27 +107,69 @@ export function AppointmentConversationScreen() {
       return response;
     },
     onSuccess: async (_response, payload) => {
-      setDraft(current => current.trim() === payload.body || (payload.file && !current.trim()) ? '' : current);
       await qc.invalidateQueries({ queryKey: queryKeys.appointments.conversation(appointmentId) });
+      if (payload.localId) {
+        setOutbox((prev) => prev.filter((m) => m.localId !== payload.localId));
+      }
     },
-    onError: (e) => handleApiError(e, toast, 'conversation-send'),
+    onError: (e, payload) => {
+      if (payload.localId) {
+        setOutbox((prev) =>
+          prev.map((m) => (m.localId === payload.localId ? { ...m, status: 'failed' } : m)),
+        );
+      }
+      handleApiError(e, toast, 'conversation-send');
+    },
   });
 
-  async function onPickAttachment() {
-    try {
-      const picked = await pickCarePhoto();
-      if (!picked) return;
-      await sendMutation.mutateAsync({
-        body: draft.trim() || '[Pièce jointe]',
-        file: { uri: picked.uri, name: picked.fileName, type: picked.mimeType ?? 'image/jpeg' },
+  const sendText = useCallback(
+    (body: string, localId: string = `local-${Date.now()}`) => {
+      setOutbox((prev) => {
+        const rest = prev.filter((m) => m.localId !== localId);
+        return [...rest, { localId, body, created_at: new Date().toISOString(), status: 'sending' }];
       });
+      sendMutation.mutate({ body, localId });
+    },
+    [sendMutation],
+  );
+
+  function onSubmitDraft() {
+    const body = draft.trim();
+    if (!body) return;
+    setDraft('');
+    sendText(body);
+  }
+
+  async function onPickAttachment() {
+    let picked: Awaited<ReturnType<typeof pickCarePhoto>>;
+    try {
+      picked = await pickCarePhoto();
     } catch (e) {
       handleApiError(e, toast, 'conversation-attachment');
+      return;
     }
+    if (!picked) return;
+    sendMutation.mutate(
+      {
+        body: draft.trim() || ATTACHMENT_PLACEHOLDER_BODY,
+        file: { uri: picked.uri, name: picked.fileName, type: picked.mimeType ?? 'image/jpeg' },
+      },
+      { onSuccess: () => setDraft('') },
+    );
   }
 
   const messages = useMemo(() => data?.messages ?? [], [data?.messages]);
   const canPost = Boolean(data?.can_post);
+
+  const threadItems = useMemo(() => {
+    const entries: ThreadEntry[] = [
+      ...messages.map((message): ThreadEntry => ({ source: 'server', created_at: message.created_at, message })),
+      ...outbox.map((message): ThreadEntry => ({ source: 'outbox', created_at: message.created_at, message })),
+    ];
+    return withConversationDaySeparators(entries, (entry) =>
+      entry.source === 'server' ? entry.message.id : entry.message.localId,
+    );
+  }, [messages, outbox]);
 
   useEffect(() => {
     const counterpart = messages.find((message) => message.author_id !== userId)?.author_name?.trim();
@@ -109,127 +182,102 @@ export function AppointmentConversationScreen() {
     navigation.setOptions({ title });
   }, [messages, navigation, userId, userRole]);
 
+  const threadLength = threadItems.length;
   useEffect(() => {
-    if (!messageId || !messages.some((message) => message.id === messageId)) return;
+    if (!threadLength) return;
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     return () => clearTimeout(timer);
-  }, [messageId, messages]);
+  }, [messageId, threadLength]);
 
-  async function openAttachment(documentId: string, name?: string | null) {
-    setOpeningDocumentId(documentId);
+  async function openAttachment(link: ConversationAttachmentLink) {
+    setOpeningDocumentId(link.documentId);
     try {
-      const result = await openMedicalDocument(documentId, name ?? undefined);
+      const result = await openMedicalDocument(link.documentId, link.openFileName);
       if (!result.ok) toast(result.error ?? 'Ouverture impossible', { type: 'error' });
-    } catch (error) {
-      handleApiError(error, toast, 'conversation-open-attachment');
+    } catch (openError) {
+      handleApiError(openError, toast, 'conversation-open-attachment');
     } finally {
       setOpeningDocumentId(null);
     }
   }
 
-  function leaveConversation() {
-    if (fromNotification === '1' && appointmentId) {
-      router.replace(`${roleRoutePrefix(userRole)}/appointment/${appointmentId}` as never);
-      return;
-    }
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    if (appointmentId) {
-      router.replace(`${roleRoutePrefix(userRole)}/appointment/${appointmentId}` as never);
-      return;
-    }
-    router.replace(`${roleRoutePrefix(userRole)}/(tabs)` as never);
-  }
+  const canSend = Boolean(draft.trim());
 
   return (
     <StackChromeScreen>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight} style={[styles.root, { backgroundColor: c.background }]}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight} style={styles.root}>
       {isLoading ? (
-        <ActivityIndicator style={{ marginTop: spacing[8] }} color={c.primary} />
-      ) : isError ? (
+        <ActivityIndicator style={styles.loader} color={c.primary} />
+      ) : !data && error ? (
         <View style={styles.errorState}>
-          <EmptyState
-            Icon={WifiOff}
+          <ErrorState
+            error={error}
             title="Les échanges n’ont pas pu être chargés"
-            description={error instanceof Error ? error.message : 'Votre message en cours reste disponible.'}
-            actionLabel="Réessayer"
-            onAction={() => void refetch()}
+            onRetry={() => void refetch()}
           />
-          <Button title="Retour au rendez-vous" variant="outline" onPress={leaveConversation} />
+          <Button title="Retour au rendez-vous" variant="ghost" onPress={leaveConversation} />
         </View>
       ) : (
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={[
             listScrollConfig.contentContainerStyle,
-            !messages.length && styles.listEmpty,
+            !threadLength && styles.listEmpty,
           ]}
           {...spreadTabSceneScrollProps(listScrollConfig)}
           keyboardShouldPersistTaps="handled"
         >
-          {!messages.length ? <EmptyState Icon={MessageCircle} title="Vos échanges, au même endroit" description="Les messages et pièces jointes de ce rendez-vous apparaîtront ici." /> : null}
-          {messages.map((msg) => (
-            <View
-              key={msg.id}
-              style={[
-                styles.bubble,
-                msg.author_id === userId ? styles.bubbleMine : styles.bubbleOther,
-                { borderColor: c.border, backgroundColor: msg.author_id === userId ? c.primaryLight : c.surface },
-              ]}
-            >
-              <AppText style={[styles.author, { color: c.textSecondary }]}>{msg.author_name || 'Utilisateur'}</AppText>
-              {msg.body && msg.body !== '[Pièce jointe]' ? (
-                <AppText style={{ color: c.textPrimary }}>{msg.body}</AppText>
-              ) : null}
-              {(() => {
-                const documentId = msg.attachment?.id ?? msg.medical_document_id;
-                if (!documentId) return null;
-                const fileName = msg.attachment?.file_name?.trim() || null;
-                const mimeType = msg.attachment?.mime_type?.toLowerCase() ?? '';
-                const fallbackLabel = mimeType === 'application/pdf'
-                  ? 'Afficher le PDF'
-                  : mimeType.startsWith('image/')
-                    ? 'Afficher l’image'
-                    : 'Afficher la pièce jointe';
-                const openFileName = fileName
-                  ?? (mimeType === 'application/pdf'
-                    ? 'piece-jointe.pdf'
-                    : mimeType.startsWith('image/')
-                      ? `piece-jointe.${mimeType === 'image/jpeg' ? 'jpg' : mimeType.slice('image/'.length)}`
-                      : undefined);
-                return (
-                <Button title={fileName || fallbackLabel} variant="outline" size="sm"
-                  loading={openingDocumentId === documentId}
-                  disabled={openingDocumentId !== null}
-                  onPress={() => void openAttachment(documentId, openFileName)} />
-                );
-              })()}
-            </View>
-          ))}
+          {!threadLength ? <EmptyState Icon={MessageCircle} title="Vos échanges, au même endroit" description="Les messages et pièces jointes de ce rendez-vous apparaîtront ici." /> : null}
+          {threadItems.map((item) => {
+            if (item.kind === 'day') return <ConversationDaySeparator key={item.key} label={item.label} />;
+            const entry = item.message;
+            if (entry.source === 'outbox') {
+              const pending = entry.message;
+              return (
+                <ConversationMessageBubble
+                  key={item.key}
+                  authorName="Vous"
+                  body={pending.body}
+                  time=""
+                  mine
+                  status={pending.status}
+                  onRetry={() => sendText(pending.body, pending.localId)}
+                  onDiscard={() => setOutbox((prev) => prev.filter((m) => m.localId !== pending.localId))}
+                />
+              );
+            }
+            const msg = entry.message;
+            return (
+              <ConversationMessageBubble
+                key={item.key}
+                authorName={msg.author_name || 'Utilisateur'}
+                body={msg.body}
+                time={appointmentTimeFrance(msg.created_at)}
+                mine={msg.author_id === userId}
+                attachment={conversationAttachmentLink(msg)}
+                openingDocumentId={openingDocumentId}
+                onOpenAttachment={(link) => void openAttachment(link)}
+              />
+            );
+          })}
         </ScrollView>
       )}
       {canPost ? (
-        <View style={[styles.composer, { borderTopColor: c.border, backgroundColor: c.surface }]}>
-          <Row style={[styles.composerBar, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={styles.composer}>
+          <Row style={styles.composerBar}>
             <Pressable onPress={() => void onPickAttachment()} disabled={sendMutation.isPending}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
               accessibilityRole="button" accessibilityLabel="Joindre une photo ou un document">
-              <Paperclip size={20} color={c.textSecondary} />
+              <Paperclip size={iconSize.md} color={c.textSecondary} />
             </Pressable>
             <TextInput value={draft} onChangeText={setDraft} placeholder="Écrire un message…"
               placeholderTextColor={c.textTertiary} accessibilityLabel="Votre message"
-              editable={!sendMutation.isPending} multiline maxLength={2000} style={[styles.composerInput, { color: c.textPrimary }]} />
-            <Pressable onPress={() => sendMutation.mutate({ body: draft.trim() })}
-              disabled={sendMutation.isPending || !draft.trim()}
+              multiline maxLength={2000} style={styles.composerInput} />
+            <Pressable onPress={onSubmitDraft}
+              disabled={!canSend}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
               accessibilityRole="button" accessibilityLabel="Envoyer le message">
-              <Send size={20} color={draft.trim() && !sendMutation.isPending ? c.primary : c.textTertiary} />
+              <Send size={iconSize.md} color={canSend ? c.primary : c.textTertiary} />
             </Pressable>
           </Row>
         </View>
@@ -239,21 +287,17 @@ export function AppointmentConversationScreen() {
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    root: { flex: 1, minWidth: 0 },
+    root: { flex: 1, minWidth: 0, backgroundColor: c.background },
+    loader: { marginTop: spacing[8] },
     errorState: { paddingHorizontal: spacing[4], gap: spacing[2] },
     list: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[24] },
     listEmpty: { flexGrow: 1, minWidth: 0, justifyContent: 'center' as const },
-    bubble: { borderWidth: 1, borderRadius: 12, padding: spacing[3], maxWidth: '88%' },
-    bubbleMine: { alignSelf: 'flex-end' },
-    bubbleOther: { alignSelf: 'flex-start' },
-    author: { ...font.medium, fontSize: fontSize.xs, marginBottom: spacing[1] },
-    attachment: { marginTop: spacing[2], ...font.medium, fontSize: fontSize.xs },
-    composer: { borderTopWidth: 1, padding: spacing[3], gap: spacing[2] },
-    composerBar: { minHeight: 48, maxHeight: 112, borderWidth: 1, borderRadius: 24, alignItems: 'center' as const, paddingHorizontal: spacing[1], paddingVertical: spacing[1] },
-    composerInput: { flex: 1, minWidth: 0, minHeight: 34, maxHeight: 96, paddingHorizontal: spacing[2], paddingVertical: spacing[1], fontSize: fontSize.md, textAlignVertical: 'center' as const },
-    iconButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center' as const, justifyContent: 'center' as const },
+    composer: { borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.surface, padding: spacing[3], gap: spacing[2] },
+    composerBar: { minHeight: 48, maxHeight: 112, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, borderRadius: 24, alignItems: 'center' as const, paddingHorizontal: spacing[1], paddingVertical: spacing[1] },
+    composerInput: { flex: 1, minWidth: 0, minHeight: 34, maxHeight: 96, paddingHorizontal: spacing[2], paddingVertical: spacing[1], ...font.regular, fontSize: fontSize.md, color: c.textPrimary, textAlignVertical: 'center' as const },
+    iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center' as const, justifyContent: 'center' as const },
     iconPressed: { opacity: 0.6 },
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }

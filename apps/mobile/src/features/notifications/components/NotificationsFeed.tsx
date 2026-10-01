@@ -1,144 +1,102 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, type ListRenderItem } from 'react-native';
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query';
+import { Bell } from 'lucide-react-native';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
+import {
+  buildNotificationFeedRows,
+  type NotificationFeedRow,
+} from '@/features/notifications/utils/notification-feed-rows';
 import { NotificationCard } from './NotificationCard';
-import { Button } from '@/components/ui/Button';
+import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
-interface Props {
+interface Props<TPage> {
+  query: UseInfiniteQueryResult<InfiniteData<TPage>>;
   items: AppNotification[];
-  hasUnread: boolean;
-  hasMore: boolean;
-  refreshing: boolean;
-  loadingMore: boolean;
-  onRefresh: () => void;
-  onPressItem: (item: AppNotification) => void;
-  onLoadMore: () => void;
   pageSize: number;
-  contentContainerStyle?: object | object[];
-  scrollIndicatorInsets?: { top: number; bottom: number };
-  contentInsetAdjustmentBehavior?: 'automatic' | 'never';
-  refreshProgressOffset?: number;
+  onPressItem: (item: AppNotification) => void;
 }
 
-export function NotificationsFeed({
-  items,
-  hasUnread,
-  hasMore,
-  refreshing,
-  loadingMore,
-  onRefresh,
-  onPressItem,
-  onLoadMore,
-  pageSize,
-  contentContainerStyle: contentContainerStyleProp,
-  scrollIndicatorInsets,
-  contentInsetAdjustmentBehavior = 'automatic',
-  refreshProgressOffset = 0,
-}: Props) {
-  const c = useAppColors();
+export function NotificationsFeed<TPage>({ query, items, pageSize, onPressItem }: Props<TPage>) {
   const styles = useStyles(buildStyles);
+  const rows = useMemo(() => buildNotificationFeedRows(items), [items]);
 
-  const renderItem: ListRenderItem<AppNotification> = useCallback(
-    ({ item }) => <NotificationCard item={item} onPress={() => onPressItem(item)} />,
-    [onPressItem],
+  const renderItem: ListRenderItem<NotificationFeedRow> = useCallback(
+    ({ item: row }) =>
+      row.kind === 'header' ? (
+        <AppText style={styles.sectionTitle} accessibilityRole="header">
+          {row.title}
+        </AppText>
+      ) : (
+        <View style={styles.cardWrap}>
+          <NotificationCard item={row.item} onPress={() => onPressItem(row.item)} />
+        </View>
+      ),
+    [onPressItem, styles],
   );
 
-  const keyExtractor = useCallback((item: AppNotification) => item.id, []);
-
-  const ListHeader = useCallback(
-    () => (
-      <AppText style={styles.sectionTitle}>
-        {hasUnread ? 'Non lues en premier' : 'Toutes lues'}
-      </AppText>
-    ),
-    [hasUnread],
-  );
-
-  const ListFooter = useCallback(() => {
-    if (loadingMore) {
-      return (
-        <View style={styles.footerLoader}>
-          <ActivityIndicator color={c.primary} />
-        </View>
-      );
-    }
-    if (hasMore) {
-      return (
-        <View style={styles.footerActions}>
-          <Button title="Voir plus" variant="outline" size="md" onPress={onLoadMore} fullWidth />
-        </View>
-      );
-    }
-    if (items.length > pageSize) {
-      return <AppText style={styles.endHint}>Fin de l'historique</AppText>;
-    }
-    return null;
-  }, [hasMore, items.length, loadingMore, onLoadMore, pageSize]);
-
-  const ItemSeparator = useCallback(() => <View style={styles.separator} />, []);
+  const showEndHint = !query.hasNextPage && items.length > pageSize;
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={keyExtractor}
+    <InfiniteQueryFlatList
+      query={query}
+      items={rows}
       renderItem={renderItem}
-      ItemSeparatorComponent={ItemSeparator}
-      ListHeaderComponent={ListHeader}
-      ListFooterComponent={ListFooter}
-      contentContainerStyle={contentContainerStyleProp ?? styles.listContent}
-      contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
-      scrollIndicatorInsets={scrollIndicatorInsets}
+      keyExtractor={(row) => row.key}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={c.primary}
-          progressViewOffset={refreshProgressOffset}
-        />
+      skeletonHeight={76}
+      ListEmptyComponent={
+        <View style={styles.empty}>
+          <EmptyState
+            Icon={Bell}
+            title="Rien de nouveau"
+            description="Les rappels et messages arriveront ici."
+          />
+        </View>
       }
-      onEndReached={hasMore && !loadingMore ? onLoadMore : undefined}
-      onEndReachedThreshold={0.4}
+      ListFooterComponent={
+        showEndHint ? <AppText style={styles.endHint}>Fin de l’historique</AppText> : null
+      }
     />
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  listContent: {
-    minWidth: 0,
-    flexGrow: 1,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[10],
-  },
-  sectionTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
-    paddingHorizontal: spacing[1],
-    marginBottom: spacing[2],
-  },
-  separator: {
-    height: spacing[2],
-  },
-  footerActions: {
-    marginTop: spacing[2],
-  },
-  footerLoader: {
-    paddingVertical: spacing[4],
-    alignItems: 'center' as const,
-  },
-  endHint: {
-    textAlign: 'center' as const,
-    marginTop: spacing[2],
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-};
+    listContent: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[10],
+    },
+    sectionTitle: {
+      ...font.semiBold,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase' as const,
+      paddingHorizontal: spacing[1],
+      paddingTop: spacing[3],
+      marginBottom: spacing[2],
+    },
+    cardWrap: {
+      marginBottom: spacing[2],
+    },
+    empty: {
+      minWidth: 0,
+      flex: 1,
+      justifyContent: 'center' as const,
+      paddingVertical: spacing[10],
+    },
+    endHint: {
+      textAlign: 'center' as const,
+      marginTop: spacing[2],
+      ...font.regular,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+    },
+  };
 }

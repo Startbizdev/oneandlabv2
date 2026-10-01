@@ -70,6 +70,11 @@ const COMMON_SECTIONS: HelpFaqSectionDef[] = [
         answer:
           'En bas de Plus. Votre session se ferme sur cet appareil.',
       },
+      {
+        question: 'Comment supprimer mon compte ?',
+        answer:
+          'Plus, puis Mot de passe et connexion, puis Supprimer mon compte. Un compte patient se supprime immédiatement ; pour un compte professionnel, une demande est envoyée à notre équipe.',
+      },
     ],
   },
   {
@@ -439,6 +444,22 @@ export function getHelpFaqForRole(role: MobileRole | string | undefined): HelpFa
     intro: ROLE_INTROS[safeRole],
     sections: withSlugs(safeRole, [...roleSections(safeRole), ...COMMON_SECTIONS]),
   };
+}
+
+function foldForSearch(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Questions dont la question, la réponse ou la rubrique contient tous les mots saisis. */
+export function searchHelpFaq(content: HelpFaqContent, query: string): HelpFaqItem[] {
+  const words = foldForSearch(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  return content.sections.flatMap((section) =>
+    section.items.filter((item: HelpFaqItem) => {
+      const haystack = foldForSearch(`${section.title} ${item.question} ${item.answer}`);
+      return words.every((word) => haystack.includes(word));
+    }),
+  );
 }
 
 export function findHelpFaqTopic(

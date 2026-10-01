@@ -6,9 +6,12 @@ import { SubscriptionPlanCard } from '@/features/nurse/components/SubscriptionPl
 import { useNurseIap } from '@/features/nurse/hooks/use-nurse-iap';
 import {
   getSubscriptionPriceParts,
-  NURSE_PRO_TRIAL_FOOTNOTE,
+  nurseProTrialFootnote,
 } from '@/features/nurse/utils/subscription-price-display';
+import { getLegalPage, type AuthLegalSlug } from '@/features/auth/utils/open-legal-page';
+import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
+import { Row } from '@/components/layout/primitives';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
@@ -56,7 +59,17 @@ export function NurseSubscriptionScreen() {
     restoreLoading,
     connected,
     storeLoading,
+    localizedProPrice,
   } = useNurseIap();
+  const router = useRouter();
+
+  const openLegal = (slug: AuthLegalSlug) => {
+    const page = getLegalPage(slug);
+    if (!page) return;
+    router.push(
+      `/(nurse)/web?path=${encodeURIComponent(page.path)}&title=${encodeURIComponent(page.label)}` as never,
+    );
+  };
 
   const activePlan = subscription?.plan_slug ?? 'discovery';
   const isPro = activePlan === 'nurse_pro';
@@ -68,7 +81,8 @@ export function NurseSubscriptionScreen() {
       NURSE_PLAN_LIST.map((plan) => {
         const isCurrent = plan.slug === activePlan;
         const isProPlan = plan.slug === 'nurse_pro';
-        const { amount, suffix } = getSubscriptionPriceParts(plan);
+        const storePrice = isProPlan ? localizedProPrice : null;
+        const { amount, suffix } = getSubscriptionPriceParts(plan, storePrice);
         let ctaLabel: string | undefined;
         let onCtaPress: (() => void) | undefined;
         let ctaLoading = false;
@@ -76,7 +90,7 @@ export function NurseSubscriptionScreen() {
         let footnote: string | undefined;
 
         if (isProPlan) {
-          footnote = NURSE_PRO_TRIAL_FOOTNOTE;
+          footnote = nurseProTrialFootnote(plan, storePrice);
           if (isCurrent) {
             ctaLabel = 'Gérer mon abonnement';
             onCtaPress = () => openManageSubscriptions(subscription?.billing_source);
@@ -117,6 +131,7 @@ export function NurseSubscriptionScreen() {
       activePlan,
       canPurchaseStore,
       connected,
+      localizedProPrice,
       purchaseLoading,
       purchasePro,
       storeLoading,
@@ -188,6 +203,16 @@ export function NurseSubscriptionScreen() {
         L’abonnement se renouvelle automatiquement sauf annulation au moins 24 h avant la fin de
         la période en cours.
       </AppText>
+
+      <Row gap={spacing[2]} justify="center" wrap>
+        <Button title="Conditions d’utilisation" variant="ghost" size="sm" onPress={() => openLegal('cgv')} />
+        <Button
+          title="Confidentialité"
+          variant="ghost"
+          size="sm"
+          onPress={() => openLegal('confidentialite')}
+        />
+      </Row>
     </ScrollView>
   );
 }

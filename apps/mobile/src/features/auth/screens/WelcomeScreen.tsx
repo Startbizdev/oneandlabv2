@@ -1,11 +1,14 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { BadgeCheck, BellRing, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { BiometricLoginButton } from '@/features/auth/components/BiometricLoginButton';
+import { LegalLinks } from '@/features/auth/components/LegalLinks';
 import { LoginBottomSheet } from '@/features/auth/components/LoginBottomSheet';
 import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSheet';
 import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
@@ -14,6 +17,7 @@ import type { RegisterRole } from '@/features/auth/api/registration.service';
 import {
   elevation,
   hexToRgba,
+  iconSize,
   radius,
   spacing,
   useLayoutMetrics,
@@ -26,15 +30,26 @@ import {
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
+/** Affirmations déjà publiées par Cary (mentions légales, politique de confidentialité, page patients). */
+const TRUST_SIGNALS: { Icon: LucideIcon; text: string }[] = [
+  { Icon: ShieldCheck, text: 'Données de santé hébergées en France, chez un hébergeur certifié HDS' },
+  { Icon: BadgeCheck, text: 'Infirmiers et laboratoires vérifiés par Cary' },
+  { Icon: BellRing, text: 'Confirmation et rappel à chaque étape' },
+];
+
 export function WelcomeScreen() {
   const c = useAppColors();
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const [loginOpen, setLoginOpen] = useState(false);
+  const { login } = useLocalSearchParams<{ login?: string }>();
+  const [loginOpen, setLoginOpen] = useState(login === '1');
   const [registerOpen, setRegisterOpen] = useState(false);
   const [pendingEmail, setPendingEmail] = useState('');
+
+  useEffect(() => {
+    if (login === '1') setLoginOpen(true);
+  }, [login]);
 
   const logoWidth = responsiveValue(layout, { compact: 190, default: 220, wide: 240 });
   const logoHeight = responsiveValue(layout, { compact: 68, default: 80, wide: 88 });
@@ -100,12 +115,21 @@ export function WelcomeScreen() {
             </AppText>
 
             <View style={styles.taglineRule} />
+
+            <View style={[styles.trustList, { maxWidth: textMaxWidth }]}>
+              {TRUST_SIGNALS.map(({ Icon, text }) => (
+                <Row key={text} align="start" gap={spacing[3]}>
+                  <Icon size={iconSize.md} color={c.primary} strokeWidth={2} />
+                  <AppText style={styles.trustText}>{text}</AppText>
+                </Row>
+              ))}
+            </View>
           </View>
 
           <View style={styles.footer}>
             <View style={[styles.actionsCard, elevation.sm]}>
-              <BiometricLoginButton onSuccess={onLoginSuccess} />
               <Button title="Se connecter" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
+              <BiometricLoginButton onSuccess={onLoginSuccess} />
               <Button
                 title="Créer un compte"
                 variant="outline"
@@ -118,12 +142,13 @@ export function WelcomeScreen() {
               />
             </View>
 
-            <AppText style={styles.legal}>
-              En continuant, vous acceptez nos conditions d&apos;utilisation.
-            </AppText>
-            {user ? (
-              <AppText style={styles.legal}>Session active sur cet appareil.</AppText>
-            ) : null}
+            <View>
+              <AppText style={styles.legal}>
+                En continuant, vous acceptez nos conditions d&apos;utilisation et notre politique de
+                confidentialité.
+              </AppText>
+              <LegalLinks />
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -226,6 +251,19 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderRadius: 2,
     backgroundColor: c.primary,
     opacity: 0.35,
+  },
+  trustList: {
+    width: '100%' as const,
+    gap: spacing[3],
+    paddingTop: spacing[1],
+  },
+  trustText: {
+    flex: 1,
+    minWidth: 0,
+    ...font.medium,
+    fontSize: fontSize.sm,
+    lineHeight: fontSize.sm * 1.4,
+    color: c.textSecondary,
   },
   footer: {
     gap: spacing[4],

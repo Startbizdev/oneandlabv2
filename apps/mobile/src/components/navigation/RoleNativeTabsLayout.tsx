@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Platform } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import {
@@ -14,7 +13,8 @@ import { useAppColors } from '@/theme/use-app-colors';
 export type NativeTabTriggerConfig = {
   name: string;
   hidden?: boolean;
-  accessibilityLabel: string;
+  /** Libellé court affiché sous l'icône (lu aussi par VoiceOver / TalkBack). */
+  label: string;
   sf: { default: SFSymbol; selected: SFSymbol };
   androidIcon: keyof typeof MaterialIcons.glyphMap;
   badge?: string;
@@ -26,7 +26,6 @@ export type NativeTabTriggerConfig = {
  */
 export function createRoleTabsLayout(
   tabsOrFactory: NativeTabTriggerConfig[] | (() => NativeTabTriggerConfig[]),
-  minimizeOnScroll = true,
 ) {
   return function RoleTabsLayout() {
     const c = useAppColors();
@@ -51,7 +50,11 @@ export function createRoleTabsLayout(
     return (
       <NativeTabs
         minimizeBehavior="never"
-        labelVisibilityMode="unlabeled"
+        labelVisibilityMode="labeled"
+        labelStyle={{
+          default: { color: c.textSecondary },
+          selected: { color: c.primary },
+        }}
         disableTransparentOnScrollEdge
         {...androidTabProps}
       >
@@ -69,7 +72,7 @@ export function createRoleTabsLayout(
               selectedColor={c.primary}
               androidSrc={<VectorIcon family={MaterialIcons} name={tab.androidIcon} />}
             />
-            <Label hidden>{tab.accessibilityLabel}</Label>
+            <Label>{tab.label}</Label>
             {tab.badge ? <Badge>{tab.badge}</Badge> : null}
           </NativeTabs.Trigger>
         ))}
@@ -78,53 +81,49 @@ export function createRoleTabsLayout(
   };
 }
 
-/** @deprecated Préférer `createRoleTabsLayout()` dans `_layout.tsx`. */
-export function RoleNativeTabsLayout({
-  tabs,
-  minimizeOnScroll = true,
-}: {
-  tabs: NativeTabTriggerConfig[];
-  minimizeOnScroll?: boolean;
-  children?: ReactNode;
-}) {
-  const Layout = createRoleTabsLayout(tabs, minimizeOnScroll);
-  return <Layout />;
-}
+type TabTrigger = Omit<NativeTabTriggerConfig, 'name'>;
 
-/** Onglet « Plus » — icône système iOS quand disponible. */
-export const MORE_TAB_TRIGGER: Omit<NativeTabTriggerConfig, 'name'> = {
-  accessibilityLabel: 'Plus',
+/** Accueil du rôle (liste des rendez-vous + salutation). */
+export const HOME_TAB_TRIGGER: TabTrigger = {
+  label: 'Accueil',
+  sf: { default: 'house', selected: 'house.fill' },
+  androidIcon: 'home',
+};
+
+/** Onglet « Plus » des professionnels. */
+export const MORE_TAB_TRIGGER: TabTrigger = {
+  label: 'Plus',
   sf: { default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' },
   androidIcon: 'apps',
 };
 
-export const APPOINTMENTS_TAB_TRIGGER: Omit<NativeTabTriggerConfig, 'name'> = {
-  accessibilityLabel: 'Rendez-vous',
-  sf: { default: 'list.bullet', selected: 'list.bullet' },
-  androidIcon: 'format-list-bulleted',
+/** Onglet « Compte » du patient (même écran que « Plus », vocabulaire patient). */
+export const ACCOUNT_TAB_TRIGGER: TabTrigger = {
+  label: 'Compte',
+  sf: { default: 'person.crop.circle', selected: 'person.crop.circle.fill' },
+  androidIcon: 'account-circle',
 };
 
-/** Onglet calendrier / agenda — sans le cercle `calendar.circle`. */
-export const CALENDAR_TAB_TRIGGER: Omit<NativeTabTriggerConfig, 'name'> = {
-  accessibilityLabel: 'Calendrier',
-  sf: { default: 'calendar.badge.clock', selected: 'calendar.badge.clock' },
-  androidIcon: 'view-agenda',
+export const AGENDA_TAB_TRIGGER: TabTrigger = {
+  label: 'Agenda',
+  sf: { default: 'calendar', selected: 'calendar' },
+  androidIcon: 'event',
 };
 
-/** SF Symbols header — mêmes icônes que la tab bar (default). */
-export const TAB_HEADER_SF = {
-  appointments: APPOINTMENTS_TAB_TRIGGER.sf.default,
-  more: MORE_TAB_TRIGGER.sf.default,
-  calendar: CALENDAR_TAB_TRIGGER.sf.default,
-  book: 'calendar.badge.plus',
-  relatives: 'heart',
-  ai: 'face.smiling',
-  demandes: 'clipboard',
-  patients: 'person.2',
-  prescriptions: 'doc.text',
-  tournee: 'map',
-  notifications: 'bell',
-} as const satisfies Record<string, SFSymbol>;
+export const TOURNEE_TAB_TRIGGER: TabTrigger = {
+  label: 'Tournée',
+  sf: {
+    default: 'point.topleft.down.to.point.bottomright.curvepath',
+    selected: 'point.topleft.down.to.point.bottomright.curvepath.fill',
+  },
+  androidIcon: 'route',
+};
+
+export const PATIENTS_TAB_TRIGGER: TabTrigger = {
+  label: 'Patients',
+  sf: { default: 'person.2', selected: 'person.2.fill' },
+  androidIcon: 'people',
+};
 
 /** SF Symbols stack profil (cohérents avec le design système). */
 export const PROFILE_HEADER_SF = {

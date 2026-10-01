@@ -2,15 +2,16 @@ import { layoutRow } from '@/theme/layout-styles';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Link2, QrCode, Share2 } from 'lucide-react-native';
+import { Link2, QrCode, Share2 } from 'lucide-react-native';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { downloadQrPngToCache, fetchQrMe, updateQrTagline } from '@/features/qr/api/qr.service';
 import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
+import { useStackContentTopInset, useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import { useAuthStore } from '@/store/auth-store';
 import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -86,18 +87,31 @@ export function QrCodeScreen() {
     }
   };
 
-  const copyLink = async () => {
+  const shareLink = async () => {
     const link = q.data?.qr.scan_url;
     if (!link) return;
     try {
       await Share.share({ message: link });
     } catch {
-      Alert.alert('Copie impossible');
+      Alert.alert('Partage impossible');
     }
   };
 
   const stats = q.data?.analytics.days_30;
+  const savedTagline = (q.data?.qr.marketing_tagline ?? '').trim();
+  const taglineChanged = tagline.trim() !== savedTagline;
   const scrollConfig = useStackScrollConfig(styles.scroll);
+  const contentTopInset = useStackContentTopInset();
+
+  if (q.isError && !q.data) {
+    return (
+      <StackChromeScreen>
+        <View style={[styles.errorWrap, { paddingTop: contentTopInset }]}>
+          <ErrorState error={q.error} onRetry={() => void q.refetch()} />
+        </View>
+      </StackChromeScreen>
+    );
+  }
 
   return (
     <StackChromeScreen>
@@ -126,7 +140,7 @@ export function QrCodeScreen() {
           <View style={styles.statsRow}>
             <View style={[styles.statCard, elevation.xs]}>
               <AppText style={styles.statValue}>{stats.scans}</AppText>
-              <AppText style={styles.statLabel}>Flashes</AppText>
+              <AppText style={styles.statLabel}>Scans</AppText>
               <AppText style={styles.statSub}>30 jours</AppText>
             </View>
             <View style={[styles.statCard, elevation.xs]}>
@@ -156,10 +170,19 @@ export function QrCodeScreen() {
             maxLength={120}
           />
           <AppText style={styles.counter}>{tagline.length}/120</AppText>
-          <Button title="Enregistrer" onPress={() => void saveTagline()} loading={saving} fullWidth />
+          <Button
+            title="Enregistrer"
+            onPress={() => void saveTagline()}
+            loading={saving}
+            disabled={!taglineChanged}
+            fullWidth
+          />
         </ProfileSection>
 
-        <ProfileSection title="Partager" description="Téléchargez ou diffusez votre QR code.">
+        <ProfileSection
+          title="Partager"
+          description="Envoyez votre affiche, le QR code seul ou le lien, ou enregistrez-les depuis le menu de partage."
+        >
           <View style={styles.actions}>
             <Button
               title="Partager l'affiche"
@@ -169,18 +192,18 @@ export function QrCodeScreen() {
               onPress={() => void sharePoster()}
             />
             <Button
-              title="QR seul"
+              title="Partager le QR code seul"
               variant="outline"
               fullWidth
-              leftIcon={<Download size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
+              leftIcon={<QrCode size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
               onPress={() => void downloadRaw()}
             />
             <Button
-              title="Copier le lien"
+              title="Partager le lien"
               variant="ghost"
               fullWidth
               leftIcon={<Link2 size={iconSize.mdSm} color={c.primary} strokeWidth={2} />}
-              onPress={() => void copyLink()}
+              onPress={() => void shareLink()}
             />
           </View>
           {q.data?.qr.short_url ? (
@@ -199,6 +222,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       paddingTop: spacing[4],
       paddingBottom: spacing[12],
       gap: spacing[4],
+    },
+    errorWrap: {
+      flex: 1,
+      minWidth: 0,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
     },
     posterCard: {
       borderRadius: radius.xl,

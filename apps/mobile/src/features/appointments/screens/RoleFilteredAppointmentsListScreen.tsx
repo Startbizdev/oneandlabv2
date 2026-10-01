@@ -8,8 +8,13 @@ import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
 import { AppointmentsBookCta } from '@/features/appointments/components/AppointmentsBookCta';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import type { AppointmentListRow } from '@/utils/appointment-batch';
+import { AppointmentListSectionHeader } from '@/features/appointments/components/AppointmentListSectionHeader';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
+import {
+  appointmentListItemKey,
+  withAppointmentDaySections,
+  type AppointmentListItem,
+} from '@/utils/appointment-list-sections';
 import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
   flattenInfiniteAppointments,
@@ -32,7 +37,18 @@ import { spacing, useStyles, type Theme } from '@/theme';
 import type { Href } from 'expo-router';
 
 const PENDING = new Set(['pending', 'assigned', 'offered']);
-const ACTIVE = new Set(['confirmed', 'in_progress', 'on_the_way']);
+const ACTIVE = new Set(['confirmed', 'inprogress', 'in_progress', 'on_the_way']);
+
+/**
+ * Filtre statut côté API (`GET /appointments?status=a,b`) pour que la pagination ne ramène
+ * que des lignes utiles. « Terminés » mêle statut terminal et date passée : filtré côté client.
+ */
+const PRO_SERVER_STATUS: Record<ProStatusFilter, string | undefined> = {
+  all: 'pending,confirmed,inProgress,planned',
+  pending: 'pending',
+  active: 'confirmed,inProgress',
+  done: undefined,
+};
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -102,7 +118,10 @@ export function RoleFilteredAppointmentsListScreen({
 
   const listFilters = useMemo(() => {
     const base = { limit: APPOINTMENTS_LIST_PAGE_SIZE };
-    if (role !== 'preleveur') return base;
+    if (role !== 'preleveur') {
+      const serverStatus = PRO_SERVER_STATUS[status as ProStatusFilter];
+      return serverStatus ? { ...base, status: serverStatus } : base;
+    }
     const prel = { ...base, type: 'blood_test' as const };
     if (status !== 'pending') {
       return { ...prel, assigned_only: true as const };
@@ -133,8 +152,8 @@ export function RoleFilteredAppointmentsListScreen({
 
   const sortDirection = status === 'done' ? ('past' as const) : ('upcoming' as const);
 
-  const displayRows = useMemo(
-    () => buildAppointmentDisplayRows(filtered, { direction: sortDirection }),
+  const items = useMemo(
+    () => withAppointmentDaySections(buildAppointmentDisplayRows(filtered, { direction: sortDirection })),
     [filtered, sortDirection],
   );
 
@@ -157,16 +176,19 @@ export function RoleFilteredAppointmentsListScreen({
   const advancedCount = status !== 'all' ? 1 : 0;
 
   const renderItem = useCallback(
-    ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
-      <AppointmentListRowCard
-        row={row}
-        index={index}
-        role={role}
-        onPress={(apt) => {
-          router.push(`${detailPathPrefix}/${apt.id}` as never);
-        }}
-      />
-    ),
+    ({ item, index }: { item: AppointmentListItem; index: number }) =>
+      item.kind === 'section' ? (
+        <AppointmentListSectionHeader label={item.label} />
+      ) : (
+        <AppointmentListRowCard
+          row={item}
+          index={index}
+          role={role}
+          onPress={(apt) => {
+            router.push(`${detailPathPrefix}/${apt.id}` as never);
+          }}
+        />
+      ),
     [detailPathPrefix, role, router],
   );
 
@@ -199,27 +221,51 @@ export function RoleFilteredAppointmentsListScreen({
     );
   }, [advancedCount, bookHref, bookLabel, filterChips, onSearchQueryChange]);
 
+  const emptyState = search.trim() ? (
+    <EmptyState
+      title="Aucun résultat pour cette recherche"
+      description="Essayez un autre nom, soin ou adresse."
+    />
+  ) : status !== 'all' ? (
+    <EmptyState
+      imageSource={EMPTY_RDV_IMAGE}
+      imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+      imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+      title="Aucune visite avec ce filtre"
+      description="Retirez le filtre pour voir toutes vos visites."
+      actionLabel="Voir toutes les visites"
+      onAction={() => setStatus('all')}
+    />
+  ) : (
+    <EmptyState
+      imageSource={EMPTY_RDV_IMAGE}
+      imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+      imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+      title="Aucune visite à venir"
+      description={
+        bookHref != null
+          ? 'Créez un rendez-vous pour un patient : il apparaîtra ici.'
+          : 'Vos prochaines visites apparaîtront ici.'
+      }
+      {...(bookHref != null
+        ? { actionLabel: bookLabel ?? 'Nouveau rendez-vous', onAction: () => router.push(bookHref) }
+        : {})}
+    />
+  );
+
   return (
     <View style={styles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
-        items={displayRows}
+        items={items}
         renderItem={renderItem}
-        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        keyExtractor={appointmentListItemKey}
         ListHeaderComponent={ListHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         skeletonHeight={116}
-        ListEmptyComponent={
-          <EmptyState
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            title="Aucune visite pour le moment"
-            description="Modifiez les filtres pour élargir la liste."
-          />
-        }
+        ListEmptyComponent={emptyState}
       />
 
       <AppointmentsFilterSheet

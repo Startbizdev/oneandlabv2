@@ -812,6 +812,11 @@ export function useMultiAppointmentWizard(opts: {
       isPatientBooking
         ? nursingCatsQ.isLoading || bloodCatsQ.isLoading
         : patientsQ.isLoading || nursingCatsQ.isLoading || bloodCatsQ.isLoading,
+    categoriesError: nursingCatsQ.error ?? bloodCatsQ.error,
+    retryCategories: () => {
+      if (nursingCatsQ.isError) void nursingCatsQ.refetch();
+      if (bloodCatsQ.isError) void bloodCatsQ.refetch();
+    },
     ensureCategoryReady,
     saving: submitMut.isPending || submissionLocked,
     submit: useCallback(() => {

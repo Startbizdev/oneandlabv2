@@ -1,10 +1,14 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/providers/ToastProvider';
 import { elevation, radius, spacing, iconSize, useLayoutMetrics, AppText, useStyles, font, type Theme } from '@/theme';
+
+/** Adresse publiée sur la page Contact du site et utilisée par le support in-app. */
+const SUPPORT_EMAIL = 'contact@cary.bio';
 
 export function RegisterMerciScreen() {
   const c = useAppColors();
@@ -12,6 +16,13 @@ export function RegisterMerciScreen() {
   const styles = useStyles(buildStyles);
   const { type } = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
+  const { show: toast } = useToast();
+
+  function openSupportMail() {
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {
+      toast('Messagerie indisponible', { message: `Écrivez-nous à ${SUPPORT_EMAIL}.`, type: 'info' });
+    });
+  }
 
   const roleLabel =
     type === 'nurse' ? 'd’infirmier' : type === 'pro' ? 'professionnel' : 'professionnel';
@@ -38,13 +49,16 @@ export function RegisterMerciScreen() {
         </AppText>
         <View style={styles.actions}>
           <Button title="Retour à l'accueil" fullWidth size="lg" onPress={() => router.replace('/(auth)/welcome')} />
-          <Button
-            title="Se connecter"
-            variant="outline"
-            fullWidth
-            size="lg"
-            onPress={() => router.replace('/(auth)/welcome')}
-          />
+          <Pressable
+            onPress={openSupportMail}
+            accessibilityRole="link"
+            accessibilityHint="Ouvre votre messagerie"
+            style={styles.supportLink}
+          >
+            <AppText style={styles.supportText}>
+              Une question ? <AppText style={styles.supportAccent}>{SUPPORT_EMAIL}</AppText>
+            </AppText>
+          </Pressable>
         </View>
       </View>
     </ScrollView>
@@ -111,8 +125,16 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   actions: {
     width: '100%' as const,
-    gap: spacing[3],
+    gap: spacing[2],
     marginTop: spacing[2],
   },
+  supportLink: { minHeight: 44, alignItems: 'center' as const, justifyContent: 'center' as const },
+  supportText: {
+    ...font.regular,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
+    textAlign: 'center' as const,
+  },
+  supportAccent: { ...font.semiBold, color: c.primary },
 };
 }

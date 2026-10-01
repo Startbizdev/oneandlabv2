@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { PatientDetailHubCard } from '@/features/appointments/detail/components/patient/PatientDetailHubCard';
 import { DetailActionList } from '@/features/appointments/detail/components/layout/DetailActionList';
@@ -116,9 +117,12 @@ export function PatientRelativeDetailScreen() {
 
   if (q.isError || (!q.isLoading && !q.data)) {
     return <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
-      <View style={styles.scroll}>
-        <AppText accessibilityRole="alert">Impossible de charger ce proche.</AppText>
-        <Button title="Réessayer" variant="outline" loading={q.isFetching} onPress={() => { void q.refetch(); }} />
+      <View style={styles.errorWrap}>
+        <ErrorState
+          error={q.error}
+          title="Impossible de charger ce proche"
+          onRetry={() => void q.refetch()}
+        />
       </View>
     </StackChromeScreen>;
   }
@@ -168,10 +172,15 @@ export function PatientRelativeDetailScreen() {
 
         <Button title="Réserver pour ce proche" onPress={book} fullWidth size="lg" />
 
-        {docsQ.isError ? <View style={styles.hero}>
-          <AppText accessibilityRole="alert">Documents indisponibles.</AppText>
-          <Button title="Recharger les documents" variant="outline" loading={docsQ.isFetching} onPress={() => { void docsQ.refetch(); }} />
-        </View> : <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />}
+        {docsQ.isError && !docsQ.data ? (
+          <ErrorState
+            error={docsQ.error}
+            title="Documents indisponibles"
+            onRetry={() => void docsQ.refetch()}
+          />
+        ) : (
+          <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />
+        )}
 
         <DetailActionList actions={deleteActions} edgeToEdge={false} />
       </ScrollView>
@@ -190,6 +199,7 @@ export function PatientRelativeDetailScreen() {
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
   scroll: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[12] },
+  errorWrap: { flex: 1, justifyContent: 'center' as const, padding: spacing[4] },
   hero: { gap: spacing[1] },
   heroName: {
     ...font.headingExtraBold,

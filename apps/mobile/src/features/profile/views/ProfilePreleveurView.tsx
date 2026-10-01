@@ -2,17 +2,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
-import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Mail } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
@@ -21,12 +13,13 @@ import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
+import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function ProfilePreleveurView() {
   const c = useAppColors();
@@ -36,8 +29,6 @@ export function ProfilePreleveurView() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
   const [photosOpen, setPhotosOpen] = useState(false);
 
   const [firstName, setFirstName] = useState('');
@@ -51,9 +42,10 @@ export function ProfilePreleveurView() {
     enabled: !!user?.id,
   });
 
-  useProfileDraft(user?.id, q.data, { firstName, lastName, phone, profileUrl },
+  const { dirty } = useProfileDraft(user?.id, q.data, { firstName, lastName, phone, profileUrl },
     d => ({ firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', profileUrl: d.profile_image_url ?? null }),
     d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setProfileUrl(d.profileUrl); },
+    ['profileUrl'],
   );
 
   const savePhotos = useMutation({
@@ -84,7 +76,7 @@ export function ProfilePreleveurView() {
       }),
     onSuccess: async () => {
       await fetchMe();
-      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      await qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
       toast('Profil enregistré', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'updateUser'),
@@ -93,73 +85,65 @@ export function ProfilePreleveurView() {
   if (q.isLoading || !user?.id) {
     return <SkeletonProfileScreen cards={2} />;
   }
-  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
+  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} error={q.error} onRetry={() => void q.refetch()} />;
 
   return (
-    <StackChromeScreen>
-      <KeyboardScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-      >
-        <ProfileHero
-          firstName={firstName}
-          lastName={lastName}
-          email={user?.email}
-          role="preleveur"
-          gender={q.data?.gender}
-          profileImageUrl={profileUrl}
-          onEditPhotos={() => setPhotosOpen(true)}
-        />
+    <ProfileSubScreenLayout
+      saveTitle="Enregistrer mon profil"
+      onSave={() => save.mutate()}
+      saving={save.isPending}
+      dirty={dirty}
+      overlay={
+        <BottomSheet
+          visible={photosOpen}
+          onClose={() => setPhotosOpen(false)}
+          title="Photo"
+          subtitle="Votre photo de profil"
+          contentStyle={styles.sheetBody}
+        >
+          <ProfilePhotosSheetContent
+            profileImageUrl={profileUrl}
+            showCover={false}
+            saving={savePhotos.isPending}
+            onChangeProfile={onChangeProfilePhoto}
+          />
+        </BottomSheet>
+      }
+    >
+      <ProfileHero
+        firstName={firstName}
+        lastName={lastName}
+        email={user?.email}
+        role="preleveur"
+        gender={q.data?.gender}
+        profileImageUrl={profileUrl}
+        onEditPhotos={() => setPhotosOpen(true)}
+      />
 
-        <ProfileSection title="Informations" description="Compte préleveur Cary" Icon={FileText}>
-          <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-          <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-          <View>
-            <AppText style={styles.fieldLabel}>Email</AppText>
-            <Cluster
-              gap={spacing[2]}
-              leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
-              style={styles.emailRow}
-            >
-              <AppText style={styles.emailText}>{user?.email ?? '—'}</AppText>
-            </Cluster>
-            <AppText style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
-          </View>
-          <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-        </ProfileSection>
+      <ProfileSection title="Informations" description="Compte préleveur Cary" Icon={FileText}>
+        <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
+        <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
+        <View>
+          <AppText style={styles.fieldLabel}>Email</AppText>
+          <Cluster
+            gap={spacing[2]}
+            leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+            style={styles.emailRow}
+          >
+            <AppText style={styles.emailText}>{user?.email ?? '—'}</AppText>
+          </Cluster>
+          <AppText style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
+        </View>
+        <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+      </ProfileSection>
 
-        <ProfileSecurityLinkRow />
-
-        <Button
-          title="Enregistrer mon profil"
-          loading={save.isPending}
-          onPress={() => save.mutate()}
-          fullWidth
-          size="lg"
-        />
-      </KeyboardScrollView>
-
-      <BottomSheet
-        visible={photosOpen}
-        onClose={() => setPhotosOpen(false)}
-        title="Photo"
-        subtitle="Votre photo de profil"
-        contentStyle={styles.sheetBody}
-      >
-        <ProfilePhotosSheetContent
-          profileImageUrl={profileUrl}
-          showCover={false}
-          saving={savePhotos.isPending}
-          onChangeProfile={onChangeProfilePhoto}
-        />
-      </BottomSheet>
-    </StackChromeScreen>
+      <ProfileSecurityLinkRow />
+    </ProfileSubScreenLayout>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  scroll: { padding: spacing[4], gap: spacing[4], paddingBottom: spacing[12] },
   sheetBody: {
     paddingTop: spacing[2],
     paddingBottom: spacing[6],
@@ -178,7 +162,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   emailRow: {
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,

@@ -1,48 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Location from 'expo-location';
 import dayjs from 'dayjs';
 import {
-  computeTourSummaryFromStops,
-  resolveTourNextStopId,
-} from '@oneandlab/shared-utils';
-import {
-  fetchNurseTour,
   fetchNurseTourSummary,
   optimizeNurseTour,
   patchNurseTourOrder,
   resetNurseTourOrder,
   rescheduleNurseTourStop,
-  updateNurseTourStopStatus,
   type NurseTourPayload,
   type TourSortMode,
-  type TourVisitStatus,
 } from '../api/nurse-tour.service';
+import {
+  NURSE_TOUR_STALE_MS,
+  findNextTourStop,
+  nurseTourQueryKey,
+  nurseTourQueryOptions,
+  withDerivedSummary,
+} from './nurse-tour-query';
+import { useTourOrigin } from './use-tour-origin';
 
-const STALE_MS = 60_000;
 const FORWARD_SUMMARY_DAYS = 21;
-
-function tourQueryKey(date: string, coords: { lat: number; lng: number } | null) {
-  return ['nurse-tour', date, coords?.lat ?? null, coords?.lng ?? null] as const;
-}
-
-function withDerivedSummary(tour: NurseTourPayload): NurseTourPayload {
-  const summary = computeTourSummaryFromStops(tour.stops, tour.summary.estimated_km);
-  return {
-    ...tour,
-    summary,
-    next_stop_id: resolveTourNextStopId(tour.stops),
-  };
-}
 
 export function useNurseTour(date: string) {
   const qc = useQueryClient();
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const { getOrigin, refreshOrigin } = useTourOrigin();
 
   const tourQuery = useQuery({
-    queryKey: tourQueryKey(date, coords),
-    queryFn: () => fetchNurseTour(date, coords ?? undefined),
-    staleTime: STALE_MS,
+    ...nurseTourQueryOptions(date, getOrigin),
     select: withDerivedSummary,
   });
 
@@ -51,7 +35,7 @@ export function useNurseTour(date: string) {
   const summaryQuery = useQuery({
     queryKey: ['nurse-tour-summary', summaryFrom, summaryTo],
     queryFn: () => fetchNurseTourSummary(summaryFrom, summaryTo),
-    staleTime: STALE_MS,
+    staleTime: NURSE_TOUR_STALE_MS,
   });
 
   const tour = tourQuery.data;
@@ -59,30 +43,15 @@ export function useNurseTour(date: string) {
   useEffect(() => {
     const adjacent = [dayjs(date).subtract(1, 'day'), dayjs(date).add(1, 'day')];
     for (const d of adjacent) {
-      void qc.prefetchQuery({
-        queryKey: tourQueryKey(d.format('YYYY-MM-DD'), coords),
-        queryFn: () => fetchNurseTour(d.format('YYYY-MM-DD'), coords ?? undefined),
-        staleTime: STALE_MS,
-      });
+      void qc.prefetchQuery(nurseTourQueryOptions(d.format('YYYY-MM-DD'), getOrigin));
     }
-  }, [coords, date, qc]);
-
-  const refreshCoords = useCallback(async () => {
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== 'granted') return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    } catch {
-      /* GPS optionnel */
-    }
-  }, []);
+  }, [date, getOrigin, qc]);
 
   const applyTour = useCallback(
     (data: NurseTourPayload) => {
-      qc.setQueryData(tourQueryKey(date, coords), data);
+      qc.setQueryData(nurseTourQueryKey(date), data);
     },
-    [coords, date, qc],
+    [date, qc],
   );
 
   const moveStop = useCallback(
@@ -104,48 +73,16 @@ export function useNurseTour(date: string) {
 
   const optimize = useCallback(
     async (mode: TourSortMode, force = false) => {
-      const updated = await optimizeNurseTour(date, mode, force, coords ?? undefined);
+      const updated = await optimizeNurseTour(date, mode, force, getOrigin() ?? undefined);
       applyTour(updated);
     },
-    [applyTour, coords, date],
+    [applyTour, date, getOrigin],
   );
 
   const resetOrder = useCallback(async () => {
-    const updated = await resetNurseTourOrder(date, coords ?? undefined);
+    const updated = await resetNurseTourOrder(date, getOrigin() ?? undefined);
     applyTour(updated);
-  }, [applyTour, coords, date]);
-
-  const setStatus = useCallback(
-    async (stopId: string, status: TourVisitStatus) => {
-      const key = tourQueryKey(date, coords);
-      const current = qc.getQueryData<NurseTourPayload>(key) ?? tour;
-      if (!current) return;
-
-      const visitedAt =
-        status === 'done' || status === 'on_site' ? new Date().toISOString() : null;
-      const optimisticStops = current.stops.map((s) => {
-        if (s.stop_id !== stopId) return s;
-        const nextStatus =
-          status === 'todo' && s.status === 'completed' ? ('confirmed' as const) : s.status;
-        return {
-          ...s,
-          visit_status: status,
-          visited_at: visitedAt,
-          status: nextStatus,
-        };
-      });
-      applyTour({ ...current, stops: optimisticStops });
-
-      try {
-        const updated = await updateNurseTourStopStatus(stopId, status);
-        applyTour(updated);
-      } catch (error) {
-        applyTour(current);
-        throw error;
-      }
-    },
-    [applyTour, coords, date, qc, tour],
-  );
+  }, [applyTour, date, getOrigin]);
 
   const reschedule = useCallback(
     async (stopId: string, payload: { scheduled_at: string; availability: string }) => {
@@ -155,25 +92,22 @@ export function useNurseTour(date: string) {
     [applyTour],
   );
 
-  const nextStop = useMemo(() => {
-    if (!tour?.next_stop_id) return null;
-    return tour.stops.find((s) => s.stop_id === tour.next_stop_id) ?? null;
-  }, [tour]);
+  const nextStop = useMemo(() => findNextTourStop(tour), [tour]);
 
-  const dayCounts = summaryQuery.data ?? {};
+  const dayCounts = useMemo(() => summaryQuery.data ?? {}, [summaryQuery.data]);
 
   return {
     tour,
     isLoading: tourQuery.isLoading,
     isFetching: tourQuery.isFetching,
+    isError: tourQuery.isError,
+    error: tourQuery.error,
     refetch: tourQuery.refetch,
     dayCounts,
-    coords,
-    refreshCoords,
+    refreshOrigin,
     moveStop,
     optimize,
     resetOrder,
-    setStatus,
     reschedule,
     nextStop,
   };

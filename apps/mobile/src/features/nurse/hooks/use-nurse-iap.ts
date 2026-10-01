@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ErrorCode,
   getAvailablePurchases,
   useIAP,
   type Purchase,
@@ -18,6 +17,7 @@ import {
   buildSubscriptionPurchaseRequest,
 } from '@/features/nurse/lib/iap-purchase';
 import { loadStoreProductFromStore, requestSubscriptionPurchase } from '@/features/nurse/lib/iap-store';
+import { iapErrorCode, iapErrorMessage } from '@/features/nurse/utils/iap-error-message';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
@@ -60,6 +60,16 @@ export function useNurseIap() {
   const [storeLoading, setStoreLoading] = useState(false);
   const finishRef = useRef<((purchase: Purchase) => Promise<void>) | null>(null);
 
+  const reportPurchaseError = useCallback(
+    (context: string, error: unknown) => {
+      const message = iapErrorMessage(error);
+      if (message === null) return;
+      console.warn(`[iap] ${context}`, iapErrorCode(error), error);
+      toast(message, { type: 'error' });
+    },
+    [toast],
+  );
+
   const subscriptionQ = useQuery({
     queryKey: queryKeys.iap.subscription,
     queryFn: async () => {
@@ -92,14 +102,7 @@ export function useNurseIap() {
     },
     onPurchaseError: (error) => {
       setPurchaseLoading(false);
-      if (error.code === ErrorCode.UserCancelled) {
-        return;
-      }
-      let message = error.message || 'Achat impossible';
-      if (error.code === ErrorCode.EmptySkuList) {
-        message = 'Cette offre est temporairement indisponible dans la boutique. Réessayez plus tard.';
-      }
-      toast(message, { type: 'error' });
+      reportPurchaseError('purchase-listener', error);
     },
   });
 
@@ -115,11 +118,11 @@ export function useNurseIap() {
     try {
       await fetchProducts({ skus: [NURSE_IAP_PRODUCT_ID], type: 'subs' });
     } catch (error) {
-      handleApiError(error, toast, 'iap-products');
+      reportPurchaseError('products', error);
     } finally {
       setStoreLoading(false);
     }
-  }, [connected, fetchProducts, toast]);
+  }, [connected, fetchProducts, reportPurchaseError]);
 
   useEffect(() => {
     if (!connected) {
@@ -158,7 +161,7 @@ export function useNurseIap() {
       try {
         product = await loadStoreProductFromStore(NURSE_IAP_PRODUCT_ID);
       } catch (error) {
-        handleApiError(error, toast, 'iap-products');
+        reportPurchaseError('products', error);
         return;
       } finally {
         setStoreLoading(false);
@@ -188,19 +191,12 @@ export function useNurseIap() {
       await requestSubscriptionPurchase(purchaseRequest.request);
     } catch (error) {
       setPurchaseLoading(false);
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error as { code: string }).code === ErrorCode.UserCancelled
-      ) {
-        return;
-      }
-      handleApiError(error, toast, 'iap-purchase');
+      reportPurchaseError('purchase-request', error);
     }
   }, [
     connected,
     purchaseLoading,
+    reportPurchaseError,
     restoreLoading,
     storeProduct,
     subscriptionQ.data,
@@ -242,11 +238,11 @@ export function useNurseIap() {
         { type: verified ? 'success' : 'info' },
       );
     } catch (error) {
-      handleApiError(error, toast, 'iap-restore');
+      reportPurchaseError('restore', error);
     } finally {
       setRestoreLoading(false);
     }
-  }, [connected, finishTransaction, qc, restorePurchases, toast, restoreLoading, purchaseLoading]);
+  }, [connected, finishTransaction, qc, reportPurchaseError, restorePurchases, toast, restoreLoading, purchaseLoading]);
 
   return {
     connected,

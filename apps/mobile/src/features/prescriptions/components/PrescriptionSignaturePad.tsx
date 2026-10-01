@@ -88,8 +88,8 @@ export const PrescriptionSignaturePad = forwardRef<PrescriptionSignaturePadHandl
           if (data.type === 'empty') {
             onExport?.(null);
           }
-        } catch {
-          /* ignore */
+        } catch (error) {
+          console.warn('[signature-pad] message WebView illisible', error);
         }
       },
       [onExport, onReady, tryLoadInitial],

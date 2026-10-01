@@ -55,7 +55,8 @@ export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Pr
         }}
         style={({ pressed }) => [styles.card, pressed && styles.cardPressed, elevation.sm]}
         accessibilityRole="button"
-        accessibilityLabel={`Profil de ${name}`}
+        accessibilityLabel={subtitle ? `${name}, ${roleLabel}, ${subtitle}` : `${name}, ${roleLabel}`}
+        accessibilityHint="Ouvre votre profil"
       >
         <LinearGradient
           colors={[c.primaryLight, c.surface]}

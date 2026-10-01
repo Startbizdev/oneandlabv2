@@ -13,13 +13,14 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, MessageCircle, Send, WifiOff } from 'lucide-react-native';
+import { FileText, MessageCircle, Send } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { Button } from '@/components/ui/Button';
 import { ActionRowCard } from '@/components/ui/ActionRowCard';
 import { pharmacyOrderPrescriptionsPath } from '../utils/prescriptions-route';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { Row } from '@/components/layout/primitives';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -159,7 +160,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   });
 
   const order = orderQ.data;
-  const messages = messagesQ.data?.messages ?? [];
+  const messages = useMemo(() => messagesQ.data?.messages ?? [], [messagesQ.data]);
   const canPost = Boolean(messagesQ.data?.can_post);
   const isReceiver = mode === 'received';
 
@@ -309,16 +310,14 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     );
   }
 
-  if (orderQ.isError || !order) {
+  if (!order) {
     return (
       <StackChromeScreen>
         <View style={{ paddingTop: contentTopInset, flex: 1 }}>
-          <EmptyState
-            Icon={WifiOff}
-            title="Commande introuvable"
-            description={orderQ.error instanceof Error ? orderQ.error.message : 'Réessayez plus tard.'}
-            actionLabel="Réessayer"
-            onAction={() => void orderQ.refetch()}
+          <ErrorState
+            title="Commande indisponible"
+            error={orderQ.error}
+            onRetry={() => void orderQ.refetch()}
           />
         </View>
       </StackChromeScreen>
@@ -456,7 +455,13 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
           </Card>
 
           <AppText style={styles.chatTitle}>Échanges</AppText>
-          {!messages.length ? (
+          {messagesQ.isError && !messagesQ.data ? (
+            <ErrorState
+              title="Échanges indisponibles"
+              error={messagesQ.error}
+              onRetry={() => void messagesQ.refetch()}
+            />
+          ) : !messages.length ? (
             <EmptyState
               Icon={MessageCircle}
               title="Pas encore de message"

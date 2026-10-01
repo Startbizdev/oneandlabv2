@@ -120,6 +120,13 @@ export function useAppointmentDetailScreen(
   }, [docQueries]);
 
   const docsLoading = docQueries.some((q) => q.isLoading);
+  /** Échec sans cache : la liste serait incomplète, on l'annonce plutôt que d'afficher « aucun document ». */
+  const docsError = docQueries.find((q) => q.isError && q.data === undefined)?.error ?? null;
+  const retryDocs = useCallback(() => {
+    docQueries.forEach((q) => {
+      if (q.isError) void q.refetch();
+    });
+  }, [docQueries]);
   const canceled = primary ? isAppointmentCanceled(primary.status) : false;
 
   const cancellableForPatient = useMemo(
@@ -248,13 +255,17 @@ export function useAppointmentDetailScreen(
     allDocuments,
     listDocuments,
     docsLoading,
+    docsError,
+    retryDocs,
     shareQ,
     isLoading:
       detailQ.isPending && detailQ.data === undefined && !detailQ.isError && !detailBlock,
     detailBlock,
     /** @deprecated Utiliser detailBlock === APPOINTMENT_ALREADY_ACCEPTED */
     alreadyAccepted: detailBlock === APPOINTMENT_ALREADY_ACCEPTED,
-    detailError: detailBlock ? null : detailQ.error,
+    /** Premier chargement en échec (un échec de rafraîchissement garde la fiche en cache). */
+    detailError: detailBlock || apt ? null : detailQ.error,
+    retryDetail: detailQ.refetch,
     detailFetching: detailQ.isFetching,
     siblingsLoading,
     isRefreshing,

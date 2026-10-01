@@ -1,6 +1,6 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
-import { roleRoutePrefix } from '@/navigation/role-route-prefix';
+import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
 
 /**
@@ -21,7 +21,7 @@ export function StackGlassBackButton() {
       router.back();
       return;
     }
-    router.replace(`${roleRoutePrefix(role)}/(tabs)` as never);
+    router.replace(role ? getRoleHome(role) : '/');
   };
 
   return <StackHeaderBackButton onPress={handleBack} />;

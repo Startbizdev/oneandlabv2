@@ -127,6 +127,8 @@ export function usePatientEditSchedule(appointmentId: string) {
   return {
     apt,
     loading: detailQ.isPending,
+    loadError: detailQ.data ? null : detailQ.error,
+    retryLoad: detailQ.refetch,
     scheduledAt,
     setScheduledAt,
     availabilityType,

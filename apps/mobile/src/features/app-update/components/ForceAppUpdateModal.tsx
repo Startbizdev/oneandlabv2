@@ -6,37 +6,28 @@ import { getAppMeta } from '@/features/help/utils/app-meta';
 import { openAppStoreUrl } from '../utils/app-update-policy';
 
 type Props = {
-  visible: boolean;
   message: string;
   storeUrl: string;
-  force: boolean;
-  onDismiss?: () => void;
+  latestVersion: string;
 };
 
-export function ForceAppUpdateModal({ visible, message, storeUrl, force, onDismiss }: Props) {
+/** Mise à jour obligatoire : bloque l'app tant que la version installée est trop ancienne. */
+export function ForceAppUpdateModal({ message, storeUrl, latestVersion }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const { appVersion } = getAppMeta();
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={force ? () => {} : onDismiss}
-    >
+    <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
       <View style={styles.backdrop}>
         <View style={[styles.card, elevation.lg, { backgroundColor: c.surface }]}>
-          <AppText style={[styles.title, { color: c.textPrimary }]}>
-            {force ? 'Mise à jour requise' : 'Mise à jour disponible'}
-          </AppText>
+          <AppText style={[styles.title, { color: c.textPrimary }]}>Mise à jour requise</AppText>
           <AppText style={[styles.sub, { color: c.textSecondary }]}>{message}</AppText>
-          <AppText style={[styles.meta, { color: c.textSecondary }]}>Version installée : {appVersion}</AppText>
+          <AppText style={[styles.meta, { color: c.textSecondary }]}>
+            Version installée : {appVersion} · Nouvelle version : {latestVersion}
+          </AppText>
           <View style={styles.actions}>
             <Button title="Mettre à jour" onPress={() => void openAppStoreUrl(storeUrl)} fullWidth />
-            {!force && onDismiss ? (
-              <Button title="Plus tard" variant="outline" onPress={onDismiss} fullWidth />
-            ) : null}
           </View>
         </View>
       </View>

@@ -5,19 +5,19 @@ import Animated from 'react-native-reanimated';
 import { MessageCircle } from 'lucide-react-native';
 import { ActionRowCard } from '@/components/ui/ActionRowCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { elevation, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import { HealthActivityHero } from '../components/HealthActivityHero';
 import { HealthConnectOnboarding } from '../components/HealthConnectOnboarding';
 import { HealthInsightCards } from '../components/HealthInsightCards';
 import { HealthMetricChart } from '../components/HealthMetricChart';
 import { HealthSyncStatusCard } from '../components/HealthSyncStatusCard';
-import { useHealthAutoConnect } from '../hooks/use-health-auto-connect';
 import { pickMetricSeries } from '../hooks/use-health-dashboard';
 import { useHealthSourceConnection } from '../hooks/use-health-source-connection';
 import {
@@ -52,15 +52,6 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
     revokeConnection,
     refetchAll,
   } = connection;
-
-  const sourcesReady = !sourcesQ.isLoading || sourcesQ.data !== undefined;
-  const { phase: autoPhase } = useHealthAutoConnect({
-    enabled: variant === 'stack',
-    connected,
-    sourcesReady,
-    syncing,
-    onConnect: connectOrSync,
-  });
 
   const { refreshing, onRefresh } = useManualRefresh(async () => {
     await refetchAll();
@@ -99,12 +90,19 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
     return variant === 'stack' ? <StackChromeScreen>{loading}</StackChromeScreen> : loading;
   }
 
+  const sourcesFailed = sourcesQ.isError && !sourcesQ.data;
+
   const body = (
     <>
-      {!connected ? (
+      {sourcesFailed ? (
+        <ErrorState
+          title="Données santé indisponibles"
+          error={sourcesQ.error}
+          onRetry={() => void sourcesQ.refetch()}
+        />
+      ) : !connected ? (
         <HealthConnectOnboarding
           syncing={syncing}
-          autoPrompting={autoPhase === 'prompting' || syncing}
           onConnect={() => void connectOrSync()}
         />
       ) : (
@@ -157,8 +155,15 @@ export function HealthDataScreen({ variant = 'stack' }: Props) {
       {hasData && !dashboardQ.isError ? (
         <>
           <View style={[styles.chartCard, elevation.xs]}>
-            <AppText style={styles.sectionTitle}>Historique · 30 jours</AppText>
-            <HealthMetricChart title="Pas" unit="/j" points={steps} formatValue={(v) => String(Math.round(v))} />
+            <AppText style={styles.sectionTitle} accessibilityRole="header">
+              Historique · 30 derniers jours
+            </AppText>
+            <HealthMetricChart
+              title="Pas"
+              unit="pas/j"
+              points={steps}
+              formatValue={(v) => Math.round(v).toLocaleString('fr-FR')}
+            />
             <HealthMetricChart title="Fréquence cardiaque" unit="bpm" points={heart} />
             <HealthMetricChart title="Poids" unit="kg" points={weight} isLast />
           </View>
@@ -231,14 +236,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     chartCard: {
       backgroundColor: c.surface,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: c.borderLight,
       overflow: 'hidden' as const,
     },
     noDataHint: {
       backgroundColor: c.surfaceAlt,
-      borderRadius: 16,
+      borderRadius: radius.lg,
       padding: spacing[4],
       gap: spacing[1.5],
     },

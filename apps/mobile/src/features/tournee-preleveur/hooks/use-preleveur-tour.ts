@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Location from 'expo-location';
 import dayjs from 'dayjs';
 import {
   computeTourSummaryFromStops,
+  isTourStopDone,
   resolveTourNextStopId,
 } from '@oneandlab/shared-utils';
+import { useTourOrigin } from '@/features/tournee-nurse/hooks/use-tour-origin';
 import {
   fetchPreleveurTour,
   fetchPreleveurTourSummary,
@@ -18,8 +19,9 @@ import {
 const STALE_MS = 60_000;
 const FORWARD_SUMMARY_DAYS = 21;
 
-function tourQueryKey(date: string, coords: { lat: number; lng: number } | null) {
-  return ['preleveur-tour', date, coords?.lat ?? null, coords?.lng ?? null] as const;
+/** Clé indexée sur la date seule : la position GPS ne sert qu'au calcul de l'ordre. */
+function tourQueryKey(date: string) {
+  return ['preleveur-tour', date] as const;
 }
 
 function withDerivedSummary(tour: PreleveurTourPayload): PreleveurTourPayload {
@@ -33,11 +35,11 @@ function withDerivedSummary(tour: PreleveurTourPayload): PreleveurTourPayload {
 
 export function usePreleveurTour(date: string) {
   const qc = useQueryClient();
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const { getOrigin, refreshOrigin } = useTourOrigin();
 
   const tourQuery = useQuery({
-    queryKey: tourQueryKey(date, coords),
-    queryFn: () => fetchPreleveurTour(date, coords ?? undefined),
+    queryKey: tourQueryKey(date),
+    queryFn: () => fetchPreleveurTour(date, getOrigin() ?? undefined),
     staleTime: STALE_MS,
     select: withDerivedSummary,
   });
@@ -52,26 +54,11 @@ export function usePreleveurTour(date: string) {
 
   const tour = tourQuery.data;
 
-  const refreshCoords = useCallback(async () => {
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== 'granted') return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    } catch {
-      /* GPS optionnel */
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshCoords();
-  }, [refreshCoords]);
-
   const applyTour = useCallback(
     (data: PreleveurTourPayload) => {
-      qc.setQueryData(tourQueryKey(date, coords), data);
+      qc.setQueryData(tourQueryKey(date), data);
     },
-    [coords, date, qc],
+    [date, qc],
   );
 
   const moveStop = useCallback(
@@ -86,17 +73,22 @@ export function usePreleveurTour(date: string) {
       if (swap < 0 || swap >= ids.length) return;
       [ids[idx], ids[swap]] = [ids[swap]!, ids[idx]!];
       const updated = await patchPreleveurTourOrder(date, ids);
-      applyTour(withDerivedSummary(updated));
+      applyTour(updated);
     },
     [applyTour, date, tour],
   );
 
   const optimize = useCallback(
     async (mode: TourSortMode, force = false) => {
-      const updated = await optimizePreleveurTour(date, mode, force, coords ?? undefined);
-      applyTour(withDerivedSummary(updated));
+      const updated = await optimizePreleveurTour(date, mode, force, getOrigin() ?? undefined);
+      applyTour(updated);
     },
-    [applyTour, coords, date],
+    [applyTour, date, getOrigin],
+  );
+
+  const nextStop = useMemo(
+    () => tour?.stops.find((stop) => !isTourStopDone(stop)) ?? null,
+    [tour],
   );
 
   const dayCounts = useMemo(() => summaryQuery.data ?? {}, [summaryQuery.data]);
@@ -105,10 +97,13 @@ export function usePreleveurTour(date: string) {
     tour,
     isLoading: tourQuery.isLoading,
     isFetching: tourQuery.isFetching,
+    isError: tourQuery.isError,
+    error: tourQuery.error,
     refetch: tourQuery.refetch,
     dayCounts,
-    refreshCoords,
+    refreshOrigin,
     moveStop,
     optimize,
+    nextStop,
   };
 }

@@ -1,5 +1,5 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Footprints, Heart, Scale, Sparkles } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
@@ -10,7 +10,7 @@ import { getHealthPlatformUiConfig } from '../utils/health-platform-config';
 
 interface Props {
   syncing?: boolean;
-  autoPrompting?: boolean;
+  /** Seul déclencheur de la demande d’autorisation système (jamais au montage). */
   onConnect: () => void;
 }
 
@@ -21,7 +21,7 @@ const VALUE_ITEMS = [
   { icon: Sparkles, label: 'Assistant Cary', desc: 'Conseils personnalisés' },
 ] as const;
 
-export function HealthConnectOnboarding({ syncing = false, autoPrompting = false, onConnect }: Props) {
+export function HealthConnectOnboarding({ syncing = false, onConnect }: Props) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
@@ -59,25 +59,18 @@ export function HealthConnectOnboarding({ syncing = false, autoPrompting = false
         ))}
       </Stack>
 
-      {autoPrompting ? (
-        <Row gap={spacing[2]} align="center" style={styles.promptingRow}>
-          <ActivityIndicator size="small" color={c.primary} />
-          <AppText style={styles.promptingText}>
-            Ouverture de {platform.name}…
-          </AppText>
-        </Row>
-      ) : (
-        <Button
-          title={platform.connectTitle}
-          size="lg"
-          fullWidth
-          loading={syncing}
-          onPress={onConnect}
-        />
-      )}
+      <Button
+        title={platform.connectTitle}
+        size="lg"
+        fullWidth
+        loading={syncing}
+        onPress={onConnect}
+        accessibilityHint={`Ouvre la demande d’autorisation ${platform.name}`}
+      />
 
       <AppText style={styles.privacy}>
-        Lecture seule — Cary n’écrit pas dans {Platform.OS === 'ios' ? 'Apple Santé' : 'Health Connect'} sans votre accord.
+        {platform.name} vous demandera votre accord. Cary lit uniquement vos pas, votre activité, votre fréquence
+        cardiaque et votre poids, et n’écrit rien dans {platform.name}.
       </AppText>
     </View>
   );
@@ -147,15 +140,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...font.regular,
       fontSize: fontSize.xs,
       color: c.textTertiary,
-    },
-    promptingRow: {
-      justifyContent: 'center' as const,
-      paddingVertical: spacing[2],
-    },
-    promptingText: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
     },
     privacy: {
       ...font.regular,

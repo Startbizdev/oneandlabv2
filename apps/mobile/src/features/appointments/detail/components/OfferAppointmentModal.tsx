@@ -7,13 +7,14 @@ import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, X } from 'lucide-react-native';
+import { Check, Clock, X } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
   acceptOfferBatch,
+  refuseOfferBatch,
   snoozeOfferBatch,
 } from '@/features/nurse/utils/offer-appointment-workflow';
 import { useAppointmentBatch } from '../hooks/use-appointment-batch';
@@ -24,6 +25,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useOfferQueueStore } from '../../store/offer-queue-store';
 import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointment } from '../../api/appointments.service';
+import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
 import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
@@ -57,9 +59,12 @@ export function OfferAppointmentModal({
   const presentNonce = useOfferQueueStore((s) => s.presentNonce);
   const shareToken = useOfferQueueStore((s) => s.shareToken);
   const closeModal = useOfferQueueStore((s) => s.closeModal);
-  const processNext = useOfferQueueStore((s) => s.processNext);
+  const termsAccepted = useOfferQueueStore((s) => s.termsAccepted);
+  const setTermsAccepted = useOfferQueueStore((s) => s.setTermsAccepted);
 
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTerms, setShowTerms] = useState(!termsAccepted);
+  const [confirmRefuse, setConfirmRefuse] = useState(false);
+  const [refusing, setRefusing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [prepComplete, setPrepComplete] = useState(false);
@@ -67,10 +72,14 @@ export function OfferAppointmentModal({
 
   useEffect(() => {
     if (!visible && !preparing) {
-      setTermsAccepted(false);
       setPrepComplete(false);
     }
   }, [visible, preparing]);
+
+  useEffect(() => {
+    setConfirmRefuse(false);
+    setShowTerms(!useOfferQueueStore.getState().termsAccepted);
+  }, [presentNonce]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
 
@@ -139,12 +148,22 @@ export function OfferAppointmentModal({
     }
   }, [closeModal, qc, user?.id, user?.role]);
 
-  const handleAccept = useCallback(async () => {
-    if (!row || !selected) return;
-    if (!termsAccepted) {
-      toast('Veuillez accepter la prise en charge avant de confirmer.', { type: 'error' });
+  const handleRefuse = useCallback(async () => {
+    if (!row) return;
+    setRefusing(true);
+    const r = await refuseOfferBatch(row, user?.id);
+    setRefusing(false);
+    if (!r.ok) {
+      toast(r.error, { type: 'error' });
       return;
     }
+    setConfirmRefuse(false);
+    toast(r.count > 1 ? `Offre refusée (${r.count} soins)` : 'Offre refusée', { type: 'info' });
+    await finishAndNext();
+  }, [finishAndNext, row, toast, user?.id]);
+
+  const handleAccept = useCallback(async () => {
+    if (!row || !selected || !termsAccepted) return;
 
     setLoading(true);
     setPreparing(true);
@@ -193,6 +212,7 @@ export function OfferAppointmentModal({
         qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
         qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
         qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
+        qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT }),
       ]);
     } catch {
       /* Navigation quand même — cache optimiste déjà à jour. */
@@ -238,24 +258,64 @@ export function OfferAppointmentModal({
     return null;
   }
 
-  const footer = (
+  const busy = loading || refusing;
+
+  const footer = confirmRefuse ? (
+    <View style={styles.footer}>
+      <AppText style={styles.refuseText}>
+        {batchCount > 1
+          ? 'Refuser ce lot ? Ces soins ne vous seront plus proposés.'
+          : 'Refuser cette offre ? Elle ne vous sera plus proposée.'}
+      </AppText>
+      <Button
+        title="Confirmer le refus"
+        variant="destructive"
+        size="lg"
+        fullWidth
+        loading={refusing}
+        onPress={() => void handleRefuse()}
+      />
+      <Button
+        title="Retour"
+        variant="ghost"
+        fullWidth
+        disabled={refusing}
+        onPress={() => setConfirmRefuse(false)}
+      />
+    </View>
+  ) : (
     <View style={styles.footer}>
       <Button
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
         loading={loading}
-        leftIcon={<Check size={iconSize.sm} color={c.textInverse} strokeWidth={2.5} />}
+        disabled={!termsAccepted || refusing}
+        leftIcon={<Check size={iconSize.sm} color={c.onPrimary} strokeWidth={2.5} />}
         onPress={() => void handleAccept()}
         fullWidth
         size="lg"
       />
-      <Button
-        title="Plus tard"
-        variant="outline"
-        loading={loading}
-        leftIcon={<X size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />}
-        onPress={() => void deferOffer()}
-        fullWidth
-      />
+      <Row gap={spacing[2]}>
+        <View style={styles.footerSlot}>
+          <Button
+            title="Plus tard"
+            variant="outline"
+            disabled={busy}
+            leftIcon={<Clock size={iconSize.sm} color={c.textLink} strokeWidth={2} />}
+            onPress={() => void deferOffer()}
+            fullWidth
+          />
+        </View>
+        <View style={styles.footerSlot}>
+          <Button
+            title="Refuser"
+            variant="dangerOutline"
+            disabled={busy}
+            leftIcon={<X size={iconSize.sm} color={c.error} strokeWidth={2} />}
+            onPress={() => setConfirmRefuse(true)}
+            fullWidth
+          />
+        </View>
+      </Row>
     </View>
   );
 
@@ -269,7 +329,7 @@ export function OfferAppointmentModal({
           title="Nouveau rendez-vous"
           subtitle={subtitle}
         >
-          {lotLabel && !isMultiBatch ? (
+          {lotLabel ? (
             <View style={styles.lotPill}>
               <AppText style={styles.lotPillText}>{lotLabel}</AppText>
             </View>
@@ -281,12 +341,19 @@ export function OfferAppointmentModal({
           ) : (
             <OfferAppointmentPreviewBody primary={selected!} batch={batchSorted} />
           )}
-          <Row align="start" gap={spacing[3]} style={styles.termsRow}>
-            <ToggleSwitch value={termsAccepted} onValueChange={setTermsAccepted} />
-            <AppText style={styles.termsText}>
-              J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-            </AppText>
-          </Row>
+          {showTerms ? (
+            <Row align="start" gap={spacing[3]} style={styles.termsRow}>
+              <ToggleSwitch
+                value={termsAccepted}
+                onValueChange={setTermsAccepted}
+                accessibilityLabel="Accepter la prise en charge et la confidentialité du patient"
+              />
+              <AppText style={styles.termsText}>
+                J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
+                Cet engagement vaut pour toute la session.
+              </AppText>
+            </Row>
+          ) : null}
           {footer}
         </BottomSheet>
       ) : null}
@@ -331,6 +398,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     lineHeight: fontSize.sm * 1.45,
   },
   footer: { gap: spacing[2] },
+  footerSlot: { flex: 1, minWidth: 0 },
+  refuseText: {
+    ...font.medium,
+    fontSize: fontSize.sm,
+    color: c.textPrimary,
+    lineHeight: fontSize.sm * 1.45,
+  },
 };
 }
 

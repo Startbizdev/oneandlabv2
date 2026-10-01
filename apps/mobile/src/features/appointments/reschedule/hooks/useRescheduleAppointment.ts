@@ -136,6 +136,7 @@ export function useRescheduleAppointment(opts: {
     queryKey: queryKeys.appointments.detail(opts.appointmentId),
     queryFn: async () => {
       const res = await fetchAppointment(opts.appointmentId);
+      if (!res.success || !res.data) throw new Error(res.error ?? 'Rendez-vous introuvable');
       return res.data;
     },
     enabled: !!opts.appointmentId,
@@ -298,6 +299,8 @@ export function useRescheduleAppointment(opts: {
     appointment: apt,
     categories: categoriesQ.data ?? [],
     loading: appointmentQ.isLoading,
+    loadError: appointmentQ.data ? null : appointmentQ.error,
+    retryLoad: appointmentQ.refetch,
     saving: submitMut.isPending,
     submit: () => submitMut.mutate(),
     submitLabel,

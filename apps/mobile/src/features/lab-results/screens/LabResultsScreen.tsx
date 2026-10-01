@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
   EMPTY_RDV_IMAGE,
@@ -49,31 +50,13 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
     },
   });
 
-  const emptyCopy = useMemo(() => {
-    if (role === 'patient') {
-      return {
-        title: 'Pas encore de résultat',
-        description:
-          'Ils s’affichent ici dès que le laboratoire les partage.',
-      };
-    }
-    return {
-      title: 'Pas encore de résultat',
-      description: 'Ils s’affichent ici dès que le laboratoire les partage.',
-    };
-  }, [role]);
-
   const handleOpenDocument = useCallback(
     async (item: LabResultListItem) => {
       const id = item.medical_document_id ?? item.id;
       setOpeningId(id);
       const res = await openMedicalDocument(id, item.file_name ?? undefined);
       setOpeningId(null);
-      if (res.ok) {
-        toast('Document ouvert', { type: 'success' });
-      } else {
-        toast(res.error ?? 'Ouverture impossible', { type: 'error' });
-      }
+      if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
     },
     [toast],
   );
@@ -121,17 +104,25 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
           <View style={styles.loading}>
             <SkeletonList count={5} itemHeight={88} gap={10} />
           </View>
+        ) : resultsQ.isError && !resultsQ.data ? (
+          <View style={styles.empty}>
+            <ErrorState
+              title="Résultats indisponibles"
+              error={resultsQ.error}
+              onRetry={() => void resultsQ.refetch()}
+            />
+          </View>
         ) : items.length === 0 ? (
           <View style={styles.empty}>
             <EmptyState
               imageSource={EMPTY_RDV_IMAGE}
               imageWidth={EMPTY_RDV_IMAGE_WIDTH}
               imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title={isSearching ? 'Aucun résultat trouvé' : emptyCopy.title}
+              title={isSearching ? 'Aucun résultat trouvé' : 'Pas encore de résultat'}
               description={
                 isSearching
                   ? 'Essayez un autre mot-clé (patient, type d’analyse, fichier…).'
-                  : emptyCopy.description
+                  : 'Ils s’affichent ici dès que le laboratoire les partage.'
               }
             />
           </View>

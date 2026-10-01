@@ -6,11 +6,18 @@ import { ChevronRight, Route } from 'lucide-react-native';
 import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
-  stopCount?: number;
+  /** Passages restants aujourd'hui (non effectués, hors absents) ; absent tant que la tournée n'est pas chargée. */
+  remainingToday?: number;
 };
 
-/** Bandeau CTA « Ma tournée » sur la liste RDV acceptés. */
-export function NurseTourBanner({ stopCount }: Props) {
+function bannerSubtitle(remainingToday: number | undefined): string {
+  if (remainingToday === undefined) return 'Organiser vos passages du jour';
+  if (remainingToday === 0) return 'Aucun passage restant aujourd’hui';
+  return `${remainingToday} passage${remainingToday > 1 ? 's' : ''} restant${remainingToday > 1 ? 's' : ''} aujourd’hui`;
+}
+
+/** Bandeau d'accès à la tournée quand aucun prochain passage n'est à afficher. */
+export function NurseTourBanner({ remainingToday }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
@@ -27,11 +34,7 @@ export function NurseTourBanner({ stopCount }: Props) {
       </View>
       <View style={styles.body}>
         <AppText style={[styles.title, { color: c.textPrimary }]}>Ma tournée</AppText>
-        <AppText style={[styles.sub, { color: c.textSecondary }]}>
-          {typeof stopCount === 'number' && stopCount > 0
-            ? `${stopCount} passage${stopCount > 1 ? 's' : ''} · ordre intelligent`
-            : 'Organiser vos passages du jour'}
-        </AppText>
+        <AppText style={[styles.sub, { color: c.textSecondary }]}>{bannerSubtitle(remainingToday)}</AppText>
       </View>
       <ChevronRight size={iconSize.md} color={c.textTertiary} />
     </Pressable>
@@ -54,8 +57,7 @@ function buildStyles({ fontSize }: Theme) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    body: {
-    minWidth: 0, flex: 1, gap: spacing[0.5] },
+    body: { minWidth: 0, flex: 1, gap: spacing[0.5] },
     title: { ...font.bold, fontSize: fontSize.sm },
     sub: { ...font.regular, fontSize: fontSize.xs },
   };

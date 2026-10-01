@@ -12,6 +12,7 @@ import {
   stackHeaderTitleNode,
   useStackHeaderCatalogEntry,
 } from '@/navigation/stack-header-catalog';
+import { useStackChromeTabRoot } from '@/navigation/stack-chrome-tab-root';
 
 type Props = {
   children: ReactNode;
@@ -21,12 +22,14 @@ type Props = {
 };
 
 /**
- * Enveloppe stack — titre depuis props, catalogue route ou options dynamiques.
+ * Enveloppe stack — titre depuis props, onglet hôte (`StackChromeTabRoot`), catalogue route
+ * ou options dynamiques.
  */
 export function StackChromeScreen({ children, title, headerLeft, headerRight }: Props) {
   const c = useAppColors();
   const navigation = useNavigation();
   const catalogEntry = useStackHeaderCatalogEntry();
+  const tabRoot = useStackChromeTabRoot();
   const [dynamicOptions, setDynamicOptions] = useState<NativeStackNavigationOptions>({});
 
   useLayoutEffect(() => {
@@ -49,28 +52,35 @@ export function StackChromeScreen({ children, title, headerLeft, headerRight }: 
   const options = dynamicOptions;
   const tintColor = options.headerTintColor ?? c.primary;
   const sideProps = { tintColor, canGoBack: true, label: '' };
-  const catalogTitle = catalogEntry ? stackHeaderTitleNode(catalogEntry) : undefined;
+  const routeTitle = tabRoot
+    ? stackHeaderTitleNode({ title: tabRoot.title })
+    : catalogEntry
+      ? stackHeaderTitleNode(catalogEntry)
+      : undefined;
 
   const resolvedTitle = resolveStackHeaderTitle(
-    title ?? catalogTitle ?? options.headerTitle ?? options.title,
+    title ?? routeTitle ?? options.headerTitle ?? options.title,
     tintColor,
   );
 
   const resolvedLeft =
     headerLeft !== undefined
       ? headerLeft
-      : resolveStackHeaderSide(options.headerLeft, sideProps);
+      : tabRoot
+        ? null
+        : resolveStackHeaderSide(options.headerLeft, sideProps);
 
   const resolvedRight =
     headerRight !== undefined
       ? headerRight
-      : resolveStackHeaderSide(options.headerRight, sideProps);
+      : tabRoot?.headerRight ?? resolveStackHeaderSide(options.headerRight, sideProps);
 
   return (
     <StackScreenFrame
       title={resolvedTitle}
       headerLeft={resolvedLeft}
       headerRight={resolvedRight}
+      aboveTabBar={tabRoot != null}
     >
       {children}
     </StackScreenFrame>

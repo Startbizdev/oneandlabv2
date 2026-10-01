@@ -9,17 +9,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
-import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, ExternalLink, FileText, Globe, Mail, Share2 } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
@@ -31,6 +23,7 @@ import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSec
 import { ProfilePrescriptionSignatureSection } from '@/features/profile/components/ProfilePrescriptionSignatureSection';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
+import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { generateProPublicSlug } from '@/features/profile/utils/generate-public-slug';
 import {
@@ -41,7 +34,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function ProfileProView() {
   const c = useAppColors();
@@ -51,8 +44,6 @@ export function ProfileProView() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
   const qc = useQueryClient();
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
   const [photosOpen, setPhotosOpen] = useState(false);
 
   const [firstName, setFirstName] = useState('');
@@ -74,13 +65,14 @@ export function ProfileProView() {
     enabled: !!user?.id,
   });
 
-  useProfileDraft(user?.id, q.data,
+  const { dirty } = useProfileDraft(user?.id, q.data,
     { firstName, lastName, phone, rpps, emploi, biography, websiteUrl, socialFacebook, socialLinkedin, socialInstagram, profileUrl, coverUrl },
     d => {
       const social = parseProfileSocialLinks(d.social_links);
       return { firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', rpps: getProfessionalIdDisplay(d.rpps, d.adeli), emploi: d.emploi ?? '', biography: d.biography ?? '', websiteUrl: d.website_url ?? '', socialFacebook: social.facebook, socialLinkedin: social.linkedin, socialInstagram: social.instagram, profileUrl: d.profile_image_url ?? null, coverUrl: d.cover_image_url ?? null };
     },
     d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setRpps(d.rpps); setEmploi(d.emploi); setBiography(d.biography); setWebsiteUrl(d.websiteUrl); setSocialFacebook(d.socialFacebook); setSocialLinkedin(d.socialLinkedin); setSocialInstagram(d.socialInstagram); setProfileUrl(d.profileUrl); setCoverUrl(d.coverUrl); },
+    ['profileUrl', 'coverUrl'],
   );
 
   const savePhotos = useMutation({
@@ -141,7 +133,7 @@ export function ProfileProView() {
     },
     onSuccess: async () => {
       await fetchMe();
-      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      await qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
       toast('Profil enregistré', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'updateUser'),
@@ -164,14 +156,33 @@ export function ProfileProView() {
   if (q.isLoading || !user?.id) {
     return <SkeletonProfileScreen cards={2} />;
   }
-  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
+  if (q.isError || !q.data) return <ProfileLoadState refreshing={q.isFetching} error={q.error} onRetry={() => void q.refetch()} />;
 
   return (
-    <StackChromeScreen>
-      <KeyboardScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-      >
+    <ProfileSubScreenLayout
+      saveTitle="Enregistrer mon profil"
+      onSave={() => save.mutate()}
+      saving={save.isPending}
+      dirty={dirty}
+      overlay={
+        <BottomSheet
+          visible={photosOpen}
+          onClose={() => setPhotosOpen(false)}
+          title="Photos"
+          subtitle="Photo affichée sur votre compte"
+          contentStyle={styles.sheetBody}
+        >
+          <ProfilePhotosSheetContent
+            profileImageUrl={profileUrl}
+            coverImageUrl={coverUrl}
+            showCover
+            saving={savePhotos.isPending}
+            onChangeProfile={onChangeProfilePhoto}
+            onChangeCover={onChangeCoverPhoto}
+          />
+        </BottomSheet>
+      }
+    >
         <ProfileHero
           firstName={firstName}
           lastName={lastName}
@@ -312,33 +323,12 @@ export function ProfileProView() {
         ) : null}
 
         <ProfileSecurityLinkRow />
-
-        <Button title="Enregistrer mon profil" loading={save.isPending} onPress={() => save.mutate()} fullWidth size="lg" />
-      </KeyboardScrollView>
-
-      <BottomSheet
-        visible={photosOpen}
-        onClose={() => setPhotosOpen(false)}
-        title="Photos"
-        subtitle="Photo affichée sur votre compte"
-        contentStyle={styles.sheetBody}
-      >
-        <ProfilePhotosSheetContent
-          profileImageUrl={profileUrl}
-          coverImageUrl={coverUrl}
-          showCover
-          saving={savePhotos.isPending}
-          onChangeProfile={onChangeProfilePhoto}
-          onChangeCover={onChangeCoverPhoto}
-        />
-      </BottomSheet>
-    </StackChromeScreen>
+    </ProfileSubScreenLayout>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  scroll: { padding: spacing[4], gap: spacing[4], paddingBottom: spacing[12] },
   sheetBody: {
     paddingTop: spacing[2],
     paddingBottom: spacing[6],
@@ -357,7 +347,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   emailRow: {
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,

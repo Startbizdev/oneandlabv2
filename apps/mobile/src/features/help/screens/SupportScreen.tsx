@@ -1,10 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { UserCircle2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
 import { Textarea } from '@/components/ui/Textarea';
@@ -24,9 +23,22 @@ const ROLE_LABELS: Record<string, string> = {
   preleveur: 'Préleveur',
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldErrors = { name?: string; email?: string; message?: string };
+
 function displayName(first?: string, last?: string, email?: string) {
   const full = [first?.trim(), last?.trim()].filter(Boolean).join(' ');
   return full || email?.split('@')[0] || '';
+}
+
+function validate(name: string, email: string, message: string): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!name.trim()) errors.name = 'Indiquez votre nom.';
+  if (!email.trim()) errors.email = 'Indiquez l’e-mail où vous répondre.';
+  else if (!EMAIL_PATTERN.test(email.trim())) errors.email = 'Adresse e-mail invalide.';
+  if (!message.trim()) errors.message = 'Décrivez votre demande.';
+  return errors;
 }
 
 export function SupportScreen() {
@@ -44,6 +56,8 @@ export function SupportScreen() {
   const [email, setEmail] = useState(defaultEmail);
   const [contactType, setContactType] = useState('app_mobile');
   const [message, setMessage] = useState('');
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [metaOpen, setMetaOpen] = useState(false);
 
   const accountRows = useMemo(
     () => [
@@ -83,20 +97,13 @@ export function SupportScreen() {
   });
 
   const onSubmit = () => {
-    if (!name.trim()) {
-      toast('Nom requis', { type: 'error' });
-      return;
-    }
-    if (!email.trim()) {
-      toast('E-mail requis', { type: 'error' });
-      return;
-    }
-    if (!message.trim()) {
-      toast('Message requis', { type: 'error' });
-      return;
-    }
+    const next = validate(name, email, message);
+    setErrors(next);
+    if (next.name || next.email || next.message) return;
     send.mutate();
   };
+
+  const clearError = (field: keyof FieldErrors) => setErrors((e) => ({ ...e, [field]: undefined }));
 
   return (
     <>
@@ -111,47 +118,31 @@ export function SupportScreen() {
         saving={send.isPending}
       >
         <AppText style={styles.lead}>
-          Décrivez votre demande. Les informations de votre compte Cary ci-dessous seront transmises
-          à notre équipe pour un traitement plus rapide.
+          Décrivez votre demande, notre équipe vous répond par e-mail.
         </AppText>
 
-        <View style={[styles.card, elevation.xs]}>
-          <Cluster
-            gap={spacing[3]}
-            leading={
-              <View style={styles.cardIcon}>
-                <UserCircle2 size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
-              </View>
-            }
-          >
-            <AppText style={styles.cardTitle}>Informations du compte</AppText>
-          </Cluster>
-          <AppText style={styles.cardHint}>
-            Ces données sont jointes automatiquement — vous n’avez pas besoin de les recopier dans
-            votre message.
-          </AppText>
-          {accountRows.map((row, index) => (
-            <View key={row.label}>
-              {index > 0 ? <View style={styles.divider} /> : null}
-              <View style={styles.metaRow}>
-                <AppText style={styles.metaLabel}>{row.label}</AppText>
-                <AppText style={styles.metaValue} selectable>
-                  {row.value}
-                </AppText>
-              </View>
-            </View>
-          ))}
-        </View>
-
         <View style={styles.form}>
-          <Input label="Votre nom" value={name} onChangeText={setName} autoCapitalize="words" />
+          <Input
+            label="Votre nom"
+            value={name}
+            onChangeText={(v) => {
+              setName(v);
+              clearError('name');
+            }}
+            autoCapitalize="words"
+            error={errors.name}
+          />
           <Input
             label="E-mail de réponse"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(v) => {
+              setEmail(v);
+              clearError('email');
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            error={errors.email}
           />
           <SelectField
             label="Motif"
@@ -163,11 +154,50 @@ export function SupportScreen() {
           <Textarea
             label="Message"
             value={message}
-            onChangeText={setMessage}
+            onChangeText={(v) => {
+              setMessage(v);
+              clearError('message');
+            }}
             placeholder="Décrivez votre question ou le problème rencontré…"
             numberOfLines={6}
             style={styles.textarea}
+            error={errors.message}
           />
+        </View>
+
+        <View style={[styles.card, elevation.xs]}>
+          <Pressable
+            onPress={() => setMetaOpen((o) => !o)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: metaOpen }}
+            accessibilityLabel="Infos jointes automatiquement"
+            style={styles.cardHeader}
+          >
+            <View style={styles.cardHeaderTexts}>
+              <AppText style={styles.cardTitle}>Infos jointes automatiquement</AppText>
+              <AppText style={styles.cardHint}>
+                Compte et appareil, pour traiter votre demande plus vite. Inutile de les recopier.
+              </AppText>
+            </View>
+            {metaOpen ? (
+              <ChevronUp size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+            ) : (
+              <ChevronDown size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+            )}
+          </Pressable>
+          {metaOpen
+            ? accountRows.map((row) => (
+                <View key={row.label}>
+                  <View style={styles.divider} />
+                  <View style={styles.metaRow}>
+                    <AppText style={styles.metaLabel}>{row.label}</AppText>
+                    <AppText style={styles.metaValue} selectable>
+                      {row.value}
+                    </AppText>
+                  </View>
+                </View>
+              ))
+            : null}
         </View>
       </ProfileSubScreenLayout>
     </>
@@ -176,66 +206,68 @@ export function SupportScreen() {
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  lead: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.45,
-  },
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[4],
-    gap: spacing[2],
-  },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  cardTitle: {
-    ...font.headingSemiBold,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-  },
-  cardHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: fontSize.xs * 1.45,
-    marginBottom: spacing[1],
-  },
-  metaRow: {
-    gap: spacing[1],
-    paddingVertical: spacing[2],
-  },
-  metaLabel: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    letterSpacing: 0.2,
-  },
-  metaValue: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.4,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: c.borderLight,
-  },
-  form: {
-    gap: spacing[4],
-  },
-  textarea: {
-    minHeight: 140,
-    textAlignVertical: 'top' as const,
-  },
-};
+    lead: {
+      ...font.regular,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      lineHeight: fontSize.sm * 1.45,
+    },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: radius.xl,
+      borderWidth: 1,
+      borderColor: c.borderLight,
+      paddingHorizontal: spacing[4],
+    },
+    cardHeader: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[3],
+      minHeight: 44,
+      paddingVertical: spacing[3],
+    },
+    cardHeaderTexts: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing[0.5],
+    },
+    cardTitle: {
+      ...font.semiBold,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+    },
+    cardHint: {
+      ...font.regular,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      lineHeight: fontSize.xs * 1.45,
+    },
+    metaRow: {
+      gap: spacing[1],
+      paddingVertical: spacing[2],
+    },
+    metaLabel: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+      letterSpacing: 0.2,
+    },
+    metaValue: {
+      ...font.regular,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+      lineHeight: fontSize.sm * 1.4,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+    },
+    form: {
+      gap: spacing[4],
+    },
+    textarea: {
+      minHeight: 140,
+      textAlignVertical: 'top' as const,
+    },
+  };
 }

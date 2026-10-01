@@ -75,7 +75,7 @@ export function ProfileNurseHubView() {
     }, [qc, user?.id]),
   );
 
-  const push = (path: string) => router.push(path as never);
+  const push = useCallback((path: string) => router.push(path as never), [router]);
 
   const savePhotos = useMutation({
     mutationFn: (body: { profile_image_url: string | null; cover_image_url: string | null }) =>
@@ -113,7 +113,7 @@ export function ProfileNurseHubView() {
     );
   }, [publicSlug, push]);
 
-  if (profileQ.isLoading || profileQ.isError || !profileQ.data) return <ProfileLoadState loading={profileQ.isLoading || !user?.id} refreshing={profileQ.isFetching} onRetry={() => void profileQ.refetch()} />;
+  if (profileQ.isLoading || profileQ.isError || !profileQ.data) return <ProfileLoadState loading={profileQ.isLoading || !user?.id} refreshing={profileQ.isFetching} error={profileQ.error} onRetry={() => void profileQ.refetch()} />;
 
   return (
     <StackChromeScreen>

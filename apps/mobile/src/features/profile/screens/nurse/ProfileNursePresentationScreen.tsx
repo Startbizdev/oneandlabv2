@@ -39,7 +39,7 @@ export function ProfileNursePresentationScreen() {
     enabled: !!user?.id,
   });
 
-  useProfileDraft(user?.id, q.data, { biography, yearsExperience },
+  const { dirty } = useProfileDraft(user?.id, q.data, { biography, yearsExperience },
     d => ({ biography: d.biography ?? '', yearsExperience: d.years_experience ?? '' }),
     d => { setBiography(d.biography); setYearsExperience(d.yearsExperience); },
   );
@@ -52,7 +52,7 @@ export function ProfileNursePresentationScreen() {
       }),
     onSuccess: async () => {
       await fetchMe();
-      void qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
+      await qc.invalidateQueries({ queryKey: queryKeys.profile.user(user!.id) });
       toast('Présentation enregistrée', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'updateUser'),
@@ -77,13 +77,14 @@ export function ProfileNursePresentationScreen() {
     q.data?.is_accepting_appointments !== false && q.data?.is_accepting_appointments !== 0;
   const busyToggle = saveToggle.isPending ? saveToggle.variables : null;
 
-  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} onRetry={() => void q.refetch()} />;
+  if (q.isLoading || q.isError || !q.data) return <ProfileLoadState loading={q.isLoading || !user?.id} refreshing={q.isFetching} error={q.error} onRetry={() => void q.refetch()} />;
 
   return (
     <ProfileSubScreenLayout
       saving={savePresentation.isPending}
       onSave={() => savePresentation.mutate()}
       saveTitle="Enregistrer"
+      dirty={dirty}
     >
       <AppText style={styles.sectionKicker}>Texte & expérience</AppText>
       <Input
@@ -98,7 +99,14 @@ export function ProfileNursePresentationScreen() {
       <AppText style={styles.fieldLabel}>Années d&apos;expérience</AppText>
       <Row wrap gap={spacing[2]}>
         {YEARS_OPTIONS.map((o) => (
-          <Pressable key={o.value} onPress={() => setYearsExperience(o.value)}>
+          <Pressable
+            key={o.value}
+            onPress={() => setYearsExperience(o.value)}
+            hitSlop={{ top: 6, bottom: 6 }}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: yearsExperience === o.value }}
+            accessibilityLabel={`${o.label} d'expérience`}
+          >
             <AppText style={[styles.chip, yearsExperience === o.value && styles.chipActive]}>
               {o.label}
             </AppText>

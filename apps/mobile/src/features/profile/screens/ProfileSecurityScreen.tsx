@@ -3,8 +3,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { Linking, Platform, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { useFocusEffect, useNavigation } from 'expo-router';
-import { ScanFace } from 'lucide-react-native';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { ScanFace, Trash2 } from 'lucide-react-native';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { PasswordManagementPanel } from '@/features/profile/components/PasswordManagementPanel';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
@@ -30,6 +31,7 @@ export function ProfileSecurityScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const navigation = useNavigation();
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const { show: toast } = useToast();
@@ -137,6 +139,21 @@ export function ProfileSecurityScreen() {
           card
         )}
         <PasswordManagementPanel />
+        <SettingsSection
+          title="Compte"
+          items={[
+            {
+              icon: Trash2,
+              label: 'Supprimer mon compte',
+              description:
+                user.role === 'patient'
+                  ? 'Suppression définitive de votre compte et de vos données personnelles'
+                  : 'Demande de suppression traitée par notre équipe',
+              onPress: () => router.push('/profile/delete-account' as never),
+              destructive: true,
+            },
+          ]}
+        />
       </View>
     </ProfileSubScreenLayout>
   );

@@ -10,7 +10,8 @@ import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-st
  */
 export function useDeepLinks() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.user?.role);
+  const userId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     function handle(url: string) {
@@ -24,29 +25,29 @@ export function useDeepLinks() {
         if (shareToken) {
           useOfferQueueStore.getState().setShareToken(shareToken);
         }
-        if (user?.role === 'nurse' && user.id) {
-          void useOfferQueueStore.getState().openIncomingOffer(openAppointment, 'nurse', user.id);
+        if (role === 'nurse' && userId) {
+          void useOfferQueueStore.getState().openIncomingOffer(openAppointment, 'nurse', userId);
           router.replace('/(nurse)/(tabs)/demandes' as never);
           return;
         }
-        if (user?.role === 'preleveur') {
+        if (role === 'preleveur') {
           router.push(`/(preleveur)/appointment/${openAppointment}` as never);
           return;
         }
-        if (user?.role === 'pro') {
+        if (role === 'pro') {
           router.push(`/(pro)/appointment/${openAppointment}` as never);
         }
         return;
       }
 
-      if (q.alreadyAccepted === '1' && user?.role === 'preleveur' && openAppointment) {
+      if (q.alreadyAccepted === '1' && role === 'preleveur' && openAppointment) {
         router.push(
           `/(preleveur)/appointment/${openAppointment}?alreadyAccepted=1` as never,
         );
       }
 
       if (path.includes('notifications')) {
-        router.push(getNotificationsPath(user?.role));
+        router.push(getNotificationsPath(role));
       }
     }
 
@@ -55,5 +56,5 @@ export function useDeepLinks() {
     });
     const sub = Linking.addEventListener('url', ({ url }) => handle(url));
     return () => sub.remove();
-  }, [router, user?.role]);
+  }, [router, role, userId]);
 }

@@ -14,14 +14,20 @@ import {
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
-import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
+import {
+  appointmentListItemKey,
+  withAppointmentDaySections,
+  type AppointmentListItem,
+} from '@/utils/appointment-list-sections';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { AppointmentListSectionHeader } from '@/features/appointments/components/AppointmentListSectionHeader';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
-const CONFIRMED_STATUSES = new Set(['confirmed', 'in_progress', 'on_the_way']);
+const CONFIRMED_STATUSES = new Set(['confirmed', 'inprogress', 'in_progress', 'on_the_way']);
 
 function matchesSearch(apt: Appointment, q: string): boolean {
   const s = q.toLowerCase().trim();
@@ -60,7 +66,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
     limit: APPOINTMENTS_LIST_PAGE_SIZE,
     type: 'blood_test',
     assigned_only: true,
-    status: 'confirmed,in_progress,on_the_way',
+    status: 'confirmed,inProgress',
   });
 
   const pendingRequestsQuery = useInfiniteAppointmentsList({
@@ -78,13 +84,16 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
     return buildAppointmentDisplayRows(list, { direction: 'upcoming' });
   }, [pendingRequestsQuery.data?.pages, search]);
 
-  const displayRows = useMemo(() => {
+  const items = useMemo(() => {
     let list = flattenInfiniteAppointments(query.data?.pages).filter(
       (a) => isAssignedConfirmed(a, userId) && !isAppointmentPastForList(a),
     );
     if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
-    return buildAppointmentDisplayRows(list, { direction: 'upcoming' });
+    return withAppointmentDaySections(buildAppointmentDisplayRows(list, { direction: 'upcoming' }));
   }, [query.data?.pages, search, userId]);
+
+  const pendingRequestsError =
+    pendingRequestsQuery.isError && !pendingRequestsQuery.data ? pendingRequestsQuery.error : null;
 
   useAppForegroundRefetch(() => {
     void refetch();
@@ -99,9 +108,12 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
   );
 
   const renderItem = useCallback(
-    ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
-      <AppointmentListRowCard row={row} index={index} role="preleveur" onPress={openAppointment} />
-    ),
+    ({ item, index }: { item: AppointmentListItem; index: number }) =>
+      item.kind === 'section' ? (
+        <AppointmentListSectionHeader label={item.label} />
+      ) : (
+        <AppointmentListRowCard row={item} index={index} role="preleveur" onPress={openAppointment} />
+      ),
     [openAppointment],
   );
 
@@ -121,7 +133,16 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
         {bookHref != null ? (
           <AppointmentsBookCta href={bookHref} {...(bookLabel != null ? { label: bookLabel } : {})} />
         ) : null}
-        {pendingRequestRows.length > 0 ? (
+        {pendingRequestsError ? (
+          <View style={styles.pendingSection}>
+            <AppText style={styles.sectionTitle}>Demandes en attente de votre labo</AppText>
+            <ErrorState
+              error={pendingRequestsError}
+              title="Demandes indisponibles"
+              onRetry={() => void refetchPendingRequests()}
+            />
+          </View>
+        ) : pendingRequestRows.length > 0 ? (
           <View style={styles.pendingSection}>
             <AppText style={styles.sectionTitle}>Demandes en attente de votre labo</AppText>
             {pendingRequestRows.map((row, index) => (
@@ -138,16 +159,25 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
         ) : null}
       </View>
     ),
-    [bookHref, bookLabel, onSearchQueryChange, openAppointment, pendingRequestRows, styles],
+    [
+      bookHref,
+      bookLabel,
+      onSearchQueryChange,
+      openAppointment,
+      pendingRequestRows,
+      pendingRequestsError,
+      refetchPendingRequests,
+      styles,
+    ],
   );
 
   return (
     <View style={styles.container} collapsable={false}>
       <InfiniteQueryFlatList
         query={query}
-        items={displayRows}
+        items={items}
         renderItem={renderItem}
-        keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+        keyExtractor={appointmentListItemKey}
         ListHeaderComponent={listHeader}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.listContent}

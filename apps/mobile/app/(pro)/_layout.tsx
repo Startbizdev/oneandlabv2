@@ -1,7 +1,5 @@
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { QrCode } from 'lucide-react-native';
-import { PROFILE_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
@@ -32,7 +30,7 @@ export default function ProLayout() {
           name="appointment/[id]/prescription"
           options={{ title: 'Créer une ordonnance', animation: 'slide_from_right' }}
         />
-        <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
+        <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Nouveau créneau' }} />
         <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions(theme)} />
         <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
         <Stack.Screen name="professionnel/[id]" options={{ title: 'Professionnel' }} />
@@ -43,10 +41,11 @@ export default function ProLayout() {
           name="qr-code"
           options={{
             title: 'QR code',
-            headerTitle: tabHeaderTitle('QR code', PROFILE_HEADER_SF.qrCode, QrCode),
+            headerTitle: tabHeaderTitle('QR code'),
           }}
         />
         <Stack.Screen name="resultats" options={{ title: 'Résultats' }} />
+        <Stack.Screen name="prescriptions" options={{ title: 'Ordonnances' }} />
         <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
         <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />

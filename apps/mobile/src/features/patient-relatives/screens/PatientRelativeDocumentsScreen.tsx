@@ -35,6 +35,7 @@ import {
 import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { SkeletonList } from '@/components/ui/skeletons';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const PAGE_SIZE = 8;
@@ -169,6 +170,7 @@ export function PatientRelativeDocumentsScreen() {
     queryKey: queryKeys.documents.relative(id ?? ''),
     queryFn: async () => {
       const res = await fetchProfileDocuments({ relativeId: id! });
+      if (!res.success) throw new Error(res.error ?? 'Documents indisponibles');
       return res.data ?? [];
     },
     enabled: Boolean(id),
@@ -260,7 +262,13 @@ export function PatientRelativeDocumentsScreen() {
               existingTypes={existingTypes}
               onPick={(t) => void pickAndUpload(t)}
             />
-            {allDocs.length > 0 ? (
+            {docsQ.isError && !docsQ.data ? (
+              <ErrorState
+                error={docsQ.error}
+                title="Documents indisponibles"
+                onRetry={() => void docsQ.refetch()}
+              />
+            ) : allDocs.length > 0 ? (
               <AppText style={styles.sectionKicker}>Enregistrés · {allDocs.length}</AppText>
             ) : (
               <AppText style={styles.emptyHint}>

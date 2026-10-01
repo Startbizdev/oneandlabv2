@@ -284,7 +284,7 @@ export function RdvAppointmentInfoSection({
                       title={btn.label}
                       size="sm"
                       variant="primary"
-                      leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
+                      leftIcon={<Icon size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />}
                       onPress={btn.onPress}
                       style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />

@@ -1,16 +1,15 @@
-import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 
-export function ProfileLoadState({ loading, refreshing, onRetry }: {
+export function ProfileLoadState({ loading, refreshing, error, onRetry }: {
   loading?: boolean;
   refreshing?: boolean;
+  error?: unknown;
   onRetry: () => void;
 }) {
-  if (loading) return <SkeletonProfileScreen cards={2} />;
+  if (loading || refreshing) return <SkeletonProfileScreen cards={2} />;
   return <ProfileSubScreenLayout hideSave>
-    <EmptyState title="Profil indisponible" description="Vos informations n’ont pas pu être chargées. Réessayez pour les consulter ou les modifier." />
-    <Button title="Réessayer" loading={refreshing} onPress={onRetry} fullWidth />
+    <ErrorState title="Profil indisponible" error={error} onRetry={onRetry} />
   </ProfileSubScreenLayout>;
 }

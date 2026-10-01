@@ -30,22 +30,25 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
   const hasLink = notificationIsNavigable(item, role);
   const time = formatNotificationTime(item.created_at);
   const { Icon, color, bg } = notificationVisual(c, item.type);
+  const pressable = hasLink || isUnread;
 
   return (
     <Pressable
       onPress={() => {
-        if (!hasLink) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (!pressable) return;
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
-      disabled={!hasLink}
+      disabled={!pressable}
       style={({ pressed }) => [
         styles.card,
         isUnread && styles.cardUnread,
-        !hasLink && styles.cardStatic,
-        hasLink && pressed && styles.cardPressed,
+        pressable && pressed && styles.cardPressed,
       ]}
-      accessibilityRole={hasLink ? 'button' : 'text'}
+      accessibilityRole={pressable ? 'button' : 'text'}
+      accessibilityHint={
+        hasLink ? 'Ouvre le détail' : isUnread ? 'Marque la notification comme lue' : undefined
+      }
     >
       {isUnread ? <View style={styles.unreadStripe} /> : null}
 
@@ -93,9 +96,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     cardPressed: {
       opacity: 0.88,
-    },
-    cardStatic: {
-      opacity: 1,
     },
     unreadStripe: {
       position: 'absolute' as const,

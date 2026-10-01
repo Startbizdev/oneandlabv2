@@ -7,7 +7,7 @@ import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
   Calendar,
@@ -24,8 +24,9 @@ import {
   User,
 } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
-import { Skeleton, SkeletonList, SkeletonProfileScreen } from '@/components/ui/skeletons';
+import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
 import { fetchPatientDocuments, fetchPatientProfile, fetchStaffPatientHistoryAppointments, filterCoverageProfileDocuments } from '../api/patient-profile.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -33,7 +34,7 @@ import { deletePatient } from '../api/patients.service';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { resolvePatientContactEmail } from '@/utils/patient-email-display';
-import type { PatientContactButton } from '@/utils/contact-actions';
+import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
 import {
   patientAddressLines,
   patientBirthLine,
@@ -52,6 +53,14 @@ import {
 interface Props {
   rolePrefix?: '/(nurse)' | '/(pro)';
 }
+
+type ContactAction = {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  primary: boolean;
+  url: string;
+};
 
 function InfoRow({
   icon: Icon,
@@ -133,20 +142,54 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      const res = await deletePatient(id!);
+      if (!res.success) throw new Error(res.error ?? 'Suppression impossible');
+    },
+    onSuccess: () => {
+      setDeleteOpen(false);
+      toast('Patient supprimé', { type: 'success' });
+      router.back();
+    },
+    onError: (e) => {
+      setDeleteOpen(false);
+      handleApiError(e, toast, 'deletePatient');
+    },
+  });
 
   const p = profileQ.data;
   const canDelete = p?.created_by === user?.id;
   const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'Patient';
   const age = ageFromBirthDate(p?.birth_date);
 
-  if (profileQ.isLoading || !p) {
+  if (!p) {
     return (
       <StackChromeScreen>
         <Stack.Screen options={{ title: 'Patient' }} />
-        <SkeletonProfileScreen cards={2} />
+        {profileQ.isError ? (
+          <View style={styles.errorWrap}>
+            <ErrorState
+              title="Fiche patient indisponible"
+              error={profileQ.error}
+              onRetry={() => void profileQ.refetch()}
+            />
+          </View>
+        ) : (
+          <SkeletonProfileScreen cards={2} />
+        )}
       </StackChromeScreen>
     );
   }
+
+  const openContact = (url: string) => {
+    Linking.openURL(url).catch((error: unknown) => {
+      if (__DEV__) console.warn('[patient-detail] ouverture contact impossible', error);
+      toast('Action indisponible sur cet appareil', { type: 'error' });
+    });
+  };
 
   const email = resolvePatientContactEmail({
     rawEmail: p.email,
@@ -187,35 +230,16 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     secondary?: string;
   }[];
 
-  const contactButtons: PatientContactButton[] = [
-    tel
-      ? {
-          key: 'phone',
-          label: 'Appeler',
-          icon: 'phone',
-          color: c.success,
-          onPress: () => void Linking.openURL(`tel:${tel}`),
-        }
-      : null,
-    tel
-      ? {
-          key: 'sms',
-          label: 'Message',
-          icon: 'message',
-          color: c.primary,
-          onPress: () => void Linking.openURL(`sms:${tel}`),
-        }
-      : null,
-    email.href
-      ? {
-          key: 'email',
-          label: 'E-mail',
-          icon: 'email',
-          color: c.gradientEnd,
-          onPress: () => void Linking.openURL(email.href!),
-        }
-      : null,
-  ].filter(Boolean) as PatientContactButton[];
+  const contactActions: ContactAction[] = [];
+  if (tel) {
+    contactActions.push(
+      { key: 'phone', label: 'Appeler', icon: Phone, primary: true, url: `tel:${tel}` },
+      { key: 'sms', label: 'Message', icon: MessageCircle, primary: false, url: `sms:${tel}` },
+    );
+  }
+  if (email.href) {
+    contactActions.push({ key: 'email', label: 'E-mail', icon: Mail, primary: false, url: email.href });
+  }
 
   const docsSubtitle =
     docCount === 0
@@ -266,6 +290,29 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           </View>
         </Cluster>
 
+        {contactActions.length > 0 ? (
+          <Row gap={spacing[1.5]}>
+            {contactActions.map(({ key, label, icon: Icon, primary, url }) => (
+              <View key={key} style={styles.buttonCell}>
+                <Button
+                  title={label}
+                  size="sm"
+                  variant={primary ? 'primary' : 'secondary'}
+                  fullWidth
+                  leftIcon={
+                    <Icon
+                      size={iconSize.xs}
+                      color={primary ? c.onPrimary : c.textLink}
+                      strokeWidth={2.5}
+                    />
+                  }
+                  onPress={() => openContact(url)}
+                />
+              </View>
+            ))}
+          </Row>
+        ) : null}
+
         {infoRows.length > 0 ? (
           <View style={styles.card}>
             <AppText style={styles.cardKicker}>Fiche patient</AppText>
@@ -293,27 +340,6 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
             iconBg={c.primaryLight}
           />
         </View>
-
-        {contactButtons.length > 0 ? (
-          <Row gap={spacing[1.5]}>
-            {contactButtons.map((btn) => {
-              const Icon =
-                btn.icon === 'phone' ? Phone : btn.icon === 'message' ? MessageCircle : Mail;
-              return (
-                <View key={btn.key} style={styles.buttonCell}>
-                  <Button
-                    title={btn.label}
-                    size="sm"
-                    variant="primary"
-                    leftIcon={<Icon size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />}
-                    onPress={btn.onPress}
-                    style={{ backgroundColor: btn.color, width: '100%' as const }}
-                  />
-                </View>
-              );
-            })}
-          </Row>
-        ) : null}
 
         <View style={styles.card}>
           <AppText style={styles.cardKicker}>Dossier</AppText>
@@ -375,19 +401,17 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
             title="Supprimer le patient"
             variant="destructive"
             fullWidth
-            onPress={async () => {
-              try {
-                const res = await deletePatient(id!);
-                if (!res.success) throw new Error(res.error);
-                toast('Patient supprimé', { type: 'success' });
-                router.back();
-              } catch (e) {
-                handleApiError(e, toast, 'deletePatient');
-              }
-            }}
+            onPress={() => setDeleteOpen(true)}
           />
         ) : null}
       </ScrollView>
+
+      <DeletePatientConfirmSheet
+        patientName={deleteOpen ? name : null}
+        loading={deleteMut.isPending}
+        onConfirm={() => deleteMut.mutate()}
+        onClose={() => setDeleteOpen(false)}
+      />
 
       <StaffPatientEditSheet
         visible={editOpen}
@@ -408,11 +432,11 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     flex: 1,
     backgroundColor: c.background,
   },
-  loading: {
+  errorWrap: {
     minWidth: 0,
     flex: 1,
+    justifyContent: 'center' as const,
     paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
   },
   content: {
     paddingHorizontal: spacing[4],

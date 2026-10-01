@@ -141,8 +141,8 @@ export function useHealthRecordWizard(sectionFilter?: string, questionKey?: stri
 
   const submitAnswer = useCallback(
     async (key: string, value: unknown) => {
-      setLocalAnswers((prev) => ({ ...prev, [key]: value }));
       await saveMutation.mutateAsync({ [key]: { value } });
+      setLocalAnswers((prev) => ({ ...prev, [key]: value }));
       if (stepIndex < questions.length - 1) {
         setStepIndex((i) => i + 1);
       }

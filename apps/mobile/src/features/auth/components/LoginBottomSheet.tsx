@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { LoginFlow, type LoginFlowMeta } from '@/features/auth/components/LoginFlow';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
@@ -12,6 +12,27 @@ interface Props {
   onRegisterPress?: () => void;
 }
 
+const INITIAL_META: LoginFlowMeta = { step: 'email', email: '' };
+
+function sheetTitle({ step }: LoginFlowMeta): string {
+  return step === 'forgot' || step === 'forgot-sent' ? 'Mot de passe oublié' : 'Connexion';
+}
+
+function sheetSubtitle({ step, email }: LoginFlowMeta): string {
+  switch (step) {
+    case 'password':
+      return email ? `Mot de passe du compte ${email}` : 'Entrez votre mot de passe Cary';
+    case 'otp':
+      return email ? `Code envoyé à ${email}` : 'Saisissez le code reçu par e-mail';
+    case 'forgot':
+      return 'Nous vous enverrons les instructions';
+    case 'forgot-sent':
+      return 'Consultez votre boîte e-mail';
+    default:
+      return 'Saisissez votre e-mail pour continuer';
+  }
+}
+
 export function LoginBottomSheet({
   visible,
   onClose,
@@ -20,41 +41,27 @@ export function LoginBottomSheet({
   onRegisterPress,
 }: Props) {
   const styles = useStyles(buildStyles);
-  const [meta, setMeta] = useState<LoginFlowMeta>({
-    mode: 'code',
-    step: 'email',
-    email: '',
-    passwordView: 'login',
-  });
-
-  const isForgot = meta.mode === 'password' && meta.passwordView !== 'login';
-
-  const title = useMemo(() => {
-    if (isForgot) return 'Mot de passe oublié';
-    return 'Connexion';
-  }, [isForgot]);
-
-  const subtitle = useMemo(() => {
-    if (meta.passwordView === 'forgot-sent') return 'Consultez votre email';
-    if (meta.passwordView === 'forgot') return 'Nous vous enverrons les instructions';
-    if (meta.mode === 'password') return 'Entrez votre mot de passe Cary';
-    if (meta.step === 'otp') return meta.email ? `Code envoyé à ${meta.email}` : 'Saisissez le code reçu';
-    return 'Recevez un code sécurisé par email';
-  }, [meta]);
+  const [meta, setMeta] = useState<LoginFlowMeta>(INITIAL_META);
 
   function handleClose() {
-    setMeta({ mode: 'code', step: 'email', email: '', passwordView: 'login' });
+    setMeta(INITIAL_META);
     onClose();
   }
 
-  const showRegister = onRegisterPress && meta.mode === 'code' && meta.step === 'email';
+  const showRegister = onRegisterPress && meta.step === 'email';
 
   return (
-    <BottomSheet visible={visible} onClose={handleClose} title={title} subtitle={subtitle} disableScroll>
+    <BottomSheet
+      visible={visible}
+      onClose={handleClose}
+      title={sheetTitle(meta)}
+      subtitle={sheetSubtitle(meta)}
+      disableScroll
+    >
       <View style={styles.content}>
         <LoginFlow onSuccess={onSuccess} onEmailNotFound={onEmailNotFound} onMetaChange={setMeta} />
         {showRegister ? (
-          <Pressable onPress={onRegisterPress} style={styles.registerLink} hitSlop={8}>
+          <Pressable onPress={onRegisterPress} style={styles.registerLink} accessibilityRole="button">
             <AppText style={styles.registerText}>
               Pas encore de compte ?{' '}
               <AppText style={styles.registerAccent}>Créer un compte</AppText>
@@ -73,8 +80,9 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       gap: spacing[4],
     },
     registerLink: {
+      minHeight: 44,
       alignItems: 'center' as const,
-      paddingTop: spacing[1],
+      justifyContent: 'center' as const,
     },
     registerText: {
       ...font.regular,
@@ -88,4 +96,3 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
   };
 }
-

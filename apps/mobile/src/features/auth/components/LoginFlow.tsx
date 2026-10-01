@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import type { AuthUser } from '@oneandlab/shared-types';
 import { ArrowLeft } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { ForgotPasswordPanel } from '@/features/auth/components/ForgotPasswordPanel';
+import { OtpCodeStep } from '@/features/auth/components/OtpCodeStep';
 import {
   checkEmail,
   forgotPassword,
@@ -23,18 +24,14 @@ import {
 } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { offerBiometricEnrollment } from '@/features/auth/utils/offer-biometric-enrollment';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { offerBiometricEnrollmentAfterLogin } from '@/features/auth/utils/offer-biometric-enrollment';
+import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
-type LoginMode = 'code' | 'password';
-type Step = 'email' | 'otp';
-type PasswordView = 'login' | 'forgot' | 'forgot-sent';
+export type LoginStep = 'email' | 'password' | 'otp' | 'forgot' | 'forgot-sent';
 
 export interface LoginFlowMeta {
-  mode: LoginMode;
-  step: Step;
+  step: LoginStep;
   email: string;
-  passwordView: PasswordView;
 }
 
 interface Props {
@@ -43,17 +40,18 @@ interface Props {
   onMetaChange?: (meta: LoginFlowMeta) => void;
 }
 
+/**
+ * Connexion unifiée : un seul champ e-mail, puis mot de passe si le compte en a un
+ * (`has_password` de `/auth/check-email`), sinon code par e-mail. Bascule possible dans les deux sens.
+ */
 export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
-  const [mode, setMode] = useState<LoginMode>('code');
-  const [step, setStep] = useState<Step>('email');
-  const [passwordView, setPasswordView] = useState<PasswordView>('login');
+  const [step, setStep] = useState<LoginStep>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
-  const [forgotSent, setForgotSent] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState('');
   const [sessionId, setSessionId] = useState<string | undefined>();
@@ -64,48 +62,20 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
 
-  function emitMeta(
-    nextMode: LoginMode,
-    nextStep: Step,
-    mail = email,
-    nextPasswordView: PasswordView = passwordView,
-  ) {
-    onMetaChange?.({ mode: nextMode, step: nextStep, email: mail, passwordView: nextPasswordView });
+  function goTo(next: LoginStep, mail = email) {
+    setStep(next);
+    onMetaChange?.({ step: next, email: mail });
   }
 
-  function switchMode(next: LoginMode) {
-    setMode(next);
-    setPasswordView('login');
-    setForgotSent(false);
-    if (next === 'code') {
-      setStep('email');
-      setPassword('');
-      setHasPassword(null);
-    }
-    emitMeta(next, next === 'code' ? step : 'email', email, 'login');
+  function onEmailChange(value: string) {
+    setEmail(value);
+    onMetaChange?.({ step, email: value });
   }
 
-  function goToForgot() {
-    setPasswordView('forgot');
-    setForgotSent(false);
-    emitMeta('password', 'email', email, 'forgot');
-  }
-
-  function backToPasswordLogin() {
-    setPasswordView('login');
-    setForgotSent(false);
-    emitMeta('password', 'email', email, 'login');
-  }
-
-  function goToOtp(mail: string) {
-    setStep('otp');
-    emitMeta('code', 'otp', mail, 'login');
-  }
-
-  function goToEmail() {
-    setStep('email');
+  function backToEmail() {
     setOtp('');
-    emitMeta('code', 'email', email, 'login');
+    setPassword('');
+    goTo('email');
   }
 
   async function finishSession(token: string, user: AuthUser) {
@@ -121,11 +91,40 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
       onSuccess();
       return;
     }
-    const sessionUser = (me ?? user) as AuthUser;
+    const sessionUser = me ?? user;
     const freshToken = useAuthStore.getState().token ?? token;
-    void offerBiometricEnrollment(freshToken, sessionUser, onSuccess, (message) => {
+    void offerBiometricEnrollmentAfterLogin(freshToken, sessionUser, onSuccess, (message) => {
       toast('Activation impossible', { message, type: 'error' });
     });
+  }
+
+  /** Envoie un code et mémorise la nouvelle session OTP (chaque demande invalide la précédente). */
+  async function sendCode(mail: string): Promise<boolean> {
+    try {
+      const res = await requestOtp(mail);
+      const { userId: uid, sessionId: sid } = parseRequestOtpResponse(res);
+      if (!res.success || !uid) throw new Error(res.error ?? "Impossible d'envoyer le code");
+      setUserId(uid);
+      setSessionId(sid);
+      return true;
+    } catch (e) {
+      toast('Code non envoyé', { message: (e as Error).message, type: 'error' });
+      return false;
+    }
+  }
+
+  function openOtpStep(mail: string) {
+    setOtp('');
+    goTo('otp', mail);
+    setTimeout(() => otpRef.current?.focus(), 400);
+  }
+
+  async function switchToCode() {
+    const trimmed = email.trim();
+    setLoading(true);
+    const sent = await sendCode(trimmed);
+    setLoading(false);
+    if (sent) openOtpStep(trimmed);
   }
 
   async function onEmailSubmit() {
@@ -144,17 +143,13 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
         showAppNotAccessibleAlert(emailRole);
         return;
       }
-      const res = await requestOtp(trimmed);
-      const { userId: uid, sessionId: sid } = parseRequestOtpResponse(res);
-      if (!res.success || !uid) throw new Error(res.error ?? "Impossible d'envoyer le code");
-      setUserId(uid);
-      setSessionId(sid);
-      goToOtp(trimmed);
-      setTimeout(() => otpRef.current?.focus(), 400);
-      toast('Code envoyé', {
-        message: 'Vérifiez votre boîte mail',
-        type: 'success',
-      });
+      const accountHasPassword = Boolean(check.has_password ?? check.data?.has_password);
+      setHasPassword(accountHasPassword);
+      if (accountHasPassword) {
+        goTo('password', trimmed);
+        return;
+      }
+      if (await sendCode(trimmed)) openOtpStep(trimmed);
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
     } finally {
@@ -162,20 +157,21 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
     }
   }
 
-  async function onOtpSubmit() {
-    if (otp.replace(/[^0-9]/g, '').length !== 6) {
-      toast('Code invalide', { message: '6 chiffres requis', type: 'error' });
+  async function onOtpSubmit(code: string) {
+    if (code.length !== 6) {
+      toast('Code incomplet', { message: 'Entrez les 6 chiffres reçus par e-mail.', type: 'error' });
       return;
     }
     setLoading(true);
     try {
-      const res = await verifyOtp(userId, otp, sessionId);
+      const res = await verifyOtp(userId, code, sessionId);
       const token = (res as { token?: string }).token;
       const user = (res as { user?: AuthUser }).user;
       if (!res.success || !token || !user) throw new Error(res.error ?? 'Code OTP invalide');
       await finishSession(token, user);
     } catch (e) {
       const msg = (e as Error).message;
+      setOtp('');
       if (!msg.includes("n'a pas accès")) {
         toast('Erreur', { message: msg, type: 'error' });
       }
@@ -184,49 +180,11 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
     }
   }
 
-  async function refreshHasPassword(mail: string) {
-    const trimmed = mail.trim();
-    if (!trimmed) {
-      setHasPassword(null);
-      return;
-    }
-    try {
-      const check = await checkEmail(trimmed);
-      if (check.success && (check.exists === true || check.data?.exists === true)) {
-        setHasPassword(Boolean(check.has_password ?? check.data?.has_password));
-      } else {
-        setHasPassword(null);
-      }
-    } catch {
-      setHasPassword(null);
-    }
-  }
-
   async function onPasswordSubmit() {
     const trimmed = email.trim();
     if (!trimmed || !password) return;
     setLoading(true);
     try {
-      const check = await checkEmail(trimmed);
-      if (!check.success) throw new Error(check.error ?? 'Email invalide');
-      if (!(check.exists === true || check.data?.exists === true)) {
-        onEmailNotFound?.(trimmed);
-        return;
-      }
-      const emailRole = extractCheckEmailRole(check);
-      if (isNonMobileRole(emailRole)) {
-        showAppNotAccessibleAlert(emailRole);
-        return;
-      }
-      const accountHasPassword = Boolean(check.has_password ?? check.data?.has_password);
-      setHasPassword(accountHasPassword);
-      if (!accountHasPassword) {
-        toast('Aucun mot de passe', {
-          message: 'Utilisez le code par email ou créez un mot de passe depuis votre profil.',
-          type: 'info',
-        });
-        return;
-      }
       const res = await loginWithPassword(trimmed, password);
       const token = res.token;
       const user = res.user ?? res.data;
@@ -247,9 +205,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
     setLoading(true);
     try {
       await forgotPassword(trimmed);
-      setForgotSent(true);
-      setPasswordView('forgot-sent');
-      emitMeta('password', 'email', trimmed, 'forgot-sent');
+      goTo('forgot-sent', trimmed);
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
     } finally {
@@ -257,173 +213,114 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
     }
   }
 
-  const showTabs = passwordView === 'login';
+  if (step === 'otp') {
+    return (
+      <OtpCodeStep
+        ref={otpRef}
+        value={otp}
+        onChangeText={setOtp}
+        onSubmit={(code) => void onOtpSubmit(code)}
+        submitLabel="Se connecter"
+        loading={loading}
+        onResend={() => sendCode(email.trim())}
+        onChangeEmail={backToEmail}
+        alternative={
+          hasPassword ? { label: 'Utiliser mon mot de passe', onPress: () => goTo('password') } : undefined
+        }
+      />
+    );
+  }
+
+  if (step === 'forgot' || step === 'forgot-sent') {
+    return (
+      <ForgotPasswordPanel
+        email={email}
+        onEmailChange={onEmailChange}
+        sent={step === 'forgot-sent'}
+        loading={loading}
+        onSubmit={() => void onForgotSubmit()}
+        onBack={() => goTo('password')}
+      />
+    );
+  }
+
+  if (step === 'password') {
+    return (
+      <View style={styles.step}>
+        <PasswordInput
+          label="Mot de passe"
+          value={password}
+          onChangeText={setPassword}
+          onSubmitEditing={() => void onPasswordSubmit()}
+          returnKeyType="done"
+          autoFocus
+          autoComplete="current-password"
+        />
+        <Button
+          title="Se connecter"
+          loading={loading}
+          disabled={!password}
+          onPress={() => void onPasswordSubmit()}
+          fullWidth
+          size="lg"
+        />
+        <Button
+          title="Recevoir un code par e-mail plutôt"
+          variant="ghost"
+          fullWidth
+          disabled={loading}
+          onPress={() => void switchToCode()}
+        />
+        <Row gap={spacing[3]} justify="between">
+          <Pressable onPress={backToEmail} accessibilityRole="button" style={styles.linkBtn}>
+            <Row gap={spacing[2]} align="center">
+              <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+              <AppText style={styles.backText}>Changer d&apos;e-mail</AppText>
+            </Row>
+          </Pressable>
+          <Pressable onPress={() => goTo('forgot')} accessibilityRole="button" style={styles.linkBtn}>
+            <AppText style={styles.forgotText}>Mot de passe oublié ?</AppText>
+          </Pressable>
+        </Row>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.step}>
-      {showTabs ? (
-        <Row gap={spacing[0.5]} style={[styles.tabs, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === 'code' }}
-            onPress={() => switchMode('code')}
-            style={[styles.tab, mode === 'code' && { backgroundColor: c.surface }]}
-          >
-            <AppText style={[styles.tabText, { color: mode === 'code' ? c.primary : c.textSecondary }]}>
-              Code email
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: mode === 'password' }}
-            onPress={() => switchMode('password')}
-            style={[styles.tab, mode === 'password' && { backgroundColor: c.surface }]}
-          >
-            <AppText style={[styles.tabText, { color: mode === 'password' ? c.primary : c.textSecondary }]}>
-              Mot de passe
-            </AppText>
-          </Pressable>
-        </Row>
-      ) : null}
-
-      {mode === 'code' && step === 'email' ? (
-        <>
-          <Input
-            label="Adresse email"
-            value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              emitMeta('code', 'email', v);
-            }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            onSubmitEditing={onEmailSubmit}
-            returnKeyType="done"
-            placeholder="prenom@exemple.fr"
-          />
-          <Button title="Recevoir le code" loading={loading} onPress={onEmailSubmit} fullWidth size="lg" />
-        </>
-      ) : null}
-
-      {mode === 'code' && step === 'otp' ? (
-        <>
-          <Input
-            ref={otpRef}
-            label="Code à 6 chiffres"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="sms-otp"
-            maxLength={6}
-            onSubmitEditing={onOtpSubmit}
-            placeholder="000000"
-          />
-          <Button title="Se connecter" loading={loading} onPress={onOtpSubmit} fullWidth size="lg" />
-          <Pressable onPress={goToEmail}>
-            <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-              <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
-              <AppText style={styles.backText}>Changer d&apos;email</AppText>
-            </Row>
-          </Pressable>
-        </>
-      ) : null}
-
-      {mode === 'password' && passwordView === 'login' ? (
-        <>
-          <Input
-            label="Adresse email"
-            value={email}
-            onChangeText={(v) => {
-              setEmail(v);
-              emitMeta('password', 'email', v, 'login');
-            }}
-            onBlur={() => void refreshHasPassword(email)}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            placeholder="prenom@exemple.fr"
-          />
-          <PasswordInput
-            label="Mot de passe"
-            value={password}
-            onChangeText={setPassword}
-            onSubmitEditing={onPasswordSubmit}
-            returnKeyType="done"
-          />
-          {hasPassword === false ? (
-            <View style={[styles.infoBox, { backgroundColor: c.primaryLight, borderColor: c.primary }]}>
-              <AppText style={[styles.infoText, { color: c.primaryDark }]}>
-                Aucun mot de passe sur ce compte. Utilisez le code par email ou créez un mot de passe depuis
-                Mon profil après connexion.
-              </AppText>
-              <Pressable onPress={() => switchMode('code')}>
-                <AppText style={[styles.infoLink, { color: c.primary }]}>Utiliser le code email</AppText>
-              </Pressable>
-            </View>
-          ) : null}
-          <Button title="Se connecter" loading={loading} onPress={onPasswordSubmit} fullWidth size="lg" />
-          <Pressable onPress={goToForgot} style={styles.forgotBtn}>
-            <AppText style={[styles.forgotText, { color: c.primary }]}>Mot de passe oublié ?</AppText>
-          </Pressable>
-        </>
-      ) : null}
-
-      {mode === 'password' && passwordView !== 'login' ? (
-        <ForgotPasswordPanel
-          email={email}
-          onEmailChange={(v) => {
-            setEmail(v);
-            emitMeta('password', 'email', v, passwordView);
-          }}
-          sent={forgotSent}
-          loading={loading}
-          onSubmit={() => void onForgotSubmit()}
-          onBack={backToPasswordLogin}
-        />
-      ) : null}
+      <Input
+        label="Adresse e-mail"
+        value={email}
+        onChangeText={onEmailChange}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="username"
+        onSubmitEditing={() => void onEmailSubmit()}
+        returnKeyType="next"
+        placeholder="prenom@exemple.fr"
+      />
+      <Button
+        title="Continuer"
+        loading={loading}
+        disabled={!email.trim()}
+        onPress={() => void onEmailSubmit()}
+        fullWidth
+        size="lg"
+      />
     </View>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  step: { gap: spacing[3] },
-  tabs: {
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: spacing[0.5],
-    gap: spacing[0.5],
-  },
-  tab: {
-    minWidth: 0,
-    flex: 1,
-    borderRadius: radius.md,
-    paddingVertical: spacing[2],
-    alignItems: 'center' as const,
-  },
-  tabText: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-  },
-  backBtn: {
-    paddingVertical: spacing[1],
-  },
-  backText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  forgotBtn: { alignItems: 'center' as const, paddingVertical: spacing[1] },
-  forgotText: { ...font.semiBold, fontSize: fontSize.sm },
-  infoBox: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    padding: spacing[3],
-    gap: spacing[2],
-  },
-  infoText: { ...font.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.45 },
-  infoLink: { ...font.semiBold, fontSize: fontSize.sm },
-};
+    step: { gap: spacing[3] },
+    linkBtn: { minHeight: 44, justifyContent: 'center' as const },
+    backText: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+    },
+    forgotText: { ...font.semiBold, fontSize: fontSize.sm, color: c.primary },
+  };
 }

@@ -46,7 +46,8 @@ interface Props {
   question: HealthRecordQuestion;
   initialValue?: unknown;
   onAnswer: (value: unknown) => void;
-  onSkip?: () => void;
+  /** Passe à la question suivante sans rien enregistrer (la réponse existante est conservée). */
+  onSkip: () => void;
   saving?: boolean;
 }
 
@@ -65,6 +66,29 @@ function QuestionHeader({ label, styles }: { label: string; styles: ReturnType<t
   );
 }
 
+function SecondaryActions({
+  hasAnswer,
+  saving,
+  onSkip,
+  onClear,
+  styles,
+}: {
+  hasAnswer: boolean;
+  saving?: boolean;
+  onSkip: () => void;
+  onClear: () => void;
+  styles: ReturnType<typeof buildStyles>;
+}) {
+  return (
+    <View style={styles.actions}>
+      <Button title="Passer" variant="ghost" onPress={onSkip} disabled={saving} />
+      {hasAnswer ? (
+        <Button title="Effacer ma réponse" variant="ghost" onPress={onClear} disabled={saving} />
+      ) : null}
+    </View>
+  );
+}
+
 export function HealthRecordQuestionStep({
   question,
   initialValue,
@@ -75,8 +99,12 @@ export function HealthRecordQuestionStep({
   const styles = useStyles(buildStyles);
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');
+  const [numberError, setNumberError] = useState<string | null>(null);
+  const hasAnswer = hasStoredValue(initialValue);
+  const clearAnswer = () => onAnswer(null);
 
   useEffect(() => {
+    setNumberError(null);
     if (question.type === 'number') {
       setNumberValue(formatInitialNumber(initialValue));
       setTextValue('');
@@ -96,7 +124,7 @@ export function HealthRecordQuestionStep({
     return (
       <View style={styles.root}>
         <QuestionHeader label={question.label_fr} styles={styles} />
-        {hasStoredValue(initialValue) ? (
+        {hasAnswer ? (
           <AppText style={styles.currentValue}>
             Réponse actuelle : {formatCurrentValueLabel(initialValue)}
           </AppText>
@@ -120,8 +148,8 @@ export function HealthRecordQuestionStep({
             onPress={() => onAnswer('unknown')}
             disabled={saving}
           />
-          <Button title="Passer" variant="ghost" onPress={() => onAnswer(null)} disabled={saving} />
         </View>
+        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
       </View>
     );
   }
@@ -130,7 +158,7 @@ export function HealthRecordQuestionStep({
     return (
       <View style={styles.root}>
         <QuestionHeader label={question.label_fr} styles={styles} />
-        {hasStoredValue(initialValue) ? (
+        {hasAnswer ? (
           <AppText style={styles.currentValue}>
             Réponse actuelle : {formatCurrentValueLabel(initialValue)}
           </AppText>
@@ -145,8 +173,8 @@ export function HealthRecordQuestionStep({
               disabled={saving}
             />
           ))}
-          <Button title="Passer" variant="ghost" onPress={() => onAnswer(null)} disabled={saving} />
         </View>
+        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
       </View>
     );
   }
@@ -155,11 +183,14 @@ export function HealthRecordQuestionStep({
     const handleContinue = () => {
       const trimmed = numberValue.trim();
       if (trimmed === '') {
-        onSkip?.();
+        onSkip();
         return;
       }
       const parsed = Number(trimmed.replace(',', '.'));
-      if (!Number.isFinite(parsed)) return;
+      if (!Number.isFinite(parsed)) {
+        setNumberError('Saisissez un nombre (ex. 175).');
+        return;
+      }
       onAnswer(parsed);
     };
 
@@ -170,7 +201,11 @@ export function HealthRecordQuestionStep({
           keyboardType="decimal-pad"
           placeholder={question.placeholder ?? 'Ex. 175'}
           value={numberValue}
-          onChangeText={setNumberValue}
+          onChangeText={(v) => {
+            setNumberValue(v);
+            setNumberError(null);
+          }}
+          error={numberError ?? undefined}
         />
         <View style={styles.actions}>
           <Button
@@ -178,8 +213,8 @@ export function HealthRecordQuestionStep({
             onPress={handleContinue}
             disabled={saving}
           />
-          <Button title="Passer" variant="ghost" onPress={() => onAnswer(null)} disabled={saving} />
         </View>
+        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
       </View>
     );
   }
@@ -187,7 +222,7 @@ export function HealthRecordQuestionStep({
   const handleContinueText = () => {
     const trimmed = textValue.trim();
     if (trimmed === '') {
-      onSkip?.();
+      onSkip();
       return;
     }
     onAnswer(trimmed);
@@ -208,8 +243,8 @@ export function HealthRecordQuestionStep({
           onPress={handleContinueText}
           disabled={saving}
         />
-        <Button title="Passer" variant="ghost" onPress={() => onAnswer(null)} disabled={saving} />
       </View>
+      <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
     </View>
   );
 }

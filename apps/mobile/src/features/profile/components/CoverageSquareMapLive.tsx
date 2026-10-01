@@ -270,8 +270,8 @@ export function CoverageSquareMapLive({
                 onDragEnd?.(data.halfSideKm, data.bounds, data.vertices);
               }
             }
-          } catch {
-            /* ignore */
+          } catch (err) {
+            console.warn('[coverage-map] message WebView illisible', err);
           }
         }}
       />
@@ -284,7 +284,7 @@ export function CoverageSquareMapLive({
         </AppText>
       ) : null}
       {!readOnly && showHint ? (
-        <AppText style={styles.hint}>Glissez un poignet pour former votre zone</AppText>
+        <AppText style={styles.hint}>Glissez une poignée pour former votre zone</AppText>
       ) : null}
     </View>
   );

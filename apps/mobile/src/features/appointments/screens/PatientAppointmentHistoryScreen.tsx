@@ -4,15 +4,25 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
 import { useAppointmentDetail } from '@/features/appointments/hooks/use-appointment-detail';
-import { resolveAppointmentDetail } from '@/features/appointments/hooks/appointment-detail-result';
-import type { AppointmentListRow } from '@/utils/appointment-batch';
+import {
+  appointmentDetailBlockReason,
+  resolveAppointmentDetail,
+} from '@/features/appointments/hooks/appointment-detail-result';
+import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
+import {
+  appointmentListItemKey,
+  withAppointmentDaySections,
+  type AppointmentListItem,
+} from '@/utils/appointment-list-sections';
+import { AppointmentListSectionHeader } from '../components/AppointmentListSectionHeader';
 import { PatientPaginationBar } from '../detail/components/patient/PatientPaginationBar';
 import { spacing, useStyles, type Theme } from '@/theme';
 
@@ -62,17 +72,23 @@ export function PatientAppointmentHistoryScreen() {
   );
 
   const pages = Math.max(1, Math.ceil(displayRows.length / PAGE_SIZE));
-  const items = displayRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const items = useMemo(
+    () => withAppointmentDaySections(displayRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)),
+    [displayRows, page],
+  );
 
   const renderItem = useCallback(
-    ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
-      <AppointmentListRowCard
-        row={row}
-        index={index}
-        role="patient"
-        onPress={(apt) => router.push(`/(patient)/appointment/${apt.id}` as never)}
-      />
-    ),
+    ({ item, index }: { item: AppointmentListItem; index: number }) =>
+      item.kind === 'section' ? (
+        <AppointmentListSectionHeader label={item.label} />
+      ) : (
+        <AppointmentListRowCard
+          row={item}
+          index={index}
+          role="patient"
+          onPress={(apt) => router.push(`/(patient)/appointment/${apt.id}` as never)}
+        />
+      ),
     [router],
   );
 
@@ -90,6 +106,19 @@ export function PatientAppointmentHistoryScreen() {
     [displayRows.length, page, pages],
   );
 
+  if (detailQ.isError && !primary) {
+    return (
+      <View style={styles.loading}>
+        <ErrorState error={detailQ.error} onRetry={() => void detailQ.refetch()} />
+      </View>
+    );
+  }
+
+  const detailBlock = appointmentDetailBlockReason(detailQ.data);
+  if (detailBlock) {
+    return <AppointmentDetailBlockedEmptyState onBack={() => router.back()} block={detailBlock} />;
+  }
+
   if (detailQ.isPending && !primary) {
     return (
       <View style={styles.loading}>
@@ -102,7 +131,7 @@ export function PatientAppointmentHistoryScreen() {
     <QueryFlatList
       query={historyQ}
       items={items}
-      keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
+      keyExtractor={appointmentListItemKey}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}

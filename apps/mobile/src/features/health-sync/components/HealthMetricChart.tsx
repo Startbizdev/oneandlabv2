@@ -2,7 +2,7 @@ import { layoutRowEndBetween } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { Platform, View } from 'react-native';
-import Svg, { Circle, Polyline } from 'react-native-svg';
+import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { LineChart } from 'lucide-react-native';
 import type { HealthMetricPoint } from '@oneandlab/shared-types';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
@@ -17,6 +17,16 @@ interface Props {
   isLast?: boolean;
 }
 
+const VIEWBOX_WIDTH = 280;
+const PAD = 8;
+
+function formatShortDate(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
 export function HealthMetricChart({
   title,
   unit,
@@ -28,29 +38,44 @@ export function HealthMetricChart({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
-  const { path, last, min, max } = useMemo(() => {
+  const { path, lastPoint, last, min, max } = useMemo(() => {
     if (points.length === 0) {
-      return { path: '', last: null as number | null, min: 0, max: 0 };
+      return { path: '', lastPoint: null, last: null as number | null, min: 0, max: 0 };
     }
     const values = points.map((p) => p.value);
     const minV = Math.min(...values);
     const maxV = Math.max(...values);
     const span = maxV - minV || 1;
-    const width = 280;
-    const pad = 12;
     const coords = values.map((v, i) => {
-      const x = pad + (i / Math.max(values.length - 1, 1)) * (width - pad * 2);
-      const y = height - pad - ((v - minV) / span) * (height - pad * 2);
-      return `${x},${y}`;
+      const x = PAD + (i / Math.max(values.length - 1, 1)) * (VIEWBOX_WIDTH - PAD * 2);
+      const y = height - PAD - ((v - minV) / span) * (height - PAD * 2);
+      return { x, y };
     });
-    return { path: coords.join(' '), last: values[values.length - 1] ?? null, min: minV, max: maxV };
+    return {
+      path: coords.map((p) => `${p.x},${p.y}`).join(' '),
+      lastPoint: coords[coords.length - 1] ?? null,
+      last: values[values.length - 1] ?? null,
+      min: minV,
+      max: maxV,
+    };
   }, [height, points]);
 
-  const fmt = formatValue ?? ((v: number) => String(Math.round(v * 10) / 10));
+  const fmt = formatValue ?? ((v: number) => (Math.round(v * 10) / 10).toLocaleString('fr-FR'));
   const hasCurve = points.length >= 2;
+  const firstDate = formatShortDate(points[0]?.recorded_at);
+  const lastDate = formatShortDate(points[points.length - 1]?.recorded_at);
+
+  const a11ySummary = hasCurve && last != null
+    ? `${title} : dernière valeur ${fmt(last)} ${unit}. Minimum ${fmt(min)}, maximum ${fmt(max)} ${unit}, ` +
+      `${points.length} mesures du ${firstDate} au ${lastDate}.`
+    : `${title} : pas assez de mesures pour afficher une courbe.`;
 
   return (
-    <View style={[styles.wrap, !isLast && styles.wrapDivider]}>
+    <View
+      style={[styles.wrap, !isLast && styles.wrapDivider]}
+      accessible
+      accessibilityLabel={a11ySummary}
+    >
       <View style={styles.header}>
         <AppText style={styles.title}>{title}</AppText>
         {last != null ? (
@@ -63,21 +88,47 @@ export function HealthMetricChart({
 
       {hasCurve ? (
         <>
-          <Svg width="100%" height={height} viewBox={`0 0 280 ${height}`}>
-            <Polyline points={path} fill="none" stroke={c.primary} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-            {path.split(' ').slice(-1).map((pt) => {
-              const [x, y] = pt.split(',').map(Number);
-              return <Circle key={pt} cx={x} cy={y} r={4} fill={c.primary} />;
-            })}
-          </Svg>
+          <View style={styles.plotRow}>
+            <View style={[styles.yAxis, { height }]}>
+              <AppText style={styles.axisLabel} numberOfLines={1}>{fmt(max)}</AppText>
+              <AppText style={styles.axisLabel} numberOfLines={1}>{fmt(min)}</AppText>
+            </View>
+            <View style={styles.plot}>
+              <Svg width="100%" height={height} viewBox={`0 0 ${VIEWBOX_WIDTH} ${height}`}>
+                <Line x1={0} y1={PAD} x2={VIEWBOX_WIDTH} y2={PAD} stroke={c.borderLight} strokeWidth={1} strokeDasharray="4 4" />
+                <Line
+                  x1={0}
+                  y1={height - PAD}
+                  x2={VIEWBOX_WIDTH}
+                  y2={height - PAD}
+                  stroke={c.borderLight}
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                />
+                <Polyline
+                  points={path}
+                  fill="none"
+                  stroke={c.primary}
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {lastPoint ? <Circle cx={lastPoint.x} cy={lastPoint.y} r={4} fill={c.primary} /> : null}
+              </Svg>
+              <View style={styles.xAxis}>
+                <AppText style={styles.axisLabel}>{firstDate}</AppText>
+                <AppText style={styles.axisLabel}>{lastDate}</AppText>
+              </View>
+            </View>
+          </View>
           <AppText style={styles.range}>
-            {fmt(min)}–{fmt(max)} · {points.length} pts
+            Unité : {unit} · {points.length} mesures
           </AppText>
         </>
       ) : (
         <View style={styles.emptyShell}>
           <LineChart size={iconSize.md} color={c.textTertiary} strokeWidth={1.75} />
-          <AppText style={styles.emptyHint}>—</AppText>
+          <AppText style={styles.emptyHint}>Pas assez de mesures sur la période</AppText>
         </View>
       )}
     </View>
@@ -118,6 +169,29 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.xs,
       color: c.textTertiary,
       marginTop: -2,
+    },
+    plotRow: {
+      flexDirection: 'row' as const,
+      gap: spacing[2],
+    },
+    yAxis: {
+      justifyContent: 'space-between' as const,
+      alignItems: 'flex-end' as const,
+      minWidth: spacing[8],
+    },
+    plot: {
+      flex: 1,
+      minWidth: 0,
+    },
+    xAxis: {
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      marginTop: spacing[1],
+    },
+    axisLabel: {
+      ...font.medium,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
     },
     range: {
       ...font.regular,

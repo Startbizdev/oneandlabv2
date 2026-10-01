@@ -1,145 +1,58 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Clock,
-  MapPin,
-  SlidersHorizontal,
-} from 'lucide-react-native';
-import dayjs from 'dayjs';
-import { StatusBadge } from '@/components/ui/Badge';
+import { useCallback, useEffect, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { SlidersHorizontal } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRowCenter } from '@/theme/layout-styles';
 import { useToast } from '@/providers/ToastProvider';
+import { TourDayStrip } from '@/features/tournee-nurse/components/TourDayStrip';
+import { TourLoadingSkeleton } from '@/features/tournee-nurse/components/TourLoadingSkeleton';
 import { TourLocateAction } from '@/features/tournee-nurse/components/TourLocateAction';
 import { TourSortFilterSheet, tourSortModeLabel } from '@/features/tournee-nurse/components/TourSortFilterSheet';
-import { TourStopRouteChip } from '@/features/tournee-nurse/components/TourStopRouteChip';
+import { TourStopCard } from '@/features/tournee-nurse/components/TourStopCard';
+import { TourSummaryCard } from '@/features/tournee-nurse/components/TourSummaryCard';
+import { todayTourDate } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { parseNavAppPref } from '@/features/tournee-nurse/utils/tour-navigation';
 import type { TourSortMode } from '@/features/tournee-nurse/api/nurse-tour.service';
-import type { PreleveurTourStop } from '@/features/tournee-preleveur/api/preleveur-tour.service';
 import { usePreleveurTour } from '@/features/tournee-preleveur/hooks/use-preleveur-tour';
-
-const OFFSET_MIN = -90;
-const OFFSET_MAX = 90;
-
-interface StopCardProps {
-  stop: PreleveurTourStop;
-  showReorder: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onPress: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}
-
-const StopCard = React.memo(function StopCard({
-  stop,
-  showReorder,
-  canMoveUp,
-  canMoveDown,
-  onPress,
-  onMoveUp,
-  onMoveDown,
-}: StopCardProps) {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
-  const timeLabel = formatAvailabilityDisplayFr(stop.availability, stop.scheduled_at);
-
-  return (
-    <Pressable onPress={onPress} style={[styles.stopCardShell, elevation.md]}>
-      <View style={styles.stopCard}>
-        <Row justify="between" align="start" gap={spacing[2]}>
-          <Cluster
-            gap={spacing[3]}
-            style={{ flex: 1, minWidth: 0 }}
-            leading={
-              <View style={styles.stopIndex}>
-                <AppText style={styles.stopIndexText}>{stop.position}</AppText>
-              </View>
-            }
-            actions={<StatusBadge status={stop.status} />}
-          >
-            <View style={styles.stopInfo}>
-              <AppText style={styles.stopName}>{stop.patient_name}</AppText>
-              <Row wrap gap={spacing[1]} align="center">
-                <Clock size={iconSize['2xs']} color={c.primary} strokeWidth={2} />
-                <AppText style={styles.stopTime}>{timeLabel || '—'}</AppText>
-                {stop.address_line ? (
-                  <>
-                    <View style={styles.metaDot} />
-                    <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2} />
-                    <AppText style={styles.stopAddress} numberOfLines={1}>
-                      {stop.address_line}
-                    </AppText>
-                  </>
-                ) : null}
-              </Row>
-            </View>
-          </Cluster>
-          {showReorder ? (
-            <View style={styles.reorderCol}>
-              <Pressable
-                onPress={onMoveUp}
-                disabled={!canMoveUp}
-                style={[styles.reorderBtn, !canMoveUp && styles.reorderBtnDisabled]}
-                hitSlop={8}
-              >
-                <ChevronUp size={iconSize.mdSm} color={canMoveUp ? c.primary : c.textTertiary} />
-              </Pressable>
-              <Pressable
-                onPress={onMoveDown}
-                disabled={!canMoveDown}
-                style={[styles.reorderBtn, !canMoveDown && styles.reorderBtnDisabled]}
-                hitSlop={8}
-              >
-                <ChevronDown size={iconSize.mdSm} color={canMoveDown ? c.primary : c.textTertiary} />
-              </Pressable>
-            </View>
-          ) : null}
-        </Row>
-        {stop.position > 1 ? (
-          <View style={styles.routeRow}>
-            <TourStopRouteChip stop={stop} />
-          </View>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-});
+import { PreleveurStopRow } from '../components/PreleveurStopRow';
 
 export function TourneeScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
-  const [dayOffset, setDayOffset] = useState(0);
+  const [date, setDate] = useState(todayTourDate);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [manualOrderActive, setManualOrderActive] = useState(false);
 
-  const date = useMemo(
-    () => dayjs().add(dayOffset, 'day').format('YYYY-MM-DD'),
-    [dayOffset],
-  );
-
-  const { tour, isLoading, isFetching, refetch, refreshCoords, moveStop, optimize } =
-    usePreleveurTour(date);
+  const {
+    tour,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+    dayCounts,
+    refreshOrigin,
+    moveStop,
+    optimize,
+    nextStop,
+  } = usePreleveurTour(date);
+  const isToday = date === todayTourDate();
 
   useFocusEffect(
     useCallback(() => {
-      void refreshCoords();
-      void refetch();
-    }, [refreshCoords, refetch]),
+      void refreshOrigin().then(() => refetch());
+    }, [refreshOrigin, refetch]),
   );
 
   useEffect(() => {
@@ -151,26 +64,23 @@ export function TourneeScreen() {
     manualOrderActive || tour?.plan.sort_mode === 'manual' || tour?.plan.manual_order_locked,
   );
 
-  const shiftDay = useCallback((d: number) => {
-    setDayOffset((o) => {
-      const next = o + d;
-      if (next < OFFSET_MIN || next > OFFSET_MAX) return o;
-      return next;
-    });
-  }, []);
-
   const handleLocate = useCallback(async () => {
     setLocating(true);
     try {
-      await refreshCoords();
-      await refetch();
-      showToast('Position actualisée — ordre recalculé', { type: 'success' });
-    } catch {
-      showToast('GPS indisponible', { type: 'error' });
+      const located = await refreshOrigin();
+      if (!located) {
+        showToast('GPS indisponible', { type: 'error' });
+        return;
+      }
+      const result = await refetch();
+      showToast(
+        result.isError ? 'Tournée non actualisée' : 'Position actualisée — ordre recalculé',
+        { type: result.isError ? 'error' : 'success' },
+      );
     } finally {
       setLocating(false);
     }
-  }, [refreshCoords, refetch, showToast]);
+  }, [refreshOrigin, refetch, showToast]);
 
   const handleOptimize = useCallback(
     async (mode: TourSortMode, force?: boolean) => {
@@ -185,99 +95,112 @@ export function TourneeScreen() {
     [optimize, showToast],
   );
 
-  const dayLabel = dayjs().add(dayOffset, 'day');
-  const isToday = dayOffset === 0;
+  const handleMove = useCallback(
+    async (appointmentId: string, direction: 'up' | 'down') => {
+      try {
+        await moveStop(appointmentId, direction);
+        setManualOrderActive(true);
+      } catch {
+        showToast('Enregistrement impossible', { type: 'error' });
+      }
+    },
+    [moveStop, showToast],
+  );
+
+  const openStop = useCallback(
+    (appointmentId: string) => router.push(`/(preleveur)/appointment/${appointmentId}` as never),
+    [router],
+  );
+
   const sortLabel = tour?.plan.sort_mode
     ? tourSortModeLabel(tour.plan.sort_mode as TourSortMode)
     : 'Intelligent';
 
   const ListHeader = (
-    <View style={styles.headerBlock}>
-      <Row justify="between" align="center" style={[styles.dateNav, elevation.xs]}>
-        <Pressable
-          onPress={() => shiftDay(-1)}
-          disabled={dayOffset <= OFFSET_MIN}
-          style={[styles.navBtn, dayOffset <= OFFSET_MIN && styles.navBtnDisabled]}
-          hitSlop={12}
-        >
-          <ChevronLeft size={iconSize.md} color={dayOffset <= OFFSET_MIN ? c.textTertiary : c.primary} strokeWidth={2.5} />
-        </Pressable>
-        <View style={styles.dateCenter}>
-          {isToday ? <AppText style={styles.todayBadge}>Aujourd'hui</AppText> : null}
-          <AppText style={styles.dateLabel}>{dayLabel.format('dddd D MMMM YYYY')}</AppText>
-          {stops.length > 0 ? (
-            <AppText style={styles.stopCount}>
-              {stops.length} arrêt{stops.length > 1 ? 's' : ''}
-              {tour?.summary.estimated_km
-                ? ` · ~${tour.summary.estimated_km.toFixed(1)} km`
-                : ''}
-            </AppText>
-          ) : null}
-        </View>
-        <Pressable
-          onPress={() => shiftDay(1)}
-          disabled={dayOffset >= OFFSET_MAX}
-          style={[styles.navBtn, dayOffset >= OFFSET_MAX && styles.navBtnDisabled]}
-          hitSlop={12}
-        >
-          <ChevronRight size={iconSize.md} color={dayOffset >= OFFSET_MAX ? c.textTertiary : c.primary} strokeWidth={2.5} />
-        </Pressable>
-      </Row>
-
-      <Row gap={spacing[2]} style={styles.toolbar}>
-        <Pressable
-          onPress={() => setSortSheetOpen(true)}
-          style={[styles.toolBtn, elevation.xs]}
-        >
-          <SlidersHorizontal size={iconSize.sm} color={c.primary} strokeWidth={2} />
-          <AppText style={styles.toolBtnText}>{sortLabel}</AppText>
-        </Pressable>
-        <TourLocateAction loading={locating} onPress={() => void handleLocate()} />
-      </Row>
+    <View style={styles.listHeader}>
+      {tour ? <TourSummaryCard summary={tour.summary} /> : null}
+      {isToday && tour && nextStop ? (
+        <TourStopCard
+          stop={nextStop}
+          timeLabel={formatAvailabilityDisplayFr(nextStop.availability, nextStop.scheduled_at)}
+          navAppPref={parseNavAppPref(tour.plan.nav_app_pref)}
+          eyebrow={`Prochain arrêt · ${nextStop.position} sur ${stops.length}`}
+          care={
+            nextStop.category_name ? (
+              <AppText style={styles.category} numberOfLines={2}>
+                {nextStop.category_name}
+              </AppText>
+            ) : null
+          }
+          onPress={() => openStop(nextStop.appointment_id)}
+        />
+      ) : null}
+      {stops.length > 0 ? (
+        <AppText style={styles.sectionLabel}>
+          {stops.length} arrêt{stops.length > 1 ? 's' : ''}
+          {tour?.summary.estimated_km ? ` · ~${tour.summary.estimated_km.toFixed(1)} km` : ''}
+        </AppText>
+      ) : null}
     </View>
   );
 
-  if (isLoading && !tour) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator color={c.primary} />
-        <AppText style={styles.loadingText}>Chargement de la tournée…</AppText>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container} collapsable={false}>
-      <FlatList
-        data={stops}
-        keyExtractor={(item) => item.appointment_id}
-        renderItem={({ item, index }) => (
-          <StopCard
-            stop={item}
-            showReorder={showManualReorder}
-            canMoveUp={index > 0}
-            canMoveDown={index < stops.length - 1}
-            onPress={() => router.push(`/(preleveur)/appointment/${item.appointment_id}`)}
-            onMoveUp={() => void moveStop(item.appointment_id, 'up')}
-            onMoveDown={() => void moveStop(item.appointment_id, 'down')}
-          />
-        )}
-        ListHeaderComponent={ListHeader}
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-        refreshControl={
-          <RefreshControl refreshing={isFetching && !isLoading} onRefresh={() => void refetch()} />
-        }
-        ListEmptyComponent={
-          <EmptyState
-            title="Aucun arrêt prévu"
-            description="Aucun prélèvement assigné pour cette date."
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-          />
-        }
-      />
+      <View style={styles.headerZone}>
+        <TourDayStrip embedded selectedDate={date} dayCounts={dayCounts} onSelectDate={setDate} />
+        <Row gap={spacing[2]} align="center" style={styles.toolbar}>
+          <Pressable
+            onPress={() => setSortSheetOpen(true)}
+            style={styles.toolBtn}
+            accessibilityRole="button"
+            accessibilityLabel={`Ordre de la tournée : ${sortLabel}`}
+          >
+            <SlidersHorizontal size={iconSize.sm} color={c.primary} strokeWidth={2} />
+            <AppText style={styles.toolBtnText}>{sortLabel}</AppText>
+          </Pressable>
+          <TourLocateAction loading={locating} onPress={() => void handleLocate()} />
+        </Row>
+      </View>
+
+      {isLoading ? (
+        <TourLoadingSkeleton />
+      ) : isError && !tour ? (
+        <View style={styles.errorWrap}>
+          <ErrorState title="Tournée indisponible" error={error} onRetry={() => void refetch()} />
+        </View>
+      ) : (
+        <FlatList
+          data={stops}
+          keyExtractor={(item) => item.appointment_id}
+          renderItem={({ item, index }) => (
+            <PreleveurStopRow
+              stop={item}
+              isNext={item.stop_id === nextStop?.stop_id}
+              showReorder={showManualReorder}
+              canMoveUp={index > 0}
+              canMoveDown={index < stops.length - 1}
+              onPress={() => openStop(item.appointment_id)}
+              onMoveUp={() => void handleMove(item.appointment_id, 'up')}
+              onMoveDown={() => void handleMove(item.appointment_id, 'down')}
+            />
+          )}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          refreshControl={
+            <RefreshControl refreshing={isFetching && !isLoading} onRefresh={() => void refetch()} />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              title="Aucun arrêt prévu"
+              description="Aucun prélèvement assigné pour cette date."
+              imageSource={EMPTY_RDV_IMAGE}
+              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
+              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+            />
+          }
+        />
+      )}
 
       <TourSortFilterSheet
         visible={sortSheetOpen}
@@ -294,55 +217,20 @@ export function TourneeScreen() {
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-    centered: { alignItems: 'center' as const, justifyContent: 'center' as const, gap: spacing[3] },
-    loadingText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textTertiary,
-    },
-    headerBlock: { gap: spacing[2], marginBottom: spacing[2] },
-    dateNav: {
+    headerZone: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[3],
-    },
-    navBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: radius.md,
-      backgroundColor: c.primaryLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    navBtnDisabled: { backgroundColor: c.surfaceAlt },
-    dateCenter: { minWidth: 0, alignItems: 'center' as const, gap: 2, flex: 1 },
-    todayBadge: {
-      ...font.bold,
-      fontSize: fontSize.xs,
-      color: c.primary,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase' as const,
-    },
-    dateLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-      textTransform: 'capitalize' as const,
-      textAlign: 'center' as const,
-    },
-    stopCount: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
+      paddingHorizontal: H_PADDING,
+      paddingTop: spacing[2],
+      paddingBottom: spacing[2],
+      gap: spacing[2],
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderLight,
     },
     toolbar: { flexWrap: 'wrap' as const },
     toolBtn: {
       ...layoutRowCenter(spacing[2]),
+      minHeight: 44,
       paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
       borderRadius: radius.lg,
       backgroundColor: c.surface,
       borderWidth: 1,
@@ -353,69 +241,32 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
+    listHeader: { paddingTop: spacing[3], gap: spacing[1] },
+    category: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+    },
+    sectionLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.xs,
+      color: c.textTertiary,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase' as const,
+      marginBottom: spacing[2],
+    },
     list: {
       minWidth: 0,
-      paddingHorizontal: spacing[4],
+      paddingHorizontal: H_PADDING,
       paddingBottom: spacing[10],
       flexGrow: 1,
     },
-    stopCardShell: { borderRadius: radius.xl },
-    stopCard: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      padding: spacing[4],
-      gap: spacing[2],
-    },
-    stopIndex: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.md,
-      backgroundColor: c.primaryLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexShrink: 0,
-    },
-    stopIndexText: {
-      ...font.bold,
-      fontSize: fontSize.base,
-      color: c.primary,
-    },
-    stopInfo: { gap: spacing[1], flex: 1, minWidth: 0 },
-    stopName: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    stopTime: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.primary,
-    },
-    metaDot: {
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: c.textTertiary,
-    },
-    stopAddress: {
-      minWidth: 0,
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
+    separator: { height: spacing[2] },
+    errorWrap: {
       flex: 1,
-    },
-    reorderCol: { gap: spacing[1] },
-    reorderBtn: {
-      width: 32,
-      height: 28,
-      borderRadius: radius.sm,
-      backgroundColor: c.surfaceAlt,
-      alignItems: 'center' as const,
+      minWidth: 0,
       justifyContent: 'center' as const,
+      paddingHorizontal: H_PADDING,
     },
-    reorderBtnDisabled: { opacity: 0.4 },
-    routeRow: { alignItems: 'flex-end' as const },
   };
 }

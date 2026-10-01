@@ -1,10 +1,10 @@
-import { NurseAppointmentsListScreen } from '@/features/nurse/screens/NurseAppointmentsListScreen';
-import { AppointmentsTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { NurseAgendaScreen } from '@/features/nurse/screens/NurseAgendaScreen';
+import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
 
-export default function NurseAppointments() {
+export default function NurseAgendaTab() {
   return (
-    <AppointmentsTabScreenFrame>
-      <NurseAppointmentsListScreen />
-    </AppointmentsTabScreenFrame>
+    <TitledTabScreenFrame title="Agenda">
+      <NurseAgendaScreen />
+    </TitledTabScreenFrame>
   );
 }

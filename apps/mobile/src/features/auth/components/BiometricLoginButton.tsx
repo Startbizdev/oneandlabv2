@@ -1,6 +1,6 @@
 import { iconSize, useAppColors } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
-import { ScanFace } from 'lucide-react-native';
+import { Fingerprint, ScanFace } from 'lucide-react-native';
 import {
   canUseBiometricLogin,
   disableBiometricLogin,
@@ -11,30 +11,32 @@ import {
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
+import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { Button } from '@/components/ui/Button';
 
 interface Props {
   onSuccess: () => void;
 }
 
+/** Bouton secondaire : la connexion par e-mail reste l'action principale de l'accueil. */
 export function BiometricLoginButton({ onSuccess }: Props) {
   const c = useAppColors();
   const setSession = useAuthStore((s) => s.setSession);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
-  const [available, setAvailable] = useState(false);
-  const [label, setLabel] = useState('Face ID');
+  /** Libellé plateforme (Face ID, Touch ID, Empreinte digitale…) ; null tant que la biométrie est indisponible. */
+  const [label, setLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     void (async () => {
-      const ok = await canUseBiometricLogin();
-      setAvailable(ok);
-      if (ok) setLabel(await getBiometricLabel());
+      if (!(await canUseBiometricLogin())) return;
+      setLabel(await getBiometricLabel());
     })();
   }, []);
 
   const signIn = useCallback(async () => {
+    if (!label) return;
     setLoading(true);
     try {
       const result = await loginWithBiometric();
@@ -49,10 +51,9 @@ export function BiometricLoginButton({ onSuccess }: Props) {
           return;
         }
         if (result.reason === 'missing_credentials') {
-          setAvailable(false);
-          toast('Face ID à réactiver', {
-            message:
-              'Connectez-vous par email, puis réactivez Face ID dans Profil > Sécurité.',
+          setLabel(null);
+          toast(`${label} à réactiver`, {
+            message: `Connectez-vous par email, puis réactivez ${label} dans « ${PROFILE_SECURITY_MENU.label} » depuis votre profil.`,
             type: 'error',
           });
           return;
@@ -68,10 +69,10 @@ export function BiometricLoginButton({ onSuccess }: Props) {
       const me = await fetchMe();
       if (!me) {
         await disableBiometricLogin();
-        setAvailable(false);
+        setLabel(null);
         await useAuthStore.getState().clearSession();
         toast('Session expirée', {
-          message: 'Connectez-vous avec votre email, puis réactivez Face ID si besoin.',
+          message: `Connectez-vous avec votre email, puis réactivez ${label} si besoin.`,
           type: 'error',
         });
         return;
@@ -97,18 +98,21 @@ export function BiometricLoginButton({ onSuccess }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [fetchMe, onSuccess, setSession, toast]);
+  }, [fetchMe, label, onSuccess, setSession, toast]);
 
-  if (!available) return null;
+  if (!label) return null;
+
+  const Icon = label === 'Touch ID' || label === 'Empreinte digitale' ? Fingerprint : ScanFace;
 
   return (
     <Button
-      title={`Connexion ${label}`}
+      title={`Connexion avec ${label}`}
+      variant="secondary"
       size="lg"
       fullWidth
       loading={loading}
       onPress={() => void signIn()}
-      leftIcon={<ScanFace size={iconSize.md} color={c.onPrimary} strokeWidth={2} />}
+      leftIcon={<Icon size={iconSize.md} color={c.textLink} strokeWidth={2} />}
     />
   );
 }

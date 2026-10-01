@@ -55,12 +55,23 @@ export async function unregisterPushTokenWithBackend(expoPushToken: string): Pro
   }
 }
 
+/** Demande la permission système si besoin : à n'appeler qu'après une action explicite de l'utilisateur. */
 export async function obtainExpoPushToken(): Promise<string | null> {
   if (!Device.isDevice) return null;
 
   const permission = await requestPushNotificationPermission();
   if (permission !== 'granted') return null;
 
+  return readExpoPushToken();
+}
+
+/** Lit le token sans jamais ouvrir la fenêtre système (permission déjà accordée requise). */
+export async function obtainExpoPushTokenIfGranted(): Promise<string | null> {
+  if ((await getPushPermissionStatus()) !== 'granted') return null;
+  return readExpoPushToken();
+}
+
+async function readExpoPushToken(): Promise<string | null> {
   const projectId =
     Constants.expoConfig?.extra?.eas?.projectId ??
     Constants.easConfig?.projectId;

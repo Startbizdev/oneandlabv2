@@ -1,9 +1,10 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/providers/ToastProvider';
 import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { webAppUrl } from '@/config/env';
 
@@ -16,10 +17,28 @@ interface Props {
   onBack: () => void;
 }
 
+/** `message:` n'ouvre la boîte de réception que sur iOS (app Mail) ; Android n'a pas d'équivalent fiable. */
+const CAN_OPEN_MAIL_INBOX = Platform.OS === 'ios';
+
 export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSubmit, onBack }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const { show: toast } = useToast();
 
+  function openUrl(url: string) {
+    Linking.openURL(url).catch(() => {
+      toast('Ouverture impossible', { message: 'Ouvrez votre messagerie manuellement.', type: 'error' });
+    });
+  }
+
+  const backLink = (
+    <Pressable onPress={onBack} accessibilityRole="button" style={styles.linkBtn}>
+      <Row gap={spacing[2]} align="center" justify="center">
+        <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+        <AppText style={styles.backText}>Retour à la connexion</AppText>
+      </Row>
+    </Pressable>
+  );
 
   if (sent) {
     return (
@@ -28,16 +47,17 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
           Si un compte existe, vous recevrez un email avec un lien et un code pour choisir un nouveau mot de
           passe.
         </AppText>
-        <Button title="Ouvrir ma messagerie" variant="outline" onPress={() => Linking.openURL('message:')} fullWidth />
-        <Pressable onPress={() => Linking.openURL(webAppUrl('/reset-password'))}>
+        {CAN_OPEN_MAIL_INBOX ? (
+          <Button title="Ouvrir ma messagerie" variant="outline" onPress={() => openUrl('message:')} fullWidth />
+        ) : null}
+        <Pressable
+          onPress={() => openUrl(webAppUrl('/reset-password'))}
+          accessibilityRole="link"
+          style={styles.linkBtn}
+        >
           <AppText style={[styles.link, { color: c.primary }]}>Réinitialiser sur le web</AppText>
         </Pressable>
-        <Pressable onPress={onBack}>
-          <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-            <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
-            <AppText style={styles.backText}>Retour à la connexion</AppText>
-          </Row>
-        </Pressable>
+        {backLink}
       </View>
     );
   }
@@ -54,28 +74,21 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
         placeholder="prenom@exemple.fr"
       />
       <Button title="Envoyer" loading={loading} onPress={onSubmit} fullWidth size="lg" />
-      <Pressable onPress={onBack}>
-        <Row gap={spacing[2]} align="center" justify="center" style={styles.backBtn}>
-          <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
-          <AppText style={styles.backText}>Retour à la connexion</AppText>
-        </Row>
-      </Pressable>
+      {backLink}
     </View>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  wrap: { gap: spacing[3] },
-  body: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
-  link: { textAlign: 'center' as const, ...font.semiBold, fontSize: fontSize.sm, paddingVertical: spacing[2] },
-  backBtn: {
-    paddingVertical: spacing[1],
-  },
-  backText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-};
+    wrap: { gap: spacing[3] },
+    body: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
+    linkBtn: { minHeight: 44, justifyContent: 'center' as const },
+    link: { textAlign: 'center' as const, ...font.semiBold, fontSize: fontSize.sm },
+    backText: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.textSecondary,
+    },
+  };
 }

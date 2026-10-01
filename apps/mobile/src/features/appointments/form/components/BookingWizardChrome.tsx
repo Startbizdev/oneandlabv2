@@ -11,6 +11,8 @@ type Props = {
   wizardPageTitle: string;
   onWizardBack: () => void;
   embeddedInTab?: boolean;
+  /** Écran de succès : plus d'étape précédente. */
+  hideBack?: boolean;
   children: ReactNode;
 };
 
@@ -21,17 +23,20 @@ export function BookingWizardChrome({
   wizardPageTitle,
   onWizardBack,
   embeddedInTab = false,
+  hideBack = false,
   children,
 }: Props) {
   const title =
-    step === 0 ? (
+    step === 0 && !hideBack ? (
       <BookingCareSelectionHeaderTitle role={role} embedded />
     ) : (
       <HeaderTitleText title={wizardPageTitle} />
     );
 
   const headerLeft: ReactNode | null | undefined =
-    step > 0 ? (
+    hideBack ? (
+      null
+    ) : step > 0 ? (
       <StackHeaderBackButton onPress={onWizardBack} />
     ) : embeddedInTab ? (
       null

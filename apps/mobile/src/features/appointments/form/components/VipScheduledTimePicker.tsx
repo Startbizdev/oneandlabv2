@@ -7,7 +7,7 @@ import {
 } from '@oneandlab/shared-constants';
 import { Row } from '@/components/layout/primitives';
 import { SelectField, type SelectOption } from '@/components/ui/SelectField';
-import { palette, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 const VIP_HOUR_OPTIONS: SelectOption[] = Array.from(
@@ -115,7 +115,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     summary: {
       ...font.semiBold,
       fontSize: fontSize.sm,
-      color: palette.amber[800],
+      color: c.primaryDark,
     },
     hint: {
       ...font.regular,

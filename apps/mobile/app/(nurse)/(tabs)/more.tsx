@@ -2,41 +2,29 @@ import { Alert, Share } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
-  Bell,
   CalendarPlus,
   CreditCard,
   FilePenLine,
   FlaskConical,
-  LayoutGrid,
   QrCode,
-  Route,
-  Scale,
-  Settings,
   Share2,
-  Smile,
+  Sparkles,
   Star,
-  User,
   Pill,
 } from 'lucide-react-native';
 import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/constants';
-import { PROFILE_SECURITY_MENU } from '@/features/profile/constants/profile-security-menu';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
 import { webAppUrl } from '@/config/env';
 import { queryKeys } from '@/lib/query-keys';
-import { useUnreadNotificationsCount } from '@/features/notifications/hooks/use-unread-count';
 import { useAuthStore } from '@/store/auth-store';
-import { getNotificationsPath } from '@/navigation/notifications-route';
-import { buildHelpMoreItems } from '@/features/help/help-more-items';
 import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
-import { TAB_HEADER_SF } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default function NurseMore() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const unread = useUnreadNotificationsCount();
   const { canOrder: pharmacyCanOrder } = usePharmacyModuleEnabled();
 
   const profileQ = useQuery({
@@ -71,13 +59,13 @@ export default function NurseMore() {
   };
 
   return (
-    <TitledTabScreenFrame title="Plus" symbol={TAB_HEADER_SF.more} fallbackIcon={LayoutGrid}>
+    <TitledTabScreenFrame title="Plus">
       <RoleMoreTabScreen
         roleLabel="Infirmier(ère)"
+        legalHref="/(nurse)/informations-legales"
         sections={[
           {
-            title: 'Actions',
-            delay: 150,
+            title: 'Activité',
             items: [
               {
                 icon: CalendarPlus,
@@ -86,41 +74,10 @@ export default function NurseMore() {
                 iconAccent: 'teal',
               },
               {
-                icon: Route,
-                label: 'Ma tournée',
-                onPress: () => nav('/(nurse)/tournee'),
-                iconAccent: 'teal',
-              },
-              {
-                icon: Smile,
+                icon: Sparkles,
                 label: 'Assistant Cary',
                 onPress: () => nav('/(nurse)/ai'),
                 iconAccent: 'teal',
-              },
-            ],
-          },
-          {
-            title: 'Professionnel',
-            delay: 210,
-            items: [
-              { icon: User, label: 'Mon profil', onPress: () => nav('/profile') },
-              {
-                icon: Share2,
-                label: 'Partager mon profil',
-                onPress: () => void sharePublicProfile(),
-                iconAccent: 'teal',
-              },
-              {
-                icon: QrCode,
-                label: 'QR code',
-                onPress: () => nav('/(nurse)/qr-code'),
-                iconAccent: 'teal',
-              },
-              {
-                icon: Star,
-                label: 'Mes avis',
-                onPress: () => nav('/(nurse)/reviews'),
-                iconAccent: 'warning',
               },
               {
                 icon: FlaskConical,
@@ -148,46 +105,34 @@ export default function NurseMore() {
                     },
                   ]
                 : []),
+            ],
+          },
+          {
+            title: 'Professionnel',
+            items: [
+              {
+                icon: Share2,
+                label: 'Partager mon profil',
+                onPress: () => void sharePublicProfile(),
+                iconAccent: 'teal',
+              },
+              {
+                icon: QrCode,
+                label: 'QR code',
+                onPress: () => nav('/(nurse)/qr-code'),
+                iconAccent: 'teal',
+              },
+              {
+                icon: Star,
+                label: 'Mes avis',
+                onPress: () => nav('/(nurse)/reviews'),
+                iconAccent: 'warning',
+              },
               {
                 icon: CreditCard,
                 label: 'Abonnement',
                 onPress: () => nav('/(nurse)/abonnement'),
-                iconAccent: 'warning' as const,
-              },
-            ],
-          },
-          {
-            title: 'Aide',
-            delay: 240,
-            items: buildHelpMoreItems(nav),
-          },
-          {
-            title: 'Paramètres',
-            delay: 300,
-            items: [
-              {
-                icon: Settings,
-                label: "Paramètres de l'app",
-                onPress: () => nav('/profile/settings'),
-                iconAccent: 'settings',
-              },
-              {
-                icon: Bell,
-                label: 'Notifications',
-                onPress: () => router.push(getNotificationsPath('nurse')),
-                badge: unread,
-              },
-              {
-                icon: PROFILE_SECURITY_MENU.Icon,
-                label: PROFILE_SECURITY_MENU.label,
-                onPress: () => nav(PROFILE_SECURITY_MENU.href),
-                iconAccent: PROFILE_SECURITY_MENU.iconAccent,
-              },
-              {
-                icon: Scale,
-                label: 'Informations légales',
-                onPress: () => nav('/(nurse)/informations-legales'),
-                iconAccent: 'muted',
+                iconAccent: 'warning',
               },
             ],
           },

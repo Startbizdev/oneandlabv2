@@ -1,24 +1,16 @@
 import {
-  APPOINTMENTS_TAB_TRIGGER,
-  CALENDAR_TAB_TRIGGER,
+  AGENDA_TAB_TRIGGER,
   createRoleTabsLayout,
+  HOME_TAB_TRIGGER,
   MORE_TAB_TRIGGER,
+  PATIENTS_TAB_TRIGGER,
+  TOURNEE_TAB_TRIGGER,
 } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default createRoleTabsLayout([
-  { name: 'index', ...APPOINTMENTS_TAB_TRIGGER },
-  {
-    name: 'patients',
-    accessibilityLabel: 'Mes patients',
-    sf: { default: 'person.2', selected: 'person.2.fill' },
-    androidIcon: 'people',
-  },
-  {
-    name: 'tournee',
-    accessibilityLabel: 'Tournée',
-    sf: { default: 'map', selected: 'map.fill' },
-    androidIcon: 'route',
-  },
-  { name: 'calendar', ...CALENDAR_TAB_TRIGGER },
+  { name: 'index', ...HOME_TAB_TRIGGER },
+  { name: 'patients', ...PATIENTS_TAB_TRIGGER },
+  { name: 'tournee', ...TOURNEE_TAB_TRIGGER },
+  { name: 'calendar', ...AGENDA_TAB_TRIGGER },
   { name: 'more', ...MORE_TAB_TRIGGER },
 ]);

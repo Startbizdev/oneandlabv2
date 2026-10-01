@@ -1,10 +1,11 @@
 import { useAuthStore } from '@/store/auth-store';
 import { useNurseDemandesBadgeCount } from '@/features/nurse/hooks/use-nurse-demandes-badge';
 import {
-  APPOINTMENTS_TAB_TRIGGER,
-  CALENDAR_TAB_TRIGGER,
+  AGENDA_TAB_TRIGGER,
   createRoleTabsLayout,
   MORE_TAB_TRIGGER,
+  PATIENTS_TAB_TRIGGER,
+  TOURNEE_TAB_TRIGGER,
 } from '@/components/navigation/RoleNativeTabsLayout';
 
 export default createRoleTabsLayout(() => {
@@ -14,21 +15,17 @@ export default createRoleTabsLayout(() => {
     demandesBadge > 0 ? (demandesBadge > 99 ? '99+' : String(demandesBadge)) : undefined;
 
   return [
-    { name: 'appointments', ...APPOINTMENTS_TAB_TRIGGER },
+    { name: 'tournee', ...TOURNEE_TAB_TRIGGER },
     {
       name: 'demandes',
-      accessibilityLabel: 'Demandes',
-      sf: { default: 'clipboard', selected: 'clipboard.fill' },
-      androidIcon: 'assignment',
+      label: 'Demandes',
+      sf: { default: 'tray', selected: 'tray.fill' },
+      androidIcon: 'inbox',
       badge: demandesBadgeLabel,
     },
-    { name: 'calendar', ...CALENDAR_TAB_TRIGGER },
-    {
-      name: 'patients',
-      accessibilityLabel: 'Patients',
-      sf: { default: 'person.2', selected: 'person.2.fill' },
-      androidIcon: 'people',
-    },
+    // Route `appointments` conservée : accueil après connexion et liens existants y pointent.
+    { name: 'appointments', ...AGENDA_TAB_TRIGGER },
+    { name: 'patients', ...PATIENTS_TAB_TRIGGER },
     { name: 'more', ...MORE_TAB_TRIGGER },
   ];
 });

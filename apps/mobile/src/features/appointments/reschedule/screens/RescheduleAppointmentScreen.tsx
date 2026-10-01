@@ -1,6 +1,8 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { AppointmentDetailLoadError } from '../../detail/components/AppointmentDetailLoadError';
 import { User } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -31,8 +33,21 @@ export function RescheduleAppointmentScreen({
   appointmentId, role, basePath }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const router = useRouter();
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
   const scrollConfig = useStackScrollConfig(styles.content);
+
+  if (r.loadError) {
+    return (
+      <StackChromeScreen>
+        <AppointmentDetailLoadError
+          error={r.loadError}
+          onRetry={() => void r.retryLoad()}
+          onBack={() => router.back()}
+        />
+      </StackChromeScreen>
+    );
+  }
 
   if (r.loading || !r.appointment) {
     return (

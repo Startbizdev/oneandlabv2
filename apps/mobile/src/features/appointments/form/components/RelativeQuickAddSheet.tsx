@@ -13,6 +13,7 @@ import {
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
+import { THIRD_PARTY_NAME_INPUT } from '../constants/third-party-input-props';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -82,8 +83,8 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated, patientId, 
       title="Ajouter un proche"
     >
       <View style={styles.fields}>
-        <Input label="Prénom" value={firstName} onChangeText={setFirstName} />
-        <Input label="Nom" value={lastName} onChangeText={setLastName} />
+        <Input label="Prénom" value={firstName} onChangeText={setFirstName} {...THIRD_PARTY_NAME_INPUT} />
+        <Input label="Nom" value={lastName} onChangeText={setLastName} {...THIRD_PARTY_NAME_INPUT} />
         <View>
           <AppText style={styles.label}>Lien de parenté</AppText>
           <Row wrap gap={spacing[2]}>

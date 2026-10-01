@@ -95,7 +95,7 @@ export function formatCareSummary(
       if (categories?.length) {
         return formatPassageNursingItemLabel(item, categories);
       }
-      return resolveCareItemDisplayLabel(item as unknown as Record<string, unknown>, categories);
+      return resolveCareItemDisplayLabel({ ...item }, categories);
     })
     .join(' · ');
 }

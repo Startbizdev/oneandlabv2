@@ -75,7 +75,7 @@ export function NurseReviewsScreen() {
     onError: (e) => handleApiError(e, toast, 'reviewResponse'),
   });
 
-  const allReviews = reviewsQ.data ?? [];
+  const allReviews = useMemo(() => reviewsQ.data ?? [], [reviewsQ.data]);
   const filtered = useMemo(() => filterReviews(allReviews, filter), [allReviews, filter]);
 
   const counts = useMemo(

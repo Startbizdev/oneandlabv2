@@ -17,7 +17,7 @@ export default function PreleveurLayout() {
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
         <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions(theme)} />
         <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
-        <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Reprendre le RDV' }} />
+        <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Nouveau créneau' }} />
         <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
         <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
         <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
