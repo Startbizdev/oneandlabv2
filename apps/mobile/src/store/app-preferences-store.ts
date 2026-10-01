@@ -20,6 +20,11 @@ export interface AppPreferencesState {
   pushNotificationsEnabled: boolean;
   expoPushToken: string | null;
   onboardingCompleted: OnboardingCompletionMap;
+  /**
+   * Compte ayant accepté l'engagement de prise en charge des offres sur cet appareil.
+   * Purement local : le backend n'exige ni ne stocke cet engagement. Vidé à la déconnexion.
+   */
+  offerTermsAcceptedUserId: string | null;
   setColorblindType: (type: ColorblindType) => void;
   setColorblindMode: (enabled: boolean) => void;
   setTextScale: (scale: TextScale) => void;
@@ -27,6 +32,8 @@ export interface AppPreferencesState {
   setExpoPushToken: (token: string | null) => void;
   setOnboardingCompleted: (role: TutorialRole, completed: boolean) => void;
   isOnboardingCompleted: (role: TutorialRole) => boolean;
+  setOfferTermsAccepted: (userId: string, accepted: boolean) => void;
+  clearOfferTermsAcceptance: () => void;
 }
 
 export const useAppPreferencesStore = create<AppPreferencesState>()(
@@ -38,6 +45,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       pushNotificationsEnabled: true,
       expoPushToken: null,
       onboardingCompleted: {},
+      offerTermsAcceptedUserId: null,
       setColorblindType: (colorblindType) =>
         set({ colorblindType, colorblindMode: colorblindType !== 'off' }),
       setTextScale: (textScale) => set({ textScale }),
@@ -61,10 +69,13 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           },
         })),
       isOnboardingCompleted: (role) => Boolean(get().onboardingCompleted[role]),
+      setOfferTermsAccepted: (userId, accepted) =>
+        set({ offerTermsAcceptedUserId: accepted && userId ? userId : null }),
+      clearOfferTermsAcceptance: () => set({ offerTermsAcceptedUserId: null }),
     }),
     {
       name: APP_PREFERENCES_STORAGE_KEY,
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         colorblindType: state.colorblindType,
@@ -73,6 +84,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         pushNotificationsEnabled: state.pushNotificationsEnabled,
         expoPushToken: state.expoPushToken,
         onboardingCompleted: state.onboardingCompleted,
+        offerTermsAcceptedUserId: state.offerTermsAcceptedUserId,
       }),
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppPreferencesState>;
@@ -89,6 +101,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         }
         if (version < 3 && !state.onboardingCompleted) {
           state.onboardingCompleted = {};
+        }
+        if (version < 4) {
+          state.offerTermsAcceptedUserId = null;
         }
         return state as AppPreferencesState;
       },

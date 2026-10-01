@@ -68,6 +68,7 @@ import { updatePatient } from '@/features/patients/api/patients.service';
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { useProfileAddressSync } from './useProfileAddressSync';
 import { useSelectedPatient } from './useSelectedPatient';
+import type { BookingDraftData } from '../utils/booking-draft';
 
 const defaultValues: AppointmentFormSchema = {
   is_new_patient: false,
@@ -377,6 +378,10 @@ export function useMultiAppointmentWizard(opts: {
   getPatientBookingConsent?: () => boolean;
   getProNurseAssignment?: () => ProNurseAssignment | null;
   getLabPreference?: () => { mode: LabPreferenceMode | ''; brandId: string | null };
+  /** Brouillon local repris : valeurs initiales du tunnel de création. */
+  initialDraft?: BookingDraftData | null;
+  /** Appelé dès que les RDV sont créés côté serveur. */
+  onCreated?: () => void;
 }) {
   const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
   const createdPatientForAttempt = useRef<string | null>(null);
@@ -384,26 +389,31 @@ export function useMultiAppointmentWizard(opts: {
   const router = useRouter();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const [selectedServices, setSelectedServices] = useState<SelectedServiceInput[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState(opts.initialPatientId ?? '');
+  const draft = opts.initialDraft ?? null;
+  const [selectedServices, setSelectedServices] = useState<SelectedServiceInput[]>(
+    () => draft?.selectedServices ?? [],
+  );
+  const [selectedPatientId, setSelectedPatientId] = useState(
+    opts.initialPatientId ?? draft?.selectedPatientId ?? '',
+  );
   const [patientMode, setPatientMode] = useState<'existing' | 'new'>(
-    opts.initialPatientId ? 'existing' : 'existing',
+    opts.initialPatientId ? 'existing' : (draft?.patientMode ?? 'existing'),
   );
   useEffect(() => {
     if (patientMode === 'existing') createdPatientForAttempt.current = null;
   }, [patientMode]);
-  const [addressComplement, setAddressComplement] = useState('');
+  const [addressComplement, setAddressComplement] = useState(draft?.addressComplement ?? '');
   const [pinnedLookupPatient, setPinnedLookupPatient] = useState<PatientRow | null>(null);
 
   const form = useForm({
     defaultValues: {
-      first_name: '',
-      last_name: '',
-      email: '',
-      phone: '',
-      gender: '',
-      birth_date: '',
-      address: null as AddressPayload | null,
+      first_name: draft?.patient.first_name ?? '',
+      last_name: draft?.patient.last_name ?? '',
+      email: draft?.patient.email ?? '',
+      phone: draft?.patient.phone ?? '',
+      gender: draft?.patient.gender ?? '',
+      birth_date: draft?.patient.birth_date ?? '',
+      address: draft?.patient.address ?? null,
     },
   });
 
@@ -426,7 +436,7 @@ export function useMultiAppointmentWizard(opts: {
 
   const [formDataByService, setFormDataByService] = useState<
     Record<string, Record<string, unknown>>
-  >({});
+  >(() => draft?.formDataByService ?? {});
   const [personalFiles, setPersonalFiles] = useState<
     Record<string, DocumentFileRef | undefined>
   >({});
@@ -755,6 +765,7 @@ export function useMultiAppointmentWizard(opts: {
       };
     },
     onSuccess: ({ id, warning, fallbackList }) => {
+      opts.onCreated?.();
       if (fallbackList || !id) {
         toast(warning ?? 'Si le rendez-vous apparaît dans la liste, ne le recréez pas.', {
           type: 'warning',

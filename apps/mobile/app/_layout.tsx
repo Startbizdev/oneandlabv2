@@ -69,21 +69,21 @@ const styles = StyleSheet.create({
 });
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Raleway_600SemiBold,
     Raleway_700Bold,
     Raleway_800ExtraBold,
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontError) console.warn('[fonts] Raleway non chargée, police système utilisée', fontError);
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  // Android ne remesure pas un texte quand sa police arrive après le premier layout (texte tronqué).
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>

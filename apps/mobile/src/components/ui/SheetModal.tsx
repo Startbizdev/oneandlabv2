@@ -1,6 +1,15 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
+import {
+  BackHandler,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type ViewStyle,
+} from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { BottomSheetModalContainer } from './BottomSheetModalContainer';
 import {
@@ -99,6 +108,17 @@ export function SheetModal({
     hasPresentedRef.current = false;
     modal.dismiss();
   }, [visible, presentKey]);
+
+  /** Android : le bouton retour ferme la sheet au premier plan au lieu de quitter l'écran ou l'app. */
+  useEffect(() => {
+    if (!visible || Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (onBack) onBack();
+      else if (enableSwipeToDismiss || dismissOnBackdropPress) modalRef.current?.dismiss();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onBack, enableSwipeToDismiss, dismissOnBackdropPress]);
 
   const handleDismiss = useCallback(() => {
     Keyboard.dismiss();

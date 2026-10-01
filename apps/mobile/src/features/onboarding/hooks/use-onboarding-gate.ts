@@ -3,6 +3,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { isTutorialRole } from '@oneandlab/onboarding';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
+import { useNavigationReady } from '@/navigation/use-navigation-ready';
 import { getOnboardingHref, isOnboardingSegment } from '../utils/onboarding-route';
 
 const GLOBAL_SEGMENTS = new Set(['profile', 'notifications']);
@@ -11,6 +12,7 @@ const GLOBAL_SEGMENTS = new Set(['profile', 'notifications']);
 export function useOnboardingGate() {
   const router = useRouter();
   const segments = useSegments();
+  const { ready: navigationReady, canNavigate } = useNavigationReady();
   const { token, user, isHydrated } = useAuthStore();
   const isOnboardingCompleted = useAppPreferencesStore((s) => s.isOnboardingCompleted);
   const [prefsHydrated, setPrefsHydrated] = useState(
@@ -28,7 +30,7 @@ export function useOnboardingGate() {
   }, []);
 
   useEffect(() => {
-    if (!isHydrated || !prefsHydrated || !token || !user?.role) return;
+    if (!navigationReady || !canNavigate() || !isHydrated || !prefsHydrated || !token || !user?.role) return;
     if (!isMobileRole(user.role) || !isTutorialRole(user.role)) return;
     if (user.must_change_password) return;
 
@@ -40,6 +42,8 @@ export function useOnboardingGate() {
 
     router.replace(getOnboardingHref(role));
   }, [
+    navigationReady,
+    canNavigate,
     isHydrated,
     prefsHydrated,
     token,

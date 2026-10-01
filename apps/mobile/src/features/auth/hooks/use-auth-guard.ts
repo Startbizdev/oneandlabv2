@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter, useSegments, type Href } from 'expo-router';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
+import { useNavigationReady } from '@/navigation/use-navigation-ready';
 
 /** Routes accessibles quel que soit le rôle mobile connecté. */
 const GLOBAL_SEGMENTS = new Set(['profile']);
@@ -9,9 +10,10 @@ export function useAuthGuard() {
   const { token, user, isHydrated } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+  const { ready: navigationReady, canNavigate } = useNavigationReady();
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !navigationReady || !canNavigate()) return;
 
     const inAuth = String(segments[0]) === '(auth)';
 
@@ -36,7 +38,7 @@ export function useAuthGuard() {
         router.replace(getRoleHome(user.role));
       }
     }
-  }, [token, user, isHydrated, segments, router]);
+  }, [token, user, isHydrated, navigationReady, canNavigate, segments, router]);
 }
 
 function roleToSegment(role: string): string {

@@ -11,6 +11,7 @@ import {
   saveAuthUser,
 } from '@/lib/auth-storage';
 import { clearAppSessionCache } from '@/lib/clear-app-cache';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { prefetchAppDataForRole } from '@/lib/prefetch-app-data';
 import {
   disableBiometricLogin,
@@ -41,6 +42,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       normalizeBiometricUserId(storedUserId) !== normalizeBiometricUserId(user.id)
     ) {
       await disableBiometricLogin();
+    }
+    const prefs = useAppPreferencesStore.getState();
+    if (prefs.offerTermsAcceptedUserId && prefs.offerTermsAcceptedUserId !== user.id) {
+      prefs.clearOfferTermsAcceptance();
     }
     await saveAuthSession(token, user);
     setAuthToken(token);

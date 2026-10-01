@@ -54,12 +54,6 @@ interface OfferQueueState {
   shareToken: string | null;
   /** Force Gorhom à re-présenter la sheet à chaque ouverture manuelle. */
   presentNonce: number;
-  /**
-   * Engagement de prise en charge accepté une fois pour la session (remis à zéro par `reset`
-   * à la déconnexion) — aucune persistance backend n’existe pour cet engagement.
-   */
-  termsAccepted: boolean;
-  setTermsAccepted: (accepted: boolean) => void;
   enqueueMany: (items: Appointment[]) => void;
   processNext: (role: string, userId: string) => Promise<void>;
   openIncomingOffer: (
@@ -81,10 +75,8 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   selected: null,
   shareToken: null,
   presentNonce: 0,
-  termsAccepted: false,
 
   setShareToken: (token) => set({ shareToken: token }),
-  setTermsAccepted: (accepted) => set({ termsAccepted: accepted }),
 
   enqueueMany: (items) => {
     const state = get();
@@ -223,7 +215,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       selected: null,
       shareToken: null,
       presentNonce: 0,
-      termsAccepted: false,
     });
   },
 }));

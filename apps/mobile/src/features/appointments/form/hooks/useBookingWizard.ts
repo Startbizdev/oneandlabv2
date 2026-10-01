@@ -65,6 +65,7 @@ import {
   type BookingWizardSection,
 } from '../utils/booking-wizard-steps';
 import { logVipPaymentIssue, VipPaymentError } from '../utils/vip-payment-error';
+import { restoredBookingStep, type BookingDraftData } from '../utils/booking-draft';
 
 export type { BookingWizardSection } from '../utils/booking-wizard-steps';
 
@@ -82,7 +83,12 @@ export function useBookingWizard(opts: {
   initialPatientId?: string;
   initialRelativeId?: string;
   onConsentMissing?: () => void;
+  /** Brouillon local repris (création uniquement). */
+  initialDraft?: BookingDraftData | null;
+  /** Appelé dès que les RDV sont créés côté serveur. */
+  onBookingCreated?: () => void;
 }) {
+  const draft = opts.initialDraft ?? null;
   const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
   const { show: toast } = useToast();
   const router = useRouter();
@@ -90,17 +96,21 @@ export function useBookingWizard(opts: {
   const user = useAuthStore((s) => s.user);
   const patientVipIap = usePatientVipIap();
 
-  const [step, setStep] = useState(0);
-  const [labPreferenceMode, setLabPreferenceMode] = useState<LabPreferenceMode | ''>('platform_match');
-  const [preferredLabBrandId, setPreferredLabBrandId] = useState<string | null>(null);
-  const [wizardIndex, setWizardIndex] = useState(0);
+  const [step, setStep] = useState(() => (draft ? restoredBookingStep(draft, opts.role) : 0));
+  const [labPreferenceMode, setLabPreferenceMode] = useState<LabPreferenceMode | ''>(
+    draft?.labPreferenceMode ?? 'platform_match',
+  );
+  const [preferredLabBrandId, setPreferredLabBrandId] = useState<string | null>(
+    draft?.preferredLabBrandId ?? null,
+  );
+  const [wizardIndex, setWizardIndex] = useState(() => Math.max(0, Math.trunc(draft?.wizardIndex ?? 0)));
   const [consent, setConsent] = useState(false);
   const consentRef = useRef(false);
   useEffect(() => {
     consentRef.current = consent;
   }, [consent]);
   const [selectedRelativeId, setSelectedRelativeId] = useState<string | null>(
-    opts.initialRelativeId ?? null,
+    opts.initialRelativeId ?? draft?.selectedRelativeId ?? null,
   );
   const [validationError, setValidationError] = useState('');
   const [returnToReview, setReturnToReview] = useState(false);
@@ -114,9 +124,11 @@ export function useBookingWizard(opts: {
   const submissionLockedRef = useRef(false);
   const retrySubmitRef = useRef<() => void>(() => undefined);
 
-  const [nurseAssignmentMode, setNurseAssignmentMode] = useState<NurseAssignmentMode>('cary_dispatch');
-  const [proLinkedNurseId, setProLinkedNurseId] = useState('');
-  const [externalNursePhone, setExternalNursePhone] = useState('');
+  const [nurseAssignmentMode, setNurseAssignmentMode] = useState<NurseAssignmentMode>(
+    draft?.nurseAssignmentMode ?? 'cary_dispatch',
+  );
+  const [proLinkedNurseId, setProLinkedNurseId] = useState(draft?.proLinkedNurseId ?? '');
+  const [externalNursePhone, setExternalNursePhone] = useState(draft?.externalNursePhone ?? '');
 
   const resetProNurseAssignment = useCallback(() => {
     setNurseAssignmentMode('cary_dispatch');
@@ -150,6 +162,8 @@ export function useBookingWizard(opts: {
       mode: labPreferenceMode,
       brandId: preferredLabBrandId,
     }),
+    initialDraft: draft,
+    onCreated: opts.onBookingCreated,
   });
 
   const needsLabPreferenceStep = useMemo(
@@ -682,6 +696,7 @@ export function useBookingWizard(opts: {
       handleApiError(e, toast, 'bookingWizard');
     },
     onSuccess: ({ appointmentIds, warning, fallbackList }) => {
+      opts.onBookingCreated?.();
       qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       setCreated({
         appointmentIds,
@@ -825,6 +840,7 @@ export function useBookingWizard(opts: {
 
   return {
     step,
+    wizardIndex,
     wizard,
     slotRows,
     documentsSlotRows,

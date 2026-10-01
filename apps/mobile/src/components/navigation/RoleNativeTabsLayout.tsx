@@ -124,23 +124,3 @@ export const PATIENTS_TAB_TRIGGER: TabTrigger = {
   sf: { default: 'person.2', selected: 'person.2.fill' },
   androidIcon: 'people',
 };
-
-/** SF Symbols stack profil (cohérents avec le design système). */
-export const PROFILE_HEADER_SF = {
-  profile: 'person.circle',
-  account: 'person.circle',
-  personal: 'person.text.rectangle',
-  settings: 'gearshape',
-  help: 'questionmark.circle',
-  support: 'envelope',
-  security: 'lock',
-  documents: 'doc.text',
-  coordinates: 'mappin.and.ellipse',
-  presentation: 'globe',
-  nurseSettings: 'gearshape',
-  qualifications: 'graduationcap',
-  careTypes: 'heart.text.square',
-  coverage: 'map',
-  reviews: 'star',
-  qrCode: 'qrcode',
-} as const satisfies Record<string, SFSymbol>;

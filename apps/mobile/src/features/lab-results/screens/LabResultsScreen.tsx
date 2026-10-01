@@ -95,7 +95,9 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
           <AppointmentsListFilterBar
             search={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Rechercher un patient, une analyse…"
+            searchPlaceholder={
+              role === 'patient' ? 'Rechercher une analyse…' : 'Rechercher un patient, une analyse…'
+            }
             embedded
           />
         </View>

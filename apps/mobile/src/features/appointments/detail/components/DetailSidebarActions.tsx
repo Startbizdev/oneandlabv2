@@ -35,7 +35,7 @@ import {
   nurseCanRescheduleOrCancel,
 } from '@/utils/effective-appointment-status';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
-import { appointmentAddressLine } from '@/utils/appointment-display';
+import { useAppointmentNavigation } from '../hooks/use-appointment-navigation';
 import {
   DetailActionList,
   type DetailActionItem,
@@ -48,23 +48,6 @@ function patientPhone(apt: Appointment): string | null {
     form_data?: { phone?: string };
   };
   return ext.relative?.phone?.trim() || ext.form_data?.phone?.trim() || null;
-}
-
-function openWaze(apt: Appointment) {
-  const addr = apt.address;
-  try {
-    const parsed = typeof addr === 'string' ? JSON.parse(addr) : addr;
-    if (parsed?.lat != null && parsed?.lng != null) {
-      void Linking.openURL(
-        `https://waze.com/ul?ll=${parsed.lat},${parsed.lng}&navigate=yes`,
-      );
-      return;
-    }
-  } catch {
-    /* ignore */
-  }
-  const line = appointmentAddressLine(apt);
-  if (line) void Linking.openURL(`https://waze.com/ul?q=${encodeURIComponent(line)}&navigate=yes`);
 }
 
 interface Props {
@@ -93,6 +76,7 @@ export function DetailSidebarActions({
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
+  const navigation = useAppointmentNavigation(apt);
   const status = effectiveAppointmentStatus(apt, { role, viewerId });
   const terminal = getAppointmentSidebarTerminalEmpty(status);
 
@@ -211,14 +195,14 @@ export function DetailSidebarActions({
     });
   }
 
-  if (role === 'preleveur' && active && apt.address) {
+  if (role === 'preleveur' && active && apt.address && navigation.canNavigate) {
     actions.push({
-      key: 'waze',
-      label: 'Itinéraire Waze',
+      key: 'navigation',
+      label: `Itinéraire ${navigation.appLabel}`,
       hint: 'Ouvrir la navigation',
       icon: Navigation,
       tone: 'neutral',
-      onPress: () => openWaze(apt),
+      onPress: () => void navigation.open(),
     });
   }
 

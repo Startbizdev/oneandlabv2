@@ -1,12 +1,13 @@
-import { createElement, type ReactNode } from 'react';
 import { useRoute } from '@react-navigation/native';
-import { HeaderTitleText } from '@/navigation/HeaderTitle';
 
 export type StackHeaderCatalogEntry = {
   title: string;
 };
 
-/** Titres stack — clé = `route.name` expo-router (aligné sur les `_layout`). */
+/**
+ * Source unique des titres stack — clé = `route.name` expo-router, partagée entre rôles.
+ * Un titre propre à un rôle se passe en prop `title` de `StackChromeScreen`.
+ */
 export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   index: { title: 'Mon profil' },
   menu: { title: 'Compte' },
@@ -40,17 +41,29 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   abonnement: { title: 'Abonnement' },
   'informations-legales': { title: 'Informations légales' },
   web: { title: 'Page web' },
+  'appointment/[id]/conversation': { title: 'Échanges du rendez-vous' },
+  'passage/new': { title: 'Prise en charge' },
+  'passage/patient-pick': { title: 'Choisir un patient' },
+  'passage/[seriesId]': { title: 'Détail passage' },
+  'professionnel/[id]': { title: 'Professionnel' },
+  'commandes-pharmacie/index': { title: 'Commandes pharmacie' },
+  'commandes-pharmacie/new': { title: 'Nouvelle commande' },
+  'commandes-pharmacie/[id]': { title: 'Détail commande' },
+  'commandes-pharmacie/[id]/ordonnances': { title: 'Ordonnances' },
+  'commandes-recues/index': { title: 'Commandes reçues' },
+  'commandes-recues/[id]': { title: 'Commande reçue' },
+  'commandes-recues/[id]/ordonnances': { title: 'Ordonnances' },
+  'traitements/index': { title: 'Mes traitements' },
+  'traitements/[id]': { title: 'Détail du traitement' },
+  'health-data': { title: 'Mes données santé' },
+  'health-record/index': { title: 'Mon carnet de santé' },
+  'health-record/wizard': { title: 'Compléter mon carnet' },
+  'pharmacy-settings': { title: 'Commandes pharmacie' },
+  'care-origins': { title: 'Mes donneurs de soins' },
+  'delete-account': { title: 'Supprimer mon compte' },
 };
-
-export function getStackHeaderCatalogEntry(routeName: string): StackHeaderCatalogEntry | null {
-  return STACK_HEADER_CATALOG[routeName] ?? null;
-}
-
-export function stackHeaderTitleNode(entry: StackHeaderCatalogEntry): ReactNode {
-  return createElement(HeaderTitleText, { title: entry.title });
-}
 
 export function useStackHeaderCatalogEntry(): StackHeaderCatalogEntry | null {
   const route = useRoute();
-  return getStackHeaderCatalogEntry(route.name);
+  return STACK_HEADER_CATALOG[route.name] ?? null;
 }

@@ -56,7 +56,6 @@ export function LoginBottomSheet({
       onClose={handleClose}
       title={sheetTitle(meta)}
       subtitle={sheetSubtitle(meta)}
-      disableScroll
     >
       <View style={styles.content}>
         <LoginFlow onSuccess={onSuccess} onEmailNotFound={onEmailNotFound} onMetaChange={setMeta} />

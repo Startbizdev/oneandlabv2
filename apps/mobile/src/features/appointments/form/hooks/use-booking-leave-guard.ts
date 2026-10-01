@@ -12,7 +12,8 @@ const BACK_ACTION_TYPES = new Set(['GO_BACK', 'POP', 'POP_TO_TOP']);
 /**
  * Empêche de perdre une réservation en cours : un retour (geste iOS, bouton Android, chevron)
  * revient d'une étape, et quitter l'assistant depuis la première étape demande confirmation.
- * Aucun brouillon n'est conservé : le backend n'expose pas d'enregistrement de réservation en cours.
+ * La saisie simple reste en brouillon local 24 h (`use-booking-draft`) : le backend n'expose pas
+ * d'enregistrement de réservation en cours.
  */
 export function useBookingLeaveGuard({
   enabled,

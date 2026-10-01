@@ -25,6 +25,14 @@ import { BookingSuccessView } from '../components/BookingSuccessView';
 import { RelativeQuickAddSheet } from '../components/RelativeQuickAddSheet';
 import { useBookingWizard } from '../hooks/useBookingWizard';
 import { useBookingLeaveGuard } from '../hooks/use-booking-leave-guard';
+import {
+  useBookingDraftAutosave,
+  useBookingDraftOwnerKey,
+  useBookingDraftResume,
+  useBookingDraftSession,
+} from '../hooks/use-booking-draft';
+import { BookingDraftResumeSheet } from '../components/BookingDraftResumeSheet';
+import type { BookingDraftData } from '../utils/booking-draft';
 import { PATIENT_VIP_FEE_LABEL } from '@oneandlab/shared-constants';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
@@ -37,17 +45,56 @@ interface Props {
   basePath: string;
   /** Onglet Réserver patient — header glass onglet au lieu du stack natif. */
   embeddedInTab?: boolean;
+  /** Onglet monté en arrière-plan (NativeTabs) : la reprise de brouillon attend qu'il soit affiché. */
+  isActiveTab?: boolean;
 }
 
-/** Une nouvelle session repart d'un assistant vierge (onglet Réserver après une demande envoyée). */
+/**
+ * Une nouvelle session repart d'un assistant vierge (onglet Réserver après une demande envoyée),
+ * ou du brouillon local que l'utilisateur choisit de reprendre.
+ */
 export function BookingWizardScreen(props: Props) {
   const [session, setSession] = useState(0);
-  const restart = useCallback(() => setSession((s) => s + 1), []);
-  return <BookingWizardFlow key={session} {...props} onRestart={restart} />;
+  const [initialDraft, setInitialDraft] = useState<BookingDraftData | null>(null);
+  const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
+    patient_id?: string;
+    relative_id?: string;
+  }>();
+  const draftResume = useBookingDraftResume(
+    useBookingDraftOwnerKey(),
+    (props.isActiveTab ?? true) && !patientIdParam && !relativeIdParam,
+  );
+  const restart = useCallback(() => {
+    setInitialDraft(null);
+    setSession((s) => s + 1);
+  }, []);
+  const resumeDraft = () => {
+    const data = draftResume.take();
+    if (!data) return;
+    setInitialDraft(data);
+    setSession((s) => s + 1);
+  };
+  return (
+    <>
+      <BookingWizardFlow key={session} {...props} initialDraft={initialDraft} onRestart={restart} />
+      <BookingDraftResumeSheet
+        visible={draftResume.visible}
+        onResume={resumeDraft}
+        onRestart={draftResume.discard}
+        onDismiss={draftResume.dismiss}
+      />
+    </>
+  );
 }
 
 function BookingWizardFlow({
-  mode, role, basePath, embeddedInTab = false, onRestart }: Props & { onRestart: () => void }) {
+  mode,
+  role,
+  basePath,
+  embeddedInTab = false,
+  initialDraft,
+  onRestart,
+}: Props & { initialDraft: BookingDraftData | null; onRestart: () => void }) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
@@ -55,6 +102,7 @@ function BookingWizardFlow({
     patient_id?: string;
     relative_id?: string;
   }>();
+  const draftSession = useBookingDraftSession(useBookingDraftOwnerKey());
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
   const formScrollRef = useRef<ScrollView>(null);
 
@@ -78,7 +126,10 @@ function BookingWizardFlow({
     initialPatientId: patientIdParam,
     initialRelativeId: relativeIdParam,
     onConsentMissing,
+    initialDraft,
+    onBookingCreated: draftSession.discard,
   });
+  useBookingDraftAutosave(bw, draftSession);
   const w = bw.wizard;
   const scrollConfig = useStackScrollConfig(styles.formContent);
   const phases = bookingWizardPhases(mode);
@@ -103,10 +154,10 @@ function BookingWizardFlow({
     <ConfirmSheet
       visible={leaveGuard.confirmVisible}
       title="Quitter la réservation ?"
-      message="Les soins et informations saisis ne seront pas conservés."
+      message="Votre saisie sera conservée 24 h sur cet appareil. Les documents joints devront être ajoutés à nouveau."
       confirmLabel="Quitter"
       cancelLabel="Continuer la réservation"
-      tone="destructive"
+      tone="primary"
       onConfirm={leaveGuard.leave}
       onClose={leaveGuard.stay}
     />

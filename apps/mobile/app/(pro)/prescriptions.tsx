@@ -3,7 +3,7 @@ import { PrescriptionsScreen } from '@/features/prescriptions/screens/Prescripti
 
 export default function ProPrescriptionsStack() {
   return (
-    <StackChromeScreen>
+    <StackChromeScreen title="Ordonnances">
       <PrescriptionsScreen roleBase="pro" rolePrefix="/(pro)" />
     </StackChromeScreen>
   );

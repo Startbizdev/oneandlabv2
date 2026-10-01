@@ -1,10 +1,8 @@
 import { Fragment } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { tabHeaderTitle } from '@/navigation/HeaderTitle';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
-import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 import { useStyles, useTheme, type Theme } from '@/theme';
@@ -19,58 +17,14 @@ export default function NurseLayout() {
     <View style={styles.stackHost}>
     <StackSceneInsetLayout>
     <Stack screenOptions={stackHeaderOptions(theme)}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
-        <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
-        <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
-      <Stack.Screen
-        name="appointment/[id]/care-photo/[photoId]"
-        options={{ headerShown: false, animation: 'slide_from_right' }}
-      />
-      <Stack.Screen
-        name="appointment/[id]/exchange"
-        options={{ headerShown: false, animation: 'slide_from_right' }}
-      />
-      <Stack.Screen
-        name="appointment/[id]/prescription"
-        options={{ title: "Prescription d'actes infirmiers", animation: 'slide_from_right' }}
-      />
-      <Stack.Screen name="appointment/[id]/edit" options={{ title: 'Nouveau créneau' }} />
-      <Stack.Screen name="reviews" options={{
-        title: 'Mes avis',
-        headerTitle: tabHeaderTitle('Mes avis'),
-      }} />
-      <Stack.Screen
-        name="qr-code"
-        options={{
-          title: 'QR code',
-          headerTitle: tabHeaderTitle('QR code'),
-        }}
-      />
-      <Stack.Screen name="abonnement" options={{ headerTitleAlign: 'left' }} />
-      <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
-      <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
-      <Stack.Screen name="prescriptions" options={{ title: 'Prescriptions' }} />
+      <Stack.Screen name="appointment/[id]/care-photo/[photoId]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="appointment/[id]/exchange" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="appointment/[id]/prescription" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions(theme)} />
-      <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
-      <Stack.Screen name="patient/[id]/history" options={{ title: 'Historique' }} />
-      <Stack.Screen name="patient/[id]/documents" options={{ headerTitleAlign: 'left' }} />
-      <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
-      <Stack.Screen name="resultats" options={{
-        title: 'Résultats',
-        headerTitle: tabHeaderTitle('Résultats'),
-      }} />
-      <Stack.Screen name="ai" options={{ headerShown: false, animation: 'slide_from_right' }} />
-      <Stack.Screen name="passage/new" options={{ title: 'Prise en charge' }} />
-      <Stack.Screen name="passage/patient-pick" options={{ title: 'Choisir un patient' }} />
-      <Stack.Screen name="passage/[seriesId]" options={{ title: 'Détail passage' }} />
-      <Stack.Screen name="commandes-pharmacie/index" options={{ title: 'Commandes pharmacie' }} />
-      <Stack.Screen name="commandes-pharmacie/new" options={{ title: 'Nouvelle commande' }} />
-      <Stack.Screen name="commandes-pharmacie/[id]" options={{ title: 'Détail commande' }} />
-      <Stack.Screen
-        name="commandes-pharmacie/[id]/ordonnances"
-        options={{ title: 'Ordonnances', animation: 'slide_from_right' }}
-      />
+      <Stack.Screen name="ai" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="commandes-pharmacie/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
     </Stack>
     </StackSceneInsetLayout>
     </View>

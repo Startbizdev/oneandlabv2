@@ -6,6 +6,8 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/skeletons';
+import { useToast } from '@/providers/ToastProvider';
+import { useAppointmentNavigation } from '../hooks/use-appointment-navigation';
 import {
   resolveAppointmentAddressComplement,
   resolveAppointmentDetailAddressLine,
@@ -32,34 +34,25 @@ export function RdvAddressFieldRow({
   const section = useRdvDetailSectionStyles();
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const { show: toast } = useToast();
+  const navigation = useAppointmentNavigation(apt, batch);
 
   const line = resolveAppointmentDetailAddressLine(apt, batch);
   const complement = resolveAppointmentAddressComplement(apt);
   const coords = resolveAppointmentMapCoords(apt);
 
   const openGoogleMaps = useCallback(() => {
-    if (coords) {
-      void Linking.openURL(`https://www.google.com/maps?q=${coords.lat},${coords.lng}`);
-      return;
-    }
-    if (line) {
-      void Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(line)}`,
-      );
-    }
-  }, [coords, line]);
-
-  const openWaze = useCallback(() => {
-    if (coords) {
-      void Linking.openURL(
-        `https://waze.com/ul?ll=${coords.lat},${coords.lng}&navigate=yes`,
-      );
-      return;
-    }
-    if (line) {
-      void Linking.openURL(`https://waze.com/ul?q=${encodeURIComponent(line)}&navigate=yes`);
-    }
-  }, [coords, line]);
+    const url = coords
+      ? `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
+      : line
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(line)}`
+        : null;
+    if (!url) return;
+    Linking.openURL(url).catch((error: unknown) => {
+      if (__DEV__) console.warn('[rdv-address] ouverture carte impossible', url, error);
+      toast('Impossible d’ouvrir la carte', { type: 'error' });
+    });
+  }, [coords, line, toast]);
 
   const hasBatchSiblings =
     Array.isArray(apt.batch_siblings) && apt.batch_siblings.length > 0;
@@ -93,16 +86,18 @@ export function RdvAddressFieldRow({
                 leftIcon={<Map size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
                 onPress={openGoogleMaps}
               />
-              <Button
-                title="Waze"
-                variant="muted"
-                size="sm"
-                leftIcon={
-                  <Navigation size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />
-                }
-                onPress={openWaze}
-                accessibilityLabel="Itinéraire Waze"
-              />
+              {navigation.canNavigate ? (
+                <Button
+                  title={navigation.appLabel}
+                  variant="muted"
+                  size="sm"
+                  leftIcon={
+                    <Navigation size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />
+                  }
+                  onPress={() => void navigation.open()}
+                  accessibilityLabel={`Itinéraire ${navigation.appLabel}`}
+                />
+              ) : null}
             </Row>
           ) : null}
         </View>

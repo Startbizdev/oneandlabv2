@@ -1,28 +1,17 @@
-import { createElement } from 'react';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { StackGlassBackButton } from '@/navigation/StackGlassBackButton';
 import { appFlatContentStyle } from '@/components/navigation/header-layout';
-import { font, type Theme } from '@/theme';
+import type { Theme } from '@/theme';
 
-/** Stack — headerShown false ; StackChromeScreen affiche le glass flottant. */
+/** Stack — headerShown false ; StackChromeScreen affiche le header (titres : `STACK_HEADER_CATALOG`). */
 export function stackHeaderOptions(
-  { colors: c, fontSize }: Theme,
+  { colors: c }: Theme,
   overrides?: NativeStackNavigationOptions,
 ): NativeStackNavigationOptions {
   return {
     headerShown: false,
-    headerShadowVisible: false,
-    headerTintColor: c.primary,
-    headerTitleStyle: {
-      ...font.heading,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-    },
-    headerTitleAlign: 'left' as const,
-    headerLeft: () => createElement(StackGlassBackButton),
     contentStyle: appFlatContentStyle(c),
     ...(overrides ?? {}),
-  } as NativeStackNavigationOptions;
+  };
 }
 
 /** Wizard booking — plein écran pour flex:1 + footer sticky. */

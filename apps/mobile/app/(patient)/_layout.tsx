@@ -1,7 +1,5 @@
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
-import { tabHeaderTitle } from '@/navigation/HeaderTitle';
-import { notificationsScreenOptions } from '@/navigation/notifications-screen-options';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
 import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 import { useStyles, useTheme, type Theme } from '@/theme';
@@ -14,48 +12,9 @@ export default function PatientLayout() {
     <View style={styles.stackHost}>
       <StackSceneInsetLayout>
       <Stack screenOptions={stackHeaderOptions(theme)}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
-        <Stack.Screen name="appointment/[id]" options={{ title: 'Détail du rendez-vous' }} />
-        <Stack.Screen name="appointment/[id]/conversation" options={{ title: 'Échanges du rendez-vous' }} />
-        <Stack.Screen
-          name="appointment/[id]/documents"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="appointment/[id]/history"
-          options={{ title: 'Historique' }}
-        />
         <Stack.Screen name="booking/new" options={bookingWizardScreenOptions(theme)} />
-        <Stack.Screen name="relatives/index" options={{ title: 'Mes proches' }} />
-        <Stack.Screen name="relatives/[id]" options={{ title: 'Proche' }} />
-        <Stack.Screen
-          name="relatives/[id]/documents"
-          options={{ title: 'Documents' }}
-        />
-        <Stack.Screen name="notifications" options={notificationsScreenOptions(theme)} />
-        <Stack.Screen name="resultats" options={{
-          title: 'Résultats',
-          headerTitle: tabHeaderTitle('Résultats'),
-        }} />
-        <Stack.Screen
-          name="reviews"
-          options={{
-            title: 'Mes avis',
-            headerTitle: tabHeaderTitle('Mes avis'),
-          }}
-        />
-        <Stack.Screen name="informations-legales" options={{ headerTitleAlign: 'left' }} />
-        <Stack.Screen name="web" options={{ headerTitleAlign: 'left' }} />
-        <Stack.Screen
-          name="health-data"
-          options={{
-            title: 'Mes données santé',
-            headerTitle: tabHeaderTitle('Mes données santé'),
-          }}
-        />
-        <Stack.Screen name="health-record/index" options={{ title: 'Mon carnet de santé' }} />
-        <Stack.Screen name="health-record/wizard" options={{ title: 'Compléter mon carnet' }} />
       </Stack>
       </StackSceneInsetLayout>
     </View>

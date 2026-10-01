@@ -24,6 +24,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { useOfferQueueStore } from '../../store/offer-queue-store';
 import { useAuthStore } from '@/store/auth-store';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
@@ -59,8 +60,17 @@ export function OfferAppointmentModal({
   const presentNonce = useOfferQueueStore((s) => s.presentNonce);
   const shareToken = useOfferQueueStore((s) => s.shareToken);
   const closeModal = useOfferQueueStore((s) => s.closeModal);
-  const termsAccepted = useOfferQueueStore((s) => s.termsAccepted);
-  const setTermsAccepted = useOfferQueueStore((s) => s.setTermsAccepted);
+  const userId = user?.id;
+  const termsAccepted = useAppPreferencesStore(
+    (s) => Boolean(userId) && s.offerTermsAcceptedUserId === userId,
+  );
+  const setOfferTermsAccepted = useAppPreferencesStore((s) => s.setOfferTermsAccepted);
+  const setTermsAccepted = useCallback(
+    (accepted: boolean) => {
+      if (userId) setOfferTermsAccepted(userId, accepted);
+    },
+    [setOfferTermsAccepted, userId],
+  );
 
   const [showTerms, setShowTerms] = useState(!termsAccepted);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
@@ -78,8 +88,9 @@ export function OfferAppointmentModal({
 
   useEffect(() => {
     setConfirmRefuse(false);
-    setShowTerms(!useOfferQueueStore.getState().termsAccepted);
-  }, [presentNonce]);
+    const acceptedBy = useAppPreferencesStore.getState().offerTermsAcceptedUserId;
+    setShowTerms(!userId || acceptedBy !== userId);
+  }, [presentNonce, userId]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
 
@@ -350,7 +361,7 @@ export function OfferAppointmentModal({
               />
               <AppText style={styles.termsText}>
                 J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-                Cet engagement vaut pour toute la session.
+                Cet engagement est mémorisé sur cet appareil pour votre compte.
               </AppText>
             </Row>
           ) : null}

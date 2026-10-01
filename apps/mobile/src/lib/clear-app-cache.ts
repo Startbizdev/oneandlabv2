@@ -1,6 +1,8 @@
 import { queryClient } from '@/lib/query-client';
 import { asyncStoragePersister } from '@/lib/query-persist';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
+import { useBookingDraftStore } from '@/features/appointments/store/booking-draft-store';
+import { useAppPreferencesStore } from '@/store/app-preferences-store';
 
 /** Vide React Query (persisté) et états locaux liés au compte — à appeler à la déconnexion. */
 export async function clearAppSessionCache(): Promise<void> {
@@ -11,4 +13,6 @@ export async function clearAppSessionCache(): Promise<void> {
     /* ignore */
   }
   useOfferQueueStore.getState().reset();
+  useBookingDraftStore.getState().clearAll();
+  useAppPreferencesStore.getState().clearOfferTermsAcceptance();
 }

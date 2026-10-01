@@ -33,7 +33,7 @@ interface Props {
   batch?: Appointment[];
   /** Lot multi-RDV : attendre le chargement des fratries avant d’afficher. */
   batchLoading?: boolean;
-  /** Boutons carte / Waze (pro, infirmier). */
+  /** Boutons carte / itinéraire (rôles non patient). */
   showMapActions?: boolean;
   /** Bouton « Voir le profil » (pro / infirmier). */
   onViewPatientProfile?: () => void;
