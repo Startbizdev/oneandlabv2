@@ -34,7 +34,7 @@ if (!RateLimit::allow('contact', $contactIp, 10, 60)) {
     exit;
 }
 
-$CONTACT_TO = 'contact@cary.bio';
+$CONTACT_TO = (require __DIR__ . '/../../config/app.php')['contact_email'];
 
 $typeLabels = [
     'app_mobile' => 'Assistance application Cary (mobile)',

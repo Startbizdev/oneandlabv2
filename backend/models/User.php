@@ -1747,21 +1747,7 @@ class User
         }
 
         // Réattribuer les lignes qui référencent ce profil (FK ON DELETE RESTRICT) à l'admin qui supprime
-        $updates = [
-            ['appointment_status_updates', 'actor_id'],
-            ['appointments', 'created_by'],
-            ['medical_documents', 'uploaded_by'],
-            ['reviews', 'patient_id'],
-            ['reviews', 'reviewee_id'],
-        ];
-        foreach ($updates as [$table, $column]) {
-            try {
-                $stmt = $this->db->prepare("UPDATE {$table} SET {$column} = ? WHERE {$column} = ?");
-                $stmt->execute([$actorId, $id]);
-            } catch (\Throwable $e) {
-                // Table ou colonne absente (migrations partielles)
-            }
-        }
+        ProfileReferences::reassign($this->db, $id, $actorId);
 
         $this->logger->log($actorId, $actorRole, 'delete', 'profile', $id, []);
 
@@ -1794,29 +1780,11 @@ class User
                 throw new Exception('Vous ne pouvez supprimer que les patients que vous avez créés');
             }
         }
-        $cntStmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM appointments WHERE patient_id = ? AND status IN ('pending','confirmed','planned','inProgress')"
-        );
-        $cntStmt->execute([$patientId]);
-        $active = (int) $cntStmt->fetchColumn();
-        if ($active > 0) {
+        if (ProfileReferences::countActiveAppointments($this->db, $patientId) > 0) {
             throw new Exception('Impossible de supprimer : rendez-vous en attente ou en cours pour ce patient');
         }
 
-        $updates = [
-            ['appointment_status_updates', 'actor_id'],
-            ['appointments', 'created_by'],
-            ['medical_documents', 'uploaded_by'],
-            ['reviews', 'patient_id'],
-            ['reviews', 'reviewee_id'],
-        ];
-        foreach ($updates as [$table, $column]) {
-            try {
-                $u = $this->db->prepare("UPDATE {$table} SET {$column} = ? WHERE {$column} = ?");
-                $u->execute([$actorId, $patientId]);
-            } catch (\Throwable $e) {
-            }
-        }
+        ProfileReferences::reassign($this->db, $patientId, $actorId);
 
         $this->logger->log($actorId, $actorRole, 'delete', 'profile', $patientId, ['scope' => 'patient_created_by']);
 

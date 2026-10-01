@@ -21,6 +21,34 @@ final class MedicalDocumentsInternal
     }
 
     /**
+     * Supprime le fichier chiffré d'un document (chemin medical_documents.file_path) et son dossier
+     * s'il est vide. Refuse tout chemin hors de uploads/medical/.
+     *
+     * @return bool true si le fichier n'existe plus
+     */
+    public static function deleteStoredFile(string $filePathFromDb): bool
+    {
+        $uploadRoot = realpath(self::backendRoot() . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'medical');
+        $relative = str_replace('/', DIRECTORY_SEPARATOR, ltrim($filePathFromDb, '/\\'));
+        $directory = realpath(dirname(self::backendRoot() . DIRECTORY_SEPARATOR . $relative));
+        if ($uploadRoot === false || $directory === false) {
+            return true;
+        }
+        if (!str_starts_with($directory . DIRECTORY_SEPARATOR, $uploadRoot . DIRECTORY_SEPARATOR)) {
+            return false;
+        }
+        $path = $directory . DIRECTORY_SEPARATOR . basename($relative);
+        if (is_file($path) && !unlink($path)) {
+            return false;
+        }
+        if ($directory !== $uploadRoot && count(scandir($directory) ?: []) === 2) {
+            rmdir($directory);
+        }
+
+        return true;
+    }
+
+    /**
      * Copie un document existant (profil ou RDV) vers un RDV pour le patient $uploadedBy — mêmes principes que api/medical-documents/copy.php (rôle patient uniquement).
      */
     public static function copyDocumentToAppointmentAsPatient(

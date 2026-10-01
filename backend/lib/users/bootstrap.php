@@ -7,3 +7,4 @@ require_once __DIR__ . '/UserDirectoryHelpers.php';
 require_once __DIR__ . '/UserIdentityLookup.php';
 require_once __DIR__ . '/PatientProfessionalAccessService.php';
 require_once __DIR__ . '/UserDirectoryQuery.php';
+require_once __DIR__ . '/ProfileReferences.php';

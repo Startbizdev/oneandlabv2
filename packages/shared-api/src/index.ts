@@ -45,6 +45,60 @@ export function requiresCsrf(path: string, method: string): boolean {
   return !PUBLIC_API_ROUTES.some((route) => normalized.startsWith(route));
 }
 
+/** Transport HTTP de l'app (ex. `apiRequest` mobile) : ajoute token, CSRF et base URL. */
+export type ApiRequester = <T>(
+  path: string,
+  options: { method: 'DELETE' | 'POST'; body?: unknown },
+) => Promise<ApiResponse<T>>;
+
+/** Phrase exacte exigée par DELETE /auth/account. */
+export const ACCOUNT_DELETION_CONFIRMATION = 'SUPPRIMER';
+
+export const ACCOUNT_DELETION_REASON_MAX_LENGTH = 1000;
+
+/** Codes `code` renvoyés par les deux endpoints de suppression de compte. */
+export type AccountDeletionErrorCode =
+  | 'CONFIRMATION_REQUIRED'
+  | 'NOT_PATIENT'
+  | 'NOT_FOUND'
+  | 'ACTIVE_APPOINTMENTS'
+  | 'ACTIVE_SUBSCRIPTION'
+  | 'ACTIVE_PHARMACY_ORDERS'
+  | 'PATIENT_USE_SELF_SERVICE'
+  | 'VALIDATION_ERROR'
+  | 'RATE_LIMITED'
+  | 'EMAIL_SEND_FAILED'
+  | 'SERVER_ERROR';
+
+export interface DeleteMyAccountResult {
+  deleted: true;
+  deleted_documents: number;
+  deleted_reviews: number;
+}
+
+export interface AccountDeletionRequestResult {
+  requested: true;
+}
+
+export function createAccountDeletionApi(request: ApiRequester) {
+  return {
+    /** Patient uniquement : suppression définitive et immédiate du compte connecté. */
+    deleteMyAccount(confirmation: typeof ACCOUNT_DELETION_CONFIRMATION) {
+      return request<DeleteMyAccountResult>('/auth/account', {
+        method: 'DELETE',
+        body: { confirmation },
+      });
+    },
+    /** Professionnels : demande de suppression transmise au support (refusée aux patients). */
+    requestAccountDeletion(reason?: string) {
+      return request<AccountDeletionRequestResult>('/auth/account-deletion-request', {
+        method: 'POST',
+        body: reason === undefined ? {} : { reason },
+      });
+    },
+  };
+}
+
 /** URL pending offers — source: frontend/layouts/dashboard.vue appointmentsPendingOffersUrl */
 export function appointmentsPendingOffersQuery(role: string): string {
   const qs = new URLSearchParams({ status: 'pending', limit: '100' });

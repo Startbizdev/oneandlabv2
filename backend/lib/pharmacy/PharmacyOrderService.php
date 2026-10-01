@@ -16,7 +16,7 @@ require_once __DIR__ . '/../MedicalDocumentSubject.php';
 final class PharmacyOrderService
 {
     /** @var list<string> */
-    private const TERMINAL_STATUSES = ['terminee', 'refusee', 'annulee'];
+    public const TERMINAL_STATUSES = ['terminee', 'refusee', 'annulee'];
 
     /** @var array<string, list<string>> */
     private const ALLOWED_TRANSITIONS = [
