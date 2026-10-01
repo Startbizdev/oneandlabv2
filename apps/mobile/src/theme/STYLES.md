@@ -11,6 +11,21 @@ Thème clair unique (pas de mode sombre). `app.json` force `userInterfaceStyle: 
 5. **Texte** — `AppText variant="h1 | h2 | body | caption | label…"` porte la typographie
 6. **Primitives** — `Row`, `Cluster`, `Stack` (`components/layout/primitives.tsx`), `Button`, `IconActionButton`, `ListRowShell`, `FullWidthSegmentBar`
 
+## Primitives UX (`components/ui/`)
+
+| Besoin | Composant |
+|--------|-----------|
+| Liste issue d'une requête | `QueryFlatList` / `InfiniteQueryFlatList` : squelette au 1er chargement, `ErrorState` + « Réessayer » si l'échec survient sans cache, « Réessayer » en pied de liste si la page suivante échoue |
+| Échec de chargement hors liste | `ErrorState error={q.error} onRetry={q.refetch}` — jamais un état vide trompeur ni `error.message` brut |
+| Rien à afficher | `EmptyState` (avec une action quand elle existe) |
+| Action destructrice ou irréversible | `ConfirmSheet` (titre, conséquence, récap optionnel, `tone="destructive"`) |
+| Action appliquée tout de suite mais annulable | `useToast().showUndo('Passage marqué effectué', annuler)` |
+| Menus et réglages | `SettingsSection` + `SettingsRow` (description, valeur, badge, `trailing` pour un interrupteur) |
+| Statut de RDV | `StatusBadge` : toujours un libellé, jamais une couleur seule |
+
+- Cibles tactiles : **44 pt minimum** (`Button` toutes tailles, puces, segments, onglets). Si le visuel est plus petit, compléter avec `hitSlop`.
+- Animations : Reanimated respecte le réglage système « Réduire les animations » par défaut (`ReduceMotion.System`) — ne jamais forcer `ReduceMotion.Never`. Pour le reste (`scrollTo({ animated })`, carrousels), lire `useReducedMotion()` de `react-native-reanimated`.
+
 ## Typographie
 
 - Titres : **Raleway** (`font.heading`, `font.headingSemiBold`, `font.headingExtraBold`), chargée dans `app/_layout.tsx`.
@@ -53,7 +68,7 @@ function buildStyles({ colors: c, fontSize, space, radius }: Theme) {
 
 - Fond d'app unique : `c.background` (`#F6F8F8`, aligné sur le web). Cartes et barres : `c.surface` (blanc).
 - Aucune couleur hex / `rgb()` / `rgba()` hors `src/theme/` (règle ESLint `oneandlab/no-raw-colors`). Transparence : `hexToRgba(c.primary, 0.12)`.
-- `import { colors }` (proxy statique) : réservé à `navigation/screen-options.ts` et `components/navigation/header-layout.ts`.
+- Hors composant (options de navigation, helpers) : recevoir `c: AppColors` ou `Theme` en paramètre — il n'existe plus d'état global de thème.
 
 ## Layout (React Native / Yoga)
 
@@ -74,4 +89,4 @@ npm run verify -w @oneandlab/mobile
 # équivalent : npm run typecheck && npm run lint
 ```
 
-- ESLint : `oneandlab/no-raw-colors` (error), `oneandlab/no-static-colors-import` (error), `no-explicit-any` (error).
+- ESLint : `oneandlab/no-raw-colors` (error), `no-explicit-any` (error), `react-hooks/rules-of-hooks` (error).

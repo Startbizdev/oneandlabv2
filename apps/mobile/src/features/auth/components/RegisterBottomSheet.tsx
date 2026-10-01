@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { HeartPulse, Mail, Stethoscope, User, type LucideIcon } from 'lucide-react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
-import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -50,7 +50,7 @@ export function RegisterBottomSheet({
   const styles = useStyles(buildStyles);
   const hasEmail = Boolean(pendingEmail?.trim());
 
-  const roleItems: MoreMenuItemProps[] = REGISTER_ROLE_META.map((item) => {
+  const roleItems: SettingsRowProps[] = REGISTER_ROLE_META.map((item) => {
     const ic = roleIconColors(c, item.accent);
     return {
       icon: item.icon,
@@ -86,7 +86,7 @@ export function RegisterBottomSheet({
           </Cluster>
         ) : null}
 
-        <MoreMenuSection title="Profil" items={roleItems} />
+        <SettingsSection title="Profil" items={roleItems} />
 
         {onLoginPress ? (
           <Pressable onPress={onLoginPress} style={styles.loginLink} hitSlop={8}>

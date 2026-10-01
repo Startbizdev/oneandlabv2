@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Archive, Download, MessageSquare, Search, X } from 'lucide-react-native';
 import { Cluster, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { exportAiConversations } from '../api/ai.service';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
 import type { PatientAiConversation } from '../types/patient-ai-conversation';
@@ -298,7 +298,7 @@ export function PatientAiConversationsSheet({
               }
               ListFooterComponent={
                 <View style={styles.footerWrap}>
-                  <MoreMenuSection
+                  <SettingsSection
                     items={[
                       ...(onToggleArchived
                         ? [

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, type RefObject } from 'react';
 import type { ScrollView, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 export type FormScrollContextValue = {
   scrollRef: RefObject<ScrollView | null>;
@@ -21,6 +22,7 @@ export function useFormScrollProviderValue(): FormScrollContextValue {
 /** Place le champ au sommet de la zone scrollable (au-dessus du clavier). */
 export function useScrollFocusedFieldIntoView() {
   const formScroll = useFormScroll();
+  const reducedMotion = useReducedMotion();
 
   return useCallback(
     (targetRef: RefObject<View | null>) => {
@@ -42,7 +44,7 @@ export function useScrollFocusedFieldIntoView() {
           if (!measureScroll) {
             scroll.scrollTo({
               y: Math.max(0, (formScroll?.scrollYRef.current ?? 0) + y - 160),
-              animated: true,
+              animated: !reducedMotion,
             });
             return;
           }
@@ -50,7 +52,7 @@ export function useScrollFocusedFieldIntoView() {
             const delta = y - sy - 12;
             scroll.scrollTo({
               y: Math.max(0, (formScroll?.scrollYRef.current ?? 0) + delta),
-              animated: true,
+              animated: !reducedMotion,
             });
           });
         });
@@ -59,6 +61,6 @@ export function useScrollFocusedFieldIntoView() {
       requestAnimationFrame(run);
       setTimeout(run, 140);
     },
-    [formScroll],
+    [formScroll, reducedMotion],
   );
 }

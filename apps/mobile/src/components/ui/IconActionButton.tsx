@@ -3,6 +3,9 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { radius, spacing, useStyles } from '@/theme';
 
+const VISUAL_SIZE = spacing[9];
+const MIN_TOUCH_TARGET = 44;
+
 interface IconActionButtonProps {
   label: string;
   onPress: () => void;
@@ -37,6 +40,7 @@ export function IconActionButton({
       loading={loading}
       onPress={onPress}
       accessibilityLabel={label}
+      hitSlop={(MIN_TOUCH_TARGET - VISUAL_SIZE) / 2}
       leftIcon={children}
       style={[styles.btn, backgroundColor ? { backgroundColor } : null, style]}
     />
@@ -44,13 +48,12 @@ export function IconActionButton({
 }
 
 function buildIconActionButtonStyles() {
-  const size = spacing[9];
   return {
     btn: {
-      minWidth: size,
-      minHeight: size,
-      width: size,
-      height: size,
+      minWidth: VISUAL_SIZE,
+      minHeight: VISUAL_SIZE,
+      width: VISUAL_SIZE,
+      height: VISUAL_SIZE,
       paddingHorizontal: 0,
       paddingVertical: 0,
       borderRadius: radius.full,

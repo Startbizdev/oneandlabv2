@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -42,21 +43,29 @@ import { useAppColors } from '@/theme/use-app-colors';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
+type ToastAction = { label: string; onPress: () => void };
+
 type ToastState = {
   id: number;
   line: string;
   type: ToastType;
+  durationMs: number;
+  action?: ToastAction;
 };
 
-type ShowOpts = { message?: string; type?: ToastType };
+type ShowOpts = { message?: string; type?: ToastType; action?: ToastAction };
 
 interface ToastContextValue {
   show: (title: string, opts?: ShowOpts) => void;
+  /** Action déjà appliquée, annulable quelques secondes (ex. « Passage effectué » → Annuler). */
+  showUndo: (title: string, onUndo: () => void) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const DURATION_MS = 3200;
+/** Laisse le temps de lire et d'atteindre « Annuler ». */
+const ACTION_DURATION_MS = 6000;
 const MAX_LINE_LEN = 72;
 
 function toastMetaFor(type: ToastType, c: ReturnType<typeof useAppColors>) {
@@ -90,6 +99,7 @@ function ToastCard({
   toast: ToastState;
   onDismiss: () => void;
 }) {
+  const { action } = toast;
   const c = useAppColors();
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
@@ -101,10 +111,10 @@ function ToastCard({
   useEffect(() => {
     progress.value = 1;
     progress.value = withTiming(0, {
-      duration: DURATION_MS,
+      duration: toast.durationMs,
       easing: Easing.linear,
     });
-  }, [progress, toast.id]);
+  }, [progress, toast.id, toast.durationMs]);
 
   const progressStyle = useAnimatedStyle(() => ({
     width: trackWidth.value * progress.value,
@@ -134,6 +144,20 @@ function ToastCard({
             <AppText style={styles.line} numberOfLines={1} ellipsizeMode="tail">
               {toast.line}
             </AppText>
+            {action ? (
+              <Pressable
+                onPress={() => {
+                  action.onPress();
+                  onDismiss();
+                }}
+                hitSlop={spacing[2]}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+                style={({ pressed }) => [styles.action, pressed && styles.pressablePressed]}
+              >
+                <AppText style={styles.actionLabel}>{action.label}</AppText>
+              </Pressable>
+            ) : null}
           </Row>
           <View
             style={styles.progressTrack}
@@ -168,18 +192,29 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (title: string, opts?: ShowOpts) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       idRef.current += 1;
+      const durationMs = opts?.action ? ACTION_DURATION_MS : DURATION_MS;
       setToast({
         id: idRef.current,
         line: buildToastLine(title, opts?.message),
         type: opts?.type ?? 'info',
+        durationMs,
+        action: opts?.action,
       });
-      timerRef.current = setTimeout(hide, DURATION_MS);
+      timerRef.current = setTimeout(hide, durationMs);
     },
     [hide],
   );
 
+  const showUndo = useCallback(
+    (title: string, onUndo: () => void) =>
+      show(title, { type: 'success', action: { label: 'Annuler', onPress: onUndo } }),
+    [show],
+  );
+
+  const value = useMemo(() => ({ show, showUndo }), [show, showUndo]);
+
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={value}>
       <View style={styles.root}>
         {children}
         {toast ? (
@@ -247,6 +282,17 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     fontSize: fontSize.xs,
     color: c.textPrimary,
     letterSpacing: -0.15,
+  },
+  action: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing[2],
+    marginVertical: -spacing[2.5],
+  },
+  actionLabel: {
+    ...font.bold,
+    fontSize: fontSize.xs,
+    color: c.primaryDark,
   },
   progressTrack: {
     height: 1.5,

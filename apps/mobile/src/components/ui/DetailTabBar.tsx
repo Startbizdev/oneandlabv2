@@ -115,14 +115,13 @@ function buildDetailTabBarStyles({ colors: c, fontSize }: Theme) {
       flex: 1,
       flexBasis: 0,
       minWidth: 0,
-      minHeight: 40,
+      minHeight: 44,
       borderRadius: radius.md,
       paddingHorizontal: spacing[1.5],
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
     tabCompact: {
-      minHeight: 38,
       paddingHorizontal: spacing[1],
     },
     tabActive: {

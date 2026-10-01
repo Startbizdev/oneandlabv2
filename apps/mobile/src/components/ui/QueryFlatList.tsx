@@ -14,6 +14,8 @@ import type { UseQueryResult } from '@tanstack/react-query';
 
 import { SkeletonList } from '@/components/ui/skeletons';
 
+import { ErrorState } from '@/components/ui/ErrorState';
+
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
@@ -38,7 +40,7 @@ type QuerySlice<T> = Pick<
 
   UseQueryResult<T>,
 
-  'isPending' | 'isFetching' | 'isLoading' | 'data' | 'isError' | 'isSuccess' | 'refetch'
+  'isPending' | 'isFetching' | 'isLoading' | 'data' | 'isError' | 'error' | 'isSuccess' | 'refetch'
 
 >;
 
@@ -150,6 +152,23 @@ export function QueryFlatList<T, Item>({
 
     );
 
+  }
+
+  if (query.isError && !ui.hasCachedData) {
+    return (
+      <View style={styles.root} collapsable={false}>
+        {header}
+        <View
+          style={[
+            styles.errorWrap,
+            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
+            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
+          ]}
+        >
+          <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+        </View>
+      </View>
+    );
   }
 
 
@@ -268,6 +287,12 @@ function buildStyles() {
 
       flex: 1,
 
+    },
+
+    errorWrap: {
+      minWidth: 0,
+      flex: 1,
+      justifyContent: 'center' as const,
     },
 
     listContent: {

@@ -3,15 +3,15 @@ import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
-import { MoreMenuSection } from '@/features/profile/components/MoreMenuSection';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { MoreProfileCard } from '@/features/profile/components/MoreProfileCard';
 import { useAuthStore } from '@/store/auth-store';
 import { spacing, useStyles, type Theme } from '@/theme';
-import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 
 export type MoreTabSection = {
   title?: string;
-  items: MoreMenuItemProps[];
+  items: SettingsRowProps[];
   /** Délai d’entrée FadeInDown (ms). */
   delay?: number;
 };
@@ -54,12 +54,12 @@ export function RoleMoreTabScreen({
               .duration(400)
               .springify()}
           >
-            <MoreMenuSection title={section.title} items={section.items} />
+            <SettingsSection title={section.title} items={section.items} />
           </Animated.View>
         ))}
 
         <Animated.View entering={FadeInDown.delay(logoutDelay).duration(400).springify()}>
-          <MoreMenuSection
+          <SettingsSection
             items={[
               {
                 icon: LogOut,

@@ -38,7 +38,7 @@ const sizeStyleBase: Record<
   Size,
   { paddingVertical: number; paddingHorizontal: number; borderRadius: number; baseMinHeight: number }
 > = {
-  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, baseMinHeight: 40 },
+  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, baseMinHeight: 44 },
   sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, baseMinHeight: 44 },
   md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, baseMinHeight: 44 },
   lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, baseMinHeight: 48 },

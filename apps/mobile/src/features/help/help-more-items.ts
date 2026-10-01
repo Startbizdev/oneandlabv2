@@ -1,12 +1,12 @@
 import { HelpCircle, LifeBuoy, Sparkles } from 'lucide-react-native';
-import type { MoreMenuItemProps } from '@/features/profile/components/MoreMenuItem';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { getOnboardingHref } from '@/features/onboarding/utils/onboarding-route';
 import { isTutorialRole } from '@oneandlab/onboarding';
 import { useAuthStore } from '@/store/auth-store';
 
-export function buildHelpMoreItems(nav: (href: string) => void): MoreMenuItemProps[] {
+export function buildHelpMoreItems(nav: (href: string) => void): SettingsRowProps[] {
   const role = useAuthStore.getState().user?.role;
-  const items: MoreMenuItemProps[] = [];
+  const items: SettingsRowProps[] = [];
 
   if (role && isTutorialRole(role)) {
     items.push({

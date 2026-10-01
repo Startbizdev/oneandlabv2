@@ -22,6 +22,10 @@ import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 
 import { SkeletonList } from '@/components/ui/skeletons';
 
+import { Button } from '@/components/ui/Button';
+
+import { ErrorState } from '@/components/ui/ErrorState';
+
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 
 import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
@@ -60,7 +64,16 @@ type Props<TPage, Item> = Omit<
 
     UseInfiniteQueryResult<TPage>,
 
-    'isPending' | 'isFetching' | 'isFetchingNextPage' | 'hasNextPage' | 'fetchNextPage' | 'refetch' | 'data'
+    | 'isPending'
+    | 'isFetching'
+    | 'isFetchingNextPage'
+    | 'isFetchNextPageError'
+    | 'isError'
+    | 'error'
+    | 'hasNextPage'
+    | 'fetchNextPage'
+    | 'refetch'
+    | 'data'
 
   >;
 
@@ -127,7 +140,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   const loadMore = useCallback(() => {
 
-    if (query.hasNextPage && !query.isFetchingNextPage) {
+    if (query.hasNextPage && !query.isFetchingNextPage && !query.isFetchNextPageError) {
 
       void query.fetchNextPage();
 
@@ -193,6 +206,23 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   }
 
+  if (query.isError && !query.data) {
+    return (
+      <View style={styles.root} collapsable={false}>
+        {header}
+        <View
+          style={[
+            styles.errorWrap,
+            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
+            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
+          ]}
+        >
+          <ErrorState error={query.error} onRetry={() => void query.refetch()} />
+        </View>
+      </View>
+    );
+  }
+
 
 
   const footer = (
@@ -207,6 +237,15 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
         </View>
 
+      ) : query.isFetchNextPageError ? (
+        <View style={styles.footerLoader}>
+          <Button
+            title="Impossible de charger la suite · Réessayer"
+            variant="ghost"
+            size="sm"
+            onPress={() => void query.fetchNextPage()}
+          />
+        </View>
       ) : null}
 
       {typeof ListFooterComponent === 'function' ? <ListFooterComponent /> : ListFooterComponent}
@@ -361,6 +400,12 @@ function buildStyles() {
 
       flexGrow: 1,
 
+    },
+
+    errorWrap: {
+      minWidth: 0,
+      flex: 1,
+      justifyContent: 'center' as const,
     },
 
     footerLoader: {

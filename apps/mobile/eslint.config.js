@@ -4,8 +4,6 @@ const tsparser = require('@typescript-eslint/parser');
 const reactHooks = require('eslint-plugin-react-hooks');
 const { defineConfig } = require('eslint/config');
 const noRawColors = require('./eslint-rules/no-raw-colors');
-const noStaticColorsImport = require('./eslint-rules/no-static-colors-import');
-
 module.exports = defineConfig([
   {
     ignores: ['node_modules/', '.expo/', 'dist/', 'eslint-rules/'],
@@ -22,7 +20,6 @@ module.exports = defineConfig([
       'oneandlab': {
         rules: {
           'no-raw-colors': noRawColors,
-          'no-static-colors-import': noStaticColorsImport,
         },
       },
     },
@@ -31,7 +28,6 @@ module.exports = defineConfig([
       'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      'oneandlab/no-static-colors-import': 'error',
     },
   },
   {

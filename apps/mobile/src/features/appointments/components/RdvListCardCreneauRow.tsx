@@ -23,8 +23,8 @@ export function RdvListCardCreneauRow({ label, status }: Props) {
       align="start"
       style={styles.row}
       actions={
-        <View accessible={false} importantForAccessibility="no" style={styles.statusWrap}>
-          <StatusBadge status={status} size="sm" dotOnly />
+        <View style={styles.statusWrap}>
+          <StatusBadge status={status} size="sm" />
         </View>
       }
     >
@@ -62,7 +62,6 @@ function buildStyles(t: Theme) {
     },
     statusWrap: {
       flexShrink: 0,
-      marginTop: Math.max(0, (labelLine - 12) / 2),
     },
   };
 }
