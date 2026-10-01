@@ -1,7 +1,11 @@
-import { Platform } from 'react-native';
+import { Platform, type ViewStyle } from 'react-native';
+import { palette } from './colors';
 
+/**
+ * Espacements (grille de 4 pt). Les demi-pas `0.5`, `1.5`, `2.5`, `3.5` sont réservés aux
+ * contrôles denses (pastilles, cellules de calendrier) ; le reste de l'interface reste sur la grille.
+ */
 export const spacing = {
-  0: 0,
   0.5: 2,
   1: 4,
   1.5: 6,
@@ -12,102 +16,53 @@ export const spacing = {
   4: 16,
   5: 20,
   6: 24,
-  7: 28,
   8: 32,
   9: 36,
   10: 40,
   12: 48,
-  14: 56,
   16: 64,
-  20: 80,
   24: 96,
 } as const;
 
+/**
+ * Rayons : `sm` pastilles et petits éléments, `md` contrôles (boutons, champs, puits d'icônes),
+ * `lg` cartes, `xl` grandes cartes isolées, `2xl` sheets et modales, `full` pilules et avatars.
+ */
 export const radius = {
-  xs: 6,
   sm: 8,
   md: 12,
   lg: 16,
   xl: 20,
   '2xl': 24,
-  '3xl': 32,
   full: 9999,
 } as const;
 
+function shadow(offsetY: number, opacity: number, blur: number, androidElevation: number): ViewStyle {
+  return Platform.select<ViewStyle>({
+    ios: {
+      shadowColor: palette.slate[900],
+      shadowOffset: { width: 0, height: offsetY },
+      shadowOpacity: opacity,
+      shadowRadius: blur,
+    },
+    android: { elevation: androidElevation },
+    default: {},
+  });
+}
+
+/**
+ * Ombres très douces : une carte se détache par son trait (`cardBorder`), pas par son ombre.
+ * `xs` / `sm` pour les éléments flottants légers, `md` / `lg` pour les overlays.
+ */
 export const elevation = {
-  none: {},
-  xs: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 3,
-    },
-    android: { elevation: 1 },
-    default: {},
-  })!,
-  sm: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-    },
-    android: { elevation: 3 },
-    default: {},
-  })!,
-  md: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 16,
-    },
-    android: { elevation: 6 },
-    default: {},
-  })!,
-  lg: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.10,
-      shadowRadius: 24,
-    },
-    android: { elevation: 10 },
-    default: {},
-  })!,
-  xl: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: 16 },
-      shadowOpacity: 0.12,
-      shadowRadius: 40,
-    },
-    android: { elevation: 16 },
-    default: {},
-  })!,
-  /** Ombre au-dessus d’un bottom sheet (pas d’overlay sombre). */
-  sheetTop: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: -8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-    },
-    android: { elevation: 14 },
-    default: {},
-  })!,
+  xs: shadow(1, 0.03, 2, 1),
+  sm: shadow(2, 0.05, 8, 2),
+  md: shadow(4, 0.07, 16, 4),
+  lg: shadow(8, 0.09, 24, 8),
+  /** Ombre au-dessus d'un bottom sheet (pas d'overlay sombre). */
+  sheetTop: shadow(-6, 0.08, 20, 12),
   /** Feuille de contenu sous le header — ombre vers le haut, très légère. */
-  contentSheetTop: Platform.select({
-    ios: {
-      shadowColor: '#0F172A',
-      shadowOffset: { width: 0, height: -3 },
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-    },
-    android: { elevation: 4 },
-    default: {},
-  })!,
+  contentSheetTop: shadow(-3, 0.05, 10, 3),
 } as const;
 
 export const animation = {
@@ -126,32 +81,27 @@ export const animation = {
   },
 } as const;
 
+/**
+ * Tailles d'icônes Lucide : `md` (20) dans le contenu, `lg` (24) header / navigation / FAB.
+ * `2xs` / `xs` / `sm` pour les icônes accolées à un texte secondaire ; `xl`+ pour les visuels d'état.
+ */
 export const iconSize = {
-  /** Icônes micro (badges, pins) */
-  '3xs': 10,
-  /** Icônes très compactes (badges, chevrons mini) */
   '2xs': 12,
   xs: 14,
   sm: 16,
-  /** Entre sm et mdSm */
-  smMd: 17,
-  /** Entre sm et md — icônes inline fréquentes */
-  mdSm: 18,
   md: 20,
-  /** FAB, fermeture header */
-  mdLg: 22,
   lg: 24,
-  xl: 28,
-  '2xl': 32,
-  /** FAB principal */
-  '2xlSm': 26,
-  /** Empty states, avatars icône */
-  '3xl': 36,
-  '4xl': 40,
-  '5xl': 48,
+  xl: 32,
+  '2xl': 40,
+  '3xl': 48,
 } as const;
 
-export const TAB_BAR_HEIGHT = 64;
+/** Épaisseur de trait unique des icônes Lucide. */
+export const ICON_STROKE_WIDTH = 1.75;
+
+/** Cible tactile minimale (pt), avant mise à l'échelle du texte. */
+export const MIN_TOUCH_TARGET = 44;
+
 export const H_PADDING = 16;
 
 /** Avatars `ProfileAvatar` — diamètres en px. */

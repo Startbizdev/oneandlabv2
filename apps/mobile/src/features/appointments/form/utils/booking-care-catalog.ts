@@ -59,21 +59,6 @@ export function catalogGroupLabel(key: string): string {
   return CATALOG_GROUP_LABELS[key] ?? labelForUnknown(key);
 }
 
-/** Emoji filtre segment (étape 1 mobile — aligné groupes catalogue). */
-const CATALOG_GROUP_FILTER_EMOJI: Record<string, string> = {
-  all: '✨',
-  examens: '🧪',
-  soins: '💗',
-  suivi: '📊',
-  hygiene: '🛁',
-  prevention: '🛡️',
-  divers: '📋',
-};
-
-export function catalogGroupFilterEmoji(key: string): string {
-  return CATALOG_GROUP_FILTER_EMOJI[key] ?? '🏷️';
-}
-
 type AccentKey = 'primary' | 'success' | 'warning' | 'error';
 
 function accentFromColors(c: AppColors, key: AccentKey) {
@@ -163,7 +148,6 @@ function careTileOrbPalette(t: CarePaletteTheme): readonly string[] {
     palette.slate[100],
     palette.slate[150],
     c.surfaceAlt,
-    c.surfaceSubtle,
   ] as const;
 }
 
@@ -199,7 +183,7 @@ export function buildCareTileOrbColorMap(
   return map;
 }
 
-export function careTileEmojiOrbColor(
+function careTileOrbColor(
   cat: CareCategory,
   colorMap: ReadonlyMap<string, string>,
   t: CarePaletteTheme,
@@ -270,12 +254,6 @@ export function sortCareCategoriesWithAutreLast(categories: CareCategory[]): Car
   return sortCareCategoriesForBooking(categories);
 }
 
-export function careListHeading(tab: string, tabs: CareFilterTab[]): string {
-  if (tab === 'all') return 'Tous les soins';
-  const found = tabs.find((t) => t.value === tab);
-  return found?.label ?? 'Soins';
-}
-
 export type RdvCareTagColors = {
   backgroundColor: string;
   borderColor: string;
@@ -327,7 +305,7 @@ export function resolveRdvCareTagColors(
   if (cat) {
     const theme = catalogGroupTheme(resolveCatalogGroup(cat), t);
     return {
-      backgroundColor: careTileEmojiOrbColor(cat, map, t),
+      backgroundColor: careTileOrbColor(cat, map, t),
       borderColor: theme.border,
     };
   }

@@ -1,84 +1,47 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
+import type { ReactNode } from 'react';
 import { View, type ViewProps } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { Row } from '@/components/layout/primitives';
+import { buildSettingsStyles } from '@/components/ui/SettingsRow';
+import { ICON_STROKE_WIDTH, iconSize, spacing, AppText, useAppColors, useStyles } from '@/theme';
 
 interface Props extends ViewProps {
   title: string;
+  /** Une phrase d'aide au plus. */
   description?: string;
   Icon?: LucideIcon;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export function ProfileSection({
-  title, description, Icon, children, style, ...rest }: Props) {
+/** Groupe de champs : titre de section au-dessus d'une carte, comme les listes de réglages. */
+export function ProfileSection({ title, description, Icon, children, style, ...rest }: Props) {
   const c = useAppColors();
+  const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
+
   return (
-    <View style={[styles.card, elevation.xs, style]} {...rest}>
-      <Cluster
-        gap={spacing[3]}
-        align="start"
-        leading={
-          Icon ? (
-            <View style={styles.iconWrap}>
-              <Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
-            </View>
-          ) : undefined
-        }
-        style={styles.header}
-      >
-        <View style={styles.headerText}>
-          <AppText style={styles.title}>{title}</AppText>
-          {description ? <AppText style={styles.description}>{description}</AppText> : null}
-        </View>
-      </Cluster>
-      <View style={styles.body}>{children}</View>
+    <View style={[settings.section, style]} {...rest}>
+      <Row gap={spacing[1.5]} align="center" style={styles.header}>
+        {Icon ? <Icon size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
+        <AppText style={[settings.sectionTitle, styles.title]} accessibilityRole="header">
+          {title}
+        </AppText>
+      </Row>
+      <View style={[settings.sectionCard, styles.body]}>
+        {description ? <AppText variant="caption">{description}</AppText> : null}
+        {children}
+      </View>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    overflow: 'hidden' as const,
-  },
-  header: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[4],
-    paddingBottom: spacing[2],
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  headerText: { minWidth: 0, flex: 1, gap: 4 },
-  title: {
-    ...font.bold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  description: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.4,
-  },
-  body: {
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[4],
-    gap: spacing[3],
-  },
-};
+    header: { paddingHorizontal: spacing[1] },
+    title: { flexShrink: 1, paddingHorizontal: 0 },
+    body: {
+      padding: spacing[4],
+      gap: spacing[3],
+    },
+  };
 }
-

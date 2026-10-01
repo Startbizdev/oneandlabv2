@@ -29,7 +29,7 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
   ref,
 ) {
   const { bottom } = useSafeAreaInsets();
-  const formScroll = useFormScrollProviderValue();
+  const formScroll = useFormScrollProviderValue<ScrollView>();
   const innerRef = formScroll.scrollRef;
 
   useImperativeHandle(ref, () => innerRef.current as ScrollView);

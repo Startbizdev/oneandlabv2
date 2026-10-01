@@ -26,6 +26,8 @@ export type AssigneeEntry = {
   title: string;
   name: string;
   profileImageUrl?: string | null;
+  /** Identifiant de la personne : même avatar généré sur tous les écrans. */
+  avatarSeed?: string;
   gender?: string | null;
   phone?: string;
   subtitle?: string;
@@ -185,6 +187,7 @@ export function buildAssigneeEntries({
       title: nurseMergedWithCreator ? mergedAssigneeTitle('nurse') : 'Infirmier(e)',
       name: nurseName || 'Assigné',
       profileImageUrl: String(ext.assigned_nurse_profile_image_url ?? '') || null,
+      avatarSeed: nurseId,
       gender: appointmentAssigneeGender(apt, 'nurse'),
       phone: String(ext.assigned_nurse_phone ?? ''),
       reviewSummary: assigneeReviewFromPrefix(ext, 'assigned_nurse'),
@@ -211,6 +214,7 @@ export function buildAssigneeEntries({
       title: labMergedWithCreator ? mergedAssigneeTitle('lab') : 'Laboratoire',
       name: labName || 'Assigné',
       profileImageUrl: String(ext.assigned_lab_profile_image_url ?? '') || null,
+      avatarSeed: labId,
       gender: appointmentAssigneeGender(apt, 'lab'),
       phone: String(ext.assigned_lab_phone ?? ''),
       reviewSummary: assigneeReviewFromPrefix(ext, 'assigned_lab'),
@@ -242,6 +246,7 @@ export function buildAssigneeEntries({
         : 'Préleveur',
       name: preleveurName || 'Assigné',
       profileImageUrl: String(ext.assigned_to_profile_image_url ?? '') || null,
+      avatarSeed: preleveurId,
       gender: appointmentAssigneeGender(apt, 'preleveur'),
       phone: String(ext.assigned_preleveur_phone ?? ext.assigned_to_phone ?? ''),
       reviewSummary: assigneeReviewFromPrefix(ext, 'assigned_to'),
@@ -268,6 +273,7 @@ export function buildAssigneeEntries({
         title: creatorOriginTitle(creator, viewerRole),
         name: creatorOriginName(creator),
         profileImageUrl: platformOriginRow ? null : creator.profile_image_url,
+        avatarSeed: creatorId,
         brandLogo: platformOriginRow ? 'cary' : undefined,
         phone: creator.phone,
         subtitle: creatorOriginSubtitle(creator, viewerRole),

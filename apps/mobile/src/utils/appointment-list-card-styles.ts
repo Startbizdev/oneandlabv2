@@ -1,12 +1,11 @@
 import { StyleSheet } from 'react-native';
-import { elevation, makeStyles, radius, spacing } from '@/theme';
+import { makeStyles, radius, spacing } from '@/theme';
 
-/** Coque ombre + carte intérieure (évite le clipping iOS avec overflow:hidden). */
+/** Coque + carte intérieure : la carte se détache par son trait (`cardBorder`), comme `Card`. */
 export const useAppointmentListCardStyles = makeStyles(({ colors: c }) => ({
   cardShell: {
     marginBottom: spacing[3],
     borderRadius: radius.xl,
-    ...elevation.md,
   },
   card: {
     backgroundColor: c.surface,

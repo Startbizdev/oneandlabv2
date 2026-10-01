@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
   fetchStaffHealthRecord,
@@ -95,7 +95,7 @@ export function PassageFormHealthRecordSectionSheet({
   const title = section?.label_fr ?? 'Carnet de santé';
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title={title}
@@ -113,14 +113,7 @@ export function PassageFormHealthRecordSectionSheet({
       {recapQ.isLoading ? (
         <SkeletonList count={3} itemHeight={48} gap={spacing[2]} />
       ) : recapQ.isError ? (
-        <EmptyState
-          title="Carnet indisponible"
-          description={
-            recapQ.error instanceof Error ? recapQ.error.message : 'Impossible de charger le carnet.'
-          }
-          actionLabel="Fermer"
-          onAction={onClose}
-        />
+        <ErrorState title="Carnet indisponible" error={recapQ.error} onRetry={() => void recapQ.refetch()} />
       ) : !current ? (
         <AppText style={styles.empty}>Aucune question dans cette section.</AppText>
       ) : (
@@ -141,7 +134,7 @@ export function PassageFormHealthRecordSectionSheet({
           />
         </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
@@ -152,8 +145,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
     },
     empty: {
       ...font.regular,

@@ -1,7 +1,8 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { AppText, font, hexToRgba, palette, useStyles, type Theme } from '@/theme';
+import { AppText, font, hexToRgba, palette, spacing, useStyles, type Theme } from '@/theme';
 import { View } from 'react-native';
+import { SkeletonList } from '@/components/ui/skeletons';
 import {
   medicalDocumentPickErrorMessage,
   pickMedicalDocumentFile,
@@ -22,7 +23,6 @@ import { useRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
 import {
   MedicalDocumentAddRow,
   MedicalDocumentOpenRowContainer,
-  MedicalDocumentsStackHead,
   buildDocumentStackRows,
   filterUploadTypesForStack,
   useMedicalDocumentsStackHeadStyles,
@@ -158,26 +158,13 @@ export function RdvDocumentsPremiumPanel({
     setPreview({ uri: localUri, fileName });
   }, []);
 
-  const headSubtitle = useMemo(() => {
-    if (list.length > 0) {
-      return `${list.length} pièce${list.length > 1 ? 's' : ''} jointe${list.length > 1 ? 's' : ''}`;
-    }
-    return 'Appuyez sur une ligne pour ajouter, télécharger ou prévisualiser';
-  }, [list.length]);
-
   const hasProfileNewerAlert = useMemo(
     () => list.some((d) => d.profile_newer_than_appointment),
     [list],
   );
 
   if (loading) {
-    return (
-      <MedicalDocumentsStackHead
-        title="Documents médicaux"
-        subtitle=""
-        loading
-      />
-    );
+    return <SkeletonList count={orderedTypes.length} itemHeight={72} gap={spacing[2]} />;
   }
 
   if (error) {
@@ -193,8 +180,6 @@ export function RdvDocumentsPremiumPanel({
   return (
     <>
       <View style={section.card}>
-        <MedicalDocumentsStackHead title="Documents médicaux" subtitle={headSubtitle} />
-
         {hasProfileNewerAlert ? (
           <View style={dossierStyles.alert}>
             <AppText style={dossierStyles.alertText}>

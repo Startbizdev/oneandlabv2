@@ -6,6 +6,23 @@ export function pharmacyOrderStatusLabel(status: PharmacyOrder['status']): strin
   return PHARMACY_ORDER_STATUS_LABELS[status] ?? status;
 }
 
+const STATUS_BADGE_VARIANT: Record<PharmacyOrder['status'], 'primary' | 'success' | 'error' | 'warning' | 'neutral'> = {
+  en_attente: 'warning',
+  complement_demande: 'warning',
+  acceptee: 'primary',
+  en_cours: 'primary',
+  terminee: 'success',
+  refusee: 'error',
+  annulee: 'neutral',
+};
+
+/** Couleur sémantique du statut : à traiter (orange), en cours (turquoise), terminé (vert), refusé (rouge). */
+export function pharmacyOrderStatusBadgeVariant(
+  status: PharmacyOrder['status'],
+): 'primary' | 'success' | 'error' | 'warning' | 'neutral' {
+  return STATUS_BADGE_VARIANT[status] ?? 'neutral';
+}
+
 export function pharmacyFulfillmentLabel(mode: PharmacyOrder['fulfillment_mode']): string {
   return PHARMACY_FULFILLMENT_LABELS[mode] ?? mode;
 }
@@ -14,6 +31,12 @@ export function formatPharmacyOrderDate(iso?: string): string {
   const ms = parseParisWallClock(iso);
   if (ms == null) return '';
   return `${formatParisDayMonthYear(ms)} · ${formatParisHm(ms)}`;
+}
+
+/** Date souhaitée (`YYYY-MM-DD`) au format « 3 oct. 2026 ». */
+export function formatPharmacyDesiredDate(ymd: string): string {
+  const ms = parseParisWallClock(ymd);
+  return ms == null ? ymd : formatParisDayMonthYear(ms);
 }
 
 export function personDisplayName(

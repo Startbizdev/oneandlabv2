@@ -29,7 +29,7 @@ export function FilterOptionChips<T extends string>({ options, value, onChange }
             accessibilityState={{ selected: active }}
             accessibilityLabel={opt.label}
           >
-            <AppText style={[styles.label, active && styles.labelActive]} numberOfLines={2}>
+            <AppText style={[styles.label, active && styles.labelActive]}>
               {opt.label}
             </AppText>
           </Pressable>

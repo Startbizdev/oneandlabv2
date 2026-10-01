@@ -88,6 +88,7 @@ module.exports = {
       ],
       ...basePlugins,
       withPhoneOnlyAndroid,
+      './plugins/with-health-connect',
       'expo-iap',
       'expo-font',
       [

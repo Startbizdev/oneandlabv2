@@ -4,7 +4,6 @@ import { Stack } from 'expo-router';
 import { OfferQueueHost } from '@/features/appointments/components/OfferQueueHost';
 import { useGlobalOfferPolling } from '@/features/appointments/hooks/use-global-offer-polling';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
-import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 import { useStyles, useTheme, type Theme } from '@/theme';
 
 export default function NurseLayout() {
@@ -15,7 +14,6 @@ export default function NurseLayout() {
   return (
     <Fragment>
     <View style={styles.stackHost}>
-    <StackSceneInsetLayout>
     <Stack screenOptions={stackHeaderOptions(theme)}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
@@ -26,9 +24,8 @@ export default function NurseLayout() {
       <Stack.Screen name="ai" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="commandes-pharmacie/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
     </Stack>
-    </StackSceneInsetLayout>
     </View>
-    <OfferQueueHost detailPathPrefix="/(nurse)/appointment" />
+    <OfferQueueHost />
     </Fragment>
   );
 }

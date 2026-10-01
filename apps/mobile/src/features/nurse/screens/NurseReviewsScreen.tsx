@@ -1,18 +1,15 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import {
-  EMPTY_AVIS_IMAGE,
-  EMPTY_AVIS_IMAGE_HEIGHT,
-  EMPTY_AVIS_IMAGE_WIDTH,
-} from '@/constants/empty-state-images';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { useToast } from '@/providers/ToastProvider';
+import { isReviewResponseConflict, reviewResponseErrorMessage } from '@oneandlab/shared-api';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { ReviewFilterChips } from '@/features/reviews/components/ReviewFilterChips';
 import { ReviewReceivedCard } from '@/features/reviews/components/ReviewReceivedCard';
@@ -21,18 +18,21 @@ import { ReviewStatsBanner } from '@/features/reviews/components/ReviewStatsBann
 import type { Review, ReviewFilter, ReviewStats } from '@/features/reviews/types';
 import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { H_PADDING, spacing, AppText, useStyles } from '@/theme';
+
+function hasResponse(review: Review): boolean {
+  return Boolean(review.response?.trim());
+}
 
 function filterReviews(list: Review[], filter: ReviewFilter): Review[] {
-  if (filter === 'pending') return list.filter((r) => !r.response?.trim());
-  if (filter === 'answered') return list.filter((r) => Boolean(r.response?.trim()));
+  if (filter === 'pending') return list.filter((r) => !hasResponse(r));
+  if (filter === 'answered') return list.filter(hasResponse);
   return list;
 }
 
 export function NurseReviewsScreen() {
   const styles = useStyles(buildStyles);
-
-  const user = useAuthStore((s) => s.user);
+  const userId = useAuthStore((s) => s.user?.id ?? '');
   const { show: toast } = useToast();
   const qc = useQueryClient();
 
@@ -41,23 +41,30 @@ export function NurseReviewsScreen() {
   const [replyDraft, setReplyDraft] = useState('');
 
   const reviewsQ = useQuery({
-    queryKey: queryKeys.reviews.list(user?.id ?? ''),
+    queryKey: queryKeys.reviews.list(userId),
     queryFn: async () => {
-      const res = await api.get<Review[]>(`/reviews?reviewee_id=${user!.id}&limit=100`);
+      const res = await api.get<Review[]>(`/reviews?reviewee_id=${encodeURIComponent(userId)}&limit=100`);
       if (!res.success || !Array.isArray(res.data)) throw new Error(res.error || 'Impossible de charger les avis.');
-      return res.data ?? [];
+      return res.data;
     },
-    enabled: !!user?.id,
+    enabled: Boolean(userId),
   });
 
   const statsQ = useQuery({
-    queryKey: queryKeys.reviews.stats(user?.id ?? ''),
+    queryKey: queryKeys.reviews.stats(userId),
     queryFn: async () => {
-      const res = await api.get<ReviewStats>(`/reviews/stats?reviewee_id=${user!.id}`);
+      const res = await api.get<ReviewStats>(`/reviews/stats?reviewee_id=${encodeURIComponent(userId)}`);
       return res.data ?? null;
     },
-    enabled: !!user?.id,
+    enabled: Boolean(userId),
   });
+
+  const closeReplyAndRefresh = () => {
+    setReplyTarget(null);
+    setReplyDraft('');
+    void qc.invalidateQueries({ queryKey: queryKeys.reviews.list(userId) });
+    void qc.invalidateQueries({ queryKey: queryKeys.reviews.stats(userId) });
+  };
 
   const respond = useMutation({
     mutationFn: async ({ id, response }: { id: string; response: string }) => {
@@ -67,23 +74,19 @@ export function NurseReviewsScreen() {
     },
     onSuccess: () => {
       toast('Réponse publiée', { type: 'success' });
-      setReplyTarget(null);
-      setReplyDraft('');
-      void qc.invalidateQueries({ queryKey: queryKeys.reviews.list(user?.id ?? '') });
-      void qc.invalidateQueries({ queryKey: queryKeys.reviews.stats(user?.id ?? '') });
+      closeReplyAndRefresh();
     },
-    onError: (e) => handleApiError(e, toast, 'reviewResponse'),
+    onError: (e) => {
+      handleApiError(e, toast, 'reviewResponse', undefined, reviewResponseErrorMessage);
+      if (e instanceof ApiRequestError && isReviewResponseConflict(e.status, e.code)) closeReplyAndRefresh();
+    },
   });
 
   const allReviews = useMemo(() => reviewsQ.data ?? [], [reviewsQ.data]);
   const filtered = useMemo(() => filterReviews(allReviews, filter), [allReviews, filter]);
 
   const counts = useMemo(
-    () => ({
-      all: allReviews.length,
-      pending: allReviews.filter((r) => !r.response?.trim()).length,
-      answered: allReviews.filter((r) => Boolean(r.response?.trim())).length,
-    }),
+    () => ({ pending: allReviews.filter((r) => !hasResponse(r)).length }),
     [allReviews],
   );
 
@@ -97,22 +100,14 @@ export function NurseReviewsScreen() {
     return reviewsResult;
   };
 
-  const ListHeader = () => (
-    <View style={styles.headerBlock}>
-      {statsQ.data && statsQ.data.total_reviews > 0 ? (
-        <ReviewStatsBanner stats={statsQ.data} />
-      ) : null}
-      {allReviews.length > 0 ? (
-        <>
-          <AppText style={styles.sectionHint}>
-            Les patients partagent leur expérience après un soin. Répondez pour rassurer et valoriser
-            votre profil.
-          </AppText>
-          <ReviewFilterChips value={filter} onChange={setFilter} counts={counts} />
-        </>
-      ) : null}
-    </View>
-  );
+  const listHeader =
+    allReviews.length > 0 ? (
+      <View style={styles.headerBlock}>
+        {statsQ.data && statsQ.data.total_reviews > 0 ? <ReviewStatsBanner stats={statsQ.data} /> : null}
+        <AppText variant="secondary">Répondre aux avis rassure les futurs patients.</AppText>
+        <ReviewFilterChips value={filter} onChange={setFilter} counts={counts} />
+      </View>
+    ) : null;
 
   return (
     <StackChromeScreen>
@@ -125,7 +120,7 @@ export function NurseReviewsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         skeletonHeight={120}
-        ListHeaderComponent={ListHeader}
+        ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => {
@@ -133,10 +128,7 @@ export function NurseReviewsScreen() {
           const Shell = entering ? Animated.View : View;
           return (
             <Shell entering={entering}>
-              <ReviewReceivedCard
-                review={item}
-                onReply={item.response?.trim() ? undefined : () => openReply(item)}
-              />
+              <ReviewReceivedCard review={item} onReply={hasResponse(item) ? undefined : () => openReply(item)} />
             </Shell>
           );
         }}
@@ -144,20 +136,14 @@ export function NurseReviewsScreen() {
           allReviews.length === 0 ? (
             <EmptyState
               title="Pas encore d’avis"
-              description="Il n'y a pas encore d'avis. Dès qu'un patient laissera une note après un soin, elle s'affichera ici."
-              imageSource={EMPTY_AVIS_IMAGE}
-              imageWidth={EMPTY_AVIS_IMAGE_WIDTH}
-              imageHeight={EMPTY_AVIS_IMAGE_HEIGHT}
+              description="Les notes laissées par vos patients après un soin s’afficheront ici."
+              illustration="reviews"
             />
           ) : (
-            <View style={styles.filterEmpty}>
-              <AppText style={styles.filterEmptyTitle}>
-                {filter === 'pending' ? 'Aucun avis en attente' : 'Aucun avis répondu'}
-              </AppText>
-              <AppText style={styles.filterEmptyDesc}>
-                Changez de filtre pour voir les autres avis.
-              </AppText>
-            </View>
+            <EmptyState
+              title={filter === 'pending' ? 'Aucun avis en attente' : 'Aucun avis répondu'}
+              description="Changez de filtre pour voir les autres avis."
+            />
           )
         }
       />
@@ -182,44 +168,19 @@ export function NurseReviewsScreen() {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  loading: { padding: spacing[4], paddingTop: spacing[2] },
-  list: {
-    minWidth: 0,
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[8],
-    flexGrow: 1,
-  },
-  headerBlock: {
-    gap: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[3],
-  },
-  sectionHint: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.5,
-  },
-  separator: { height: spacing[3] },
-  filterEmpty: {
-    alignItems: 'center' as const,
-    paddingVertical: spacing[10],
-    paddingHorizontal: spacing[6],
-    gap: spacing[2],
-  },
-  filterEmptyTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  filterEmptyDesc: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textTertiary,
-    textAlign: 'center' as const,
-  },
-};
+    list: {
+      minWidth: 0,
+      paddingHorizontal: H_PADDING,
+      paddingBottom: spacing[8],
+      flexGrow: 1,
+    },
+    headerBlock: {
+      gap: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[3],
+    },
+    separator: { height: spacing[3] },
+  };
 }

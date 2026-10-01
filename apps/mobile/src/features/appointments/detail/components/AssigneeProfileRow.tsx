@@ -14,6 +14,7 @@ interface Props {
   title: string;
   name: string;
   profileImageUrl?: string | null;
+  avatarSeed?: string;
   gender?: string | null;
   phone?: string;
   subtitle?: string;
@@ -35,6 +36,7 @@ export function AssigneeProfileRow({
   title,
   name,
   profileImageUrl,
+  avatarSeed,
   gender,
   phone,
   subtitle,
@@ -58,7 +60,7 @@ export function AssigneeProfileRow({
     ) : (
       <ProfileAvatar
         profileImageUrl={profileImageUrl}
-        seed={name}
+        seed={avatarSeed || name}
         gender={gender}
         size={AVATAR_SIZE}
         style={styles.avatar}

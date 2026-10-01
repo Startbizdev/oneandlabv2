@@ -1,9 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppointmentDetailLoadError } from '../../detail/components/AppointmentDetailLoadError';
-import { User } from 'lucide-react-native';
+import { ArrowLeft, User } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Button } from '@/components/ui/Button';
@@ -14,19 +14,18 @@ import { FormScheduleSection } from '../../form/components/FormScheduleSection';
 import { RescheduleChoiceStep } from '../components/RescheduleChoiceStep';
 import { useRescheduleAppointment } from '../hooks/useRescheduleAppointment';
 import {
-  reschedulePatientDisplayName,
+  reschedulePatientName,
   reschedulePatientPhone,
-  reschedulePatientTitleName,
 } from '../utils/reschedule-patient-display';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   appointmentId: string;
   role: string;
-  basePath: string;
+  basePath: RoleRoutePrefix;
 }
 
 export function RescheduleAppointmentScreen({
@@ -35,7 +34,7 @@ export function RescheduleAppointmentScreen({
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const r = useRescheduleAppointment({ appointmentId, role, basePath });
-  const scrollConfig = useStackScrollConfig(styles.content);
+  const { footerPadding } = useSceneBottomInset();
 
   if (r.loadError) {
     return (
@@ -60,15 +59,14 @@ export function RescheduleAppointmentScreen({
   }
 
   if (r.step === 'choice') {
-    const patientTitle = reschedulePatientTitleName(r.appointment);
+    const patientTitle = reschedulePatientName(r.appointment) || 'ce patient';
 
     return (
       <StackChromeScreen>
         <FormScreen
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={styles.content}
           footer={
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: footerPadding }]}>
             <Button
               title="Suivant"
               onPress={r.goToForm}
@@ -90,16 +88,15 @@ export function RescheduleAppointmentScreen({
     );
   }
 
-  const patientName = reschedulePatientDisplayName(r.appointment);
+  const patientName = reschedulePatientName(r.appointment) || 'Patient';
   const patientPhone = reschedulePatientPhone(r.appointment);
 
   return (
     <StackChromeScreen>
       <FormScreen
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.content}
         footer={
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: footerPadding }]}>
           <Button
             title={r.saving ? 'Enregistrement…' : r.submitLabel}
             onPress={r.submit}
@@ -110,12 +107,17 @@ export function RescheduleAppointmentScreen({
         </View>
       }
     >
-      <Pressable onPress={r.goBackToChoice} style={styles.backLink}>
-        <AppText style={styles.backLinkText}>← Retour au choix</AppText>
-      </Pressable>
+      <Button
+        title="Retour au choix"
+        variant="ghost"
+        size="sm"
+        style={styles.backLink}
+        leftIcon={<ArrowLeft size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
+        onPress={r.goBackToChoice}
+      />
 
       <Row wrap align="center" gap={spacing[2]} style={styles.patientBanner}>
-        <User size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />
+        <User size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={styles.patientName}>{patientName}</AppText>
         {patientPhone ? <AppText style={styles.patientPhone}>· {patientPhone}</AppText> : null}
       </Row>
@@ -176,18 +178,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   footer: {
     paddingHorizontal: spacing[4],
     paddingTop: spacing[3],
-    paddingBottom: spacing[3],
     backgroundColor: c.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.border,
   },
   backLink: {
     alignSelf: 'flex-start' as const,
-  },
-  backLinkText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.primary,
+    // Aligne l'icône du bouton ghost `sm` sur le bord du contenu.
+    marginLeft: -spacing[4],
   },
   patientBanner: {
     minWidth: 0,

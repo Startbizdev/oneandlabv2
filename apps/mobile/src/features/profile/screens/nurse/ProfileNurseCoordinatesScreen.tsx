@@ -1,4 +1,3 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import {
   getProfessionalIdDisplay,
   normalizeProfessionalId,
@@ -7,11 +6,9 @@ import {
   PROFESSIONAL_ID_LABEL,
 } from '@oneandlab/shared-types';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Mail } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { ProfileEmailField } from '@/features/profile/components/ProfileEmailField';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
@@ -24,42 +21,8 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-
-function buildFieldStyles({ colors: c, fontSize }: Theme) {
-  return {
-    fieldLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-    },
-    fieldHint: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      marginTop: spacing[1],
-    },
-    emailRow: {
-      paddingVertical: spacing[3],
-      paddingHorizontal: spacing[3],
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      backgroundColor: c.surfaceAlt,
-    },
-    emailText: {
-      minWidth: 0,
-      flex: 1,
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-  };
-}
 
 export function ProfileNurseCoordinatesScreen() {
-  const c = useAppColors();
-  const fieldStyles = useStyles(buildFieldStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
   const { show: toast } = useToast();
@@ -144,17 +107,7 @@ export function ProfileNurseCoordinatesScreen() {
     >
       <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
       <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-      <View>
-        <AppText style={fieldStyles.fieldLabel}>Email</AppText>
-        <Cluster
-          gap={spacing[2]}
-          leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
-          style={fieldStyles.emailRow}
-        >
-          <AppText style={fieldStyles.emailText}>{user?.email ?? '—'}</AppText>
-        </Cluster>
-        <AppText style={fieldStyles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
-      </View>
+      <ProfileEmailField email={user?.email} />
       <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
       <GenderSelect
         value={gender}

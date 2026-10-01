@@ -3,8 +3,11 @@ import { useRouter, useSegments, type Href } from 'expo-router';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useNavigationReady } from '@/navigation/use-navigation-ready';
 
-/** Routes accessibles quel que soit le rôle mobile connecté. */
-const GLOBAL_SEGMENTS = new Set(['profile']);
+/** Accueil avec la feuille de connexion ouverte (session expirée, lien profond sans session). */
+export const LOGIN_HREF: Href = { pathname: '/(auth)/welcome', params: { login: '1' } };
+
+/** Routes accessibles quel que soit le rôle mobile connecté (`notifications` : redirection racine vers la stack du rôle). */
+const GLOBAL_SEGMENTS = new Set(['profile', 'notifications']);
 
 export function useAuthGuard() {
   const { token, user, isHydrated } = useAuthStore();
@@ -18,7 +21,7 @@ export function useAuthGuard() {
     const inAuth = String(segments[0]) === '(auth)';
 
     if (!token) {
-      if (!inAuth) router.replace('/(auth)/welcome');
+      if (!inAuth) router.replace(LOGIN_HREF);
       return;
     }
 

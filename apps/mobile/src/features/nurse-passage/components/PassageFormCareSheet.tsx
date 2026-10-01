@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { NursePassageNursingItem } from '@oneandlab/shared-types';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { PassageCareSection } from './PassageCareSection';
 
@@ -48,7 +48,7 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
         : 'Soins infirmiers à réaliser lors du passage';
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title={sheetTitle}
@@ -70,10 +70,9 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
       <PassageCareSection
         items={draft}
         onChange={setDraft}
-        embedded
         sheetOpen={visible}
         onUiPhaseChange={handleUiPhaseChange}
       />
-    </BottomSheet>
+    </SheetModal>
   );
 }

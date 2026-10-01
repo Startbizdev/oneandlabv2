@@ -1,34 +1,26 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { View, useWindowDimensions } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, MapPin, Pencil } from 'lucide-react-native';
+import { Pencil } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { Skeleton, SkeletonList } from '@/components/ui/skeletons';
-import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Skeleton } from '@/components/ui/skeletons';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { CoverageSquareMapLive } from '@/features/profile/components/CoverageSquareMapLive';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
-import { fetchCoverageZones, fetchUser, saveCoverageZone, updateUser } from '@/features/profile/api/profile.service';
-import {
-  hasValidGeoAddress,
-  parseProfileAddress,
-} from '@/features/profile/utils/parse-profile-address';
+import { fetchCoverageZones } from '@/features/profile/api/profile.service';
+import { hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { api } from '@/api/client';
 import { queryKeys } from '@/lib/query-keys';
-import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useAuthStore } from '@/store/auth-store';
-import { useToast } from '@/providers/ToastProvider';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
+import { radius, spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
 import type { CoveragePolygonPayload, CoverageVertex } from '@oneandlab/shared-utils';
 import { ensureSixVertices, maxVertexDistanceKm, polygonAreaKm2, toPolygonPayload } from '@oneandlab/shared-utils';
 
-const MIN_RADIUS = 5;
-const DEFAULT_RADIUS = 20;
+const DISCOVERY_MAX_HALF_SIDE_KM = 20;
 
 type PlanLimits = {
   plan_slug?: string;
@@ -36,66 +28,28 @@ type PlanLimits = {
 };
 
 interface Props {
-  showDiscoveryHint?: boolean;
-  externalAddress?: AddressPayload | null;
-  hideAddressCard?: boolean;
-  embedded?: boolean;
-  halfSideKm?: number;
-  onHalfSideKmChange?: (km: number) => void;
-  onBoundsChange?: (bounds: CoveragePolygonPayload) => void;
-  onVerticesChange?: (vertices: CoverageVertex[]) => void;
-  onSaveZone?: (halfSideKm: number, bounds: CoveragePolygonPayload, vertices: CoverageVertex[]) => Promise<boolean>;
-  savingZone?: boolean;
+  address: AddressPayload | null;
+  halfSideKm: number;
+  onSaveZone: (halfSideKm: number, bounds: CoveragePolygonPayload) => Promise<boolean>;
+  savingZone: boolean;
 }
 
-export function ProfileCoverageEditor({
-  showDiscoveryHint = true,
-  externalAddress,
-  hideAddressCard = false,
-  embedded = false,
-  halfSideKm: controlledHalfSide,
-  onHalfSideKmChange,
-  onBoundsChange,
-  onVerticesChange,
-  onSaveZone,
-  savingZone = false,
-}: Props) {
+/** Secteur d’intervention infirmier : carte en lecture, édition au doigt puis enregistrement. */
+export function ProfileCoverageEditor({ address, halfSideKm, onSaveZone, savingZone }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const fetchMe = useAuthStore((s) => s.fetchMe);
-  const { show: toast } = useToast();
 
-  const [address, setAddress] = useState<AddressPayload | null>(null);
-  const [addressComplement, setAddressComplement] = useState('');
-  const [internalHalfSide, setInternalHalfSide] = useState(DEFAULT_RADIUS);
-  const [bounds, setBounds] = useState<CoveragePolygonPayload | null>(null);
   const [vertices, setVertices] = useState<CoverageVertex[] | null>(null);
-  const [addressDirty, setAddressDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draftHalfSide, setDraftHalfSide] = useState(DEFAULT_RADIUS);
+  const [draftHalfSide, setDraftHalfSide] = useState(halfSideKm);
   const [draftVertices, setDraftVertices] = useState<CoverageVertex[] | null>(null);
-  const [draftBounds, setDraftBounds] = useState<CoveragePolygonPayload | null>(null);
 
   const { height: windowHeight } = useWindowDimensions();
   const mapHeight = editing
     ? Math.max(220, Math.min(440, windowHeight * 0.5))
     : Math.max(200, Math.min(280, windowHeight * 0.32));
-
-  const halfSideKm = controlledHalfSide ?? internalHalfSide;
-  const setHalfSideKm = onHalfSideKmChange ?? setInternalHalfSide;
-
-  const userQ = useQuery({
-    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
-    queryFn: async () => {
-      const res = await fetchUser(user!.id, 'full');
-      if (!res.success || !res.data) throw new Error('Profil indisponible');
-      return res.data;
-    },
-    enabled: !!user?.id && !embedded,
-  });
 
   const zoneQ = useQuery({
     queryKey: queryKeys.profile.coverageZones(user?.id ?? '', user?.role ?? ''),
@@ -116,57 +70,18 @@ export function ProfileCoverageEditor({
     enabled: user?.role === 'nurse',
   });
 
-  const maxHalfSideKm = limitsQ.data?.max_radius_km ?? 20;
+  const maxHalfSideKm = limitsQ.data?.max_radius_km ?? DISCOVERY_MAX_HALF_SIDE_KM;
   const isDiscovery = limitsQ.data?.plan_slug === 'discovery';
-  const hasAddress = hasValidGeoAddress(address);
-
-  useEffect(() => {
-    if (externalAddress !== undefined) {
-      setAddress(externalAddress);
-      setAddressComplement(externalAddress?.complement ?? '');
-      return;
-    }
-    if (userQ.data) {
-      const parsed = parseProfileAddress((userQ.data as { address?: unknown }).address);
-      setAddress(parsed);
-      setAddressComplement(parsed?.complement ?? '');
-    }
-  }, [userQ.data, externalAddress]);
 
   useEffect(() => {
     const zone = zoneQ.data?.[0];
-    if (zone?.radius_km != null && controlledHalfSide === undefined) {
-      const r = Number(zone.radius_km);
-      setInternalHalfSide(Math.min(Math.max(MIN_RADIUS, r), maxHalfSideKm));
-    }
     if (zone?.bounds_json && typeof zone.bounds_json === 'object') {
       const b = zone.bounds_json as CoveragePolygonPayload;
-      setBounds(b);
       if (Array.isArray(b.vertices) && b.vertices.length >= 3) {
         setVertices(b.vertices);
       }
     }
-  }, [zoneQ.data, maxHalfSideKm, controlledHalfSide]);
-
-  const handleBoundsChange = useCallback(
-    (b: CoveragePolygonPayload) => {
-      setBounds(b);
-      onBoundsChange?.(b);
-    },
-    [onBoundsChange],
-  );
-
-  const handleVerticesChange = useCallback(
-    (v: CoverageVertex[]) => {
-      if (editing) {
-        setDraftVertices(v);
-      } else {
-        setVertices(v);
-      }
-      onVerticesChange?.(v);
-    },
-    [editing, onVerticesChange],
-  );
+  }, [zoneQ.data]);
 
   const resetDraft = useCallback(() => {
     if (!hasValidGeoAddress(address)) return;
@@ -174,7 +89,6 @@ export function ProfileCoverageEditor({
     const verts = ensureSixVertices(center, vertices, halfSideKm);
     setDraftVertices(verts);
     setDraftHalfSide(maxVertexDistanceKm(center, verts));
-    setDraftBounds(toPolygonPayload(verts));
   }, [address, vertices, halfSideKm]);
 
   const startEdit = useCallback(() => {
@@ -191,326 +105,122 @@ export function ProfileCoverageEditor({
     if (savingZone || !hasValidGeoAddress(address)) return;
     const center = { lat: address!.lat, lng: address!.lng };
     const verts = ensureSixVertices(center, draftVertices ?? vertices, draftHalfSide);
-    const b = toPolygonPayload(verts);
     const reach = maxVertexDistanceKm(center, verts);
-    if (onSaveZone && !(await onSaveZone(reach, b, verts))) return;
-    setHalfSideKm(reach);
-    setBounds(b);
+    if (!(await onSaveZone(reach, toPolygonPayload(verts)))) return;
     setVertices(verts);
     setEditing(false);
-  }, [address, draftVertices, draftHalfSide, vertices, setHalfSideKm, onSaveZone, savingZone]);
+  }, [address, draftVertices, draftHalfSide, vertices, onSaveZone, savingZone]);
 
-  const onAddressChange = useCallback((addr: AddressPayload | null) => {
-    setAddress(addr);
-    setAddressDirty(true);
-  }, []);
+  const onVerticesChange = useCallback(
+    (v: CoverageVertex[]) => {
+      if (editing) setDraftVertices(v);
+    },
+    [editing],
+  );
 
-  const saveStandalone = async () => {
-    if (saving || limitsQ.isError || zoneQ.isError || userQ.isError) return;
-    if (!hasValidGeoAddress(address)) {
-      toast('Adresse requise', {
-        type: 'error',
-        message: 'Choisissez une adresse complète dans la liste de suggestions.',
-      });
-      return;
-    }
-    setSaving(true);
-    try {
-      if (addressDirty && address) {
-        await updateUser(user!.id, {
-          address: {
-            label: address.label.trim(),
-            lat: address.lat,
-            lng: address.lng,
-            complement: addressComplement.trim() || undefined,
-          },
-        });
-      }
-      const zoneVertices = ensureSixVertices(
-        { lat: address!.lat, lng: address!.lng },
-        vertices,
-        halfSideKm,
-      );
-      const zoneBounds = toPolygonPayload(zoneVertices);
-      const reach = maxVertexDistanceKm({ lat: address!.lat, lng: address!.lng }, zoneVertices);
-      await saveCoverageZone({
-        center_lat: address!.lat,
-        center_lng: address!.lng,
-        radius_km: reach,
-        zone_type: 'polygon',
-        bounds_json: zoneBounds,
-        role: user!.role,
-      });
-      setAddressDirty(false);
-      await fetchMe();
-      toast(`Zone de ${Math.round(reach)} km enregistrée`, { type: 'success' });
-    } catch (e) {
-      handleApiError(e, toast, 'saveCoverageZone');
-    } finally {
-      setSaving(false);
-    }
-  };
+  if (limitsQ.isLoading || zoneQ.isLoading) {
+    return <Skeleton height={280} borderRadius={radius.lg} />;
+  }
 
-  const loading = embedded
-    ? limitsQ.isLoading
-    : userQ.isLoading || zoneQ.isLoading || limitsQ.isLoading;
-
-  if (loading) {
+  if (limitsQ.isError || zoneQ.isError) {
     return (
-      <View style={{ gap: spacing[3] }}>
-        <Skeleton height={280} borderRadius={radius.xl} />
-        <SkeletonList count={1} itemHeight={80} gap={spacing[3]} />
-      </View>
+      <ErrorState
+        title="Secteur indisponible"
+        error={limitsQ.error ?? zoneQ.error}
+        onRetry={() => {
+          void limitsQ.refetch();
+          void zoneQ.refetch();
+        }}
+      />
     );
   }
 
-  if (limitsQ.isError || zoneQ.isError || (!embedded && userQ.isError)) {
-    return <View style={styles.stack}>
-      <AppText style={styles.cardDesc}>Impossible de charger votre secteur et les limites de votre offre.</AppText>
-      <Button title="Réessayer" loading={limitsQ.isFetching || zoneQ.isFetching || userQ.isFetching} onPress={() => {
-        if (user?.role === 'nurse') { void limitsQ.refetch(); void zoneQ.refetch(); }
-        if (!embedded) void userQ.refetch();
-      }} />
-    </View>;
-  }
-
-  const zoneContent = (
-    <>
-      {!hasAddress ? (
-        <View style={styles.alert}>
-          <Cluster
-            gap={spacing[2]}
-            align="start"
-            leading={<AlertTriangle size={iconSize.sm} color={c.warning} strokeWidth={2} />}
-          >
-            <AppText style={styles.alertText}>
-              {hideAddressCard
-                ? 'Renseignez une adresse professionnelle valide dans Coordonnées (suggestion avec GPS).'
-                : "Définissez d'abord votre adresse pour configurer votre zone de couverture."}
-            </AppText>
-          </Cluster>
-        </View>
-      ) : (
-        <>
-          <CoverageSquareMapLive
-            lat={address!.lat}
-            lng={address!.lng}
-            halfSideKm={editing ? draftHalfSide : halfSideKm}
-            maxHalfSideKm={maxHalfSideKm}
-            vertices={editing ? draftVertices : vertices}
-            height={mapHeight}
-            readOnly={!editing}
-            largeHandles={editing}
-            showSummary={false}
-            showHint={false}
-            onHalfSideKmChange={editing ? setDraftHalfSide : setHalfSideKm}
-            onBoundsChange={editing ? setDraftBounds : handleBoundsChange}
-            onVerticesChange={handleVerticesChange}
-          />
-          <View style={styles.previewMeta}>
-            <View style={styles.previewMetaText}>
-              <AppText style={styles.previewSummary}>
-                <AppText style={styles.previewSummaryStrong}>
-                  {Math.round(
-                    maxVertexDistanceKm(
-                      { lat: address!.lat, lng: address!.lng },
-                      ensureSixVertices(
-                        { lat: address!.lat, lng: address!.lng },
-                        editing ? draftVertices : vertices,
-                        editing ? draftHalfSide : halfSideKm,
-                      ),
-                    ),
-                  )}{' '}
-                  km
-                </AppText>
-                {' au maximum de votre adresse · ~'}
-                {Math.round(
-                  polygonAreaKm2(
-                    ensureSixVertices(
-                      { lat: address!.lat, lng: address!.lng },
-                      editing ? draftVertices : vertices,
-                      editing ? draftHalfSide : halfSideKm,
-                    ),
-                  ),
-                )}
-                {' km²'}
-              </AppText>
-              <AppText style={styles.previewCaption}>
-                {editing
-                  ? 'Glissez les poignées puis validez.'
-                  : 'Touchez « Modifier mon secteur » pour ajuster la zone au doigt.'}
-              </AppText>
-            </View>
-            {editing ? (
-              <Row gap={spacing[2]} wrap justify="end">
-                <Button title="Annuler" variant="ghost" size="md" onPress={cancelEdit} disabled={savingZone} />
-                <Button title={onSaveZone ? 'Enregistrer mon secteur' : 'Appliquer le tracé'} size="md" loading={savingZone} onPress={() => void validateEdit()} />
-              </Row>
-            ) : (
-              <Button
-                title="Modifier mon secteur"
-                variant="secondary"
-                size="md"
-                leftIcon={<Pencil size={iconSize.sm} color={c.primary} strokeWidth={2} />}
-                onPress={startEdit}
-                style={styles.editSectorBtn}
-              />
-            )}
-          </View>
-
-          {savingZone ? (
-            <AppText style={styles.savingHint}>Enregistrement de la zone…</AppText>
-          ) : null}
-          {showDiscoveryHint && isDiscovery && maxHalfSideKm <= 20 ? (
-            <Pressable
-              onPress={() => router.push('/(nurse)/abonnement')}
-              style={styles.discoveryBanner}
-            >
-              <AppText style={styles.discoveryText}>
-                Offre Découverte : zone limitée à 20 km du centre au bord.{' '}
-                <AppText style={styles.discoveryLink}>Passez en Pro</AppText> pour étendre jusqu'à 100 km.
-              </AppText>
-            </Pressable>
-          ) : null}
-          {!embedded ? (
-            <Button
-              title="Enregistrer la zone"
-              loading={saving}
-              onPress={() => void saveStandalone()}
-              fullWidth
-              size="lg"
-            />
-          ) : null}
-        </>
-      )}
-    </>
-  );
-
-  if (embedded) {
+  if (!hasValidGeoAddress(address)) {
     return (
-      <ProfileSection
-        title="Votre secteur d’intervention"
-        description="Les quartiers où vous souhaitez recevoir des demandes de soins."
-        Icon={MapPin}
-      >
-        {zoneContent}
+      <ProfileSection title="Secteur d’intervention">
+        <AppText variant="secondary">
+          Renseignez votre adresse professionnelle pour définir votre secteur.
+        </AppText>
+        <Button
+          title="Compléter mes coordonnées"
+          variant="secondary"
+          onPress={() => router.push('/profile/nurse/coordinates')}
+        />
       </ProfileSection>
     );
   }
 
-  return (
-    <View style={styles.stack}>
-      {!hideAddressCard ? (
-        <Animated.View entering={FadeInDown.duration(280).springify()} style={[styles.card, elevation.xs]}>
-          <View style={styles.cardHeader}>
-            <Row gap={spacing[2]} align="center">
-              <MapPin size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
-              <AppText style={styles.cardTitle}>Adresse professionnelle</AppText>
-            </Row>
-          </View>
-          <AppText style={styles.cardDesc}>Centre de votre zone d'intervention.</AppText>
-          <AddressAutocomplete
-            value={address}
-            complement={addressComplement}
-            onChange={onAddressChange}
-            onComplementChange={setAddressComplement}
-            label="Adresse"
-          />
-        </Animated.View>
-      ) : null}
+  const center = { lat: address!.lat, lng: address!.lng };
+  const shownVertices = ensureSixVertices(
+    center,
+    editing ? draftVertices : vertices,
+    editing ? draftHalfSide : halfSideKm,
+  );
+  const reachKm = Math.round(maxVertexDistanceKm(center, shownVertices));
+  const areaKm2 = Math.round(polygonAreaKm2(shownVertices));
 
-      <Animated.View entering={FadeInDown.delay(60).duration(280).springify()} style={[styles.card, elevation.xs]}>
-        <AppText style={styles.cardTitle}>Votre secteur d’intervention</AppText>
-        <AppText style={styles.cardDesc}>Les quartiers où vous souhaitez recevoir des demandes de soins.</AppText>
-        {zoneContent}
-      </Animated.View>
-    </View>
+  return (
+    <ProfileSection
+      title="Secteur d’intervention"
+      description="Les quartiers où vous souhaitez recevoir des demandes de soins."
+    >
+      <CoverageSquareMapLive
+        lat={address!.lat}
+        lng={address!.lng}
+        halfSideKm={editing ? draftHalfSide : halfSideKm}
+        maxHalfSideKm={maxHalfSideKm}
+        vertices={editing ? draftVertices : vertices}
+        height={mapHeight}
+        readOnly={!editing}
+        largeHandles={editing}
+        showSummary={false}
+        showHint={false}
+        onHalfSideKmChange={editing ? setDraftHalfSide : undefined}
+        onVerticesChange={onVerticesChange}
+      />
+      <AppText variant="secondary">
+        <AppText style={styles.strong}>{reachKm} km</AppText>
+        {` au maximum de votre adresse · ~${areaKm2} km²`}
+      </AppText>
+      {editing ? (
+        <>
+          <AppText variant="caption">Glissez les poignées puis enregistrez.</AppText>
+          <Row gap={spacing[2]} wrap justify="end">
+            <Button title="Annuler" variant="ghost" size="md" onPress={cancelEdit} disabled={savingZone} />
+            <Button title="Enregistrer mon secteur" size="md" loading={savingZone} onPress={() => void validateEdit()} />
+          </Row>
+        </>
+      ) : (
+        <Button
+          title="Modifier mon secteur"
+          variant="secondary"
+          size="md"
+          leftIcon={<Pencil size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />}
+          onPress={startEdit}
+          fullWidth
+        />
+      )}
+      {isDiscovery && maxHalfSideKm <= DISCOVERY_MAX_HALF_SIDE_KM ? (
+        <View style={styles.discovery}>
+          <AppText variant="caption">
+            Offre Découverte : secteur limité à {DISCOVERY_MAX_HALF_SIDE_KM} km. L’offre Pro l’étend jusqu’à 100 km.
+          </AppText>
+          <Button title="Voir l’offre Pro" variant="ghost" size="md" onPress={() => router.push('/(nurse)/abonnement')} />
+        </View>
+      ) : null}
+    </ProfileSection>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    stack: { gap: spacing[4] },
-    card: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      padding: spacing[4],
-      gap: spacing[3],
-    },
-    cardHeader: {},
-    cardTitle: {
-      ...font.bold,
-      fontSize: fontSize.base,
+    strong: {
+      ...font.semiBold,
       color: c.textPrimary,
     },
-    cardDesc: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    alert: {
-      backgroundColor: c.warningLight,
-      borderRadius: radius.md,
-      padding: spacing[3],
-      borderWidth: 1,
-      borderColor: c.warningMid,
-    },
-    alertText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.warning,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    discoveryBanner: {
-      backgroundColor: c.warningLight,
-      borderRadius: radius.md,
-      padding: spacing[3],
-      borderWidth: 1,
-      borderColor: c.warningMid,
-    },
-    discoveryText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.warning,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    discoveryLink: {
-      ...font.semiBold,
-      textDecorationLine: 'underline',
-    },
-    savingHint: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.primary,
-      textAlign: 'center',
-    },
-    previewMeta: {
-      gap: spacing[3],
-    },
-    previewMetaText: {
+    discovery: {
       gap: spacing[1],
+      alignItems: 'flex-start' as const,
     },
-    previewSummary: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    previewSummaryStrong: {
-      ...font.semiBold,
-      color: c.primary,
-    },
-    previewCaption: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      lineHeight: fontSize.xs * 1.45,
-    },
-    editSectorBtn: {
-      alignSelf: 'stretch',
-    },
-  } satisfies Parameters<typeof StyleSheet.create>[0];
+  };
 }

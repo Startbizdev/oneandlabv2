@@ -27,6 +27,7 @@ import {
 import { usePatientVipIap } from './use-patient-vip-iap';
 import { randomUUID } from '@/lib/uuid';
 import { useAuthStore } from '@/store/auth-store';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import { fetchPatientRelatives, fetchPatientRelative, type PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { normalizeCategorySkipPrescriptionDocuments } from '@/utils/category-skip-prescription-documents';
@@ -58,10 +59,9 @@ import { useMultiAppointmentWizard } from './useAppointmentForm';
 import { NEW_PATIENT_ID } from '../types';
 import {
   bookingWizardPersonalIndex,
-  bookingWizardPhaseIndex,
+  bookingWizardProgress,
   bookingWizardReviewIndex,
   bookingWizardSectionAt,
-  bookingWizardSubStepLabel,
   type BookingWizardSection,
 } from '../utils/booking-wizard-steps';
 import { logVipPaymentIssue, VipPaymentError } from '../utils/vip-payment-error';
@@ -79,7 +79,7 @@ export type BookingCreatedResult = {
 export function useBookingWizard(opts: {
   mode: 'patient' | 'dashboard';
   role: string;
-  basePath: string;
+  basePath: RoleRoutePrefix;
   initialPatientId?: string;
   initialRelativeId?: string;
   onConsentMissing?: () => void;
@@ -89,6 +89,7 @@ export function useBookingWizard(opts: {
   onBookingCreated?: () => void;
 }) {
   const draft = opts.initialDraft ?? null;
+  const { onConsentMissing } = opts;
   const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
   const { show: toast } = useToast();
   const router = useRouter();
@@ -412,21 +413,23 @@ export function useBookingWizard(opts: {
   const isFinalWizardStep = section === 'review';
 
   const profileAddressLoadedRef = useRef(false);
+  const { loadProfileAddress } = wizard;
 
   useEffect(() => {
     if (opts.mode !== 'patient' || section !== 'personal' || !user?.id) return;
     if (profileAddressLoadedRef.current) return;
     profileAddressLoadedRef.current = true;
-    void wizard.loadProfileAddress(user.id);
-  }, [opts.mode, section, user?.id, wizard.loadProfileAddress]);
+    void loadProfileAddress(user.id);
+  }, [opts.mode, section, user?.id, loadProfileAddress]);
 
-  const phaseIndex = bookingWizardPhaseIndex(step, formWizardStep, section);
-  const subStepLabel = bookingWizardSubStepLabel(
-    section,
+  const progress = bookingWizardProgress({
+    mode: opts.mode,
+    hasLabStep: needsLabPreferenceStep,
+    slotCount: slotRows.length,
+    documentsCount: documentsSlotRows.length,
+    step,
     wizardIndex,
-    slotRows.length,
-    documentsSlotRows.length,
-  );
+  });
 
   const activeSlotServiceId = useMemo(() => {
     if (section !== 'slot-datetime') return null;
@@ -490,10 +493,10 @@ export function useBookingWizard(opts: {
   const wizardPageTitle = useMemo(() => {
     if (step === 1 && needsLabPreferenceStep) return 'Votre laboratoire';
     if (section === 'review') return 'Vérifier et confirmer';
-    if (section === 'personal') return 'Informations personnelles';
-    if (section === 'documents') return 'Documents de votre rendez-vous';
-    return 'Date de votre rendez-vous';
-  }, [step, needsLabPreferenceStep, section]);
+    if (section === 'personal') return opts.mode === 'patient' ? 'Vos informations' : 'Patient';
+    if (section === 'documents') return 'Documents';
+    return 'Date et heure';
+  }, [step, needsLabPreferenceStep, section, opts.mode]);
 
   const confirmStep0 = useCallback(() => {
     if (!wizard.selectedServices.length) {
@@ -751,7 +754,7 @@ export function useBookingWizard(opts: {
             m.includes('consentement'),
         );
       if (needsConsent) {
-        opts.onConsentMissing?.();
+        onConsentMissing?.();
       }
       toast(msg.split('\n')[0] ?? msg, { type: 'error' });
       return false;
@@ -773,7 +776,7 @@ export function useBookingWizard(opts: {
     opts.role,
     consent,
     toast,
-    opts.onConsentMissing,
+    onConsentMissing,
     showProNurseAssignment,
     getProNurseAssignment,
   ]);
@@ -865,8 +868,7 @@ export function useBookingWizard(opts: {
     section,
     isFinalWizardStep,
     wizardPageTitle,
-    phaseIndex,
-    subStepLabel,
+    progress,
     activeService,
     activeLotServices,
     activeSlotServiceId,

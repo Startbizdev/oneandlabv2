@@ -111,6 +111,12 @@ export async function confirmAiBookingDraft(id: string): Promise<{
   return res.data;
 }
 
+function isAiChatResponse(value: unknown): value is AiChatResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('message' in value) || !('disclaimer' in value)) return false;
+  return typeof value.message === 'object' && value.message !== null && typeof value.disclaimer === 'string';
+}
+
 function parseAiChatSseBlock(
   block: string,
   handlers: {
@@ -131,10 +137,9 @@ function parseAiChatSseBlock(
     const parsed = JSON.parse(dataLine) as Record<string, unknown>;
     if (event === 'delta' && typeof parsed.text === 'string') {
       handlers.onDelta(parsed.text);
-    } else if (event === 'done') {
-      const payload = parsed as unknown as AiChatResponse;
-      handlers.onDone?.(payload);
-      return payload;
+    } else if (event === 'done' && isAiChatResponse(parsed)) {
+      handlers.onDone?.(parsed);
+      return parsed;
     } else if (event === 'error') {
       handlers.onError?.(String(parsed.error ?? 'Erreur stream'));
     }
@@ -260,17 +265,6 @@ export async function searchAiConversations(q: string): Promise<{
     messages: Array<{ id: string; conversation_id: string; excerpt: string }>;
   }>(`/ai/search?q=${encodeURIComponent(q)}`);
   if (!res.success || !res.data) throw new Error(res.error ?? 'Recherche impossible');
-  return res.data;
-}
-
-export async function fetchAiTrends(refresh = false): Promise<
-  Array<{ id: string; observation_fr: string; trend_key: string; metric_type?: string | null }>
-> {
-  const qs = refresh ? '?refresh=1' : '';
-  const res = await apiRequest<
-    Array<{ id: string; observation_fr: string; trend_key: string; metric_type?: string | null }>
-  >(`/ai/trends${qs}`);
-  if (!res.success || !res.data) throw new Error(res.error ?? 'Tendances indisponibles');
   return res.data;
 }
 

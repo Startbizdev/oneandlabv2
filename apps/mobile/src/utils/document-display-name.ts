@@ -5,11 +5,7 @@ import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/docum
 dayjs.locale('fr');
 
 /** Libellé secondaire sous le type de document (date de dépôt, sans nom de fichier). */
-export function formatDocumentFileSubtitle(
-  _documentType: string,
-  _fileName?: string | null,
-  createdAt?: string | null,
-): string {
+export function formatDocumentFileSubtitle(createdAt?: string | null): string {
   if (createdAt) {
     const d = dayjs(createdAt);
     if (d.isValid()) return d.format('D MMM YYYY');

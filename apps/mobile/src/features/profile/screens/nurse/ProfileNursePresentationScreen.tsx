@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Input } from '@/components/ui/Input';
+import { SelectField, type SelectOption } from '@/components/ui/SelectField';
+import { Textarea } from '@/components/ui/Textarea';
+import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
@@ -13,9 +14,9 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { useStyles, type Theme } from '@/theme';
 
-const YEARS_OPTIONS = [
+const YEARS_OPTIONS: SelectOption[] = [
   { value: '1', label: '1 an' },
   { value: '3', label: '3 ans' },
   { value: '5', label: '5 ans' },
@@ -86,36 +87,20 @@ export function ProfileNursePresentationScreen() {
       saveTitle="Enregistrer"
       dirty={dirty}
     >
-      <AppText style={styles.sectionKicker}>Texte & expérience</AppText>
-      <Input
+      <Textarea
         label="Biographie"
         value={biography}
         onChangeText={setBiography}
-        multiline
-        numberOfLines={5}
-        style={{ minHeight: 120, textAlignVertical: 'top' as const }}
         placeholder="Présentez votre parcours et votre zone d'intervention…"
       />
-      <AppText style={styles.fieldLabel}>Années d&apos;expérience</AppText>
-      <Row wrap gap={spacing[2]}>
-        {YEARS_OPTIONS.map((o) => (
-          <Pressable
-            key={o.value}
-            onPress={() => setYearsExperience(o.value)}
-            hitSlop={{ top: 6, bottom: 6 }}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: yearsExperience === o.value }}
-            accessibilityLabel={`${o.label} d'expérience`}
-          >
-            <AppText style={[styles.chip, yearsExperience === o.value && styles.chipActive]}>
-              {o.label}
-            </AppText>
-          </Pressable>
-        ))}
-      </Row>
+      <SelectField
+        label="Années d’expérience"
+        value={yearsExperience}
+        options={YEARS_OPTIONS}
+        onChange={setYearsExperience}
+      />
 
-      <AppText style={[styles.sectionKicker, styles.sectionKickerSpaced]}>Visibilité & activité</AppText>
-      <View style={styles.card}>
+      <ProfileSection title="Visibilité">
         <ProfileToggleRow
           label="Fiche publique"
           hint={publicEnabled ? 'Visible sur Cary' : 'Non visible sur Cary'}
@@ -143,58 +128,16 @@ export function ProfileNursePresentationScreen() {
           busy={busyToggle?.is_accepting_appointments !== undefined}
           onValueChange={(v) => saveToggle.mutate({ is_accepting_appointments: v })}
         />
-      </View>
+      </ProfileSection>
     </ProfileSubScreenLayout>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  sectionKicker: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-  },
-  sectionKickerSpaced: {
-    marginTop: spacing[2],
-  },
-  fieldLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  chip: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surfaceAlt,
-  },
-  chipActive: {
-    color: c.primary,
-    borderColor: c.primary,
-    backgroundColor: c.primaryLight,
-    ...font.semiBold,
-  },
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[3],
-    gap: spacing[1],
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: c.borderLight,
-    marginVertical: spacing[0.5],
-  },
-};
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+    },
+  };
 }
-

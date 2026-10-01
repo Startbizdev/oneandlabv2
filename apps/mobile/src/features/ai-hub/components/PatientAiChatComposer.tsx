@@ -1,20 +1,28 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { Mic, Plus, Send } from 'lucide-react-native';
-import { elevation, H_PADDING, radius, spacing, iconSize, useStyles, font, type Theme } from '@/theme';
+import { ArrowUp, Mic, Plus } from 'lucide-react-native';
+import {
+  H_PADDING,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  useStyles,
+  font,
+  type Theme,
+  ICON_STROKE_WIDTH,
+} from '@/theme';
 import {
   PatientAiAttachmentThumbnail,
   type PatientAiAttachmentPreview,
 } from './PatientAiAttachmentThumbnail';
 
-const BAR_HEIGHT = 48;
-const ATTACHMENT_PREVIEW_HEIGHT = 72;
+const SEND_DISC = 36;
+const INPUT_MAX_HEIGHT = 120;
 
-/** Hauteur estimée du dock (hors clavier) — pour référence externe si besoin. */
-export const PATIENT_AI_COMPOSER_DOCK_HEIGHT = spacing[2] + BAR_HEIGHT + spacing[2];
-
-export const PATIENT_AI_COMPOSER_ATTACHMENT_EXTRA = ATTACHMENT_PREVIEW_HEIGHT + spacing[2];
+/** Hauteur estimée du dock (hors clavier et pièce jointe) — réserve de scroll avant la mesure réelle. */
+export const PATIENT_AI_COMPOSER_DOCK_HEIGHT = spacing[2] + MIN_TOUCH_TARGET + spacing[2];
 
 export type PatientAiPendingAttachment = PatientAiAttachmentPreview;
 
@@ -32,11 +40,9 @@ interface Props {
   onBlur?: () => void;
   canSend: boolean;
   disabled?: boolean;
-  /** Dans le footer Cary — pas de double bordure / ombre. */
-  embedded?: boolean;
 }
 
-/** Barre de saisie Cary IA — aperçu pièce jointe + micro et envoi visibles. */
+/** Saisie Cary : [+ | champ | micro | envoyer]. Seul l'envoi actif est turquoise. */
 export function PatientAiChatComposer({
   draft,
   onChangeDraft,
@@ -51,14 +57,14 @@ export function PatientAiChatComposer({
   onBlur,
   canSend,
   disabled = false,
-  embedded = false,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const canAttach = Boolean(onAttachPress) && !disabled && !attaching;
+  const sendEnabled = canSend && !disabled;
 
   return (
-    <View style={embedded ? styles.dockEmbedded : styles.dockStandalone}>
+    <View style={styles.dock}>
       {pendingAttachment ? (
         <View style={styles.previewRow}>
           <PatientAiAttachmentThumbnail
@@ -71,38 +77,27 @@ export function PatientAiChatComposer({
         </View>
       ) : null}
 
-      <Row
-        align="end"
-        style={[styles.bar, { backgroundColor: c.surface, borderColor: c.borderLight }]}
-      >
+      <Row align="end" gap={spacing[1]} style={styles.bar}>
         {onAttachPress ? (
           <Pressable
             onPress={onAttachPress}
             disabled={!canAttach}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              styles.actionBtnLeft,
-              pressed && styles.btnPressed,
-              !canAttach && styles.btnDisabled,
-            ]}
+            style={[styles.iconBtn, !canAttach && styles.disabled]}
             accessibilityRole="button"
             accessibilityLabel="Joindre un document ou une photo"
-            hitSlop={6}
           >
-            <View style={[styles.actionIcon, { backgroundColor: c.surfaceAlt }]}>
-              {attaching ? (
-                <ActivityIndicator size="small" color={c.primary} />
-              ) : (
-                <Plus size={iconSize.md} color={c.textSecondary} strokeWidth={2.25} />
-              )}
-            </View>
+            {attaching ? (
+              <ActivityIndicator size="small" color={c.textSecondary} />
+            ) : (
+              <Plus size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+            )}
           </Pressable>
         ) : null}
 
         <TextInput
           nativeID="cary-ai-input"
-          style={[styles.input, { color: c.textPrimary }]}
-          placeholder="Posez votre question à Cary…"
+          style={styles.input}
+          placeholder="Écrire à Cary…"
           placeholderTextColor={c.textTertiary}
           value={draft}
           onChangeText={onChangeDraft}
@@ -114,48 +109,29 @@ export function PatientAiChatComposer({
           multiline
           maxLength={2000}
           textAlignVertical="center"
+          accessibilityLabel="Message pour Cary"
         />
 
         <Pressable
           onPress={onVoicePress}
           disabled={disabled}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            pressed && styles.btnPressed,
-            disabled && styles.btnDisabled,
-          ]}
+          style={[styles.iconBtn, disabled && styles.disabled]}
           accessibilityRole="button"
           accessibilityLabel="Parler à Cary"
-          hitSlop={6}
         >
-          <View style={[styles.actionIcon, { backgroundColor: c.primary }]}>
-            <Mic size={iconSize.md} color={c.textInverse} strokeWidth={2.5} />
-          </View>
+          <Mic size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         </Pressable>
 
         <Pressable
           onPress={onSend}
-          disabled={disabled || !canSend}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            pressed && canSend && styles.btnPressed,
-            (disabled || !canSend) && styles.btnDisabled,
-          ]}
+          disabled={!sendEnabled}
+          style={styles.iconBtn}
           accessibilityRole="button"
           accessibilityLabel="Envoyer le message"
-          hitSlop={6}
+          accessibilityState={{ disabled: !sendEnabled }}
         >
-          <View
-            style={[
-              styles.actionIcon,
-              { backgroundColor: canSend && !disabled ? c.primary : c.surfaceAlt },
-            ]}
-          >
-            <Send
-              size={iconSize.mdSm}
-              color={canSend && !disabled ? c.textInverse : c.textTertiary}
-              strokeWidth={2.25}
-            />
+          <View style={[styles.sendDisc, { backgroundColor: sendEnabled ? c.primary : c.border }]}>
+            <ArrowUp size={iconSize.md} color={sendEnabled ? c.onPrimary : c.surface} strokeWidth={ICON_STROKE_WIDTH} />
           </View>
         </Pressable>
       </Row>
@@ -163,16 +139,10 @@ export function PatientAiChatComposer({
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    dockStandalone: {
-      borderTopWidth: StyleSheet.hairlineWidth,
+    dock: {
       paddingTop: spacing[2],
-      paddingBottom: spacing[2],
-      paddingHorizontal: H_PADDING,
-    },
-    dockEmbedded: {
-      paddingTop: spacing[1.5],
       paddingBottom: spacing[2],
       paddingHorizontal: H_PADDING,
     },
@@ -182,46 +152,36 @@ function buildStyles({ fontSize }: Theme) {
     },
     bar: {
       width: '100%' as const,
-      minHeight: BAR_HEIGHT,
-      maxHeight: 120,
+      minHeight: MIN_TOUCH_TARGET,
       borderRadius: radius.xl,
-      borderWidth: 1,
-      paddingLeft: spacing[1.5],
-      paddingRight: spacing[1.5],
-      paddingVertical: Platform.OS === 'ios' ? spacing[1] : spacing[0.5],
-      ...elevation.xs,
+      backgroundColor: c.surfaceAlt,
+      paddingHorizontal: spacing[1],
     },
     input: {
       minWidth: 0,
       flex: 1,
       ...font.regular,
-      fontSize: fontSize.sm,
-      padding: 0,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
       margin: 0,
-      maxHeight: 96,
-      paddingVertical: Platform.OS === 'ios' ? spacing[1.5] : spacing[1],
+      maxHeight: INPUT_MAX_HEIGHT,
+      paddingHorizontal: spacing[1],
+      paddingVertical: Platform.OS === 'ios' ? spacing[3] : spacing[2],
     },
-    actionBtn: {
+    iconBtn: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       flexShrink: 0,
-      marginLeft: spacing[1],
     },
-    actionBtnLeft: {
-      marginLeft: 0,
-      marginRight: spacing[1],
-    },
-    actionIcon: {
-      width: 36,
-      height: 36,
+    sendDisc: {
+      width: SEND_DISC,
+      height: SEND_DISC,
       borderRadius: radius.full,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    btnPressed: {
-      opacity: 0.85,
-      transform: [{ scale: 0.94 }],
-    },
-    btnDisabled: {
-      opacity: 0.45,
-    },
+    disabled: { opacity: 0.45 },
   };
 }

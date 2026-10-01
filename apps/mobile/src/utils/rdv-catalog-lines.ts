@@ -4,16 +4,12 @@ import {
   isBloodTestAppointment,
   isNursingAppointment,
 } from '@oneandlab/shared-utils';
-import { careEmojiForCareItem, careEmojiForLabel } from '@/utils/care-category-display';
 import { isAutreCareDisplayLabel, resolveRdvCareDisplayLabel, careCatalogBadgeBaseLabel } from '@/utils/rdv-care-display-label';
 
 export type RdvCatalogLine = {
   category_id: string | null;
   label: string;
-  /** Emoji affiché dans les mini-tags liste RDV. */
-  emoji: string;
   category_icon?: string | null;
-  category_image_url?: string | null;
   care_options?: Record<string, string | number>;
 };
 
@@ -22,7 +18,6 @@ type ItemRow = {
   category_name?: string;
   category_id?: string;
   category_icon?: string | null;
-  category_image_url?: string | null;
   care_options?: Record<string, unknown>;
 };
 
@@ -57,14 +52,11 @@ function mapItem(
     isAutreCareDisplayLabel(labelSource) ? fdCareOpts : undefined,
   );
   const categoryId = it?.category_id != null ? String(it.category_id) : null;
-  const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel : label;
 
   return {
     category_id: categoryId,
     label,
-    emoji: careEmojiForCareItem(it, apt.type, undefined, emojiSource),
     category_icon: it?.category_icon ?? (apt as AptWithIcon).category_icon,
-    category_image_url: it?.category_image_url ?? apt.category_image_url ?? null,
     care_options: mapCareOptions(it?.care_options),
   };
 }
@@ -86,7 +78,7 @@ function finalizeRdvCatalogLines(
 /** Lignes catalogue pour carte liste (aligné `patientRdvCatalogDisplayLines` web). */
 export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDisplayOpts): RdvCatalogLine[] {
   if (!apt) {
-    return [{ category_id: null, label: 'Rendez-vous', emoji: '📋' }];
+    return [{ category_id: null, label: 'Rendez-vous' }];
   }
   const t = apt.type;
   if (isBloodTestAppointment(t)) {
@@ -128,19 +120,12 @@ export function rdvCatalogDisplayLines(apt: Appointment, opts?: RdvCatalogDispla
     fdCareOpts,
     isAutreCareDisplayLabel(rawLabel) ? fdCareOpts : undefined,
   );
-  const ext = apt as AptWithIcon;
-  const emojiSource = isAutreCareDisplayLabel(rawLabel) ? rawLabel || 'Autre' : singleLabel;
   return finalizeRdvCatalogLines(
     [
       {
         category_id: catId,
         label: singleLabel,
-        emoji: careEmojiForLabel(emojiSource, t, {
-          categoryId: catId,
-          categoryIcon: ext.category_icon ?? null,
-        }),
         category_icon: (apt as AptWithIcon).category_icon,
-        category_image_url: apt.category_image_url ?? null,
         care_options: fdCareOpts,
       },
     ],

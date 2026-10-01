@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { AppText, font, iconSize, radius, spacing, useAppColors, useStyles, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, AppText, font, iconSize, radius, spacing, useAppColors, useStyles, type Theme } from '@/theme';
 
 interface Props {
   checked: boolean;
@@ -22,7 +22,7 @@ export function ConsentCheckbox({ checked, onToggle, label }: Props) {
     >
       <Row align="start" gap={spacing[3]}>
         <View style={[styles.box, checked && styles.boxChecked]}>
-          {checked ? <Check size={iconSize.xs} color={c.onPrimary} strokeWidth={3} /> : null}
+          {checked ? <Check size={iconSize.xs} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
         </View>
         <AppText style={styles.label}>{label}</AppText>
       </Row>

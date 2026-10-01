@@ -1,12 +1,13 @@
+import { Fragment } from 'react';
 import { View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { buildSettingsStyles } from '@/components/ui/SettingsRow';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { Button } from '@/components/ui/Button';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { HeartPulse } from 'lucide-react-native';
-import { CarePictogram } from '@/components/ui/CarePictogram';
-import { ProfileSection } from '@/features/profile/components/ProfileSection';
+import { CareIcon } from '@/features/categories/components/CareIcon';
 import {
   fetchNurseCategoryPreferences,
   updateNurseCategoryPreference,
@@ -15,15 +16,11 @@ import type { NurseCategoryPreference } from '@/features/profile/types/profile.t
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles } from '@/theme';
 
-interface Props {
-  /** Liste seule (écran dédié, sans carte section). */
-  bare?: boolean;
-}
-
-
-export function ProfileCareTypesSection({ bare }: Props) {
+/** Soins proposés par l’infirmier : un interrupteur par catégorie, enregistré à chaque bascule. */
+export function ProfileCareTypesSection() {
+  const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -52,119 +49,54 @@ export function ProfileCareTypesSection({ bare }: Props) {
   });
 
   const prefs = q.data ?? [];
-  const updatingId = toggle.isPending ? toggle.variables?.categoryId : null;
 
-  const body = q.isLoading ? (
-    <SkeletonList count={6} itemHeight={48} gap={spacing[2]} />
-  ) : q.isError ? (
-    <View style={styles.list}>
-      <AppText style={styles.empty}>Impossible de charger vos préférences de soins.</AppText>
-      <Button title="Réessayer" loading={q.isFetching} onPress={() => void q.refetch()} />
-    </View>
-  ) : prefs.length === 0 ? (
-    <AppText style={[styles.empty, bare && styles.emptyBare]}>
-      Aucune catégorie de soins disponible pour le moment.
-    </AppText>
-  ) : (
-    <View style={[styles.list, bare && styles.listBare]}>
-      {prefs.map((p) => {
-        const enabled = Boolean(p.is_enabled);
-        const busy = updatingId === p.category_id;
-        return (
-          <Cluster
-            key={p.category_id}
-            gap={spacing[3]}
-            leading={
-              <View style={[styles.emojiTile, enabled && styles.emojiTileEnabled]}>
-                <CarePictogram label={p.name ?? ''} type={p.type} icon={p.icon} imageUrl={p.image_url} size={24} />
-              </View>
-            }
-            actions={
-              <ToggleSwitch
-                value={enabled}
-                disabled={toggle.isPending}
-                accessibilityLabel={p.name ?? 'Ce soin'}
-                onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
-              />
-            }
-            style={[styles.row, enabled && styles.rowEnabled, busy && styles.rowBusy]}
-          >
-            <AppText
-              style={[styles.rowTitle, !enabled && styles.rowTitleOff]}
-              numberOfLines={1}
-            >
-              {p.name ?? p.category_id}
-            </AppText>
-          </Cluster>
-        );
-      })}
-    </View>
-  );
-
-  if (bare) return body;
+  if (q.isLoading) return <SkeletonList count={6} itemHeight={56} gap={spacing[2]} />;
+  if (q.isError) {
+    return <ErrorState title="Soins indisponibles" error={q.error} onRetry={() => void q.refetch()} />;
+  }
+  if (prefs.length === 0) {
+    return (
+      <EmptyState
+        illustration="requests"
+        title="Aucun soin disponible"
+        description="Les catégories de soins apparaîtront ici dès leur ouverture."
+      />
+    );
+  }
 
   return (
-    <ProfileSection
-      title="Types de soins acceptés"
-      description="Activez ou désactivez les soins que vous proposez"
-      Icon={HeartPulse}
-    >
-      {body}
-    </ProfileSection>
+    <View style={settings.section}>
+      <View style={settings.sectionCard}>
+        {prefs.map((p, index) => (
+          <Fragment key={p.category_id}>
+            {index > 0 ? <View style={settings.divider} /> : null}
+            <ListRowShell
+              style={settings.row}
+              leading={<CareIcon care={p} variant="well" />}
+              body={<AppText style={settings.label}>{p.name ?? p.category_id}</AppText>}
+              trailing={
+                <ToggleSwitch
+                  value={Boolean(p.is_enabled)}
+                  disabled={toggle.isPending}
+                  accessibilityLabel={p.name ?? 'Ce soin'}
+                  onValueChange={(v) => toggle.mutate({ categoryId: p.category_id, enabled: v })}
+                />
+              }
+            />
+          </Fragment>
+        ))}
+      </View>
+      <AppText variant="caption" style={styles.footer}>
+        Chaque modification est enregistrée automatiquement.
+      </AppText>
+    </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  empty: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textTertiary,
-    textAlign: 'center' as const,
-    paddingVertical: spacing[2],
-  },
-  emptyBare: { paddingVertical: spacing[6] },
-  list: { gap: spacing[2] },
-  listBare: { paddingTop: spacing[1] },
-  row: {
-    alignSelf: 'stretch' as const,
-    width: '100%' as const,
-    minHeight: 52,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surface,
-  },
-  rowEnabled: {
-    borderColor: palette.brand[200],
-    backgroundColor: c.primaryLight,
-  },
-  rowBusy: { opacity: 0.55 },
-  emojiTile: {
-    width: 36,
-    height: 36,
-    flexShrink: 0,
-    borderRadius: radius.md,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: c.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-  },
-  emojiTileEnabled: {
-    backgroundColor: c.surface,
-    borderColor: palette.brand[200],
-  },
-  rowTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  rowTitleOff: {
-    color: c.textSecondary,
-  },
-};
+    footer: {
+      paddingHorizontal: spacing[1],
+    },
+  };
 }
-

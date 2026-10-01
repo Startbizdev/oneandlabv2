@@ -11,7 +11,7 @@ interface Props {
   lotLabel?: string;
 }
 
-/** Bloc RDV partagé — date, point statut, badges emoji, lot (sélecteur + historique). */
+/** Bloc RDV partagé — date, point statut, badges soins, lot (sélecteur + historique). */
 export function PrescriptionRdvContextRow({ apt, lotLabel }: Props) {
   const styles = useStyles(buildStyles);
   const schedule = prescriptionAppointmentPickerScheduleLabel(apt);

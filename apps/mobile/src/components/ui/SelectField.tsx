@@ -1,12 +1,13 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
-import { BottomSheet } from './BottomSheet';
+import { SheetModal } from './SheetModal';
 import { useInBottomSheet } from './sheet-keyboard-context';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, iconSize, AppText, useStyles, font, ICON_STROKE_WIDTH, type Theme } from '@/theme';
+import { buildFieldStyles, FIELD_MIN_HEIGHT } from './field-styles';
 
 export type SelectOption = { value: string; label: string };
 
@@ -34,6 +35,7 @@ export function SelectField({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const field = useStyles(buildFieldStyles);
   const inSheet = useInBottomSheet();
   const [open, setOpen] = useState(false);
   const selectedLabel = useMemo(
@@ -63,28 +65,29 @@ export function SelectField({
   });
 
   return (
-    <View style={styles.wrap}>
-      {hideLabel ? null : <AppText style={styles.label}>{label}</AppText>}
+    <View style={field.wrapper}>
+      {hideLabel ? null : <AppText style={field.label}>{label}</AppText>}
       <Pressable
         onPress={() => setOpen((prev) => (inSheet ? !prev : true))}
-        style={[styles.trigger, error ? styles.triggerError : null, open && inSheet && styles.triggerOpen]}
+        style={[
+          field.container,
+          styles.trigger,
+          error ? styles.triggerError : null,
+          open && inSheet && styles.triggerOpen,
+        ]}
         accessibilityRole="button"
         accessibilityLabel={`${label}, ${selectedLabel ?? placeholder}`}
         accessibilityState={{ expanded: open }}
       >
         <Row gap={spacing[2]} align="center" style={styles.triggerRow}>
-          <AppText
-            style={[styles.triggerText, !selectedLabel && styles.placeholder]}
-            numberOfLines={1}
-          >
+          <AppText style={[styles.triggerText, !selectedLabel && styles.placeholder]}>
             {selectedLabel ?? placeholder}
           </AppText>
           <View style={[styles.chevronWrap, open && inSheet && styles.chevronOpen]}>
-            <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
+            <ChevronDown size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
           </View>
         </Row>
       </Pressable>
-      {error ? <AppText style={styles.error}>{error}</AppText> : null}
 
       {inSheet && open ? (
         <View style={styles.inlinePanel}>
@@ -99,8 +102,14 @@ export function SelectField({
         </View>
       ) : null}
 
+      {error ? (
+        <AppText style={field.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          {error}
+        </AppText>
+      ) : null}
+
       {!inSheet ? (
-        <BottomSheet
+        <SheetModal
           visible={open}
           onClose={() => setOpen(false)}
           title={sheetTitle ?? label}
@@ -109,7 +118,7 @@ export function SelectField({
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {optionItems}
           </ScrollView>
-        </BottomSheet>
+        </SheetModal>
       ) : null}
     </View>
   );
@@ -117,87 +126,63 @@ export function SelectField({
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  wrap: { gap: spacing[2] },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  trigger: {
-    minHeight: 48,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    paddingHorizontal: spacing[3],
-    justifyContent: 'center' as const,
-  },
-  triggerRow: {
-    width: '100%' as const,
-    minHeight: 24,
-  },
-  triggerError: { borderColor: c.borderError },
-  triggerOpen: {
-    borderColor: c.primary,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  chevronWrap: {
-    width: 24,
-    height: 24,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  chevronOpen: { transform: [{ rotate: '180deg' }] },
-  inlinePanel: {
-    marginTop: -1,
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: c.primary,
-    borderBottomLeftRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
-    backgroundColor: c.surface,
-    overflow: 'hidden' as const,
-  },
-  inlineList: { maxHeight: 220 },
-  triggerText: {
-    minWidth: 0,
-    flex: 1,
-    ...font.medium,
-    fontSize: fontSize.sm,
-    lineHeight: fontSize.sm * 1.25,
-    color: c.textPrimary,
-    ...(Platform.OS === 'android'
-      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
-      : null),
-  },
-  placeholder: { color: c.textTertiary },
-  error: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.error,
-  },
-  list: { maxHeight: 360 },
-  item: {
-    minHeight: 52,
-    justifyContent: 'center' as const,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.borderLight,
-  },
-  itemActive: { backgroundColor: c.primaryLight },
-  itemText: {
-    ...font.medium,
-    fontSize: fontSize.base,
-    lineHeight: fontSize.base * 1.25,
-    color: c.textPrimary,
-    ...(Platform.OS === 'android'
-      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
-      : null),
-  },
-  itemTextActive: { color: c.primary, ...font.semiBold },
-};
+    trigger: {
+      minHeight: FIELD_MIN_HEIGHT,
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[4],
+      justifyContent: 'center' as const,
+    },
+    triggerRow: {
+      width: '100%' as const,
+    },
+    triggerError: { borderColor: c.borderError },
+    triggerOpen: {
+      borderColor: c.borderFocus,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    chevronWrap: {
+      width: 24,
+      height: 24,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      flexShrink: 0,
+    },
+    chevronOpen: { transform: [{ rotate: '180deg' }] },
+    inlinePanel: {
+      marginTop: -spacing[1.5] - 1,
+      borderWidth: 1,
+      borderTopWidth: 0,
+      borderColor: c.borderFocus,
+      borderBottomLeftRadius: radius.md,
+      borderBottomRightRadius: radius.md,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+    inlineList: { maxHeight: 220 },
+    triggerText: {
+      minWidth: 0,
+      flex: 1,
+      ...font.regular,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+    },
+    placeholder: { color: c.textTertiary },
+    list: { maxHeight: 360 },
+    item: {
+      minHeight: FIELD_MIN_HEIGHT,
+      justifyContent: 'center' as const,
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[4],
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.borderLight,
+    },
+    itemActive: { backgroundColor: c.primaryLight },
+    itemText: {
+      ...font.regular,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+    },
+    itemTextActive: { color: c.primaryDark, ...font.semiBold },
+  };
 }
-

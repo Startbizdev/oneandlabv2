@@ -5,7 +5,7 @@ import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { useAppColors } from '@/theme/use-app-colors';
-import { AppText, font, iconSize, radius, spacing, useStyles, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, AppText, font, iconSize, radius, spacing, useStyles, type Theme } from '@/theme';
 import { detailLinesForSelectedService } from '../utils/selected-service-detail-lines';
 import { bookingReviewSlots } from '../utils/booking-review-summary';
 import { vipStoreLabel } from '../utils/booking-wizard-titles';
@@ -93,12 +93,6 @@ export function BookingReviewStep({
 
   return (
     <View style={styles.root}>
-      <AppText style={styles.lead}>
-        {mode === 'patient'
-          ? 'Relisez votre demande avant de la confirmer.'
-          : 'Relisez la demande avant de créer le rendez-vous.'}
-      </AppText>
-
       <View style={styles.card}>
         <ReviewSection first title="Soins" editLabel="Modifier les soins" onEdit={onEditServices}>
           {selectedServices.map((svc) => {
@@ -179,7 +173,7 @@ export function BookingReviewStep({
 
       {requiresFasting ? (
         <Row align="start" gap={spacing[2]} style={styles.notice}>
-          <Info size={iconSize.sm} color={c.primaryDark} strokeWidth={2.2} />
+          <Info size={iconSize.md} color={c.warning} strokeWidth={ICON_STROKE_WIDTH} />
           <AppText style={styles.noticeText}>
             {mode === 'patient'
               ? 'Prélèvement à jeun : suivez les consignes de votre ordonnance avant le rendez-vous.'
@@ -194,23 +188,17 @@ export function BookingReviewStep({
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: { gap: spacing[4] },
-    lead: {
-      ...font.regular,
-      fontSize: fontSize.base,
-      lineHeight: fontSize.base * 1.45,
-      color: c.textSecondary,
-    },
     card: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       paddingHorizontal: spacing[4],
     },
     section: { gap: spacing[2], paddingVertical: spacing[4] },
     sectionDivider: {
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.border,
+      borderTopColor: c.borderLight,
     },
     sectionTitle: {
       ...font.semiBold,
@@ -249,14 +237,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     notice: {
       padding: spacing[3],
       borderRadius: radius.lg,
-      backgroundColor: c.primaryLight,
+      backgroundColor: c.warningLight,
     },
     noticeText: {
       minWidth: 0,
       flex: 1,
       ...font.medium,
-      fontSize: fontSize.sm,
-      lineHeight: fontSize.sm * 1.45,
+      fontSize: fontSize.base,
+      lineHeight: fontSize.base * 1.45,
       color: c.textPrimary,
     },
   };

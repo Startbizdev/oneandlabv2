@@ -15,12 +15,6 @@ export type ColorblindSemantic = {
   errorLight: string;
   errorMid: string;
 
-  statusPending: { bg: string; text: string; dot: string };
-  statusAccepted: { bg: string; text: string; dot: string };
-  statusCompleted: { bg: string; text: string; dot: string };
-  statusCancelled: { bg: string; text: string; dot: string };
-  statusNeutral: { bg: string; text: string; dot: string };
-
   primary: string;
   primaryLight: string;
   primaryMid: string;
@@ -62,12 +56,6 @@ const PALETTES: Record<ActiveColorblindType, ColorblindSemantic> = {
     errorLight: '#FFF7ED',
     errorMid: '#FFEDD5',
 
-    statusPending: { bg: '#FFF7ED', text: '#C2410C', dot: '#EA580C' },
-    statusAccepted: { bg: '#EFF6FF', text: '#1D4ED8', dot: '#2563EB' },
-    statusCompleted: { bg: '#ECFEFF', text: '#0E7490', dot: '#0891B2' },
-    statusCancelled: { bg: '#FAF5FF', text: '#7E22CE', dot: '#9333EA' },
-    statusNeutral: { bg: '#F1F5F9', text: '#334155', dot: '#64748B' },
-
     star: '#D97706',
     starFill: '#FCD34D',
   },
@@ -94,12 +82,6 @@ const PALETTES: Record<ActiveColorblindType, ColorblindSemantic> = {
     error: '#C2410C',
     errorLight: '#FFF7ED',
     errorMid: '#FFEDD5',
-
-    statusPending: { bg: '#FFF7ED', text: '#9A3412', dot: '#C2410C' },
-    statusAccepted: { bg: '#EFF6FF', text: '#1E3A8A', dot: '#1D4ED8' },
-    statusCompleted: { bg: '#F0FDFA', text: '#115E59', dot: '#0F766E' },
-    statusCancelled: { bg: '#F5F3FF', text: '#6B21A8', dot: '#7C3AED' },
-    statusNeutral: { bg: '#F1F5F9', text: '#334155', dot: '#64748B' },
 
     star: '#B45309',
     starFill: '#FDE68A',
@@ -128,12 +110,6 @@ const PALETTES: Record<ActiveColorblindType, ColorblindSemantic> = {
     errorLight: '#FEF2F2',
     errorMid: '#FEE2E2',
 
-    statusPending: { bg: '#FFFBEB', text: '#B45309', dot: '#D97706' },
-    statusAccepted: { bg: '#ECFDF5', text: '#047857', dot: '#059669' },
-    statusCompleted: { bg: '#F5F3FF', text: '#6B21A8', dot: '#7C3AED' },
-    statusCancelled: { bg: '#FEF2F2', text: '#B91C1C', dot: '#DC2626' },
-    statusNeutral: { bg: '#F1F5F9', text: '#334155', dot: '#64748B' },
-
     star: '#B45309',
     starFill: '#FDE68A',
   },
@@ -143,5 +119,3 @@ export function getColorblindSemantic(type: ActiveColorblindType): ColorblindSem
   return PALETTES[type];
 }
 
-/** @deprecated Utiliser getColorblindSemantic('deuteranopia'). */
-export const colorblindSemantic = PALETTES.deuteranopia;

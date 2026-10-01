@@ -30,6 +30,11 @@ type AptExt = Appointment & {
     email_display?: string;
   };
   patient_email_display?: string;
+  /** Exposés par `AppointmentListPayload` (backend). */
+  beneficiary_gender?: string | null;
+  assigned_nurse_gender?: string | null;
+  assigned_lab_gender?: string | null;
+  assigned_to_gender?: string | null;
 };
 
 /** Genre du bénéficiaire (proche, formulaire RDV ou profil patient). */
@@ -40,8 +45,8 @@ export function appointmentBeneficiaryGender(apt: Appointment): string | null {
   const fd = (apt.form_data ?? {}) as Record<string, unknown>;
   const fromForm = fd.gender ?? fd.beneficiary_gender;
   if (fromForm) return String(fromForm).trim() || null;
-  const fromApi = (apt as unknown as Record<string, unknown>).beneficiary_gender;
-  if (fromApi) return String(fromApi).trim() || null;
+  const fromApi = ext.beneficiary_gender;
+  if (fromApi) return fromApi.trim() || null;
   return null;
 }
 
@@ -51,7 +56,7 @@ export function appointmentBeneficiaryAvatarMeta(apt: Appointment): {
   seed: string;
 } {
   const ext = apt as AptExt & { beneficiary_profile_image_url?: string | null };
-  const seed = beneficiaryDisplayName(apt) || apt.id;
+  const seed = apt.relative_id || apt.patient_id || beneficiaryDisplayName(apt) || apt.id;
   return {
     profileImageUrl: ext.beneficiary_profile_image_url ?? null,
     gender: appointmentBeneficiaryGender(apt),
@@ -64,15 +69,14 @@ export function appointmentAssigneeGender(
   apt: Appointment,
   kind: 'nurse' | 'lab' | 'preleveur',
 ): string | null {
-  const ext = apt as unknown as Record<string, unknown>;
-  const key =
+  const ext = apt as AptExt;
+  const g =
     kind === 'nurse'
-      ? 'assigned_nurse_gender'
+      ? ext.assigned_nurse_gender
       : kind === 'lab'
-        ? 'assigned_lab_gender'
-        : 'assigned_to_gender';
-  const g = ext[key];
-  return g ? String(g).trim() || null : null;
+        ? ext.assigned_lab_gender
+        : ext.assigned_to_gender;
+  return g ? g.trim() || null : null;
 }
 
 /** Titre navigation : nom du patient (pas le soin). */

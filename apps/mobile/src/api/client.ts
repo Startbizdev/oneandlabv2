@@ -10,6 +10,12 @@ import {
 import { getApiBase } from '@/config/env';
 import { getAuthToken } from '@/lib/auth-token';
 import { logApiTiming } from '@/lib/api-timing';
+import {
+  SESSION_EXPIRED_MESSAGE,
+  isSessionExpiryResponse,
+  notifySessionExpired,
+} from '@/lib/auth/session-expiry';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
 
 let csrfTokenCache: string | null = null;
 let csrfInFlight: Promise<string | null> | null = null;
@@ -49,7 +55,8 @@ export async function apiRequest<T = unknown>(
   } = {},
 ): Promise<ApiResponse<T>> {
   const method = (options.method ?? (options.body ? 'POST' : 'GET')) as Method;
-  const url = `${getApiBase()}${path.startsWith('/') ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${getApiBase()}${normalizedPath}`;
   const headers: Record<string, string> = { ...(options.headers ?? {}) };
 
   const token = getAuthToken();
@@ -92,19 +99,30 @@ export async function apiRequest<T = unknown>(
           return retry.data;
         }
       }
-      throw new Error(data.error ?? data.message ?? `Erreur ${err.response.status}`);
+      if (token && isSessionExpiryResponse(normalizedPath, err.response.status, data.code)) {
+        void notifySessionExpired(token);
+        throw new ApiRequestError(SESSION_EXPIRED_MESSAGE, err.response.status, data.code);
+      }
+      throw new ApiRequestError(
+        data.error ?? data.message ?? `Erreur ${err.response.status}`,
+        err.response.status,
+        data.code,
+        data.existing_patient_id,
+      );
     }
     if (axios.isAxiosError(err) && err.response) {
       const status = err.response.status;
       if (status === 413) {
-        throw new Error(
+        throw new ApiRequestError(
           'Fichier trop volumineux (max. 25 Mo). Réessayez avec une photo plus légère ou un PDF plus petit.',
+          status,
         );
       }
-      throw new Error(
+      throw new ApiRequestError(
         status === 500
           ? 'Erreur serveur (500). Réessayez dans un instant.'
           : `Erreur ${status}`,
+        status,
       );
     }
     if (axios.isAxiosError(err)) {
@@ -114,13 +132,14 @@ export async function apiRequest<T = unknown>(
           err.code === 'ECONNABORTED'
             ? 'Délai dépassé'
             : 'Serveur injoignable';
-        throw new Error(
+        throw new ApiRequestError(
           __DEV__
             ? `${hint} — ${base}\nVérifiez la connexion internet ou EXPO_PUBLIC_API_BASE dans apps/mobile/.env`
             : 'Erreur réseau. Vérifiez votre connexion.',
+          null,
         );
       }
-      throw new Error(err.message || 'Erreur réseau');
+      throw new ApiRequestError(err.message || 'Erreur réseau', null);
     }
     throw err;
   }

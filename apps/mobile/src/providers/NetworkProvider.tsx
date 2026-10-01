@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, type AppStateStatus, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, font, useStyles, type Theme } from '@/theme';
+import { AppText, font, spacing, useStyles, type Theme } from '@/theme';
 
 type NetworkContextValue = { isOnline: boolean };
 
@@ -104,15 +104,15 @@ export function useNetworkStatus() {
   return useContext(NetworkContext);
 }
 
-function buildStyles({ colors: c, fontSize, space }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     banner: {
       position: 'absolute',
       left: 0,
       right: 0,
       zIndex: 50,
-      paddingHorizontal: space.lg,
-      paddingVertical: space.sm,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2],
       backgroundColor: c.warning,
     },
     bannerText: {

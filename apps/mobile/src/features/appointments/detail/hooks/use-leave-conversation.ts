@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import { appointmentDetailHref, appointmentsListHref } from '@/navigation/role-hrefs';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 
 /** Retour depuis la messagerie : fiche RDV si ouverte par notification, sinon pile précédente. */
@@ -13,9 +14,9 @@ export function useLeaveConversation(
   const router = useRouter();
 
   return useCallback(() => {
-    const detailHref = `${roleRoutePrefix(userRole)}/appointment/${appointmentId}`;
+    const prefix = roleRoutePrefix(userRole);
     if (fromNotification === '1' && appointmentId) {
-      router.replace(detailHref as never);
+      router.replace(appointmentDetailHref(prefix, appointmentId));
       return;
     }
     if (navigation.canGoBack()) {
@@ -27,9 +28,9 @@ export function useLeaveConversation(
       return;
     }
     if (appointmentId) {
-      router.replace(detailHref as never);
+      router.replace(appointmentDetailHref(prefix, appointmentId));
       return;
     }
-    router.replace(`${roleRoutePrefix(userRole)}/(tabs)` as never);
+    router.replace(appointmentsListHref(prefix));
   }, [appointmentId, fromNotification, navigation, router, userRole]);
 }

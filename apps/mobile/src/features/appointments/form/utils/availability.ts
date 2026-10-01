@@ -76,8 +76,8 @@ export function parseAvailabilityField(
       }
       return { type: 'urgent', range: fallbackRange, urgentHour, urgentMinute, urgentTimingMode };
     }
-  } catch {
-    /* default */
+  } catch (e) {
+    console.warn('[booking] invalid stored availability, using default', e);
   }
   return {
     type: legacyType ?? 'all_day',

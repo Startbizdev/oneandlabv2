@@ -27,7 +27,7 @@ export function PatientPaginationBar({
         style={[styles.btn, page <= 1 && styles.btnDisabled]}
         accessibilityLabel="Page précédente"
       >
-        <ChevronLeft size={iconSize.mdSm} color={page <= 1 ? c.textTertiary : c.primary} />
+        <ChevronLeft size={iconSize.md} color={page <= 1 ? c.textTertiary : c.primary} />
       </Pressable>
       <AppText style={styles.label}>
         Page {page} / {Math.max(1, pages)}
@@ -39,7 +39,7 @@ export function PatientPaginationBar({
         style={[styles.btn, page >= pages && styles.btnDisabled]}
         accessibilityLabel="Page suivante"
       >
-        <ChevronRight size={iconSize.mdSm} color={page >= pages ? c.textTertiary : c.primary} />
+        <ChevronRight size={iconSize.md} color={page >= pages ? c.textTertiary : c.primary} />
       </Pressable>
     </Row>
   );

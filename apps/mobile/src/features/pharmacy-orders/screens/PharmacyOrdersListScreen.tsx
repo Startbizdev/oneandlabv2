@@ -4,7 +4,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-nativ
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, History, Pill } from 'lucide-react-native';
+import { Clock, History, Plus } from 'lucide-react-native';
 import {
   countPharmacyOrdersBySegment,
   filterPharmacyOrdersBySegment,
@@ -17,9 +17,9 @@ import { PharmacyOrderCard } from '../components/PharmacyOrderCard';
 import { fetchPharmacyOrders } from '../api/pharmacy-orders.service';
 import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { HeaderActionButton } from '@/navigation/HeaderActionButton';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { pharmacyOrderDetailHref, pharmacyOrderNewHref } from '@/navigation/role-hrefs';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
@@ -27,25 +27,31 @@ import { spacing, useStyles } from '@/theme';
 
 const PHARMACY_ORDER_LIST_POLL_MS = 15_000;
 
+/** Le patient voit des « traitements » (onglet Mes traitements), les soignants des commandes. */
+const LIST_COPY = {
+  sent: {
+    emptyActive: 'Aucune commande en cours',
+    emptyHistory: 'Aucune commande passée',
+    error: 'Commandes indisponibles',
+  },
+  patient: {
+    emptyActive: 'Aucun traitement en cours',
+    emptyHistory: 'Aucun traitement passé',
+    error: 'Traitements indisponibles',
+  },
+} as const;
+
 interface Props {
-  rolePrefix: '/(nurse)' | '/(pro)' | '/(patient)';
-  canCreate?: boolean;
+  rolePrefix: StaffRoutePrefix | '/(patient)';
   scope?: 'sent' | 'patient';
-  routeName?: 'commandes-pharmacie' | 'traitements';
 }
 
-export function PharmacyOrdersListScreen({
-  rolePrefix,
-  canCreate = true,
-  scope = 'sent',
-  routeName = 'commandes-pharmacie',
-}: Props) {
+export function PharmacyOrdersListScreen({ rolePrefix, scope = 'sent' }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const focused = useIsFocused();
   const appActive = useAppActive();
-  const scrollConfig = useStackScrollConfig(styles.content);
   const [segment, setSegment] = useState<PharmacyOrderListSegment>('active');
 
   const ordersQ = useQuery({
@@ -62,14 +68,18 @@ export function PharmacyOrdersListScreen({
   const { refreshing, onRefresh } = useManualRefresh(() => ordersQ.refetch());
 
   const openOrder = useCallback(
-    (id: string) => router.push(`${rolePrefix}/${routeName}/${id}` as never),
-    [rolePrefix, routeName, router],
+    (id: string) => router.push(pharmacyOrderDetailHref(rolePrefix, id)),
+    [rolePrefix, router],
   );
 
-  const openNew = useCallback(
-    () => router.push(`${rolePrefix}/${routeName}/new` as never),
-    [rolePrefix, routeName, router],
+  const newOrderHref = useMemo(
+    () => (rolePrefix === '/(patient)' ? null : pharmacyOrderNewHref(rolePrefix)),
+    [rolePrefix],
   );
+  const canCreate = newOrderHref !== null;
+  const openNew = useCallback(() => {
+    if (newOrderHref) router.push(newOrderHref);
+  }, [newOrderHref, router]);
 
   const orders = useMemo(() => ordersQ.data ?? [], [ordersQ.data]);
   const counts = useMemo(() => countPharmacyOrdersBySegment(orders), [orders]);
@@ -79,21 +89,16 @@ export function PharmacyOrdersListScreen({
   );
 
   const headerRight = canCreate ? (
-    <HeaderActionButton kind="add" onPress={openNew} />
+    <HeaderAction icon={Plus} accessibilityLabel="Nouvelle commande" onPress={openNew} />
   ) : null;
 
-  const emptyTitle =
-    segment === 'active' ? 'Aucune commande en cours' : 'Aucune commande dans l’historique';
-  const emptyDescription =
-    segment === 'active'
-      ? 'Vos commandes en attente ou en préparation apparaîtront ici.'
-      : 'Les commandes terminées, refusées ou annulées apparaîtront ici.';
+  const copy = LIST_COPY[scope];
+  const emptyTitle = segment === 'active' ? copy.emptyActive : copy.emptyHistory;
 
   return (
     <StackChromeScreen headerRight={headerRight}>
       <ScrollView
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.segmentWrap}>
@@ -111,15 +116,14 @@ export function PharmacyOrdersListScreen({
           <ActivityIndicator style={styles.loader} color={c.primary} />
         ) : ordersQ.isError && !ordersQ.data ? (
           <ErrorState
-            title="Commandes indisponibles"
+            title={copy.error}
             error={ordersQ.error}
             onRetry={() => void ordersQ.refetch()}
           />
         ) : filteredOrders.length === 0 ? (
           <EmptyState
-            Icon={Pill}
+            illustration="pharmacy"
             title={emptyTitle}
-            description={emptyDescription}
             actionLabel={canCreate && segment === 'active' ? 'Nouvelle commande' : undefined}
             onAction={canCreate && segment === 'active' ? openNew : undefined}
           />
@@ -130,7 +134,7 @@ export function PharmacyOrdersListScreen({
                 key={order.id}
                 order={order}
                 variant="sent"
-                showOrderedBy={scope === 'patient'}
+                patientView={scope === 'patient'}
                 onPress={() => openOrder(order.id)}
               />
             ))}
@@ -144,6 +148,7 @@ export function PharmacyOrdersListScreen({
 function buildStyles() {
   return {
     content: {
+      paddingTop: spacing[4],
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[10],
     },

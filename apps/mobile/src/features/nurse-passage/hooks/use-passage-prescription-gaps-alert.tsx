@@ -11,13 +11,14 @@ import { useAuthStore } from '@/store/auth-store';
 /** Alerte champs manquants (RPPS, NIR…) — affichée en tête des onglets Documents passage. */
 export function usePassagePrescriptionGapsAlert(patientId: string) {
   const user = useAuthStore((s) => s.user);
+  const userId = user?.id ?? '';
   const [editPatientId, setEditPatientId] = useState<string | null>(null);
   const [signatureOpen, setSignatureOpen] = useState(false);
 
   const prescriberQ = useQuery({
-    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
-    enabled: Boolean(user?.id),
+    queryKey: queryKeys.profile.fullUser(userId),
+    queryFn: async () => (await fetchUser(userId, 'full')).data,
+    enabled: Boolean(userId),
   });
 
   const patientQ = useQuery({

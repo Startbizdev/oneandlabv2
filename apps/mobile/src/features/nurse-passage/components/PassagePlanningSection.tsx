@@ -1,13 +1,14 @@
+import { Pressable, View } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, View } from 'react-native';
 import { Stack } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import type { PassagePlanningFormState, PlanningMode } from '../utils/passage-planning';
 import { IsoDatePicker } from './IsoDatePicker';
 import { PassageMultiDateCalendar } from './PassageMultiDateCalendar';
 import { PassageWeekdayChips } from './PassageWeekdayChips';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, iconSize, radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 type Props = {
   state: PassagePlanningFormState;
@@ -19,29 +20,59 @@ const MODE_OPTIONS: { id: PlanningMode; label: string; hint?: string }[] = [
   {
     id: 'single_day',
     label: 'Un seul jour',
-    hint: 'Une date de fin étend le passage sur chaque jour de la période',
+    hint: 'Une date de fin étend le passage sur chaque jour de la période.',
   },
-  { id: 'interval', label: 'Par intervalle régulier' },
-  { id: 'weekdays', label: 'Par jour de la semaine' },
-  { id: 'custom_dates', label: 'Par dates personnalisées' },
-  { id: 'manual', label: 'Aucune — ajout manuel' },
+  { id: 'interval', label: 'Intervalle régulier' },
+  { id: 'weekdays', label: 'Jours de la semaine' },
+  { id: 'custom_dates', label: 'Dates personnalisées' },
+  { id: 'manual', label: 'Ajout manuel' },
 ];
 
-export function PassagePlanningSection({ state, onChange, passageCount }: Props) {
+type OptionProps = {
+  label: string;
+  hint?: string;
+  selected: boolean;
+  role: 'radio' | 'checkbox';
+  onPress: () => void;
+};
+
+function PlanningOption({ label, hint, selected, role, onPress }: OptionProps) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={role}
+      accessibilityState={role === 'radio' ? { selected } : { checked: selected }}
+      style={[styles.option, selected ? styles.optionSelected : null]}
+    >
+      <View style={styles.optionText}>
+        <AppText variant="body" style={styles.optionLabel}>
+          {label}
+        </AppText>
+        {hint ? (
+          <AppText variant="caption">
+            {hint}
+          </AppText>
+        ) : null}
+      </View>
+      {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
+    </Pressable>
+  );
+}
 
-  const setMode = (mode: PlanningMode) => onChange({ planningMode: mode });
+export function PassagePlanningSection({ state, onChange, passageCount }: Props) {
+  const styles = useStyles(buildStyles);
+
   const isCustomDates = state.planningMode === 'custom_dates';
   const isManual = state.planningMode === 'manual';
+  const isRecurring = state.planningMode === 'interval' || state.planningMode === 'weekdays';
 
   return (
-    <View>
+    <View style={styles.root}>
       {!isCustomDates ? (
-        <View
-          style={[styles.periodCard, { borderColor: c.borderLight, backgroundColor: c.surfaceAlt }]}
-        >
-          <AppText style={[styles.periodTitle, { color: c.textSecondary }]}>Période</AppText>
+        <Stack gap={spacing[2]}>
+          <AppText variant="headline">Période</AppText>
           {isManual ? (
             <IsoDatePicker
               label="Date du premier passage"
@@ -49,7 +80,7 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
               onChange={(startDate) => onChange({ startDate })}
             />
           ) : (
-            <Stack gap={spacing[2]}>
+            <>
               <IsoDatePicker
                 label="Date de début"
                 value={state.startDate}
@@ -60,62 +91,46 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
                 value={state.endDate}
                 onChange={(endDate) => onChange({ endDate, openEnded: false })}
                 placeholder="Optionnelle"
-                disabled={state.openEnded && (state.planningMode === 'interval' || state.planningMode === 'weekdays')}
+                disabled={state.openEnded && isRecurring}
               />
-              {(state.planningMode === 'interval' || state.planningMode === 'weekdays') ? (
-                <Pressable
+              {isRecurring ? (
+                <PlanningOption
+                  role="checkbox"
+                  label="Passage chronique, sans date de fin"
+                  hint="Planifié sur 1 an, renouvelable ensuite."
+                  selected={state.openEnded}
                   onPress={() =>
                     onChange({
                       openEnded: !state.openEnded,
                       ...(state.openEnded ? {} : { endDate: '' }),
                     })
                   }
-                  style={[
-                    styles.openEndedRow,
-                    {
-                      borderColor: state.openEnded ? c.primary : c.borderLight,
-                      backgroundColor: state.openEnded ? hexToRgba(c.primary, 0.08) : c.surface,
-                    },
-                  ]}
-                >
-                  <AppText style={{ ...font.semiBold, color: c.textPrimary }}>
-                    {state.openEnded ? '✓ ' : ''}Passage chronique (sans date de fin)
-                  </AppText>
-                  <AppText style={[styles.optionHint, { color: c.textSecondary }]}>
-                    Les passages sont planifiés sur 1 an, renouvelables ensuite.
-                  </AppText>
-                </Pressable>
+                />
               ) : null}
-            </Stack>
+            </>
           )}
-        </View>
+        </Stack>
       ) : null}
 
-      <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Type de planification</AppText>
-
-      {MODE_OPTIONS.map(({ id, label, hint }) => (
-        <Pressable
-          key={id}
-          onPress={() => setMode(id)}
-          style={[
-            styles.planOption,
-            {
-              borderColor: state.planningMode === id ? c.primary : c.borderLight,
-              backgroundColor:
-                state.planningMode === id ? hexToRgba(c.primary, 0.06) : c.surface,
-            },
-          ]}
-        >
-          <AppText style={{ ...font.semiBold, color: c.textPrimary }}>{label}</AppText>
-          {hint && state.planningMode === id ? (
-            <AppText style={[styles.optionHint, { color: c.textSecondary }]}>{hint}</AppText>
-          ) : null}
-        </Pressable>
-      ))}
+      <View style={styles.group} accessibilityRole="radiogroup">
+        <AppText variant="headline">Répétition</AppText>
+        {MODE_OPTIONS.map(({ id, label, hint }) => (
+          <PlanningOption
+            key={id}
+            role="radio"
+            label={label}
+            hint={state.planningMode === id ? hint : undefined}
+            selected={state.planningMode === id}
+            onPress={() => onChange({ planningMode: id })}
+          />
+        ))}
+      </View>
 
       {state.planningMode === 'interval' ? (
-        <Stack gap={spacing[2]} style={styles.planFields}>
-          <AppText style={[styles.fieldLabel, { color: c.textSecondary }]}>Tous les (jours)</AppText>
+        <Stack gap={spacing[2]}>
+          <AppText variant="secondary">
+            Tous les (jours)
+          </AppText>
           <Input
             value={state.everyDays}
             onChangeText={(everyDays) => onChange({ everyDays })}
@@ -125,42 +140,36 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
       ) : null}
 
       {state.planningMode === 'weekdays' ? (
-        <Stack gap={spacing[2]} style={styles.planFields}>
-          <AppText style={[styles.fieldLabel, { color: c.textSecondary }]}>Jours de la semaine</AppText>
-          <PassageWeekdayChips
-            selected={state.weekdays}
-            onChange={(weekdays) => onChange({ weekdays })}
-          />
+        <Stack gap={spacing[2]}>
+          <AppText variant="secondary">
+            Jours de la semaine
+          </AppText>
+          <PassageWeekdayChips selected={state.weekdays} onChange={(weekdays) => onChange({ weekdays })} />
         </Stack>
       ) : null}
 
-      {state.planningMode === 'custom_dates' ? (
-        <View style={styles.planFields}>
-          <AppText style={[styles.fieldLabel, { color: c.textSecondary, marginBottom: spacing[2] }]}>
+      {isCustomDates ? (
+        <Stack gap={spacing[2]}>
+          <AppText variant="secondary">
             Sélectionnez les dates de passage
           </AppText>
           <PassageMultiDateCalendar
             selected={state.customDates}
             onChange={(customDates) => onChange({ customDates })}
           />
-        </View>
+        </Stack>
       ) : null}
 
-      {state.planningMode === 'manual' ? (
-        <AppText style={[styles.manualHint, { color: c.textSecondary }]}>
-          Aucune génération automatique au-delà du premier passage. Ajoutez les suivants depuis le
-          détail.
+      {isManual ? (
+        <AppText variant="secondary">
+          Seul le premier passage est créé. Ajoutez les suivants depuis le détail.
         </AppText>
       ) : null}
 
       {passageCount != null && passageCount > 0 ? (
-        <View
-          style={[styles.preview, { backgroundColor: hexToRgba(c.primary, 0.08), borderColor: c.primary }]}
-        >
-          <AppText style={[styles.previewText, { color: c.primaryDark }]}>
-            {passageCount === 1
-              ? '1 passage sera créé'
-              : `${passageCount} passages seront créés sur la période`}
+        <View style={styles.preview}>
+          <AppText variant="secondary" style={styles.previewText}>
+            {passageCount === 1 ? '1 passage sera créé' : `${passageCount} passages seront créés`}
           </AppText>
         </View>
       ) : null}
@@ -168,69 +177,33 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c, font }: Theme) {
   return {
-    periodCard: {
+    root: { gap: spacing[5] },
+    group: { gap: spacing[2] },
+    option: {
+      minHeight: MIN_TOUCH_TARGET,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[3],
       borderWidth: 1,
+      borderColor: c.borderLight,
+      backgroundColor: c.surface,
       borderRadius: radius.lg,
-      padding: spacing[3],
-      gap: spacing[2],
-      marginBottom: spacing[3],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
     },
-    periodTitle: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
+    optionSelected: {
+      borderColor: c.primary,
+      backgroundColor: hexToRgba(c.primary, 0.06),
     },
-    sectionLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.5,
-      marginBottom: spacing[2],
-    },
-    planOption: {
-      borderWidth: 1,
-      borderRadius: radius.lg,
-      padding: spacing[3],
-      marginBottom: spacing[2],
-      gap: spacing[1],
-    },
-    optionHint: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      lineHeight: fontSize.xs * 1.4,
-    },
-    planFields: { marginTop: spacing[1], marginBottom: spacing[2] },
-    fieldLabel: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      marginBottom: spacing[2],
-    },
-    manualHint: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: 20,
-      marginTop: spacing[1],
-    },
-    openEndedRow: {
-      borderWidth: 1,
-      borderRadius: radius.lg,
-      padding: spacing[3],
-      gap: spacing[1],
-      marginTop: spacing[1],
-    },
+    optionText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+    optionLabel: { ...font.semiBold },
     preview: {
-      marginTop: spacing[3],
-      borderWidth: 1,
       borderRadius: radius.lg,
       padding: spacing[3],
+      backgroundColor: hexToRgba(c.primary, 0.08),
     },
-    previewText: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      textAlign: 'center' as const,
-    },
+    previewText: { ...font.semiBold, color: c.primaryDark, textAlign: 'center' as const },
   };
 }

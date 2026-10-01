@@ -2,14 +2,12 @@ import { useAppColors } from '@/theme/use-app-colors';
 import type { UserRole } from '@oneandlab/shared-types';
 import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Keyboard, Platform, StyleSheet, View } from 'react-native';
-import { Smile } from 'lucide-react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ArrowUpRight } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { CaryAiDisclosureCard } from '../components/CaryAiDisclosureCard';
 import { CaryAiSendFailureNotice } from '../components/CaryAiSendFailureNotice';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import {
@@ -18,13 +16,17 @@ import {
   patientAiChatListBottomPadding,
 } from '../components/PatientAiChatFooter';
 import { PatientAiAttachmentThumbnail } from '../components/PatientAiAttachmentThumbnail';
-import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import { PatientAiConversationsSheet } from '../components/PatientAiConversationsSheet';
 import { PatientAiVoiceOverlay } from '../components/PatientAiVoiceOverlay';
 import { useVoiceSession } from '../hooks/use-voice-session';
 import { CaryMarkdown } from '../components/CaryMarkdown';
 import { CaryAiBookingRecapCard } from '../components/CaryAiBookingRecapCard';
+import { canBookWithCaryAi } from '../utils/ai-booking-access';
+import { Button } from '@/components/ui/Button';
+import { bookingNewHref } from '@/navigation/role-hrefs';
+import { roleRoutePrefix } from '@/navigation/role-route-prefix';
+import { useRouter } from 'expo-router';
 import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-text';
 import { stripDisclaimerFromAssistantText } from '../utils/strip-disclaimer-from-text';
 import { CaryAiChatList } from '../components/CaryAiChatList';
@@ -40,9 +42,17 @@ import {
   getCachedMedicalDocumentUri,
 } from '@/lib/downloads/download-medical-document';
 import type { AiQuickSuggestion } from '@oneandlab/shared-types';
-import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
-import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import {
+  H_PADDING,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  type Theme,
+  ICON_STROKE_WIDTH,
+} from '@/theme';
 
 type ScreenStyles = ReturnType<typeof buildStyles>;
 
@@ -51,15 +61,34 @@ interface ScreenProps {
   historyOpen: boolean;
   onHistoryOpenChange: (open: boolean) => void;
   init?: CaryAiHubInit;
-  /** false = écran stack pro/nurse/preleveur (composer collé en bas). */
-  includeTabBarInset?: boolean;
 }
 
-function AssistantAvatar({ styles }: { styles: ScreenStyles }) {
+function SuggestionList({
+  styles,
+  suggestions,
+  onPick,
+}: {
+  styles: ScreenStyles;
+  suggestions: AiQuickSuggestion[];
+  onPick?: (item: AiQuickSuggestion) => void;
+}) {
   const c = useAppColors();
   return (
-    <View style={[styles.avatar, { backgroundColor: c.primaryLight }]}>
-      <Smile size={iconSize.md} color={c.primary} strokeWidth={2} />
+    <View style={styles.suggestions}>
+      {suggestions.map((item) => (
+        <Pressable
+          key={item.id}
+          onPress={onPick ? () => onPick(item) : undefined}
+          disabled={!onPick}
+          style={({ pressed }) => [styles.suggestion, pressed && styles.suggestionPressed]}
+          accessibilityRole="button"
+        >
+          <AppText variant="body" style={styles.suggestionLabel}>
+            {item.label}
+          </AppText>
+          <ArrowUpRight size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -72,6 +101,7 @@ function MessageBubble({
   onSuggestionPick,
   disclaimer,
   recapSlot,
+  actionSlot,
   onAttachmentPress,
 }: {
   styles: ScreenStyles;
@@ -81,9 +111,9 @@ function MessageBubble({
   onSuggestionPick?: (item: AiQuickSuggestion) => void;
   disclaimer?: string;
   recapSlot?: ReactNode;
+  actionSlot?: ReactNode;
   onAttachmentPress?: (attachment: PatientAiChatAttachment) => void;
 }) {
-  const c = useAppColors();
   const isUser = message.role === 'user';
   const attachment = message.metadata?.attachment;
 
@@ -91,14 +121,7 @@ function MessageBubble({
     const mediaOnly = Boolean(attachment) && !message.text;
     return (
       <Row justify="end" style={styles.userRow}>
-        <View
-          style={[
-            styles.bubble,
-            styles.bubbleUser,
-            mediaOnly ? styles.bubbleUserMediaOnly : null,
-            { backgroundColor: mediaOnly ? 'transparent' : c.primary },
-          ]}
-        >
+        <View style={[styles.bubbleUser, mediaOnly ? styles.bubbleUserMediaOnly : null]}>
           {attachment ? (
             <PatientAiAttachmentThumbnail
               attachment={attachment}
@@ -111,9 +134,7 @@ function MessageBubble({
               }
             />
           ) : null}
-          {message.text ? (
-            <CaryMarkdown text={message.text} inverse style={styles.bodyTextOnPrimary} />
-          ) : null}
+          {message.text ? <CaryMarkdown text={message.text} /> : null}
         </View>
       </Row>
     );
@@ -124,62 +145,30 @@ function MessageBubble({
     assistantText ||
     (recapSlot ? 'Voici le récapitulatif de votre demande.' : '') ||
     resolveAssistantMessageText(message.text, '');
-  const body = (
-    <>
-      {visibleAssistantText ? (
-        <CaryMarkdown text={visibleAssistantText} style={styles.assistantText} />
-      ) : null}
-      {welcome && suggestions?.length ? (
-        <Row wrap gap={spacing[2]} style={styles.suggestionChips}>
-          {suggestions.map((item) => (
-            <View key={item.id} style={styles.suggestionChipWrap}>
-              <Button
-                title={item.label}
-                variant="outline"
-                size="sm"
-                onPress={onSuggestionPick ? () => onSuggestionPick(item) : undefined}
-                disabled={!onSuggestionPick}
-              />
-            </View>
-          ))}
-        </Row>
-      ) : null}
-      {recapSlot ? <View style={styles.recapInBubble}>{recapSlot}</View> : null}
-    </>
-  );
-
-  if (welcome) {
-    return (
-      <Row align="start" gap={spacing[2]} style={styles.assistantPlainRow}>
-        <AssistantAvatar styles={styles} />
-        <View style={styles.plainContent}>{body}</View>
-      </Row>
-    );
-  }
-
   return (
-    <Row align="end" gap={spacing[2]} style={styles.assistantRow}>
-      <AssistantAvatar styles={styles} />
-      <View style={[styles.bubble, styles.bubbleAssistant, styles.bubbleAssistantContent, { backgroundColor: c.surface, borderColor: c.borderLight }]}>
-        {body}
-      </View>
-    </Row>
+    <View style={styles.assistant}>
+      {visibleAssistantText ? <CaryMarkdown text={visibleAssistantText} /> : null}
+      {welcome && suggestions?.length ? (
+        <SuggestionList styles={styles} suggestions={suggestions} onPick={onSuggestionPick} />
+      ) : null}
+      {recapSlot ? <View style={styles.recap}>{recapSlot}</View> : null}
+      {actionSlot ? <View style={styles.recap}>{actionSlot}</View> : null}
+    </View>
   );
 }
 
 /** Hub Cary IA branché API (Phase 1). */
 export function CaryAiHubScreen({
+  role,
   historyOpen,
   onHistoryOpenChange,
   init,
-  includeTabBarInset = true,
 }: ScreenProps) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
-  const { bottom: safeBottom } = useSafeAreaInsets();
-  const tabBarInset = useNativeTabBarInset(0);
-  const bottomInset = includeTabBarInset ? tabBarInset : safeBottom;
+  const router = useRouter();
+  const bookingEnabled = canBookWithCaryAi(role);
+  const { safeAreaBottom: bottomInset } = useSceneBottomInset();
   const listRef = useRef<FlashListRef<PatientAiChatMessage>>(null);
   const [footerHeight, setFooterHeight] = useState(PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER);
   const [keyboardInset, setKeyboardInset] = useState(0);
@@ -187,11 +176,11 @@ export function CaryAiHubScreen({
   const listContentStyle = useMemo(
     () => ({
       paddingHorizontal: H_PADDING,
-      paddingTop: sceneInsets.insetTop + spacing[2],
+      paddingTop: spacing[2],
       paddingBottom:
         patientAiChatListBottomPadding(footerHeight, bottomInset) + keyboardInset,
     }),
-    [footerHeight, bottomInset, sceneInsets.insetTop, keyboardInset],
+    [footerHeight, bottomInset, keyboardInset],
   );
 
   const onFooterLayout = useCallback((height: number) => {
@@ -228,7 +217,6 @@ export function CaryAiHubScreen({
     syncVoiceDraft,
     onVoiceAppointmentCreated,
     handleAttach,
-    handleReplaceDocument,
     clearAttachment,
     pendingAttachment,
     attaching,
@@ -427,16 +415,23 @@ export function CaryAiHubScreen({
     (item: PatientAiChatMessage) => {
       const isWelcome = item.id === welcomeMessageId && item.role === 'assistant';
       const recapState =
-        item.role === 'assistant' && !awaitingReply ? resolveMessageRecap(item) : null;
+        bookingEnabled && item.role === 'assistant' && !awaitingReply ? resolveMessageRecap(item) : null;
       const recapSlot = recapState ? (
         <CaryAiBookingRecapCard
           draft={recapState.draft}
           canConfirm={recapState.canConfirm}
           confirming={recapState.canConfirm && confirmingDraft}
           onConfirm={(d) => void handleConfirmDraft(d)}
-          onReplaceDocument={handleReplaceDocument}
         />
       ) : null;
+      const actionSlot =
+        !bookingEnabled && isWelcome ? (
+          <Button
+            title="Demander un prélèvement"
+            variant="secondary"
+            onPress={() => router.push(bookingNewHref(roleRoutePrefix(role)))}
+          />
+        ) : null;
 
       return (
         <MessageBubble
@@ -447,6 +442,7 @@ export function CaryAiHubScreen({
           onSuggestionPick={showSuggestions ? handleSuggestion : undefined}
           disclaimer={disclaimer}
           recapSlot={recapSlot}
+          actionSlot={actionSlot}
           onAttachmentPress={handleAttachmentPress}
         />
       );
@@ -459,10 +455,12 @@ export function CaryAiHubScreen({
       handleSuggestion,
       disclaimer,
       awaitingReply,
+      bookingEnabled,
       confirmingDraft,
       handleConfirmDraft,
-      handleReplaceDocument,
       handleAttachmentPress,
+      role,
+      router,
     ],
   );
 
@@ -488,17 +486,13 @@ export function CaryAiHubScreen({
         />
       ) : null}
       {awaitingReply ? (
-        <Row align="end" gap={spacing[2]} style={styles.typingRow}>
-          <AssistantAvatar styles={styles} />
-          <View style={[styles.typingBubble, { backgroundColor: c.surfaceAlt, borderColor: c.borderLight }]}>
-            <AppText style={[styles.typingText, { color: c.textSecondary }]}>
-              {displayStreamingText ? '' : 'Cary réfléchit…'}
-            </AppText>
-            {displayStreamingText ? (
-              <CaryMarkdown text={displayStreamingText} style={styles.assistantText} />
-            ) : null}
-          </View>
-        </Row>
+        <View style={styles.typing} accessibilityLiveRegion="polite">
+          {displayStreamingText ? (
+            <CaryMarkdown text={displayStreamingText} />
+          ) : (
+            <AppText variant="secondary">Cary réfléchit…</AppText>
+          )}
+        </View>
       ) : null}
     </>
   );
@@ -527,7 +521,6 @@ export function CaryAiHubScreen({
           messages={messages}
           contentContainerStyle={listContentStyle}
           renderMessage={renderMessage}
-          listHeader={<CaryAiDisclosureCard />}
           listFooter={listFooter}
           onContentSizeChange={onContentSizeChange}
           extraData={`${showSuggestions}-${activeId}-${awaitingReply}-${activeSendFailure?.userMessageId ?? ''}-${activeDraft?.status}-${activeDraft?.updated_at}-${messages.length}-${streamingText.length}-${confirmingDraft}`}
@@ -547,8 +540,6 @@ export function CaryAiHubScreen({
           onFooterLayout={onFooterLayout}
           canSend={canSend}
           disabled={composerBlocked}
-          disclaimer={disclaimer}
-          includeTabBarInset={includeTabBarInset}
         />
       </View>
 
@@ -561,10 +552,10 @@ export function CaryAiHubScreen({
         voiceEnergy={voice.voiceEnergy}
         turns={voice.turns}
         speechError={voice.speechError}
-        activeDraft={activeDraft}
+        activeDraft={bookingEnabled ? activeDraft : null}
         confirmingDraft={confirmingDraft}
         attachingDocument={attaching}
-        onConfirmDraft={(d) => void handleConfirmDraft(d)}
+        onConfirmDraft={bookingEnabled ? (d) => void handleConfirmDraft(d) : undefined}
         onAttachDocument={(source) =>
           void handleAttach(draftPendingUploadType(activeDraft ?? null), source)
         }
@@ -601,10 +592,7 @@ export function CaryAiHubScreen({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
-  const userBodySize = fontSize.sm;
-  const assistantBodySize = fontSize.base;
-
+function buildStyles({ colors: c }: Theme) {
   return {
     screen: {
       minWidth: 0,
@@ -617,70 +605,39 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    messageGap: { height: spacing[2.5] },
-    assistantRow: { maxWidth: '100%' as const },
-    assistantPlainRow: { maxWidth: '100%' as const },
-    plainContent: { minWidth: 0, flex: 1, paddingTop: spacing[0.5] },
-    bodyText: {
-      ...font.regular,
-      fontSize: userBodySize,
-      lineHeight: lh(userBodySize, 1.4),
-      color: c.textPrimary,
-    },
-    assistantText: {
-      ...font.regular,
-      fontSize: assistantBodySize,
-      lineHeight: lh(assistantBodySize, 1.45),
-      color: c.textPrimary,
-    },
-    bodyTextOnPrimary: { color: c.textInverse },
-    suggestionChips: { marginTop: spacing[2] },
-    suggestionChipWrap: { flexShrink: 0, maxWidth: '100%' as const },
     userRow: { minWidth: 0 },
-    avatar: {
-      width: 36,
-      height: 36,
-      borderRadius: radius.full,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexShrink: 0,
+    bubbleUser: {
+      maxWidth: '85%' as const,
+      borderRadius: radius.xl,
+      borderBottomRightRadius: radius.sm,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2.5],
+      backgroundColor: c.surfaceAlt,
+      gap: spacing[2],
     },
-    bubble: {
-      maxWidth: '88%' as const,
-      borderRadius: radius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
-    },
-    bubbleAssistant: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderBottomLeftRadius: radius.sm,
-      minWidth: 0,
-    },
-    bubbleAssistantContent: {
-      overflow: 'hidden' as const,
-    },
-    bubbleUser: { borderBottomRightRadius: radius.sm },
     bubbleUserMediaOnly: {
       paddingHorizontal: 0,
       paddingVertical: 0,
       maxWidth: '72%' as const,
+      backgroundColor: 'transparent',
     },
-    typingRow: { paddingTop: spacing[1] },
-    recapInBubble: {
-      marginTop: spacing[2],
-    },
-    typingBubble: {
+    assistant: { minWidth: 0, gap: spacing[4], paddingVertical: spacing[1] },
+    recap: { minWidth: 0 },
+    suggestions: { gap: spacing[2] },
+    suggestion: {
+      minHeight: MIN_TOUCH_TARGET + spacing[1],
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[3],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2.5],
       borderRadius: radius.lg,
-      borderBottomLeftRadius: radius.sm,
-      borderWidth: 1,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
-      maxWidth: '88%' as const,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
     },
-    typingText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      fontStyle: 'italic' as const,
-    },
+    suggestionPressed: { backgroundColor: c.surfaceAlt },
+    suggestionLabel: { flex: 1, minWidth: 0 },
+    typing: { paddingTop: spacing[3] },
   };
 }

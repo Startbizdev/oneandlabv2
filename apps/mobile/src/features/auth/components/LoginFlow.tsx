@@ -25,7 +25,7 @@ import {
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { offerBiometricEnrollmentAfterLogin } from '@/features/auth/utils/offer-biometric-enrollment';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
 
 export type LoginStep = 'email' | 'password' | 'otp' | 'forgot' | 'forgot-sent';
 
@@ -265,7 +265,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
           size="lg"
         />
         <Button
-          title="Recevoir un code par e-mail plutôt"
+          title="Recevoir un code par e-mail"
           variant="ghost"
           fullWidth
           disabled={loading}
@@ -274,7 +274,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
         <Row gap={spacing[3]} justify="between">
           <Pressable onPress={backToEmail} accessibilityRole="button" style={styles.linkBtn}>
             <Row gap={spacing[2]} align="center">
-              <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+              <ArrowLeft size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
               <AppText style={styles.backText}>Changer d&apos;e-mail</AppText>
             </Row>
           </Pressable>
@@ -321,6 +321,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
-    forgotText: { ...font.semiBold, fontSize: fontSize.sm, color: c.primary },
+    forgotText: { ...font.semiBold, fontSize: fontSize.sm, color: c.textLink },
   };
 }

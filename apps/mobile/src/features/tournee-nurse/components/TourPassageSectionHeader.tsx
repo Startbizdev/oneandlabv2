@@ -2,7 +2,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SlidersHorizontal } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+
+const FILTER_SIZE = spacing[8];
 
 type Props = {
   sortActive: boolean;
@@ -22,12 +24,14 @@ export function TourPassageSectionHeader({
 
   return (
     <Row align="center" gap={spacing[1.5]} style={styles.row}>
-      <AppText style={[styles.title, { color: c.textTertiary }]}>Passage</AppText>
-      {absentCount > 0 && activeTotal > 0 ? (
-        <AppText style={[styles.absentHint, { color: c.textSecondary }]}>
-          {absentCount} absent{absentCount > 1 ? 's' : ''}
-        </AppText>
-      ) : null}
+      <AppText style={[styles.title, { color: c.textPrimary }]}>Passages</AppText>
+      <View style={styles.spacer}>
+        {absentCount > 0 && activeTotal > 0 ? (
+          <AppText style={[styles.absentHint, { color: c.textSecondary }]}>
+            {absentCount} absent{absentCount > 1 ? 's' : ''}
+          </AppText>
+        ) : null}
+      </View>
       <Pressable
         onPress={onOpenFilter}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -35,7 +39,7 @@ export function TourPassageSectionHeader({
         accessibilityRole="button"
         accessibilityLabel="Filtrer l'ordre des passages"
       >
-        <SlidersHorizontal size={iconSize.sm} color={sortActive ? c.primary : c.textSecondary} strokeWidth={2.2} />
+        <SlidersHorizontal size={iconSize.sm} color={sortActive ? c.primary : c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         {sortActive ? (
           <View style={[styles.dot, { backgroundColor: c.primary, borderColor: c.surfaceAlt }]} />
         ) : null}
@@ -52,18 +56,17 @@ function buildStyles({ fontSize }: Theme) {
     },
     title: {
       ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.6,
+      fontSize: fontSize.base,
     },
+    spacer: { flex: 1, minWidth: 0 },
     absentHint: {
       ...font.medium,
       fontSize: fontSize.xs,
     },
     filterBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: FILTER_SIZE,
+      height: FILTER_SIZE,
+      borderRadius: radius.full,
       borderWidth: StyleSheet.hairlineWidth,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,

@@ -1,7 +1,7 @@
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
-import { careEmojiForAppointment, careEmojiForCareItem } from '@/utils/care-category-display';
 import type { CareCategory } from '@/features/categories/api/categories.service';
+import { careSourceFromCatalog, type CareSource } from '@/features/categories/utils/care-source';
 import {
   buildAppointmentCareOptionKvRows,
   buildNursingAppointmentFormMetaKvRows,
@@ -52,7 +52,7 @@ import { isAppointmentForRelative } from '@/utils/patient-appointment-list';
 dayjs.locale('fr');
 
 export type RdvInfoRow =
-  | { kind: 'field'; label: string; value: string; emoji?: string; careIcon?: string | null; careType?: string; careImage?: string | null; strikethrough?: boolean }
+  | { kind: 'field'; label: string; value: string; care?: CareSource; strikethrough?: boolean }
   | {
       kind: 'identity';
       firstName: string;
@@ -93,24 +93,28 @@ const CARE_META_LABELS = new Set([
   'Prise en charge',
 ]);
 
-function careVisual(item: Record<string, unknown>, apt: Appointment, categories?: CareCategory[]) {
-  const cat = categories?.find((c) => c.id === String(item.category_id ?? apt.category_id ?? ''));
-  return {
-    careIcon: cat ? cat.icon : typeof item.category_icon === 'string' ? item.category_icon : undefined,
-    careType: apt.type,
-    careImage: cat ? cat.image_url : typeof item.category_image_url === 'string' ? item.category_image_url : undefined,
-  };
+function careSource(
+  item: { category_id?: unknown },
+  name: string,
+  apt: Appointment,
+  categories?: CareCategory[],
+): CareSource {
+  const categoryId = item.category_id ?? apt.category_id;
+  return careSourceFromCatalog(
+    { categoryId: categoryId != null ? String(categoryId) : null, name },
+    apt.type,
+    categories,
+  );
 }
 
 function pushCareField(
   rows: RdvInfoRow[],
   label: string,
   value: string,
-  emoji?: string,
-  visual?: { careIcon?: string | null; careType?: string; careImage?: string | null },
+  care?: CareSource,
 ): void {
   if (!value.trim()) return;
-  rows.push({ kind: 'field', label, value, emoji, ...visual });
+  rows.push({ kind: 'field', label, value, care });
 }
 
 function pushKvRows(rows: RdvInfoRow[], kv: { label: string; value: string; strikethrough?: boolean }[]): void {
@@ -151,13 +155,7 @@ function buildNursingItemGroupRows(
   const itemLabel = resolveCareItemDisplayLabel(item, categories);
   const fieldLabel = total > 1 ? 'Soin' : 'Soins prévus';
 
-  pushCareField(
-    rows,
-    fieldLabel,
-    itemLabel,
-    careEmojiForCareItem(item, apt.type, categories, itemLabel),
-    careVisual(item, apt, categories),
-  );
+  pushCareField(rows, fieldLabel, itemLabel, careSource(item, itemLabel, apt, categories));
 
   if (categories?.length) {
     if (shouldShowNursingItemTypeRow(item, getAppointmentNursingItems(apt), apt)) {
@@ -178,30 +176,30 @@ function buildNursingItemGroupRows(
   return rows;
 }
 
-function buildBloodItemGroupRows(
+/**
+ * Une analyse par ligne sous un seul libellé « Prélèvements » ; le libellé n’est répété
+ * que si des options de l’analyse précédente s’intercalent.
+ */
+function pushBloodItemRows(
+  rows: RdvInfoRow[],
   apt: Appointment,
-  item: Record<string, unknown>,
-  idx: number,
-  total: number,
+  items: Record<string, unknown>[],
   categories: CareCategory[] | undefined,
-): RdvInfoRow[] {
-  const rows: RdvInfoRow[] = [];
-  const itemLabel = resolveCareItemDisplayLabel(item, categories);
-  const fieldLabel = total > 1 ? 'Prélèvement' : 'Prestation';
-
-  pushCareField(
-    rows,
-    fieldLabel,
-    itemLabel,
-    careEmojiForCareItem(item, apt.type, categories, itemLabel),
-    careVisual(item, apt, categories),
-  );
-
-  if (categories?.length) {
-    pushKvRows(rows, buildNursingItemPerActOptionKvRows(item, categories));
+): void {
+  const groupLabel = items.length > 1 ? 'Prélèvements' : 'Prestation';
+  let previousHadOptions = true;
+  for (const item of items) {
+    const itemLabel = resolveCareItemDisplayLabel(item, categories);
+    pushCareField(
+      rows,
+      previousHadOptions ? groupLabel : '',
+      itemLabel,
+      careSource(item, itemLabel, apt, categories),
+    );
+    const options = categories?.length ? buildNursingItemPerActOptionKvRows(item, categories) : [];
+    pushKvRows(rows, options);
+    previousHadOptions = options.length > 0;
   }
-
-  return rows;
 }
 
 function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRow[] {
@@ -236,9 +234,7 @@ function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRo
   }
 
   if (isBloodTestAppointment(apt.type) && bloodItems.length > 0) {
-    for (let idx = 0; idx < bloodItems.length; idx++) {
-      rows.push(...buildBloodItemGroupRows(apt, bloodItems[idx]!, idx, bloodItems.length, categories));
-    }
+    pushBloodItemRows(rows, apt, bloodItems, categories);
 
     const bt = getBloodTestTypeLabel(fd);
     if (bt) pushCareField(rows, 'Type prélèvement', bt);
@@ -247,7 +243,7 @@ function buildCareRows(apt: Appointment, categories?: CareCategory[]): RdvInfoRo
   }
 
   if (careName) {
-    pushCareField(rows, 'Soin', careName, careEmojiForAppointment(apt, careName, categories), careVisual(apt as unknown as Record<string, unknown>, apt, categories));
+    pushCareField(rows, 'Soin', careName, careSource(apt, careName, apt, categories));
     if (categories?.length) {
       pushKvRows(rows, buildAppointmentCareOptionKvRows(apt, categories));
     }
@@ -321,9 +317,7 @@ function buildBatchCareRows(
   if (isBloodTestAppointment(primary.type)) {
     const lotItems = collectLotBloodItems(primary, batch);
     if (lotItems.length > 0) {
-      for (let idx = 0; idx < lotItems.length; idx++) {
-        rows.push(...buildBloodItemGroupRows(primary, lotItems[idx]!, idx, lotItems.length, categories));
-      }
+      pushBloodItemRows(rows, primary, lotItems, categories);
 
       const bt = getBloodTestTypeLabel(fd);
       if (bt) pushCareField(rows, 'Type prélèvement', bt);

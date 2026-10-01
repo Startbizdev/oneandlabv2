@@ -2,13 +2,26 @@ export type BookingWizardSection = 'slot-datetime' | 'documents' | 'personal' | 
 
 export type BookingWizardMode = 'patient' | 'dashboard';
 
-const PATIENT_PHASES = ['Soins', 'Créneau', 'Vos infos', 'Vérification'] as const;
-const STAFF_PHASES = ['Soins', 'Créneau', 'Patient', 'Vérification'] as const;
+type BookingWizardPhase = 'care' | 'lab' | 'slot' | 'documents' | 'personal' | 'review';
 
-/** Phases affichées par le stepper : toujours 4, quels que soient les lots ou documents. */
-export function bookingWizardPhases(mode: BookingWizardMode): readonly string[] {
-  return mode === 'patient' ? PATIENT_PHASES : STAFF_PHASES;
-}
+const PHASE_LABELS: Record<BookingWizardMode, Record<BookingWizardPhase, string>> = {
+  patient: {
+    care: 'Soins',
+    lab: 'Laboratoire',
+    slot: 'Créneau',
+    documents: 'Documents',
+    personal: 'Vos infos',
+    review: 'Vérification',
+  },
+  dashboard: {
+    care: 'Soins',
+    lab: 'Laboratoire',
+    slot: 'Créneau',
+    documents: 'Documents',
+    personal: 'Patient',
+    review: 'Vérification',
+  },
+};
 
 export function bookingWizardPersonalIndex(slotCount: number, documentsCount: number): number {
   return slotCount + documentsCount;
@@ -30,32 +43,59 @@ export function bookingWizardSectionAt(
   return 'review';
 }
 
-/** Index 0-based de la phase courante (choix des soins et laboratoire = phase « Soins »). */
-export function bookingWizardPhaseIndex(
-  step: number,
-  formWizardStep: number,
-  section: BookingWizardSection,
-): number {
-  if (step < formWizardStep) return 0;
-  if (section === 'slot-datetime') return 1;
-  if (section === 'review') return 3;
-  return 2;
-}
+const SECTION_PHASE: Record<BookingWizardSection, BookingWizardPhase> = {
+  'slot-datetime': 'slot',
+  documents: 'documents',
+  personal: 'personal',
+  review: 'review',
+};
 
-/** Précision sous le stepper quand une phase contient plusieurs sous-étapes. */
-export function bookingWizardSubStepLabel(
-  section: BookingWizardSection,
-  wizardIndex: number,
-  slotCount: number,
-  documentsCount: number,
-): string {
-  if (section === 'slot-datetime') {
-    return slotCount > 1 ? `Créneau ${wizardIndex + 1} sur ${slotCount}` : '';
+export type BookingWizardProgressInput = {
+  mode: BookingWizardMode;
+  /** Écran « Votre laboratoire » affiché entre les soins et les créneaux. */
+  hasLabStep: boolean;
+  slotCount: number;
+  /** Soins dont l'ordonnance est demandée (0 = pas d'écran Documents). */
+  documentsCount: number;
+  /** 0 = choix des soins, 1 = laboratoire si `hasLabStep`, puis formulaire. */
+  step: number;
+  wizardIndex: number;
+};
+
+export type BookingWizardProgressState = {
+  /** Écrans réellement parcourus pour cette sélection et ce rôle. */
+  phases: readonly string[];
+  /** Position courante, à partir de 1. */
+  current: number;
+  label: string;
+};
+
+/**
+ * Numérotation du stepper : une étape par écran affiché (laboratoire et documents seulement
+ * s'ils existent pour la sélection). Plusieurs créneaux ou ordonnances restent une seule étape.
+ */
+export function bookingWizardProgress(input: BookingWizardProgressInput): BookingWizardProgressState {
+  const { mode, hasLabStep, slotCount, documentsCount, step, wizardIndex } = input;
+  const keys: BookingWizardPhase[] = [
+    'care',
+    ...(hasLabStep ? (['lab'] as const) : []),
+    'slot',
+    ...(documentsCount > 0 ? (['documents'] as const) : []),
+    'personal',
+    'review',
+  ];
+  const formStep = hasLabStep ? 2 : 1;
+  const section = bookingWizardSectionAt(wizardIndex, slotCount, documentsCount);
+  const phase: BookingWizardPhase =
+    step === 0 ? 'care' : step < formStep ? 'lab' : SECTION_PHASE[section];
+  const labels = PHASE_LABELS[mode];
+
+  let label = labels[phase];
+  if (phase === 'slot' && slotCount > 1) {
+    label = `${labels.slot} ${wizardIndex + 1} sur ${slotCount}`;
+  } else if (phase === 'documents' && documentsCount > 1) {
+    label = `${labels.documents} ${wizardIndex - slotCount + 1} sur ${documentsCount}`;
   }
-  if (section === 'documents') {
-    const docIndex = wizardIndex - slotCount;
-    return documentsCount > 1 ? `Documents ${docIndex + 1} sur ${documentsCount}` : 'Documents';
-  }
-  if (section === 'personal') return 'Coordonnées';
-  return '';
+
+  return { phases: keys.map((key) => labels[key]), current: keys.indexOf(phase) + 1, label };
 }

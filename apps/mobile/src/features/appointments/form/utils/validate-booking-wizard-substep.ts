@@ -106,7 +106,7 @@ function pushAvailabilityErrors(
       }
     }
   } catch {
-    /* ignore */
+    availabilityValid = false;
   }
   if (!availabilityValid && !missing.some((m) => m.includes(svcName) && m.includes('créneaux'))) {
     missing.push(`Les créneaux de disponibilité sont obligatoires pour ${svcName}`);

@@ -45,11 +45,12 @@ export async function loadCarePhotoLocalUri(
     }
 
     await FileSystem.deleteAsync(dest, { idempotent: true });
-  } catch {
+  } catch (error) {
+    console.warn('[care-photo] téléchargement impossible', error);
     try {
       await FileSystem.deleteAsync(dest, { idempotent: true });
-    } catch {
-      /* ignore */
+    } catch (cleanupError) {
+      console.warn('[care-photo] nettoyage du fichier partiel impossible', cleanupError);
     }
   }
   return null;

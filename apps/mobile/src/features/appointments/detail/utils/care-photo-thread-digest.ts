@@ -16,7 +16,8 @@ export async function readCarePhotoSeenDigest(
 ): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(carePhotoSeenStorageKey(appointmentId, docId));
-  } catch {
+  } catch (error) {
+    console.warn('[care-photo] lecture de l’état « vu » impossible', error);
     return null;
   }
 }
@@ -28,8 +29,8 @@ export async function writeCarePhotoSeenDigest(
 ): Promise<void> {
   try {
     await AsyncStorage.setItem(carePhotoSeenStorageKey(appointmentId, docId), digest);
-  } catch {
-    /* ignore */
+  } catch (error) {
+    console.warn('[care-photo] enregistrement de l’état « vu » impossible', error);
   }
 }
 

@@ -2,10 +2,10 @@ import { layoutRowBetween } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Alert, Pressable, View } from 'react-native';
 import { Check, RotateCcw } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Row } from '@/components/layout/primitives';
 import type { TourSortMode } from '../api/nurse-tour.service';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
 
@@ -61,7 +61,7 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Ordre des passages"
@@ -74,6 +74,8 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
             <Pressable
               key={mode.id}
               onPress={() => handleSelect(mode.id)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
               style={[
                 styles.option,
                 {
@@ -86,7 +88,7 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
                 <AppText style={[styles.optionLabel, { color: c.textPrimary }]}>{mode.label}</AppText>
                 <AppText style={[styles.optionHint, { color: c.textTertiary }]}>{mode.hint}</AppText>
               </View>
-              {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} /> : null}
+              {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
             </Pressable>
           );
         })}
@@ -97,16 +99,17 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
               onReset();
               onClose();
             }}
+            accessibilityRole="button"
             style={[styles.resetBtn, { borderColor: hexToRgba(c.error, 0.35) }]}
           >
             <Row gap={spacing[2]} align="center">
-              <RotateCcw size={iconSize.sm} color={c.error} />
+              <RotateCcw size={iconSize.sm} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />
               <AppText style={[styles.resetText, { color: c.error }]}>Réinitialiser l&apos;ordre</AppText>
             </Row>
           </Pressable>
         ) : null}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
@@ -115,6 +118,7 @@ function buildStyles({ fontSize }: Theme) {
     list: { gap: spacing[2] },
     option: {
       ...layoutRowBetween(spacing[3]),
+      minHeight: MIN_TOUCH_TARGET,
       paddingHorizontal: spacing[3.5],
       paddingVertical: spacing[3],
       borderRadius: radius.lg,

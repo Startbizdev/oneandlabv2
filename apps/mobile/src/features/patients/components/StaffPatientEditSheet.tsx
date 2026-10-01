@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
@@ -90,7 +90,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
   });
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Fiche patient"
@@ -135,7 +135,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
           </AppText>
         </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

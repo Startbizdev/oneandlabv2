@@ -1,10 +1,11 @@
 import { useAppColors } from '@/theme/use-app-colors';
-
 import { Platform, View } from 'react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Check } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+
+const CHECK_SIZE = spacing[5];
 
 export type SubscriptionPlanCardProps = {
   name: string;
@@ -48,7 +49,6 @@ export function SubscriptionPlanCard({
     <View
       style={[
         styles.card,
-        elevation.xs,
         showRecommended && styles.cardRecommended,
         isCurrent && styles.cardCurrent,
       ]}
@@ -92,7 +92,7 @@ export function SubscriptionPlanCard({
           {features.map((feature) => (
             <Row key={feature} style={styles.featureRow} align="start">
               <View style={styles.check}>
-                <Check size={iconSize['2xs']} color={c.primary} strokeWidth={3} />
+                <Check size={iconSize.xs} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
               </View>
               <AppText style={styles.featureText}>{feature}</AppText>
             </Row>
@@ -125,7 +125,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     card: {
       minWidth: 0,
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
+      borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: c.borderLight,
       padding: spacing[5],
@@ -181,15 +181,16 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     priceBlock: {
       minWidth: 0,
-      alignSelf: 'flex-start' as const,
-      maxWidth: '100%' as const,
-      gap: spacing[0.5],
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      alignItems: 'baseline' as const,
+      gap: spacing[1],
       paddingTop: spacing[1],
     },
     priceAmount: {
       ...font.headingExtraBold,
-      fontSize: fontSize['4xl'],
-      lineHeight: fontSize['4xl'] * 1.08,
+      fontSize: fontSize['3xl'],
+      lineHeight: fontSize['3xl'] * 1.08,
       color: c.textPrimary,
       letterSpacing: -0.8,
       flexShrink: 1,
@@ -216,13 +217,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       minWidth: 0,
     },
     check: {
-      width: 22,
-      height: 22,
+      width: CHECK_SIZE,
+      height: CHECK_SIZE,
       borderRadius: radius.full,
       backgroundColor: c.primaryLight,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      marginTop: 1,
       flexShrink: 0,
     },
     featureText: {

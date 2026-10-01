@@ -1,21 +1,9 @@
+import type { TextStyle } from 'react-native';
 import { buildAppColors, type AppColors } from './colors';
 import type { ColorblindType } from './colorblind-types';
 import { getTextScaleMultiplierFor, type TextScale } from './text-scale';
 import { elevation, radius } from './tokens';
-import { font, FONT_SIZE_BASE, type FontSizeKey } from './typography';
-
-/** Espacements nommés (grille de 4 pt). */
-export const space = {
-  none: 0,
-  '2xs': 2,
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  '2xl': 32,
-  '3xl': 48,
-} as const;
+import { buildTextStyles, font, FONT_SIZE_BASE, type FontSizeKey, type TextVariant } from './typography';
 
 export type Theme = {
   readonly colorblindType: ColorblindType;
@@ -23,8 +11,9 @@ export type Theme = {
   readonly colors: AppColors;
   /** Tailles de police déjà mises à l'échelle (réglage « Texte agrandi »). */
   readonly fontSize: Readonly<Record<FontSizeKey, number>>;
+  /** Rôles typographiques mis à l'échelle (`display`, `title`, `headline`, `body`, `secondary`, `caption`). */
+  readonly text: Readonly<Record<TextVariant, TextStyle>>;
   readonly font: typeof font;
-  readonly space: typeof space;
   readonly radius: typeof radius;
   readonly shadow: typeof elevation;
   /** Met à l'échelle une dimension liée au texte (hauteurs minimales, cibles tactiles). */
@@ -50,8 +39,8 @@ export function buildTheme(colorblindType: ColorblindType, textScale: TextScale)
     textScale,
     colors: buildAppColors(colorblindType),
     fontSize,
+    text: buildTextStyles(fontSize),
     font,
-    space,
     radius,
     shadow: elevation,
     scale,

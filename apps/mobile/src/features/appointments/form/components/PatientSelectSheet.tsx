@@ -4,10 +4,10 @@ import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { Cluster } from '@/components/layout/primitives';
 import { Check, Search } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Input } from '@/components/ui/Input';
 import type { PatientOption } from './FormPatientSection';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 
@@ -69,14 +69,13 @@ export function PatientSelectSheet({
           actions={
             <View style={styles.trailing}>
               {selected ? (
-                <Check size={iconSize.md} color={c.primary} strokeWidth={2.5} />
+                <Check size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
               ) : null}
             </View>
           }
         >
           <AppText
             style={[styles.name, selected && styles.nameSelected]}
-            numberOfLines={1}
           >
             {item.label}
           </AppText>
@@ -86,7 +85,7 @@ export function PatientSelectSheet({
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={handleClose}
       title="Choisir un patient"
@@ -98,7 +97,7 @@ export function PatientSelectSheet({
           value={q}
           onChangeText={setQ}
           placeholder="Rechercher un patient…"
-          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} />}
+          leftIcon={<Search size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
         />
       </View>
 
@@ -119,7 +118,7 @@ export function PatientSelectSheet({
           />
         </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

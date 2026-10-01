@@ -96,7 +96,6 @@ export function buildReschedulePayload(ctx: BuildCtx): Record<string, unknown> |
     scheduled_at: core.scheduledAt,
     address: core.addressPayload,
     form_data: core.formData,
-    status: 'confirmed',
     patient_id: a.patient_id || undefined,
     relative_id: a.relative_id || undefined,
     category_id: core.categoryId,
@@ -128,10 +127,6 @@ export function buildReschedulePayload(ctx: BuildCtx): Record<string, unknown> |
       payload.assigned_lab_id = userId;
     } else if (role === 'subaccount') {
       payload.assigned_lab_id = (ctx.labId && String(ctx.labId)) || userId;
-    } else {
-      const ext = a as Appointment & { assigned_lab_id?: string; assigned_to?: string };
-      if (ext.assigned_lab_id) payload.assigned_lab_id = ext.assigned_lab_id;
-      if (ext.assigned_to) payload.assigned_to = ext.assigned_to;
     }
   }
 

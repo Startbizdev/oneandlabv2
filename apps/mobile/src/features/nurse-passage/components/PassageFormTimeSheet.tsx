@@ -3,7 +3,7 @@ import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { BookingTimeRangeSlider } from '@/features/appointments/form/components/BookingTimeRangeSlider';
 import {
@@ -98,7 +98,7 @@ export function PassageFormTimeSheet({
   }, [draftSelection, maxHour, minHour]);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Heure de passage"
@@ -167,7 +167,7 @@ export function PassageFormTimeSheet({
           />
         ) : null}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

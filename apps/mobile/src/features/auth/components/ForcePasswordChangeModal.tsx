@@ -9,7 +9,7 @@ import { updatePassword } from '@/features/auth/api/auth.service';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { validatePasswordStrength, passwordsMatch } from '@oneandlab/shared-utils';
-import { spacing, iconSize, AppText, useAppColors, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useAppColors, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -130,9 +130,9 @@ export function ForcePasswordChangeModal({ visible, onDone }: Props) {
                 {rules.map((rule) => (
                   <Row key={rule.label} align="center" gap={spacing[2]}>
                     {rule.ok ? (
-                      <Check size={iconSize.sm} color={c.success} strokeWidth={2.5} />
+                      <Check size={iconSize.sm} color={c.success} strokeWidth={ICON_STROKE_WIDTH} />
                     ) : (
-                      <Circle size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
+                      <Circle size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                     )}
                     <AppText
                       style={[styles.ruleText, rule.ok && styles.ruleTextOk]}

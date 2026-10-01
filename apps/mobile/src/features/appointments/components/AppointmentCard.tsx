@@ -21,7 +21,7 @@ import {
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { elevation, radius, spacing, animation, iconSize, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, elevation, radius, spacing, animation, iconSize, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -113,9 +113,9 @@ function AppointmentCardComponent({
             {scheduledAt ? (
               <Row gap={spacing[2]} align="center">
                 <View style={styles.metaIconWrap}>
-                  <Clock size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />
+                  <Clock size={iconSize['2xs']} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                 </View>
-                <Animated.Text style={styles.metaText} numberOfLines={2}>
+                <Animated.Text style={styles.metaText}>
                   {scheduledAt.format('ddd D MMM')}
                   {timeLabel ? (
                     <>
@@ -132,9 +132,9 @@ function AppointmentCardComponent({
             {address ? (
               <Row gap={spacing[2]} align="center">
                 <View style={styles.metaIconWrap}>
-                  <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                  <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                 </View>
-                <Animated.Text style={[styles.metaText, styles.metaAddress]} numberOfLines={2}>
+                <Animated.Text style={[styles.metaText, styles.metaAddress]}>
                   {address}
                 </Animated.Text>
               </Row>

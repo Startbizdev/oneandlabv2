@@ -72,7 +72,6 @@ export async function saveCoverageZone(body: {
   radius_km: number;
   zone_type?: 'circle' | 'square' | 'polygon';
   bounds_json?: CoverageZone['bounds_json'];
-  role: string;
   owner_id?: string;
 }) {
   const res = await api.post<{ id: string }>('/coverage-zones', body);

@@ -1,9 +1,15 @@
 import { createContext, useCallback, useContext, useRef, type RefObject } from 'react';
-import type { ScrollView, View } from 'react-native';
+import type { View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
-export type FormScrollContextValue = {
-  scrollRef: RefObject<ScrollView | null>;
+/** Contrat commun du ScrollView d’écran et du scroll de bottom sheet (`BottomSheetScrollViewMethods`). */
+export type FormScrollable = {
+  scrollTo(options: { x?: number; y?: number; animated?: boolean }): void;
+  measureInWindow?: View['measureInWindow'];
+};
+
+export type FormScrollContextValue<T extends FormScrollable = FormScrollable> = {
+  scrollRef: RefObject<T | null>;
   scrollYRef: RefObject<number>;
 };
 
@@ -13,8 +19,8 @@ export function useFormScroll(): FormScrollContextValue | null {
   return useContext(FormScrollContext);
 }
 
-export function useFormScrollProviderValue(): FormScrollContextValue {
-  const scrollRef = useRef<ScrollView | null>(null);
+export function useFormScrollProviderValue<T extends FormScrollable>(): FormScrollContextValue<T> {
+  const scrollRef = useRef<T | null>(null);
   const scrollYRef = useRef(0);
   return { scrollRef, scrollYRef };
 }
@@ -35,12 +41,7 @@ export function useScrollFocusedFieldIntoView() {
       const run = () => {
         node.measureInWindow((_x, y) => {
           const measureScroll =
-            typeof (scroll as ScrollView & { measureInWindow?: typeof node.measureInWindow })
-              .measureInWindow === 'function'
-              ? (scroll as ScrollView & { measureInWindow: typeof node.measureInWindow }).measureInWindow.bind(
-                  scroll,
-                )
-              : null;
+            typeof scroll.measureInWindow === 'function' ? scroll.measureInWindow.bind(scroll) : null;
           if (!measureScroll) {
             scroll.scrollTo({
               y: Math.max(0, (formScroll?.scrollYRef.current ?? 0) + y - 160),

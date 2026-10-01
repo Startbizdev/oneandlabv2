@@ -4,6 +4,7 @@ import {
   cachedNurseNavAppPref,
   navAppLabel,
 } from '../../features/tournee-nurse/utils/tour-navigation';
+import { preleveurTourQueryKey } from '../../features/tournee-preleveur/hooks/preleveur-tour-query';
 
 const clients: QueryClient[] = [];
 
@@ -33,7 +34,7 @@ describe('nav_app_pref per role', () => {
 
   it('reads the préleveur tour cache', () => {
     const qc = newClient();
-    qc.setQueryData(['preleveur-tour', '2026-10-01'], tour('google_maps', [{ stop_id: 's1', appointment_id: 'a1' }]));
+    qc.setQueryData(preleveurTourQueryKey('2026-10-01'), tour('google_maps', [{ stop_id: 's1', appointment_id: 'a1' }]));
     expect(cachedNavAppPrefForRole(qc, 'preleveur', 'a1')).toBe('google_maps');
   });
 

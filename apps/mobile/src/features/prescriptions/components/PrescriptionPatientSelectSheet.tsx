@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { FlashList, type ListRenderItem as FlashListRenderItem } from '@shopify/flash-list';
 import { Check, Search } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Input } from '@/components/ui/Input';
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import {
@@ -135,7 +135,7 @@ export function PrescriptionPatientSelectSheet({
     : `${resolvedTotal} patient${resolvedTotal > 1 ? 's' : ''}`;
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={handleClose}
       title="Choisir un patient"
@@ -179,7 +179,7 @@ export function PrescriptionPatientSelectSheet({
           />
         </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

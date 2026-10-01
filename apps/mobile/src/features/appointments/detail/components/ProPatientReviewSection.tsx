@@ -30,7 +30,7 @@ export function ProPatientReviewSection({ apt }: { apt: Appointment }) {
   return (
     <View style={styles.card}>
       <Row gap={spacing[2]} align="center">
-        <Star size={iconSize.mdSm} color={c.star} fill={c.starFill} strokeWidth={1.5} />
+        <Star size={iconSize.md} color={c.star} fill={c.starFill} strokeWidth={1.5} />
         <AppText style={styles.title}>Avis patient</AppText>
       </Row>
       <ReviewStars rating={review.rating ?? 0} size={iconSize.md} showValue={false} />

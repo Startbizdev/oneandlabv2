@@ -4,13 +4,15 @@ import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { UserCheck } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import type { PatientLookupMatch } from '@oneandlab/shared-api';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
-  patient: PatientRow | null;
+  patient: PatientLookupMatch | null;
   /** Variante prise de RDV vs création dossier patient. */
   variant?: 'booking' | 'create';
+  /** Adoption du dossier en cours (`POST /patients/adopt`). */
+  adopting?: boolean;
   onDismiss: () => void;
   onUseExisting: () => void;
 }
@@ -18,6 +20,7 @@ interface Props {
 export function PatientDuplicatePrompt({
   patient,
   variant = 'booking',
+  adopting = false,
   onDismiss,
   onUseExisting,
 }: Props) {
@@ -31,7 +34,7 @@ export function PatientDuplicatePrompt({
   return (
     <View style={styles.card} accessibilityRole="alert">
       <Row gap={spacing[2]} align="center">
-        <UserCheck size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
+        <UserCheck size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={styles.title}>Patient déjà enregistré</AppText>
       </Row>
       <AppText style={styles.text}>
@@ -45,12 +48,14 @@ export function PatientDuplicatePrompt({
           variant="outline"
           size="sm"
           onPress={onDismiss}
+          disabled={adopting}
           fullWidth
         />
         <Button
           title={isBooking ? 'Utiliser ce patient' : 'Utiliser ce dossier'}
           size="sm"
           onPress={onUseExisting}
+          loading={adopting}
           fullWidth
         />
       </View>

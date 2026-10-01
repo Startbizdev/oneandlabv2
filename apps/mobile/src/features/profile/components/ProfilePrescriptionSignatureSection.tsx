@@ -1,16 +1,16 @@
-import { layoutRowWrap } from '@/theme/layout-styles';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PenLine } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { updateUser } from '@/features/profile/api/profile.service';
 import { PrescriptionSignatureSheet } from '@/features/prescriptions/components/PrescriptionSignatureSheet';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 type Props = {
   userId: string;
@@ -22,12 +22,14 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
       updateUser(userId, { prescription_signature_png: png }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.profile.user(userId) });
+      setConfirmDeleteOpen(false);
       toast('Signature supprimée', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'prescription-signature'),
@@ -41,34 +43,38 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
 
   return (
     <>
-      <ProfileSection title="Signature ordonnance" Icon={PenLine}>
-        <AppText style={styles.help}>
-          Cette signature apparaît sur vos ordonnances lorsque vous choisissez de signer avant génération.
-        </AppText>
+      <ProfileSection
+        title="Signature des ordonnances"
+        description="Apposée sur vos ordonnances quand vous choisissez de signer."
+      >
         {previewUri ? (
           <View style={styles.previewWrap}>
-            <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="contain" />
+            <Image
+              source={{ uri: previewUri }}
+              style={styles.preview}
+              resizeMode="contain"
+              accessibilityLabel="Aperçu de votre signature"
+            />
           </View>
         ) : (
-          <AppText style={styles.empty}>Aucune signature enregistrée</AppText>
+          <AppText variant="secondary">Aucune signature enregistrée.</AppText>
         )}
-        <View style={styles.actions}>
+        <Row gap={spacing[2]} wrap>
           <Button
             title={previewUri ? 'Modifier' : 'Créer ma signature'}
-            variant="outline"
-            size="sm"
+            variant="secondary"
+            size="md"
             onPress={() => setSheetOpen(true)}
           />
           {previewUri ? (
             <Button
               title="Supprimer"
-              variant="outline"
-              size="sm"
-              loading={saveMut.isPending}
-              onPress={() => saveMut.mutate(null)}
+              variant="ghost"
+              size="md"
+              onPress={() => setConfirmDeleteOpen(true)}
             />
           ) : null}
-        </View>
+        </Row>
       </ProfileSection>
 
       <PrescriptionSignatureSheet
@@ -78,39 +84,33 @@ export function ProfilePrescriptionSignatureSection({ userId, signaturePng }: Pr
         initialPng={signaturePng}
         onSaved={() => setSheetOpen(false)}
       />
+
+      <ConfirmSheet
+        visible={confirmDeleteOpen}
+        title="Supprimer la signature ?"
+        message="Vous pourrez en créer une nouvelle à tout moment."
+        confirmLabel="Supprimer"
+        tone="destructive"
+        loading={saveMut.isPending}
+        onConfirm={() => saveMut.mutate(null)}
+        onClose={() => setConfirmDeleteOpen(false)}
+      />
     </>
   );
 }
 
-function buildStyles({ colors: c, fontSize, scale }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    help: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: scale(20),
-      marginBottom: spacing[2],
-    },
-    empty: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textTertiary,
-      marginBottom: spacing[2],
-    },
     previewWrap: {
       borderWidth: 1,
       borderColor: c.borderLight,
-      borderRadius: 12,
+      borderRadius: radius.md,
       padding: spacing[2],
       backgroundColor: c.surface,
-      marginBottom: spacing[2],
     },
     preview: {
       width: '100%' as const,
       height: 72,
-    },
-    actions: {
-      ...layoutRowWrap(spacing[2]),
     },
   };
 }

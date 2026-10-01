@@ -1,88 +1,98 @@
-import { layoutRowBaselineWrap, layoutRowWrap } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react-native';
+import { ChevronRight, Plus } from 'lucide-react-native';
 import type {
   ClinicalVitalContext,
   ClinicalVitalReading,
   ClinicalVitalType,
 } from '@oneandlab/shared-types';
 import { CLINICAL_VITAL_UI } from '@oneandlab/shared-types';
-import {
-  clinicalVitalsQueryKey,
-  fetchClinicalVitals,
-} from '../api/clinical-vitals.service';
-import {
-  formatClinicalVitalCardDate,
-  formatClinicalVitalCardValue,
-} from '../utils/clinical-vital-display';
+import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { SkeletonList } from '@/components/ui/skeletons';
+import { clinicalVitalsQueryKey, fetchClinicalVitals } from '../api/clinical-vitals.service';
+import { formatClinicalVitalCardDate, formatClinicalVitalCardValue } from '../utils/clinical-vital-display';
+import { clinicalVitalIcon } from '../utils/clinical-vital-icon';
 import { ClinicalVitalEditSheet } from './ClinicalVitalEditSheet';
 import { ClinicalVitalHistorySheet } from './ClinicalVitalHistorySheet';
-import { elevation, radius, spacing, iconSize, useLayoutMetrics, gridColumns, AppText, useStyles, font, type Theme } from '@/theme';
-
-const CARD_MIN_H = 96;
-/** 1 carte « Ajouter » + une carte par type de constante. */
-const VITAL_GRID_CARD_COUNT = 1 + CLINICAL_VITAL_UI.length;
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  font,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 type Props = {
   patientId: string;
   context?: ClinicalVitalContext;
 };
 
-function VitalCardContent({
+type VitalConfig = (typeof CLINICAL_VITAL_UI)[number];
+
+function VitalRow({
   cfg,
   reading,
-  styles,
-  c,
+  onPress,
 }: {
-  cfg: (typeof CLINICAL_VITAL_UI)[number];
+  cfg: VitalConfig;
   reading?: ClinicalVitalReading;
-  styles: ReturnType<typeof buildStyles>;
-  c: AppColors;
+  onPress: () => void;
 }) {
+  const c = useAppColors();
+  const styles = useStyles(buildStyles);
+  const value = reading ? `${formatClinicalVitalCardValue(reading)} ${cfg.unit}`.trim() : null;
+  const date = reading ? formatClinicalVitalCardDate(reading.recorded_at) : null;
+  const Icon = clinicalVitalIcon(cfg.type);
+
   return (
-    <View style={styles.cardBody}>
-      <View style={[styles.emojiBadge, { backgroundColor: c.surfaceAlt ?? c.primaryLight + '40' }]}>
-        <AppText style={styles.emoji}>{cfg.emoji}</AppText>
-      </View>
-      <AppText
-        style={styles.cardLabel}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.82}
-      >
-        {cfg.card_label_fr}
-      </AppText>
-      <View style={styles.cardMetrics}>
-        {reading ? (
-          <>
-            <View style={styles.valueRow}>
-              <AppText style={styles.cardValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                {formatClinicalVitalCardValue(reading)}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${cfg.label_fr}, ${value}, ${date}` : `${cfg.label_fr}, non mesuré`}
+      accessibilityHint={reading ? 'Voir l’historique' : 'Ajouter une mesure'}
+      style={({ pressed }) => (pressed ? styles.pressed : null)}
+    >
+      <ListRowShell
+        leading={
+          <View style={styles.iconWell} accessibilityElementsHidden importantForAccessibility="no">
+            <Icon size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+          </View>
+        }
+        body={
+          <View style={styles.texts}>
+            <AppText style={styles.label}>{cfg.card_label_fr}</AppText>
+            {date ? (
+              <AppText variant="caption" style={styles.date}>
+                {date}
               </AppText>
-              <AppText style={styles.cardUnit}>{cfg.unit}</AppText>
-            </View>
-            <AppText style={styles.cardDate} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-              {formatClinicalVitalCardDate(reading.recorded_at)}
-            </AppText>
-          </>
-        ) : (
-          <AppText style={styles.cardPlaceholder}>—</AppText>
-        )}
-      </View>
-    </View>
+            ) : null}
+          </View>
+        }
+        trailing={
+          <View style={styles.trailing}>
+            {value ? (
+              <AppText style={styles.value}>{value}</AppText>
+            ) : (
+              <AppText variant="secondary">Ajouter</AppText>
+            )}
+            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+          </View>
+        }
+      />
+    </Pressable>
   );
 }
 
 export function ClinicalVitalsPanel({ patientId, context }: Props) {
   const c = useAppColors();
-  const layout = useLayoutMetrics();
-  const cols = gridColumns(layout.width, { compact: 3, default: 4 });
   const styles = useStyles(buildStyles);
-  const slotStyle = { width: `${100 / cols}%` as const };
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -132,44 +142,40 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.title}>Constantes médicales</AppText>
+      <View style={styles.header}>
+        <AppText variant="headline" style={styles.title} accessibilityRole="header">
+          Constantes
+        </AppText>
+        <Button
+          title="Ajouter"
+          variant="secondary"
+          size="sm"
+          leftIcon={<Plus size={iconSize.sm} color={c.primaryDark} strokeWidth={ICON_STROKE_WIDTH} />}
+          onPress={() => openAdd()}
+          accessibilityLabel="Ajouter une constante"
+        />
+      </View>
 
       {vitalsQ.isLoading && !vitalsQ.data ? (
-        <View style={styles.grid}>
-          {Array.from({ length: VITAL_GRID_CARD_COUNT }).map((_, i) => (
-            <View key={i} style={[styles.cardSlot, slotStyle]}>
-              <View style={styles.skeletonCard} />
-            </View>
-          ))}
-        </View>
+        <SkeletonList count={4} itemHeight={56} gap={8} />
+      ) : vitalsQ.isError && !vitalsQ.data ? (
+        <ErrorState
+          error={vitalsQ.error}
+          title="Constantes indisponibles"
+          onRetry={() => void vitalsQ.refetch()}
+        />
       ) : (
-        <View style={styles.grid}>
-          <View style={[styles.cardSlot, slotStyle]}>
-            <Pressable
-              style={[styles.card, styles.addCard, elevation.sm]}
-              onPress={() => openAdd()}
-              accessibilityRole="button"
-              accessibilityLabel="Ajouter une constante"
-            >
-              <View style={[styles.addIconCircle, { backgroundColor: c.primaryLight }]}>
-                <Plus size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
-              </View>
-              <AppText style={styles.addLabel}>Ajouter</AppText>
-            </Pressable>
-          </View>
-
-          {CLINICAL_VITAL_UI.map((cfg) => {
+        <View style={styles.card}>
+          {CLINICAL_VITAL_UI.map((cfg, index) => {
             const reading = latest[cfg.type];
             return (
-              <View key={cfg.type} style={[styles.cardSlot, slotStyle]}>
-                <Pressable
-                  style={[styles.card, elevation.sm, reading ? styles.cardFilled : styles.cardEmpty]}
+              <View key={cfg.type}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <VitalRow
+                  cfg={cfg}
+                  reading={reading}
                   onPress={() => (reading ? openHistory(cfg.type) : openAdd(cfg.type))}
-                  accessibilityRole="button"
-                  accessibilityLabel={cfg.label_fr}
-                >
-                  <VitalCardContent cfg={cfg} reading={reading} styles={styles} c={c} />
-                </Pressable>
+                />
               </View>
             );
           })}
@@ -198,121 +204,49 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
-  const gap = spacing[2];
+const ICON_WELL = 36;
+
+function buildStyles({ colors: c, text }: Theme) {
   return {
-    wrap: { gap: spacing[2] },
-    title: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
+    wrap: { gap: spacing[3] },
+    header: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      flexWrap: 'wrap' as const,
+      gap: spacing[2],
     },
-    grid: {
-      ...layoutRowWrap(0),
-      marginHorizontal: -(gap / 2),
-    },
-    cardSlot: {
-      paddingHorizontal: gap / 2,
-      paddingBottom: gap,
-    },
-    skeletonCard: {
-      minHeight: CARD_MIN_H,
-      borderRadius: radius.lg,
-      backgroundColor: c.borderLight,
-      opacity: 0.5,
-    },
+    title: { flexShrink: 1, minWidth: 0 },
     card: {
-      minHeight: CARD_MIN_H,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.borderLight,
       backgroundColor: c.surface,
-      padding: spacing[2],
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       overflow: 'hidden' as const,
     },
-    cardBody: {
-      minWidth: 0,
-      flex: 1,
-      minHeight: CARD_MIN_H - spacing[2] * 2,
-      gap: spacing[1],
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: spacing[4] + ICON_WELL + spacing[3],
+      backgroundColor: c.borderLight,
     },
-    cardFilled: {
-      borderColor: c.primary + '45',
-      backgroundColor: c.primaryLight ? c.primaryLight + '18' : c.surface,
-    },
-    cardEmpty: {
-      opacity: 0.92,
-    },
-    addCard: {
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      borderStyle: 'dashed' as const,
-      gap: spacing[1.5] ?? 6,
-    },
-    addIconCircle: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    addLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.primary,
-    },
-    emojiBadge: {
-      width: 32,
-      height: 32,
+    pressed: { backgroundColor: c.surfaceAlt },
+    iconWell: {
+      width: ICON_WELL,
+      height: ICON_WELL,
       borderRadius: radius.md,
+      backgroundColor: c.surfaceAlt,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    emoji: {
-      fontSize: fontSize.md,
-      lineHeight: 22,
-      textAlign: 'center' as const,
-    },
-    cardLabel: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.2,
-    },
-    cardMetrics: {
-      minWidth: 0,
-      flex: 1,
-      justifyContent: 'flex-end' as const,
-      gap: 1,
-    },
-    valueRow: {
-      ...layoutRowBaselineWrap(3),
-    },
-    cardValue: {
-      minWidth: 0,
-      ...font.bold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
+    texts: { gap: spacing[0.5] },
+    label: { ...text.body, ...font.medium, color: c.textPrimary },
+    date: { color: c.textSecondary },
+    trailing: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[1],
       flexShrink: 1,
     },
-    cardUnit: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-    },
-    cardDate: {
-      ...font.regular,
-      fontSize: fontSize['2xs'],
-      color: c.textTertiary,
-      lineHeight: 12,
-    },
-    cardPlaceholder: {
-      ...font.regular,
-      fontSize: fontSize.md,
-      color: c.textTertiary,
-      lineHeight: fontSize.md,
-    },
+    value: { ...text.body, ...font.semiBold, color: c.textPrimary, textAlign: 'right' as const },
   };
 }

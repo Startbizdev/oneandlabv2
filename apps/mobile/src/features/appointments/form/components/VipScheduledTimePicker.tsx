@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { View } from 'react-native';
 import {
   PATIENT_VIP_MAX_HOUR,
@@ -8,7 +7,6 @@ import {
 import { Row } from '@/components/layout/primitives';
 import { SelectField, type SelectOption } from '@/components/ui/SelectField';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
 
 const VIP_HOUR_OPTIONS: SelectOption[] = Array.from(
   { length: PATIENT_VIP_MAX_HOUR - PATIENT_VIP_MIN_HOUR + 1 },
@@ -40,14 +38,8 @@ export function VipScheduledTimePicker({
   const styles = useStyles(buildStyles);
   const hourValue = String(urgentHour);
   const minuteValue = String(urgentMinute);
-  const summary = useMemo(
-    () => `${String(urgentHour).padStart(2, '0')}h${String(urgentMinute).padStart(2, '0')}`,
-    [urgentHour, urgentMinute],
-  );
-
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.sectionLabel}>Horaire</AppText>
       <Row align="center" gap={spacing[2]} style={styles.pickersRow}>
         <View style={styles.pickerCol}>
           <SelectField
@@ -79,10 +71,6 @@ export function VipScheduledTimePicker({
           />
         </View>
       </Row>
-      <AppText style={styles.summary}>Créneau : {summary}</AppText>
-      <AppText style={styles.hint}>
-        De {PATIENT_VIP_MIN_HOUR}h à {PATIENT_VIP_MAX_HOUR}h, par pas de 15 minutes.
-      </AppText>
     </View>
   );
 }
@@ -90,11 +78,6 @@ export function VipScheduledTimePicker({
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[2] },
-    sectionLabel: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-    },
     pickersRow: {
       width: '100%' as const,
     },
@@ -111,17 +94,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.xl,
       color: c.textTertiary,
       marginBottom: spacing[0.5],
-    },
-    summary: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.primaryDark,
-    },
-    hint: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.4),
-      color: c.textTertiary,
     },
   };
 }

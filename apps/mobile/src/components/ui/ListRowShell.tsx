@@ -1,6 +1,6 @@
-import { actionsSlot, flexText, layoutRow } from '@/theme/layout-styles';
+import { actionsSlot, flexText, hairlineTop, layoutRow } from '@/theme/layout-styles';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface ListRowShellProps {
@@ -21,7 +21,7 @@ interface ListRowShellProps {
 
 /**
  * Rangée liste standard : [ leading | corps flex:1 | trailing/actions ].
- * Pattern unifié documents, notifications, nav rows.
+ * Les textes reviennent à la ligne plutôt que d'être tronqués.
  */
 export function ListRowShell({
   leading,
@@ -43,11 +43,9 @@ export function ListRowShell({
     body ??
     (title ? (
       <>
-        <AppText style={styles.title} numberOfLines={2}>
-          {title}
-        </AppText>
+        <AppText style={styles.title}>{title}</AppText>
         {hint ? (
-          <AppText style={styles.hint} numberOfLines={2}>
+          <AppText variant="caption" style={styles.hint}>
             {hint}
           </AppText>
         ) : null}
@@ -63,13 +61,11 @@ export function ListRowShell({
       {onBodyPress ? (
         <Pressable
           onPress={onBodyPress}
-          disabled={rowDisabled || !onBodyPress}
-          style={({ pressed }) => [
-            styles.body,
-            pressed && !rowDisabled && styles.bodyPressed,
-          ]}
+          disabled={rowDisabled}
+          style={({ pressed }) => [styles.body, pressed && !rowDisabled && styles.bodyPressed]}
           accessibilityRole="button"
           accessibilityLabel={bodyAccessibilityLabel ?? title}
+          accessibilityState={{ disabled: !!rowDisabled }}
         >
           {bodyContent}
         </Pressable>
@@ -83,7 +79,7 @@ export function ListRowShell({
   );
 }
 
-function buildListRowShellStyles({ colors: c, fontSize }: Theme) {
+function buildListRowShellStyles({ colors: c, text }: Theme) {
   return {
     row: {
       ...layoutRow(spacing[3]),
@@ -91,12 +87,9 @@ function buildListRowShellStyles({ colors: c, fontSize }: Theme) {
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3],
     },
-    rowBorderTop: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.border,
-    },
+    rowBorderTop: hairlineTop(c),
     rowDisabled: {
-      opacity: 0.65,
+      opacity: 0.5,
     },
     leading: {
       flexShrink: 0,
@@ -106,23 +99,19 @@ function buildListRowShellStyles({ colors: c, fontSize }: Theme) {
       justifyContent: 'center' as const,
     },
     bodyPressed: {
-      opacity: 0.92,
+      opacity: 0.6,
     },
     title: {
+      ...text.body,
       ...font.semiBold,
-      fontSize: fontSize.base,
       color: c.textPrimary,
-      lineHeight: fontSize.base * 1.3,
     },
     hint: {
       marginTop: spacing[0.5],
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.35,
     },
     trailing: {
       ...layoutRow(spacing[2]),
+      alignItems: 'center' as const,
       flexShrink: 0,
     },
     actions: actionsSlot(),

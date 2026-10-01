@@ -1,9 +1,10 @@
-import { iconSize, useAppColors } from '@/theme';
+import { iconSize } from '@/theme';
 import type { StaffHubSearchItem } from '@oneandlab/shared-types';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
+import type { LucideIcon } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { hubDocumentVisual, hubExchangeVisual } from '../utils/staff-hub-item-visual';
+import { SettingsRow } from '@/components/ui/SettingsRow';
+import { HUB_EXCHANGE_ICON, HUB_RELATIVE_ICON, hubDocumentIcon } from '../utils/staff-hub-item-visual';
 
 interface Props {
   item: StaffHubSearchItem;
@@ -34,64 +35,42 @@ function ageSuffix(item: StaffHubSearchItem): string | undefined {
   return age != null ? ` · ${age} ans` : undefined;
 }
 
-/** Ligne hub Patients — avatar patient + icônes colorées par type. */
+function iconForItem(item: Exclude<StaffHubSearchItem, { kind: 'patient' }>): LucideIcon {
+  if (item.kind === 'document') return hubDocumentIcon(item.document_type);
+  if (item.kind === 'relative') return HUB_RELATIVE_ICON;
+  return HUB_EXCHANGE_ICON;
+}
+
+/** Ligne hub Patients : avatar pour un patient, icône neutre pour proche, document ou échange. */
 export function StaffPatientHubListRow({ item, onPress, onLongPress }: Props) {
-  const c = useAppColors();
   const title = titleForItem(item);
   const subtitle = subtitleForItem(item);
 
   if (item.kind === 'patient') {
     return (
-      <ProfileNavRow
+      <SettingsRow
         leading={
           <ProfileAvatar
             profileImageUrl={item.profile_image_url}
             seed={item.patient_id}
             gender={item.gender}
-            size={iconSize['4xl']}
+            size={iconSize['2xl']}
           />
         }
-        title={title}
-        titleSuffix={ageSuffix(item)}
-        subtitle={subtitle}
+        label={title}
+        labelSuffix={ageSuffix(item)}
+        description={subtitle}
         onPress={onPress}
         onLongPress={onLongPress}
       />
     );
   }
 
-  if (item.kind === 'document') {
-    const visual = hubDocumentVisual(item.document_type, c);
-    return (
-      <ProfileNavRow
-        icon={visual.Icon}
-        iconColor={visual.iconColor}
-        iconBg={visual.iconBg}
-        title={title}
-        subtitle={subtitle}
-        onPress={onPress}
-      />
-    );
-  }
-
-  if (item.kind === 'relative') {
-    return (
-      <ProfileNavRow
-        title={title}
-        subtitle={subtitle}
-        onPress={onPress}
-      />
-    );
-  }
-
-  const visual = hubExchangeVisual(c);
   return (
-    <ProfileNavRow
-      icon={visual.Icon}
-      iconColor={visual.iconColor}
-      iconBg={visual.iconBg}
-      title={title}
-      subtitle={subtitle}
+    <SettingsRow
+      icon={iconForItem(item)}
+      label={title}
+      description={subtitle}
       onPress={onPress}
     />
   );

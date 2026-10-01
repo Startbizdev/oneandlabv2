@@ -1,14 +1,14 @@
 import { CalendarScreen } from '@/features/calendar/screens/CalendarScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function ProCalendar() {
   return (
-    <TitledTabScreenFrame title="Agenda">
+    <TabScreenFrame title="Agenda">
       <CalendarScreen
-        title="Calendrier"
+        title="Agenda"
         baseFilters={{ limit: 200 }}
-        detailPathPrefix="/(pro)/appointment"
+        rolePrefix="/(pro)"
       />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

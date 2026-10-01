@@ -1,10 +1,12 @@
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { PatientAppointmentsListScreen } from '@/features/patient/screens/PatientAppointmentsListScreen';
-import { AppointmentsTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { useGreetingTitle } from '@/navigation/use-greeting-title';
 
 export default function PatientAppointmentsTab() {
+  const greeting = useGreetingTitle();
   return (
-    <AppointmentsTabScreenFrame>
+    <TabScreenFrame title={greeting}>
       <PatientAppointmentsListScreen />
-    </AppointmentsTabScreenFrame>
+    </TabScreenFrame>
   );
 }

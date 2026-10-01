@@ -1,83 +1,58 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
-import { PatientPaginationBar } from '@/features/appointments/detail/components/patient/PatientPaginationBar';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { useAuthStore } from '@/store/auth-store';
-import {
-  fetchPatientProfile,
-  fetchStaffPatientHistoryAppointments,
-} from '../api/patient-profile.service';
+import { fetchStaffPatientHistoryAppointments } from '../api/patient-profile.service';
+import { useStaffPatientProfile } from '../hooks/use-staff-patient-profile';
 import { enrichPatientHistoryAppointments } from '../utils/enrich-patient-history-appointments';
 import { spacing, useStyles, type Theme } from '@/theme';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
-
-const PAGE_SIZE = 8;
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 
 interface Props {
-  rolePrefix: '/(nurse)' | '/(pro)';
+  rolePrefix: StaffRoutePrefix;
 }
 
+/** Rendez-vous passés d'un patient (vue infirmier / pro). */
 export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
+  const patientId = id ?? '';
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const [page, setPage] = useState(1);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
+  const viewerId = useAuthStore((s) => s.user?.id);
   const listRole = rolePrefix === '/(pro)' ? 'pro' : 'nurse';
 
-  const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(id ?? ''),
-    queryFn: async () => {
-      const res = await fetchPatientProfile(id!);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Patient introuvable');
-      return res.data;
-    },
-    enabled: Boolean(id),
-  });
+  const profileQ = useStaffPatientProfile(patientId);
 
   const historyQ = useQuery({
-    queryKey: queryKeys.patients.history(id ?? ''),
+    queryKey: queryKeys.patients.history(patientId),
     queryFn: async () => {
-      const { appointments } = await fetchStaffPatientHistoryAppointments(id!);
+      const { appointments } = await fetchStaffPatientHistoryAppointments(patientId);
       return appointments;
     },
-    enabled: Boolean(id),
+    enabled: Boolean(patientId),
   });
-
-  const enrichedAppointments = useMemo(
-    () => enrichPatientHistoryAppointments(historyQ.data ?? [], profileQ.data),
-    [historyQ.data, profileQ.data],
-  );
 
   const displayRows = useMemo(
     () =>
-      buildAppointmentDisplayRows(enrichedAppointments, {
+      buildAppointmentDisplayRows(enrichPatientHistoryAppointments(historyQ.data ?? [], profileQ.data), {
         direction: 'past',
         groupMode: 'batch',
       }),
-    [enrichedAppointments],
+    [historyQ.data, profileQ.data],
   );
-
-  const pages = Math.max(1, Math.ceil(displayRows.length / PAGE_SIZE));
-  const items = displayRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
@@ -85,21 +60,31 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
         row={row}
         index={index}
         role={listRole}
-        viewerId={user?.id}
-        onPress={(apt) => router.push(`${rolePrefix}/appointment/${apt.id}` as never)}
+        viewerId={viewerId}
+        onPress={(apt) => router.push(appointmentDetailHref(rolePrefix, apt.id))}
       />
     ),
-    [listRole, rolePrefix, router, user?.id],
+    [listRole, rolePrefix, router, viewerId],
   );
 
-  const isLoading = historyQ.isLoading || profileQ.isLoading;
-
-  if (isLoading) {
+  if (historyQ.isLoading || profileQ.isLoading) {
     return (
       <StackChromeScreen>
         <View style={styles.loading}>
-          <SkeletonList count={4} itemHeight={116} gap={12} />
+          <SkeletonList count={4} itemHeight={116} gap={spacing[3]} />
         </View>
+      </StackChromeScreen>
+    );
+  }
+
+  if (profileQ.isError) {
+    return (
+      <StackChromeScreen>
+        <ErrorState
+          title="Patient introuvable"
+          error={profileQ.error}
+          onRetry={() => void profileQ.refetch()}
+        />
       </StackChromeScreen>
     );
   }
@@ -107,10 +92,9 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
   return (
     <StackChromeScreen>
       <FlatList
-        data={items}
+        data={displayRows}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -120,33 +104,21 @@ export function StaffPatientHistoryScreen({ rolePrefix }: Props) {
               void profileQ.refetch();
             }}
             tintColor={c.primary}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
-      renderItem={renderItem}
-      ListEmptyComponent={
-        <EmptyState
-          imageSource={EMPTY_RDV_IMAGE}
-          imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-          imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-          title="Pas encore d’historique"
-          description="Aucun rendez-vous enregistré pour ce patient."
-        />
-      }
-      ListFooterComponent={
-        displayRows.length > 0 ? (
-          <View style={styles.footer}>
-            <PatientPaginationBar
-              page={page}
-              pages={pages}
-              total={displayRows.length}
-              onPrev={() => setPage((p) => Math.max(1, p - 1))}
-              onNext={() => setPage((p) => Math.min(pages, p + 1))}
+        renderItem={renderItem}
+        ListEmptyComponent={
+          historyQ.isError ? (
+            <ErrorState
+              title="Historique indisponible"
+              error={historyQ.error}
+              onRetry={() => void historyQ.refetch()}
             />
-          </View>
-        ) : null
-      }
-    />
+          ) : (
+            <EmptyState illustration="history" title="Aucun rendez-vous passé" />
+          )
+        }
+      />
     </StackChromeScreen>
   );
 }
@@ -168,6 +140,5 @@ function buildStyles({ colors: c }: Theme) {
       flexGrow: 1,
       backgroundColor: c.background,
     },
-    footer: { marginTop: spacing[4] },
   };
 }

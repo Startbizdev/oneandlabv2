@@ -1,29 +1,21 @@
-import { useCallback, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { LabResultsFeed } from '@/features/lab-results/components/LabResultsFeed';
+import { useLabResultsInfinite } from '@/features/lab-results/hooks/use-lab-results-infinite';
 import { openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
-import {
-  EMPTY_RDV_IMAGE,
-  EMPTY_RDV_IMAGE_HEIGHT,
-  EMPTY_RDV_IMAGE_WIDTH,
-} from '@/constants/empty-state-images';
-import { fetchLabResults } from '../api/lab-results.service';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
-import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spacing, useStyles, type Theme } from '@/theme';
+import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 
 type RoleMode = 'patient' | 'nurse' | 'pro';
 
@@ -41,29 +33,28 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
   const debouncedSearch = useDebouncedValue(search);
   const [openingId, setOpeningId] = useState<string | null>(null);
 
-  const resultsQ = useQuery({
-    queryKey: queryKeys.labResults.list(debouncedSearch.trim()),
-    queryFn: async () => {
-      const res = await fetchLabResults(debouncedSearch.trim());
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Chargement impossible');
-      return res.data.items ?? [];
-    },
-  });
+  const resultsQ = useLabResultsInfinite(debouncedSearch.trim());
 
   const handleOpenDocument = useCallback(
     async (item: LabResultListItem) => {
       const id = item.medical_document_id ?? item.id;
       setOpeningId(id);
-      const res = await openMedicalDocument(id, item.file_name ?? undefined);
-      setOpeningId(null);
-      if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
+      try {
+        const res = await openMedicalDocument(id, item.file_name ?? undefined);
+        if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
+      } catch (error) {
+        console.warn('[lab-results] ouverture du document impossible', error);
+        toast('Ouverture impossible', { type: 'error' });
+      } finally {
+        setOpeningId(null);
+      }
     },
     [toast],
   );
 
   const openAppointment = useCallback(
     (appointmentId: string) => {
-      router.push(`${rolePrefix}/appointment/${appointmentId}?segment=documents` as never);
+      router.push(appointmentDetailHref(rolePrefix, appointmentId, { segment: 'documents' }));
     },
     [rolePrefix, router],
   );
@@ -76,35 +67,41 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
           lab_result_id: item.medical_document_id ?? item.id,
           patient_id: item.patient_id ?? undefined,
           initial_message: 'Explique-moi ce résultat de labo (sans interprétation médicale).',
-        }) as never,
+        }),
       );
     },
     [role, router],
   );
 
-  const items = resultsQ.data ?? [];
+  const items = useMemo(() => resultsQ.data?.pages.flatMap((p) => p.items) ?? [], [resultsQ.data]);
+  const total = resultsQ.data?.pages[0]?.pagination.total ?? items.length;
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = resultsQ;
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
   const isSearching = debouncedSearch.trim().length > 0;
-  const listScrollConfig = useStackScrollConfig(styles.listContent);
-  const sceneInsets = useTabSceneInsets();
+  const showSearch = search.trim().length > 0 || items.length > 0;
   const { refreshing, onRefresh } = useManualRefresh(() => resultsQ.refetch());
 
   return (
     <StackChromeScreen>
       <View style={styles.container}>
-        <View style={[styles.searchWrap, { paddingTop: sceneInsets.insetTop + spacing[2] }]}>
-          <AppointmentsListFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={
-              role === 'patient' ? 'Rechercher une analyse…' : 'Rechercher un patient, une analyse…'
-            }
-            embedded
-          />
-        </View>
+        {showSearch ? (
+          <View style={styles.searchWrap}>
+            <AppointmentsListFilterBar
+              search={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={
+                role === 'patient' ? 'Rechercher une analyse…' : 'Rechercher un patient, une analyse…'
+              }
+              embedded
+            />
+          </View>
+        ) : null}
 
         {resultsQ.isLoading && !resultsQ.data ? (
           <View style={styles.loading}>
-            <SkeletonList count={5} itemHeight={88} gap={10} />
+            <SkeletonList count={5} itemHeight={88} gap={spacing[3]} />
           </View>
         ) : resultsQ.isError && !resultsQ.data ? (
           <View style={styles.empty}>
@@ -116,32 +113,34 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.empty}>
-            <EmptyState
-              imageSource={EMPTY_RDV_IMAGE}
-              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title={isSearching ? 'Aucun résultat trouvé' : 'Pas encore de résultat'}
-              description={
-                isSearching
-                  ? 'Essayez un autre mot-clé (patient, type d’analyse, fichier…).'
-                  : 'Ils s’affichent ici dès que le laboratoire les partage.'
-              }
-            />
+            {isSearching ? (
+              <EmptyState
+                illustration="search"
+                title="Aucun résultat"
+                description="Essayez un autre mot-clé."
+              />
+            ) : (
+              <EmptyState
+                illustration="results"
+                title="Aucun résultat d’analyse"
+                description="Ils s’affichent ici dès que le laboratoire les partage."
+              />
+            )}
           </View>
         ) : (
           <LabResultsFeed
             items={items}
+            total={total}
             role={role}
+            loadingMore={isFetchingNextPage}
+            onEndReached={loadMore}
             openingId={openingId}
             refreshing={refreshing}
             onRefresh={onRefresh}
             onOpenDocument={handleOpenDocument}
             onOpenAppointment={openAppointment}
             onAskCary={askCaryAboutResult}
-            contentContainerStyle={listScrollConfig.contentContainerStyle}
-            scrollIndicatorInsets={listScrollConfig.scrollIndicatorInsets}
-            contentInsetAdjustmentBehavior={listScrollConfig.contentInsetAdjustmentBehavior}
-            refreshProgressOffset={listScrollConfig.refreshProgressOffset}
+            contentContainerStyle={styles.listContent}
           />
         )}
       </View>
@@ -153,19 +152,19 @@ function buildStyles({ colors: c }: Theme) {
   return {
   container: { minWidth: 0, flex: 1, backgroundColor: c.background },
   searchWrap: {
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: H_PADDING,
     paddingTop: spacing[2],
     paddingBottom: spacing[2],
   },
-  loading: { paddingHorizontal: spacing[4] },
+  loading: { paddingHorizontal: H_PADDING, paddingTop: spacing[2] },
   empty: {
     minWidth: 0,
     flex: 1,
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: H_PADDING,
     justifyContent: 'center' as const,
   },
   listContent: {
-    paddingHorizontal: spacing[4],
+    paddingHorizontal: H_PADDING,
     paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },

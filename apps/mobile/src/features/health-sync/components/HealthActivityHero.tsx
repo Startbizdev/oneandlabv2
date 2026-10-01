@@ -1,9 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Footprints } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { DAILY_STEPS_GOAL } from '../utils/health-metric-stats';
 
@@ -28,7 +28,7 @@ export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, last
   const offset = circumference - (goalPct / 100) * circumference;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.borderLight }]}>
+    <View style={styles.card}>
       <Row gap={spacing[4]} align="center">
         <View style={styles.ringWrap}>
           <Svg width={ringSize} height={ringSize}>
@@ -54,7 +54,7 @@ export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, last
             />
           </Svg>
           <View style={styles.ringCenter}>
-            <Footprints size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
+            <Footprints size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
             <AppText style={styles.ringValue}>
               {stepsDisplay != null ? stepsDisplay.toLocaleString('fr-FR') : '—'}
             </AppText>
@@ -95,8 +95,10 @@ export function HealthActivityHero({ todaySteps, avgSteps7d, lastHeartRate, last
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
-      borderRadius: radius.xl,
-      borderWidth: 1,
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       padding: spacing[4],
     },
     ringWrap: {
@@ -134,7 +136,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     goal: {
       ...font.medium,
       fontSize: fontSize.sm,
-      color: c.primary,
+      color: c.textSecondary,
     },
     sub: {
       ...font.regular,
@@ -143,10 +145,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     miniLabel: {
       ...font.medium,
-      fontSize: fontSize['2xs'],
-      color: c.textTertiary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
+      fontSize: fontSize.xs,
+      color: c.textSecondary,
     },
     miniValue: {
       ...font.semiBold,

@@ -1,6 +1,11 @@
 import type { MobileRole } from '@oneandlab/shared-constants';
 
-export function roleRoutePrefix(role: string | undefined): `/(nurse)` | `/(pro)` | `/(preleveur)` | `/(patient)` {
+export type RoleRoutePrefix = '/(nurse)' | '/(pro)' | '/(preleveur)' | '/(patient)';
+
+/** Rôles soignants disposant d'une fiche patient et des commandes pharmacie. */
+export type StaffRoutePrefix = '/(nurse)' | '/(pro)';
+
+export function roleRoutePrefix(role: string | undefined): RoleRoutePrefix {
   switch (role as MobileRole | undefined) {
     case 'pro':
       return '/(pro)';

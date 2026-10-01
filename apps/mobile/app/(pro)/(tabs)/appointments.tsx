@@ -1,14 +1,12 @@
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { RoleFilteredAppointmentsListScreen } from '@/features/appointments/screens/RoleFilteredAppointmentsListScreen';
-import { AppointmentsTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { useGreetingTitle } from '@/navigation/use-greeting-title';
 
 export default function ProAppointmentsTab() {
+  const greeting = useGreetingTitle();
   return (
-    <AppointmentsTabScreenFrame>
-      <RoleFilteredAppointmentsListScreen
-        role="pro"
-        detailPathPrefix="/(pro)/appointment"
-        bookHref="/(pro)/appointments/new"
-      />
-    </AppointmentsTabScreenFrame>
+    <TabScreenFrame title={greeting}>
+      <RoleFilteredAppointmentsListScreen bookHref="/(pro)/appointments/new" />
+    </TabScreenFrame>
   );
 }

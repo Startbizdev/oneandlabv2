@@ -1,14 +1,26 @@
-import type { AppointmentDetailRole } from './appointment-detail-role-config';
+import type { Href } from 'expo-router';
 
-/** Route expo-router vers la vue échanges (stack, pas modal). */
+export type CarePhotoExchangeRole = 'nurse' | 'pro';
+
+/** Seuls l'infirmier et le pro disposent de la vue échanges photo (stack, pas modal). */
+export function isCarePhotoExchangeRole(role: string): role is CarePhotoExchangeRole {
+  return role === 'nurse' || role === 'pro';
+}
+
+/** Vue échanges du RDV, ou fil d'une photo de soin quand `photoId` est fourni. */
 export function carePhotoDiscussionHref(
-  role: AppointmentDetailRole | string,
+  role: CarePhotoExchangeRole,
   appointmentId: string,
   photoId?: string,
-): string {
-  const prefix = role === 'pro' ? '/(pro)' : '/(nurse)';
-  if (!photoId) {
-    return `${prefix}/appointment/${encodeURIComponent(appointmentId)}/exchange`;
+): Href {
+  if (photoId) {
+    const params = { id: appointmentId, photoId };
+    return role === 'pro'
+      ? { pathname: '/(pro)/appointment/[id]/care-photo/[photoId]', params }
+      : { pathname: '/(nurse)/appointment/[id]/care-photo/[photoId]', params };
   }
-  return `${prefix}/appointment/${encodeURIComponent(appointmentId)}/care-photo/${encodeURIComponent(photoId)}`;
+  const params = { id: appointmentId };
+  return role === 'pro'
+    ? { pathname: '/(pro)/appointment/[id]/exchange', params }
+    : { pathname: '/(nurse)/appointment/[id]/exchange', params };
 }

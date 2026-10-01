@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Download, X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { hexToRgba, iconSize, palette, spacing, useStyles, type Theme } from '@/theme';
+import { hexToRgba, iconSize, palette, spacing, useStyles, ICON_STROKE_WIDTH, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 
@@ -79,7 +79,7 @@ export function FullscreenImageViewer({
                 backgroundColor={c.primaryLight}
                 style={styles.actionBtn}
               >
-                <Download size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
+                <Download size={iconSize.sm} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
               </IconActionButton>
             ) : null}
             <IconActionButton
@@ -89,7 +89,7 @@ export function FullscreenImageViewer({
               backgroundColor={c.surfaceAlt}
               style={styles.actionBtn}
             >
-              <X size={iconSize.sm} color={c.textSecondary} strokeWidth={2.5} />
+              <X size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             </IconActionButton>
           </Row>
         </View>

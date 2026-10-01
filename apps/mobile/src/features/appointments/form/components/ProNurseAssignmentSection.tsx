@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Input } from '@/components/ui/Input';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import type { LinkedNurseRow } from '@/features/patients/api/linked-nurses.service';
-import type { NurseAssignmentMode } from '../utils/pro-nurse-assignment';
+import { externalNursePhoneError, type NurseAssignmentMode } from '../utils/pro-nurse-assignment';
 import { THIRD_PARTY_PHONE_INPUT } from '../constants/third-party-input-props';
 
 interface Props {
@@ -28,8 +29,10 @@ export function ProNurseAssignmentSection({
   onExternalPhoneChange,
 }: Props) {
   const styles = useStyles(buildStyles);
+  const [phoneTouched, setPhoneTouched] = useState(false);
 
   const externalActive = !selectedLinkedNurseId && Boolean(externalPhone.trim());
+  const phoneError = phoneTouched && externalActive ? externalNursePhoneError(externalPhone) : null;
 
   return (
     <View style={styles.card}>
@@ -90,6 +93,8 @@ export function ProNurseAssignmentSection({
             label="Téléphone mobile de l'infirmier(ère)"
             value={externalPhone}
             onChangeText={onExternalPhoneChange}
+            onBlur={() => setPhoneTouched(true)}
+            error={phoneError ?? undefined}
             editable={!selectedLinkedNurseId}
             placeholder="06 12 34 56 78"
             {...THIRD_PARTY_PHONE_INPUT}
@@ -182,7 +187,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
-    nursePillTextActive: { color: c.textInverse },
+    nursePillTextActive: { color: c.onPrimary },
     disabled: { opacity: 0.45 },
     loader: { alignSelf: 'flex-start' as const },
   };

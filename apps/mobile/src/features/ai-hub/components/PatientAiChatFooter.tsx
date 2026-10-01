@@ -1,12 +1,14 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNativeTabBarInset } from '@/navigation/use-native-tab-bar-inset';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import { PatientAiChatComposer, PATIENT_AI_COMPOSER_DOCK_HEIGHT } from './PatientAiChatComposer';
-import { CaryAiEmergencyLine } from './CaryAiDisclosureCard';
-import { FONT_SIZE_BASE, H_PADDING, lh, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
+import {
+  PatientAiChatComposer,
+  PATIENT_AI_COMPOSER_DOCK_HEIGHT,
+  type PatientAiPendingAttachment,
+} from './PatientAiChatComposer';
+import { CARY_AI_NOTICE, CaryAiEmergencyLine } from './CaryAiDisclosure';
+import { FONT_SIZE_BASE, H_PADDING, lh, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   draft: string;
@@ -16,33 +18,27 @@ interface Props {
   onAttachPress?: () => void;
   onClearAttachment?: () => void;
   onPreviewPress?: () => void;
-  pendingAttachment?: import('./PatientAiChatComposer').PatientAiPendingAttachment | null;
+  pendingAttachment?: PatientAiPendingAttachment | null;
   attaching?: boolean;
   onFocusInput?: () => void;
   onFooterLayout?: (height: number) => void;
   canSend: boolean;
   disabled?: boolean;
-  disclaimer?: string;
-  /** false sur écran stack (pas de tab bar) — safe area bas uniquement. */
-  includeTabBarInset?: boolean;
 }
 
-/** Hauteur bandeau disclaimer (estimation — layout réel via onLayout). */
-const DISCLAIMER_BLOCK_HEIGHT = spacing[1] * 2 + lh(FONT_SIZE_BASE['2xs'], 1.35) * 3;
+/** Hauteur estimée du rappel (1 ligne de légende) — la mesure réelle arrive via onLayout. */
+const DISCLAIMER_BLOCK_HEIGHT = spacing[1] + lh(FONT_SIZE_BASE.xs, 1.4);
 
-/** Footer complet : disclaimer + compositeur (réserve scroll liste). */
+/** Footer complet : rappel + compositeur (réserve de scroll de la liste). */
 export const PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER =
   DISCLAIMER_BLOCK_HEIGHT + PATIENT_AI_COMPOSER_DOCK_HEIGHT;
 
-/** Réserve bas de liste (compositeur + tab bar native) — paddingBottom sur liste chronologique. */
-export function patientAiChatListBottomPadding(footerHeight: number, tabBarInset: number): number {
-  return footerHeight + tabBarInset + spacing[3];
+/** Réserve bas de liste (compositeur + safe area) — paddingBottom sur liste chronologique. */
+export function patientAiChatListBottomPadding(footerHeight: number, bottomInset: number): number {
+  return footerHeight + bottomInset + spacing[3];
 }
 
-/** @deprecated alias mock — préférer PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER */
-export const PATIENT_AI_FOOTER_HEIGHT_WITH_BANNER = PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER;
-
-/** Footer Cary — dock fixe bas d'écran, fond opaque (ne chevauche plus le fil). */
+/** Dock bas d'écran : rappel médical (masqué pendant la saisie) puis compositeur. */
 export function PatientAiChatFooter({
   draft,
   onChangeDraft,
@@ -57,38 +53,17 @@ export function PatientAiChatFooter({
   onFooterLayout,
   canSend,
   disabled,
-  disclaimer,
-  includeTabBarInset = true,
 }: Props) {
   const styles = useStyles(buildStyles);
-  const c = useAppColors();
-  const { bottom: safeBottom } = useSafeAreaInsets();
-  const tabBarInset = useNativeTabBarInset(0);
-  const bottomInset = includeTabBarInset ? tabBarInset : safeBottom;
+  const { safeAreaBottom, tabBarHeight } = useSceneBottomInset();
   const [inputFocused, setInputFocused] = useState(false);
 
   return (
     <KeyboardStickyView
-      style={[styles.footer, { bottom: bottomInset, backgroundColor: 'transparent' }]}
-      offset={{ closed: 0, opened: bottomInset }}
+      style={[styles.footer, { bottom: safeAreaBottom }]}
+      offset={{ closed: 0, opened: tabBarHeight + safeAreaBottom }}
     >
-      <View
-        onLayout={(event) => onFooterLayout?.(event.nativeEvent.layout.height)}
-        style={[
-          styles.shell,
-          { backgroundColor: c.surface, borderTopColor: c.borderLight },
-        ]}
-      >
-        {!inputFocused ? (
-          <View style={[styles.disclaimerWrap, { backgroundColor: c.surfaceAlt }]}>
-            {disclaimer ? (
-              <AppText style={[styles.disclaimer, { color: c.textTertiary }]}>
-                {disclaimer}
-              </AppText>
-            ) : null}
-            <CaryAiEmergencyLine compact />
-          </View>
-        ) : null}
+      <View onLayout={(event) => onFooterLayout?.(event.nativeEvent.layout.height)} style={styles.shell}>
         <PatientAiChatComposer
           draft={draft}
           onChangeDraft={onChangeDraft}
@@ -106,14 +81,18 @@ export function PatientAiChatFooter({
           onBlur={() => setInputFocused(false)}
           canSend={canSend}
           disabled={disabled}
-          embedded
         />
+        {!inputFocused ? (
+          <View style={styles.disclaimerWrap}>
+            <CaryAiEmergencyLine lead={CARY_AI_NOTICE} centered />
+          </View>
+        ) : null}
       </View>
     </KeyboardStickyView>
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     footer: {
       position: 'absolute' as const,
@@ -123,18 +102,13 @@ function buildStyles({ fontSize }: Theme) {
     },
     shell: {
       width: '100%' as const,
+      backgroundColor: c.background,
       borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
     },
     disclaimerWrap: {
-      gap: spacing[0.5],
       paddingHorizontal: H_PADDING,
-      paddingTop: spacing[1.5],
       paddingBottom: spacing[1],
-    },
-    disclaimer: {
-      ...font.regular,
-      fontSize: fontSize['2xs'],
-      lineHeight: lh(fontSize['2xs'], 1.35),
     },
   };
 }

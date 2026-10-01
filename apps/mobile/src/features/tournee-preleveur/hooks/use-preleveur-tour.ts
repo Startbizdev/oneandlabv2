@@ -15,14 +15,10 @@ import {
   type PreleveurTourPayload,
   type TourSortMode,
 } from '../api/preleveur-tour.service';
+import { preleveurTourQueryKey } from './preleveur-tour-query';
 
 const STALE_MS = 60_000;
 const FORWARD_SUMMARY_DAYS = 21;
-
-/** Clé indexée sur la date seule : la position GPS ne sert qu'au calcul de l'ordre. */
-function tourQueryKey(date: string) {
-  return ['preleveur-tour', date] as const;
-}
 
 function withDerivedSummary(tour: PreleveurTourPayload): PreleveurTourPayload {
   const summary = computeTourSummaryFromStops(tour.stops, tour.summary.estimated_km);
@@ -38,7 +34,7 @@ export function usePreleveurTour(date: string) {
   const { getOrigin, refreshOrigin } = useTourOrigin();
 
   const tourQuery = useQuery({
-    queryKey: tourQueryKey(date),
+    queryKey: preleveurTourQueryKey(date),
     queryFn: () => fetchPreleveurTour(date, getOrigin() ?? undefined),
     staleTime: STALE_MS,
     select: withDerivedSummary,
@@ -56,7 +52,7 @@ export function usePreleveurTour(date: string) {
 
   const applyTour = useCallback(
     (data: PreleveurTourPayload) => {
-      qc.setQueryData(tourQueryKey(date), data);
+      qc.setQueryData(preleveurTourQueryKey(date), data);
     },
     [date, qc],
   );

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import type { NurseTourPayload, NurseTourStop } from '../api/nurse-tour.service';
 import { nursePassageDetailHref } from '../utils/passage-detail-href';
 import { parseNavAppPref } from '../utils/tour-navigation';
-import { nurseTourStopTimeLabel } from '../utils/tour-stop-time-label';
+import { formatPassageTimeLabel } from '@/features/nurse-passage/utils/passage-display';
 import { TourStopCard } from './TourStopCard';
 import { TourStopCareSection } from './TourStopCareSection';
 
@@ -26,11 +26,11 @@ export function NurseNextPassageCard({ tour, stop, onMarkDone, footer }: Props) 
   return (
     <TourStopCard
       stop={stop}
-      timeLabel={nurseTourStopTimeLabel(stop)}
+      timeLabel={formatPassageTimeLabel(stop)}
       navAppPref={parseNavAppPref(tour.plan.nav_app_pref)}
       eyebrow={eyebrow}
       care={<TourStopCareSection stop={stop} embedded listCompact />}
-      onPress={() => router.push(nursePassageDetailHref(stop) as never)}
+      onPress={() => router.push(nursePassageDetailHref(stop))}
       onMarkDone={() => onMarkDone(stop)}
       footer={footer}
     />

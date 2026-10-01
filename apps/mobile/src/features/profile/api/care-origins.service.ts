@@ -3,6 +3,7 @@ import { api } from '@/api/client';
 export type CareOrigin = {
   id: string;
   display_name: string;
+  role?: string | null;
   emploi?: string | null;
   hidden_by_patient: boolean;
 };

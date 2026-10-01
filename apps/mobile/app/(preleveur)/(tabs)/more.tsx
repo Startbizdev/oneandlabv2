@@ -1,13 +1,13 @@
 import { useRouter } from 'expo-router';
 import { Sparkles } from 'lucide-react-native';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function PreleveurMore() {
   const router = useRouter();
 
   return (
-    <TitledTabScreenFrame title="Plus">
+    <TabScreenFrame title="Plus">
       <RoleMoreTabScreen
         roleLabel="Préleveur"
         legalHref="/(preleveur)/informations-legales"
@@ -18,13 +18,12 @@ export default function PreleveurMore() {
               {
                 icon: Sparkles,
                 label: 'Assistant Cary',
-                onPress: () => router.push('/(preleveur)/ai' as never),
-                iconAccent: 'teal',
+                onPress: () => router.push('/(preleveur)/ai'),
               },
             ],
           },
         ]}
       />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

@@ -1,25 +1,17 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from 'react-native';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, MessageCircle, Send } from 'lucide-react-native';
+import { FileText, Send, Stethoscope, UserRound, XCircle } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { ActionRowCard } from '@/components/ui/ActionRowCard';
-import { pharmacyOrderPrescriptionsPath } from '../utils/prescriptions-route';
 import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import { buildSettingsStyles, type SettingsRowProps } from '@/components/ui/SettingsRow';
+import { pharmacyOrderPrescriptionsHref, type PharmacyOrderDetailMode } from '../utils/prescriptions-route';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { Row } from '@/components/layout/primitives';
@@ -31,9 +23,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { HeaderActionButton } from '@/navigation/HeaderActionButton';
-import { useStackContentTopInset, useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { staffPatientHref } from '@/navigation/role-hrefs';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
+import { ScreenKeyboardAvoidingView } from '@/components/navigation/ScreenFrame';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import {
   fetchPharmacyOrder,
   fetchPharmacyOrderMessages,
@@ -41,6 +34,7 @@ import {
   updatePharmacyOrderStatus,
 } from '../api/pharmacy-orders.service';
 import {
+  formatPharmacyDesiredDate,
   formatPharmacyOrderDate,
   personDisplayName,
   pharmacyFulfillmentLabel,
@@ -48,18 +42,47 @@ import {
   pharmacyOrderHasStaffRequester,
   pharmacyOrderOrderedByLabel,
   pharmacyOrderPharmacyLabel,
+  pharmacyOrderStatusBadgeVariant,
   pharmacyOrderStatusLabel,
 } from '../utils/order-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-
-type DetailMode = 'sent' | 'received';
+import {
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 interface Props {
-  mode: DetailMode;
-  rolePrefix?: '/(nurse)' | '/(pro)';
+  mode: PharmacyOrderDetailMode;
+  rolePrefix?: StaffRoutePrefix;
 }
 
+type StatusAction = { label: string; status: PharmacyOrderStatus; variant: 'primary' | 'outline' };
+
+const POLL_MS = 15_000;
+
+/** Transitions proposées à la pharmacie (miroir de `PharmacyOrderService::ALLOWED_TRANSITIONS`). */
+function pharmacyStatusActions(status: PharmacyOrderStatus): StatusAction[] {
+  if (status === 'en_attente') {
+    return [
+      { label: 'Accepter', status: 'acceptee', variant: 'primary' },
+      { label: 'Demander un complément', status: 'complement_demande', variant: 'outline' },
+      { label: 'Refuser', status: 'refusee', variant: 'outline' },
+    ];
+  }
+  if (status === 'complement_demande') return [{ label: 'Repasser en attente', status: 'en_attente', variant: 'outline' }];
+  if (status === 'acceptee') return [{ label: 'Mettre en cours', status: 'en_cours', variant: 'primary' }];
+  if (status === 'en_cours') return [{ label: 'Marquer terminée', status: 'terminee', variant: 'primary' }];
+  return [];
+}
+
+/** Détail d'une commande pharmacie : envoyée (infirmier / pro) ou reçue (officine). */
 export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
   const focused = useIsFocused();
@@ -68,15 +91,17 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const router = useRouter();
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const sectionStyles = useStyles(buildSettingsStyles);
+  const { footerPadding } = useSceneBottomInset();
+  const composerInset = { paddingBottom: Math.max(footerPadding, spacing[3]) };
   const userId = useAuthStore((s) => s.user?.id);
+  const isPatientViewer = useAuthStore((s) => s.user?.role === 'patient');
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [draft, setDraft] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const contentTopInset = useStackContentTopInset();
-  const scrollConfig = useStackScrollConfig(styles.content);
 
   const orderQ = useQuery({
     queryKey: queryKeys.pharmacyOrders.detail(orderId),
@@ -86,7 +111,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       return res.data;
     },
     enabled: !!orderId,
-    refetchInterval: focusedRefetchInterval(15000, focused, appActive),
+    refetchInterval: focusedRefetchInterval(POLL_MS, focused, appActive),
     refetchIntervalInBackground: false,
   });
 
@@ -98,40 +123,41 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       return res.data;
     },
     enabled: !!orderId,
-    refetchInterval: focusedRefetchInterval(15000, focused, appActive),
+    refetchInterval: focusedRefetchInterval(POLL_MS, focused, appActive),
     refetchIntervalInBackground: false,
   });
 
+  const order = orderQ.data;
+  const patientId = order?.patient_id ?? '';
+  const pharmacyId = order?.pharmacy_id ?? '';
+  const requesterId = order?.requester_id ?? '';
+  const hasStaffRequester = !!order && pharmacyOrderHasStaffRequester(order) && requesterId !== userId;
+
   const patientQ = useQuery({
-    queryKey: queryKeys.profile.user(orderQ.data?.patient_id ?? ''),
-    queryFn: async () => (await fetchUser(orderQ.data!.patient_id)).data,
-    enabled: !!orderQ.data?.patient_id,
+    queryKey: queryKeys.profile.user(patientId),
+    queryFn: async () => (await fetchUser(patientId)).data,
+    enabled: !!patientId,
   });
 
   const pharmacyQ = useQuery({
-    queryKey: queryKeys.profile.user(orderQ.data?.pharmacy_id ?? ''),
-    queryFn: async () => (await fetchUser(orderQ.data!.pharmacy_id)).data,
-    enabled: !!orderQ.data?.pharmacy_id,
+    queryKey: queryKeys.profile.user(pharmacyId),
+    queryFn: async () => (await fetchUser(pharmacyId)).data,
+    enabled: !!pharmacyId,
   });
 
   const requesterQ = useQuery({
-    queryKey: queryKeys.profile.user(orderQ.data?.requester_id ?? ''),
-    queryFn: async () => (await fetchUser(orderQ.data!.requester_id)).data,
-    enabled: !!orderQ.data?.requester_id
-      && pharmacyOrderHasStaffRequester(orderQ.data)
-      && orderQ.data.requester_id !== userId,
+    queryKey: queryKeys.profile.user(requesterId),
+    queryFn: async () => (await fetchUser(requesterId)).data,
+    enabled: !!requesterId && hasStaffRequester,
   });
 
   const statusMut = useMutation({
-    mutationFn: async (payload: {
-      status: PharmacyOrderStatus;
-      rejection_reason?: string;
-      pharmacy_note?: string;
-    }) => {
-      const res = await updatePharmacyOrderStatus(orderId, payload.status, {
-        rejection_reason: payload.rejection_reason ?? null,
-        pharmacy_note: payload.pharmacy_note ?? null,
-      });
+    mutationFn: async (payload: { status: PharmacyOrderStatus; rejection_reason?: string }) => {
+      const res = await updatePharmacyOrderStatus(
+        orderId,
+        payload.status,
+        payload.rejection_reason != null ? { rejection_reason: payload.rejection_reason } : undefined,
+      );
       if (!res.success || !res.data) throw new Error(res.error ?? 'Mise à jour impossible');
       return res.data;
     },
@@ -159,20 +185,19 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     onError: (e) => handleApiError(e, toast, 'pharmacy-order-message'),
   });
 
-  const order = orderQ.data;
   const messages = useMemo(() => messagesQ.data?.messages ?? [], [messagesQ.data]);
   const canPost = Boolean(messagesQ.data?.can_post);
   const isReceiver = mode === 'received';
 
   const patientLabel = useMemo(() => {
-    if (!order) return '—';
+    if (!order) return '';
     const fromApi = pharmacyOrderBeneficiaryLabel(order);
     if (fromApi !== 'Patient') return fromApi;
     return personDisplayName(patientQ.data?.first_name, patientQ.data?.last_name, 'Patient');
   }, [order, patientQ.data]);
 
   const pharmacyLabel = useMemo(() => {
-    if (!order) return '—';
+    if (!order) return '';
     const fromApi = pharmacyOrderPharmacyLabel(order);
     if (fromApi !== 'Pharmacie') return fromApi;
     return personDisplayName(pharmacyQ.data?.first_name, pharmacyQ.data?.last_name, 'Pharmacie');
@@ -184,128 +209,10 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     return () => clearTimeout(timer);
   }, [messageId, messages]);
 
-  const renderPharmacyActions = () => {
-    if (!order || !isReceiver) return null;
-    const status = order.status;
-    const actions: Array<{ label: string; status: PharmacyOrderStatus; variant?: 'outline' | 'primary' }> = [];
-
-    if (status === 'en_attente') {
-      actions.push({ label: 'Accepter', status: 'acceptee' });
-      actions.push({ label: 'Demander un complément', status: 'complement_demande', variant: 'outline' });
-      actions.push({ label: 'Refuser', status: 'refusee', variant: 'outline' });
-    } else if (status === 'complement_demande') {
-      actions.push({ label: 'Repasser en attente', status: 'en_attente', variant: 'outline' });
-    } else if (status === 'acceptee') {
-      actions.push({ label: 'Mettre en cours', status: 'en_cours' });
-    } else if (status === 'en_cours') {
-      actions.push({ label: 'Marquer terminée', status: 'terminee' });
-    }
-
-    if (!actions.length) return null;
-
-    return (
-      <View style={styles.actions}>
-        {actions.map((action) => (
-          <Button
-            key={action.status}
-            title={action.label}
-            variant={action.variant ?? 'primary'}
-            loading={statusMut.isPending}
-            onPress={() => {
-              if (action.status === 'refusee') {
-                setShowRejectForm(true);
-                return;
-              }
-              statusMut.mutate({ status: action.status });
-            }}
-            fullWidth
-          />
-        ))}
-        {showRejectForm ? (
-          <View style={styles.rejectBlock}>
-            <Input
-              label="Motif de refus"
-              value={rejectReason}
-              onChangeText={setRejectReason}
-              placeholder="Obligatoire"
-            />
-            <Row gap={spacing[2]}>
-              <Button
-                title="Annuler"
-                variant="outline"
-                onPress={() => {
-                  setShowRejectForm(false);
-                  setRejectReason('');
-                }}
-                style={{ flex: 1 }}
-              />
-              <Button
-                title="Confirmer le refus"
-                loading={statusMut.isPending}
-                onPress={() => {
-                  const reason = rejectReason.trim();
-                  if (!reason) {
-                    toast('Motif de refus requis', { type: 'error' });
-                    return;
-                  }
-                  statusMut.mutate({ status: 'refusee', rejection_reason: reason });
-                  setShowRejectForm(false);
-                }}
-                style={{ flex: 1 }}
-              />
-            </Row>
-          </View>
-        ) : null}
-      </View>
-    );
-  };
-
-  const openNewOrder = useCallback(() => {
-    if (!rolePrefix) return;
-    router.push(`${rolePrefix}/commandes-pharmacie/new` as never);
-  }, [rolePrefix, router]);
-
-  const canCancel =
-    !!order && !['terminee', 'refusee', 'annulee'].includes(order.status);
-
-  const confirmCancel = () => {
-    Alert.alert('Annuler la commande', 'Confirmez-vous l’annulation ?', [
-      { text: 'Non', style: 'cancel' },
-      { text: 'Oui, annuler', style: 'destructive', onPress: () => statusMut.mutate({ status: 'annulee' }) },
-    ]);
-  };
-
-  const renderRequesterActions = () => {
-    if (!order || isReceiver) return null;
-    if (!rolePrefix && !canCancel) return null;
-
-    return (
-      <View style={styles.requesterActions}>
-        {rolePrefix ? (
-          <Button title="Nouvelle commande" onPress={openNewOrder} fullWidth />
-        ) : null}
-        {canCancel ? (
-          <Button
-            title="Annuler la commande"
-            variant="outline"
-            loading={statusMut.isPending}
-            onPress={confirmCancel}
-            fullWidth
-          />
-        ) : null}
-      </View>
-    );
-  };
-
-  const headerRight =
-    mode === 'sent' && rolePrefix ? (
-      <HeaderActionButton kind="add" onPress={openNewOrder} />
-    ) : null;
-
   if (orderQ.isLoading) {
     return (
       <StackChromeScreen>
-        <ActivityIndicator style={[styles.loader, { marginTop: contentTopInset }]} color={c.primary} />
+        <ActivityIndicator style={styles.loader} color={c.primary} />
       </StackChromeScreen>
     );
   }
@@ -313,180 +220,241 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   if (!order) {
     return (
       <StackChromeScreen>
-        <View style={{ paddingTop: contentTopInset, flex: 1 }}>
-          <ErrorState
-            title="Commande indisponible"
-            error={orderQ.error}
-            onRetry={() => void orderQ.refetch()}
-          />
+        <View style={styles.errorWrap}>
+          <ErrorState title="Commande indisponible" error={orderQ.error} onRetry={() => void orderQ.refetch()} />
         </View>
       </StackChromeScreen>
     );
   }
 
+  const statusActions = isReceiver ? pharmacyStatusActions(order.status) : [];
+  const offersRefusal = statusActions.some((action) => action.status === 'refusee');
+  const canCancel = !offersRefusal && !['terminee', 'refusee', 'annulee'].includes(order.status);
+  const requesterPhone = order.requester_phone || requesterQ.data?.phone || null;
+  const orderedByLine = hasStaffRequester
+    ? pharmacyOrderOrderedByLabel(order, userId, { pharmacyView: isReceiver }) ??
+      personDisplayName(requesterQ.data?.first_name, requesterQ.data?.last_name, 'Professionnel')
+    : pharmacyOrderOrderedByLabel(order, userId);
+  const deliveryAddress = order.delivery_address?.formatted_address || order.delivery_address?.label || null;
+
+  const detailLines: Array<{ label: string; value: string; tone?: 'error' }> = [];
+  if (isPatientViewer) {
+    if (order.relative_id) detailLines.push({ label: 'Pour', value: patientLabel });
+  } else if (!isReceiver) {
+    detailLines.push({ label: 'Pharmacie', value: pharmacyLabel });
+  }
+  if (order.relative_id && !isPatientViewer) {
+    detailLines.push({
+      label: 'Titulaire',
+      value: personDisplayName(patientQ.data?.first_name, patientQ.data?.last_name, '—'),
+    });
+  }
+  if (order.desired_fulfillment_date) {
+    detailLines.push({ label: 'Date souhaitée', value: formatPharmacyDesiredDate(order.desired_fulfillment_date) });
+  }
+  if (deliveryAddress) detailLines.push({ label: 'Adresse de livraison', value: deliveryAddress });
+  if (order.requester_comment) detailLines.push({ label: 'Commentaire', value: order.requester_comment });
+  if (order.pharmacy_note) detailLines.push({ label: 'Note de la pharmacie', value: order.pharmacy_note });
+  if (order.rejection_reason) {
+    detailLines.push({ label: 'Motif de refus', value: order.rejection_reason, tone: 'error' });
+  }
+
+  const linkItems: SettingsRowProps[] = [];
+  const prescriptionCount = order.prescription_document_ids.length;
+  const prescriptionsHref = pharmacyOrderPrescriptionsHref(rolePrefix, mode, orderId);
+  if (prescriptionCount > 0 && prescriptionsHref) {
+    linkItems.push({
+      icon: FileText,
+      label: prescriptionCount > 1 ? 'Ordonnances jointes' : 'Ordonnance jointe',
+      value: String(prescriptionCount),
+      onPress: () => router.push(prescriptionsHref),
+    });
+  }
+  if (isReceiver) {
+    linkItems.push({
+      icon: UserRound,
+      label: 'Fiche patient',
+      onPress: () => router.push(staffPatientHref('/(pro)', order.patient_id)),
+    });
+    if (hasStaffRequester) {
+      linkItems.push({
+        icon: Stethoscope,
+        label: 'Fiche du professionnel',
+        onPress: () =>
+          router.push({ pathname: '/(pro)/professionnel/[id]', params: { id: order.requester_id } }),
+      });
+    }
+  }
+
+  const confirmCancel = () => {
+    Alert.alert('Annuler la commande ?', undefined, [
+      { text: 'Non', style: 'cancel' },
+      { text: 'Oui, annuler', style: 'destructive', onPress: () => statusMut.mutate({ status: 'annulee' }) },
+    ]);
+  };
+
+  const submitReject = () => {
+    const reason = rejectReason.trim();
+    if (!reason) {
+      toast('Motif de refus requis', { type: 'error' });
+      return;
+    }
+    statusMut.mutate({ status: 'refusee', rejection_reason: reason });
+    setShowRejectForm(false);
+  };
+
+  const sendDraft = () => {
+    const text = draft.trim();
+    if (!text || sendMut.isPending) return;
+    sendMut.mutate(text);
+  };
+
   return (
-    <StackChromeScreen headerRight={headerRight}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={contentTopInset}
-        style={styles.root}
-      >
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={[scrollConfig.contentContainerStyle, styles.content]}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Card style={styles.summaryCard}>
-            <Row justify="between" align="center" gap={spacing[2]}>
-              <AppText style={styles.summaryTitle} numberOfLines={2}>{patientLabel}</AppText>
-              <View style={styles.statusBadge}>
-                <AppText style={styles.statusText}>{pharmacyOrderStatusLabel(order.status)}</AppText>
-              </View>
+    <StackChromeScreen>
+      <ScreenKeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.hero}>
+            <Row justify="between" align="start" gap={spacing[2]}>
+              <AppText variant="title" style={styles.heroTitle} accessibilityRole="header">
+                {isPatientViewer ? pharmacyLabel : patientLabel}
+              </AppText>
+              <Badge label={pharmacyOrderStatusLabel(order.status)} variant={pharmacyOrderStatusBadgeVariant(order.status)} />
             </Row>
-            <AppText style={styles.summaryDate}>
-              {formatPharmacyOrderDate(order.created_at)}
-              {' · '}
-              {pharmacyFulfillmentLabel(order.fulfillment_mode)}
+            <AppText variant="secondary">
+              {[pharmacyFulfillmentLabel(order.fulfillment_mode), formatPharmacyOrderDate(order.created_at)]
+                .filter(Boolean)
+                .join(' · ')}
             </AppText>
-            <AppText style={styles.line}>
-              Patient : {patientLabel}
-            </AppText>
-            {isReceiver ? (
-              <Pressable
-                onPress={() => router.push(`/(pro)/patient/${order.patient_id}` as never)}
-                accessibilityRole="button"
-              >
-                <AppText style={[styles.line, styles.patientLink]}>Voir la fiche patient</AppText>
-              </Pressable>
-            ) : null}
-            {order.relative_id ? (
-              <AppText style={styles.line}>
-                Titulaire :{' '}
-                {personDisplayName(patientQ.data?.first_name, patientQ.data?.last_name, '—')}
-              </AppText>
-            ) : null}
-            {pharmacyOrderHasStaffRequester(order) && order.requester_id !== userId ? (
-              <>
-                <AppText style={styles.orderedBy}>
-                  {pharmacyOrderOrderedByLabel(order, userId, { pharmacyView: isReceiver })
-                    ?? personDisplayName(requesterQ.data?.first_name, requesterQ.data?.last_name, 'Professionnel')}
-                </AppText>
-                {isReceiver && (order.requester_phone || requesterQ.data?.phone) ? (
-                  <AppText style={styles.line}>
-                    Téléphone : {order.requester_phone || requesterQ.data?.phone}
-                  </AppText>
-                ) : null}
-                {isReceiver ? (
-                  <>
-                    <Pressable
-                      onPress={() => router.push(`/(pro)/professionnel/${order.requester_id}` as never)}
-                      accessibilityRole="button"
-                    >
-                      <AppText style={[styles.line, styles.patientLink]}>Voir la fiche du professionnel</AppText>
-                    </Pressable>
-                    <Row gap={spacing[2]} wrap>
-                      {buildPhoneContactActions(order.requester_phone || requesterQ.data?.phone).map((action) => (
-                        <Button
-                          key={action.key}
-                          title={action.label}
-                          size="sm"
-                          variant={action.key === 'phone' ? 'primary' : 'outline'}
-                          onPress={action.onPress}
-                        />
-                      ))}
-                    </Row>
-                  </>
-                ) : null}
-              </>
-            ) : pharmacyOrderOrderedByLabel(order, userId) ? (
-              <AppText style={styles.orderedBy}>{pharmacyOrderOrderedByLabel(order, userId)}</AppText>
-            ) : null}
-            <AppText style={styles.line} numberOfLines={2}>Pharmacie : {pharmacyLabel}</AppText>
-            <AppText style={styles.line}>Mode : {pharmacyFulfillmentLabel(order.fulfillment_mode)}</AppText>
-            {order.desired_fulfillment_date ? (
-              <AppText style={styles.line}>Date souhaitée : {order.desired_fulfillment_date}</AppText>
-            ) : null}
-            {order.delivery_address?.formatted_address || order.delivery_address?.label ? (
-              <AppText style={styles.line}>
-                Adresse : {order.delivery_address.formatted_address ?? order.delivery_address.label}
-              </AppText>
-            ) : null}
-            {order.requester_comment ? (
-              <AppText style={styles.comment}>Commentaire : {order.requester_comment}</AppText>
-            ) : null}
-            {order.rejection_reason ? (
-              <AppText style={styles.errorLine}>Motif de refus : {order.rejection_reason}</AppText>
-            ) : null}
-            {order.pharmacy_note ? (
-              <AppText style={styles.comment}>Note pharmacie : {order.pharmacy_note}</AppText>
-            ) : null}
+            {orderedByLine ? <AppText variant="secondary">{orderedByLine}</AppText> : null}
+          </View>
 
-            {order.prescription_document_ids.length ? (
-              <ActionRowCard
-                title="Ordonnances jointes"
-                body={
-                  order.prescription_document_ids.length === 1
-                    ? '1 fichier · consulter et télécharger'
-                    : `${order.prescription_document_ids.length} fichiers · consulter et télécharger`
-                }
-                Icon={FileText}
-                iconColor={c.primaryDark}
-                iconBg={c.primaryLight}
-                onPress={() => {
-                  const path = pharmacyOrderPrescriptionsPath(rolePrefix, mode, orderId);
-                  if (path) router.push(path as never);
-                }}
-                accessibilityHint="Ouvre la liste des ordonnances"
-              />
-            ) : null}
+          {statusActions.length > 0 ? (
+            <View style={styles.actions}>
+              {statusActions.map((action) => (
+                <Button
+                  key={action.status}
+                  title={action.label}
+                  variant={action.variant}
+                  loading={statusMut.isPending}
+                  fullWidth
+                  onPress={() => {
+                    if (action.status === 'refusee') {
+                      setShowRejectForm(true);
+                      return;
+                    }
+                    statusMut.mutate({ status: action.status });
+                  }}
+                />
+              ))}
+              {showRejectForm ? (
+                <View style={styles.actions}>
+                  <Input
+                    label="Motif de refus"
+                    value={rejectReason}
+                    onChangeText={setRejectReason}
+                    placeholder="Obligatoire"
+                  />
+                  <Row gap={spacing[2]}>
+                    <View style={styles.flexCell}>
+                      <Button
+                        title="Annuler"
+                        variant="outline"
+                        fullWidth
+                        onPress={() => {
+                          setShowRejectForm(false);
+                          setRejectReason('');
+                        }}
+                      />
+                    </View>
+                    <View style={styles.flexCell}>
+                      <Button title="Refuser" loading={statusMut.isPending} fullWidth onPress={submitReject} />
+                    </View>
+                  </Row>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
-            {renderPharmacyActions()}
-            {isReceiver && canCancel ? (
-              <Button
-                title="Annuler la commande"
-                variant="outline"
-                loading={statusMut.isPending}
-                onPress={confirmCancel}
-                fullWidth
-              />
-            ) : null}
-            {renderRequesterActions()}
-          </Card>
-
-          <AppText style={styles.chatTitle}>Échanges</AppText>
-          {messagesQ.isError && !messagesQ.data ? (
-            <ErrorState
-              title="Échanges indisponibles"
-              error={messagesQ.error}
-              onRetry={() => void messagesQ.refetch()}
-            />
-          ) : !messages.length ? (
-            <EmptyState
-              Icon={MessageCircle}
-              title="Pas encore de message"
-              description="Utilisez le fil ci-dessous pour échanger avec votre interlocuteur."
-            />
-          ) : (
-            <View style={styles.thread}>
-              {messages.map((msg) => (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.bubble,
-                    msg.author_id === userId ? styles.bubbleMine : styles.bubbleOther,
-                  ]}
-                >
-                  <AppText style={styles.author}>{msg.author_name ?? 'Utilisateur'}</AppText>
-                  <AppText style={styles.body}>{msg.body}</AppText>
+          {isReceiver && hasStaffRequester && requesterPhone ? (
+            <Row gap={spacing[2]}>
+              {buildPhoneContactActions(requesterPhone).map((action) => (
+                <View key={action.key} style={styles.flexCell}>
+                  <Button title={action.label} size="sm" variant="secondary" fullWidth onPress={action.onPress} />
                 </View>
               ))}
+            </Row>
+          ) : null}
+
+          {detailLines.length > 0 ? (
+            <View style={sectionStyles.section}>
+              <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
+                Détails
+              </AppText>
+              <Card padding="none">
+                {detailLines.map((line, index) => (
+                  <Fragment key={line.label}>
+                    {index > 0 ? <View style={styles.divider} /> : null}
+                    <View style={styles.detailRow}>
+                      <AppText variant="caption">{line.label}</AppText>
+                      <AppText variant="body" style={line.tone === 'error' ? styles.errorText : undefined}>
+                        {line.value}
+                      </AppText>
+                    </View>
+                  </Fragment>
+                ))}
+              </Card>
             </View>
-          )}
+          ) : null}
+
+          {linkItems.length > 0 ? <SettingsSection items={linkItems} /> : null}
+
+          {canCancel ? (
+            <SettingsSection
+              items={[
+                {
+                  icon: XCircle,
+                  label: 'Annuler la commande',
+                  destructive: true,
+                  onPress: statusMut.isPending ? undefined : confirmCancel,
+                },
+              ]}
+            />
+          ) : null}
+
+          <View style={sectionStyles.section}>
+            <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
+              Échanges
+            </AppText>
+            {messagesQ.isError && !messagesQ.data ? (
+              <ErrorState
+                title="Échanges indisponibles"
+                error={messagesQ.error}
+                onRetry={() => void messagesQ.refetch()}
+              />
+            ) : messagesQ.isLoading ? (
+              <ActivityIndicator color={c.primary} />
+            ) : !messages.length ? (
+              <AppText variant="secondary" style={styles.threadEmpty}>
+                Aucun message pour le moment.
+              </AppText>
+            ) : (
+              <View style={styles.thread}>
+                {messages.map((msg) => (
+                  <View
+                    key={msg.id}
+                    style={[styles.bubble, msg.author_id === userId ? styles.bubbleMine : styles.bubbleOther]}
+                  >
+                    <AppText variant="caption">{msg.author_name ?? 'Utilisateur'}</AppText>
+                    <AppText variant="body">{msg.body}</AppText>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
 
         {canPost ? (
-          <View style={styles.composer}>
+          <View style={[styles.composer, composerInset]}>
             <TextInput
               value={draft}
               onChangeText={setDraft}
@@ -494,30 +462,30 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
               placeholderTextColor={c.textTertiary}
               style={styles.input}
               multiline
+              accessibilityLabel="Votre message"
             />
             <Pressable
-              onPress={() => {
-                const text = draft.trim();
-                if (!text || sendMut.isPending) return;
-                sendMut.mutate(text);
-              }}
-              style={styles.sendBtn}
+              onPress={sendDraft}
+              disabled={!draft.trim() || sendMut.isPending}
+              style={[styles.sendBtn, !draft.trim() && styles.sendBtnDisabled]}
               accessibilityRole="button"
               accessibilityLabel="Envoyer"
             >
               {sendMut.isPending ? (
-                <ActivityIndicator color={c.textInverse} size="small" />
+                <ActivityIndicator color={c.onPrimary} size="small" />
               ) : (
-                <Send size={iconSize.sm} color={c.textInverse} strokeWidth={2.5} />
+                <Send size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
               )}
             </Pressable>
           </View>
         ) : (
-          <View style={styles.composerClosed}>
-            <AppText style={styles.composerClosedText}>Conversation fermée pour cette commande.</AppText>
+          <View style={[styles.composerClosed, composerInset]}>
+            <AppText variant="secondary" style={styles.composerClosedText}>
+              Conversation fermée pour cette commande.
+            </AppText>
           </View>
         )}
-      </KeyboardAvoidingView>
+      </ScreenKeyboardAvoidingView>
     </StackChromeScreen>
   );
 }
@@ -529,83 +497,39 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
       paddingHorizontal: spacing[4],
+      paddingTop: spacing[4],
       paddingBottom: spacing[6],
-      gap: spacing[3],
+      gap: spacing[6],
     },
     loader: { marginTop: spacing[8] },
-    summaryCard: { gap: spacing[2] },
-    summaryTitle: {
-      flex: 1,
-      minWidth: 0,
-      ...font.semiBold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
+    errorWrap: { paddingTop: spacing[3], flex: 1 },
+    hero: { gap: spacing[1] },
+    heroTitle: { flex: 1, minWidth: 0 },
+    actions: { gap: spacing[2] },
+    flexCell: { flex: 1, minWidth: 0 },
+    detailRow: {
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      gap: spacing[0.5],
     },
-    orderedBy: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.primaryDark,
-      lineHeight: fontSize.sm * 1.35,
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+      marginLeft: spacing[4],
     },
-    summaryDate: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    statusBadge: {
-      alignSelf: 'flex-start' as const,
-      paddingHorizontal: spacing[2],
-      paddingVertical: spacing[0.5],
-      borderRadius: radius.full,
-      backgroundColor: c.primaryLight,
-    },
-    statusText: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.primaryDark,
-    },
-    line: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    patientLink: {
-      color: c.primary,
-      ...font.semiBold,
-    },
-    comment: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    errorLine: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.error,
-    },
-    actions: { gap: spacing[2], marginTop: spacing[2] },
-    requesterActions: { gap: spacing[2], marginTop: spacing[3] },
-    rejectBlock: { gap: spacing[2], marginTop: spacing[2] },
-    chatTitle: {
-      marginTop: spacing[2],
-      ...font.semiBold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
-    },
+    errorText: { color: c.error },
+    threadEmpty: { paddingHorizontal: spacing[1] },
     thread: {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
       gap: spacing[2],
     },
     bubble: {
-      maxWidth: '78%' as const,
+      maxWidth: '80%' as const,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2],
       borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.border,
+      gap: spacing[0.5],
     },
     bubbleMine: {
       alignSelf: 'flex-end' as const,
@@ -614,19 +538,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     bubbleOther: {
       alignSelf: 'flex-start' as const,
       backgroundColor: c.surface,
-    },
-    author: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      marginBottom: spacing[1],
-    },
-    body: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.45,
-      flexShrink: 1,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
     },
     composer: {
       flexDirection: 'row' as const,
@@ -634,44 +547,42 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       gap: spacing[2],
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3],
-      borderTopWidth: 1,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
       backgroundColor: c.surface,
     },
     input: {
       flex: 1,
-      minHeight: 44,
+      minHeight: MIN_TOUCH_TARGET,
       maxHeight: 120,
       paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
+      paddingVertical: spacing[2.5],
       borderRadius: radius.lg,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       backgroundColor: c.surface,
       ...font.regular,
-      fontSize: fontSize.sm,
+      fontSize: fontSize.base,
       color: c.textPrimary,
     },
     sendBtn: {
-      width: 44,
-      height: 44,
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
       borderRadius: radius.full,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       backgroundColor: c.primary,
     },
+    sendBtnDisabled: { opacity: 0.4 },
     composerClosed: {
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3],
-      borderTopWidth: 1,
+      borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
-      backgroundColor: c.surfaceSubtle,
+      backgroundColor: c.surface,
     },
     composerClosedText: {
       textAlign: 'center' as const,
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
     },
   };
 }

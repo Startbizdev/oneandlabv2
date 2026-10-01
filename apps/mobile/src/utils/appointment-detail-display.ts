@@ -394,10 +394,9 @@ export function getAddressComplement(apt: Appointment): string {
 }
 
 export function getCancellationMotifLine(apt: Appointment): string {
-  const ext = apt as unknown as Record<string, unknown>;
-  const reasonCode = String(ext.cancellation_reason ?? '').trim();
+  const reasonCode = (apt.cancellation_reason ?? '').trim();
   const reason = reasonCode ? (CANCELLATION_REASONS[reasonCode] ?? reasonCode) : '';
-  const comment = String(ext.cancellation_comment ?? '').trim();
+  const comment = (apt.cancellation_comment ?? '').trim();
   const parts = [reason, comment].filter(Boolean);
   return parts.join(' — ');
 }
@@ -513,11 +512,10 @@ export function buildAppointmentDetailKvRows(
     if (notes) rows.push({ label: 'Message', value: notes });
   }
 
-  const ext = apt as unknown as Record<string, unknown>;
-  if (!opts.hideCreatedAt && ext.created_at) {
+  if (!opts.hideCreatedAt && apt.created_at) {
     rows.push({
       label: 'Créé le',
-      value: dayjs(String(ext.created_at)).format('D MMMM YYYY à HH:mm'),
+      value: dayjs(apt.created_at).format('D MMMM YYYY à HH:mm'),
     });
   }
 
@@ -525,9 +523,8 @@ export function buildAppointmentDetailKvRows(
 }
 
 export function formatAppointmentCreatedAtMeta(apt: Appointment): string | null {
-  const ext = apt as unknown as Record<string, unknown>;
-  if (!ext.created_at) return null;
-  const d = dayjs(String(ext.created_at));
+  if (!apt.created_at) return null;
+  const d = dayjs(apt.created_at);
   return d.isValid() ? `Créé le ${d.format('D MMM YYYY à HH:mm')}` : null;
 }
 

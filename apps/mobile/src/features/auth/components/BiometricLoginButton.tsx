@@ -1,4 +1,4 @@
-import { iconSize, useAppColors } from '@/theme';
+import { ICON_STROKE_WIDTH, iconSize, useAppColors } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
 import { Fingerprint, ScanFace } from 'lucide-react-native';
 import {
@@ -112,7 +112,7 @@ export function BiometricLoginButton({ onSuccess }: Props) {
       fullWidth
       loading={loading}
       onPress={() => void signIn()}
-      leftIcon={<Icon size={iconSize.md} color={c.textLink} strokeWidth={2} />}
+      leftIcon={<Icon size={iconSize.md} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />}
     />
   );
 }

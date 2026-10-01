@@ -1,39 +1,47 @@
-import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
-import { CarePictogram } from '@/components/ui/CarePictogram';
-import { hexToRgba } from '@/theme/color-utils';
-import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, X } from 'lucide-react-native';
+import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import {
   isCareCategoryWithoutBookingOptions,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { NursePassageNursingItem } from '@oneandlab/shared-types';
+import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonList } from '@/components/ui/skeletons';
 import {
   fetchCareCategories,
   fetchCareCategoryOptions,
   type CareCategory,
 } from '@/features/categories/api/categories.service';
+import { CareIcon } from '@/features/categories/components/CareIcon';
 import { CareServiceQuickOptionsSheet } from '@/features/appointments/form/components/CareServiceQuickOptionsSheet';
 import type { BookingServiceFormSlice } from '@/features/appointments/form/utils/booking-service-form-slice';
+import { queryKeys } from '@/lib/query-keys';
+import { hexToRgba } from '@/theme/color-utils';
+import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
+import { useAppColors } from '@/theme/use-app-colors';
+import {
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  type Theme,
+} from '@/theme';
 import {
   buildPassageNursingItemLabel,
   formatPassageNursingItemLabel,
 } from '../utils/passage-nursing-item-label';
-import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/components/ui/Button';
-import { queryKeys } from '@/lib/query-keys';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   items: NursePassageNursingItem[];
   onChange: (items: NursePassageNursingItem[]) => void;
-  /** Dans un bottom sheet parent — liste inline, pas de second sheet. */
-  embedded?: boolean;
-  /** Sheet parent ouvert (reset vue ajout). */
-  sheetOpen?: boolean;
+  /** Feuille parente ouverte : réinitialise la vue d'ajout. */
+  sheetOpen: boolean;
   onUiPhaseChange?: (
     phase: 'picker' | 'options' | 'selected',
     meta?: { categoryName?: string },
@@ -54,14 +62,13 @@ function toNursingItem(
   };
 }
 
-export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiPhaseChange }: Props) {
+/** Sélection des soins d'un passage, affichée dans la feuille parente. */
+export function PassageCareSection({ items, onChange, sheetOpen, onUiPhaseChange }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [addingMore, setAddingMore] = useState(false);
   const [optionsCat, setOptionsCat] = useState<CareCategory | null>(null);
-  const [optionsVisible, setOptionsVisible] = useState(false);
 
   const categoriesQ = useQuery({
     queryKey: queryKeys.categories.list('nursing', 'picker'),
@@ -74,35 +81,22 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
   const categories = categoriesQ.data ?? [];
 
   useEffect(() => {
-    if (embedded && sheetOpen) setAddingMore(false);
-  }, [embedded, sheetOpen]);
+    if (sheetOpen) setAddingMore(false);
+  }, [sheetOpen]);
 
-  const showInlineOptions = embedded && optionsVisible && optionsCat != null;
-  const showInlinePicker = embedded && !showInlineOptions && (items.length === 0 || addingMore);
+  const showOptions = optionsCat != null;
+  const showPicker = !showOptions && (items.length === 0 || addingMore);
 
   useEffect(() => {
-    if (!embedded || !onUiPhaseChange) return;
-    if (showInlineOptions) {
+    if (!onUiPhaseChange) return;
+    if (showOptions) {
       onUiPhaseChange('options', { categoryName: optionsCat?.name ?? undefined });
       return;
     }
-    if (showInlinePicker) {
-      onUiPhaseChange('picker');
-      return;
-    }
-    onUiPhaseChange('selected');
-  }, [
-    embedded,
-    onUiPhaseChange,
-    showInlineOptions,
-    showInlinePicker,
-    optionsCat?.name,
-  ]);
+    onUiPhaseChange(showPicker ? 'picker' : 'selected');
+  }, [onUiPhaseChange, showOptions, showPicker, optionsCat?.name]);
 
-  const closeInlineOptions = useCallback(() => {
-    setOptionsVisible(false);
-    setOptionsCat(null);
-  }, []);
+  const closeOptions = useCallback(() => setOptionsCat(null), []);
 
   const selectedIds = useMemo(() => new Set(items.map((i) => i.category_id)), [items]);
 
@@ -141,12 +135,10 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
       const optionCount = ready.options?.length ?? 0;
       if (isCareCategoryWithoutBookingOptions(ready) || optionCount === 0) {
         addItem({ category_id: ready.id, label: ready.name });
-        setPickerOpen(false);
         setAddingMore(false);
         return;
       }
       setOptionsCat(ready);
-      setOptionsVisible(true);
     },
     [addItem, ensureCategoryReady, selectedIds],
   );
@@ -155,179 +147,141 @@ export function PassageCareSection({ items, onChange, embedded, sheetOpen, onUiP
     (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => {
       if (!optionsCat) return;
       addItem(toNursingItem(payload.service, payload.slice, optionsCat));
-      setOptionsVisible(false);
       setOptionsCat(null);
-      setPickerOpen(false);
       setAddingMore(false);
     },
     [addItem, optionsCat],
   );
 
-  const categoryList = (
-    <ScrollView
-      contentContainerStyle={styles.pickerList}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      {categories.map((cat) => {
-        const taken = selectedIds.has(cat.id);
-        return (
-          <Pressable
-            key={cat.id}
-            onPress={() => void handlePickCategory(cat)}
-            disabled={taken}
-            style={[
-              styles.pickerRow,
-              {
-                borderColor: c.borderLight,
-                backgroundColor: taken ? c.surfaceAlt : c.surface,
-                opacity: taken ? 0.5 : 1,
-              },
-            ]}
-          >
-            <CarePictogram label={cat.name} type={cat.type} icon={cat.icon} imageUrl={cat.image_url} size={24} />
-            <AppText style={[styles.pickerLabel, { color: c.textPrimary }]}>{cat.name}</AppText>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+  const backLink = (onPress: () => void, label: string) => (
+    <Pressable onPress={onPress} style={styles.backLink} accessibilityRole="button" accessibilityLabel={label}>
+      <ChevronLeft size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
+      <AppText variant="secondary" style={styles.backLinkText}>
+        Retour
+      </AppText>
+    </Pressable>
   );
 
-  return (
-    <View>
-      {!embedded ? (
-        <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Soins</AppText>
-      ) : null}
-
-      {showInlineOptions && optionsCat ? (
-        <>
-          <Pressable
-            onPress={closeInlineOptions}
-            hitSlop={8}
-            style={styles.backLink}
-            accessibilityRole="button"
-            accessibilityLabel="Retour à la liste des soins"
-          >
-            <AppText style={[styles.backLinkText, { color: c.primary }]}>← Retour</AppText>
-          </Pressable>
-          <CareServiceQuickOptionsSheet
-            embedded
-            visible={optionsVisible}
-            category={optionsCat}
-            categories={categories}
-            onlyCategoryOptions
-            confirmLabel="Ajouter"
-            onClose={closeInlineOptions}
-            onConfirm={handleOptionsConfirm}
-          />
-        </>
-      ) : showInlinePicker ? (
-        <>
-          {embedded && items.length > 0 ? (
-            <Pressable
-              onPress={() => setAddingMore(false)}
-              hitSlop={8}
-              style={styles.backLink}
-              accessibilityRole="button"
-              accessibilityLabel="Retour aux soins sélectionnés"
-            >
-              <AppText style={[styles.backLinkText, { color: c.primary }]}>← Retour</AppText>
-            </Pressable>
-          ) : null}
-          {categoryList}
-        </>
-      ) : (
-        <>
-          {items.map((item) => (
-            <View
-              key={item.category_id}
-              style={[
-                styles.careRow,
-                { borderColor: c.primary, backgroundColor: hexToRgba(c.primary, 0.08) },
-              ]}
-            >
-              <View style={styles.careTextCol}>
-                <AppText style={[styles.careName, { color: c.textPrimary }]} numberOfLines={2}>
-                  {formatPassageNursingItemLabel(item, categories)}
-                </AppText>
-              </View>
-              <Pressable
-                onPress={() => removeItem(item.category_id)}
-                hitSlop={8}
-                accessibilityLabel="Retirer le soin"
-              >
-                <X size={iconSize.mdSm} color={c.textSecondary} />
-              </Pressable>
-            </View>
-          ))}
-
-          <Button
-            title="Ajouter un soin"
-            variant="secondary"
-            leftIcon={<Plus size={iconSize.mdSm} color={c.primary} />}
-            onPress={() => (embedded ? setAddingMore(true) : setPickerOpen(true))}
-            style={styles.addBtn}
-          />
-        </>
-      )}
-
-      {!embedded ? (
-        <BottomSheet
-          visible={pickerOpen}
-          onClose={() => setPickerOpen(false)}
-          title="Choisir un soin"
-          snapPoints={['70%']}
-          stackBehavior="push"
-        >
-          {categoryList}
-        </BottomSheet>
-      ) : null}
-
-      {!embedded ? (
+  if (showOptions && optionsCat) {
+    return (
+      <View>
+        {backLink(closeOptions, 'Retour à la liste des soins')}
         <CareServiceQuickOptionsSheet
-          visible={optionsVisible}
+          embedded
+          visible
           category={optionsCat}
           categories={categories}
           onlyCategoryOptions
-          onClose={closeInlineOptions}
+          confirmLabel="Ajouter"
+          onClose={closeOptions}
           onConfirm={handleOptionsConfirm}
         />
-      ) : null}
+      </View>
+    );
+  }
+
+  if (showPicker) {
+    return (
+      <View>
+        {items.length > 0 ? backLink(() => setAddingMore(false), 'Retour aux soins sélectionnés') : null}
+        {categoriesQ.isLoading ? (
+          <SkeletonList count={5} itemHeight={52} gap={spacing[2]} />
+        ) : categoriesQ.isError ? (
+          <ErrorState title="Soins indisponibles" error={categoriesQ.error} onRetry={() => void categoriesQ.refetch()} />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.pickerList}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {categories.map((cat) => {
+              const taken = selectedIds.has(cat.id);
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => void handlePickCategory(cat)}
+                  disabled={taken}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: taken }}
+                  style={[styles.pickerRow, taken ? styles.pickerRowTaken : null]}
+                >
+                  <CareIcon care={cat} variant="well" />
+                  <AppText style={styles.pickerLabel}>{cat.name}</AppText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.selected}>
+      {items.map((item) => {
+        const label = formatPassageNursingItemLabel(item, categories);
+        return (
+          <View key={item.category_id} style={styles.careRow}>
+            <AppText style={styles.careName}>{label}</AppText>
+            <Pressable
+              onPress={() => removeItem(item.category_id)}
+              style={styles.removeBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`Retirer ${label}`}
+            >
+              <X size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+            </Pressable>
+          </View>
+        );
+      })}
+
+      <Button
+        title="Ajouter un soin"
+        variant="secondary"
+        leftIcon={<Plus size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />}
+        onPress={() => setAddingMore(true)}
+      />
     </View>
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c, font }: Theme) {
   return {
-    sectionLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.5,
-      marginBottom: spacing[2],
-    },
+    selected: { gap: spacing[2] },
     careRow: {
       ...layoutRowBetween(spacing[2]),
       borderWidth: 1,
+      borderColor: c.primary,
+      backgroundColor: hexToRgba(c.primary, 0.08),
       borderRadius: radius.lg,
-      padding: spacing[3],
-      marginBottom: spacing[2],
+      paddingLeft: spacing[3],
+      paddingVertical: spacing[1],
     },
-    careTextCol: {
-    minWidth: 0, flex: 1, gap: spacing[0.5] },
-    careName: { ...font.medium, fontSize: fontSize.md },
-    addBtn: { marginTop: spacing[1] },
-    backLink: { marginBottom: spacing[2], alignSelf: 'flex-start' as const },
-    backLinkText: { ...font.semiBold, fontSize: fontSize.sm },
+    careName: { flex: 1, minWidth: 0, ...font.medium },
+    removeBtn: {
+      minWidth: MIN_TOUCH_TARGET,
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    backLink: {
+      ...layoutRowCenter(spacing[1]),
+      minHeight: MIN_TOUCH_TARGET,
+      alignSelf: 'flex-start' as const,
+      marginBottom: spacing[1],
+    },
+    backLinkText: { ...font.semiBold, color: c.primary },
     pickerList: { paddingBottom: spacing[4], gap: spacing[2] },
     pickerRow: {
       ...layoutRowCenter(spacing[3]),
+      minHeight: MIN_TOUCH_TARGET,
       borderWidth: 1,
+      borderColor: c.borderLight,
+      backgroundColor: c.surface,
       borderRadius: radius.lg,
       padding: spacing[3],
     },
-    pickerEmoji: { fontSize: fontSize['2xl'] },
-    pickerLabel: {
-    minWidth: 0, flex: 1, ...font.medium, fontSize: fontSize.md },
+    pickerRowTaken: { backgroundColor: c.surfaceAlt, opacity: 0.5 },
+    pickerLabel: { minWidth: 0, flex: 1, ...font.medium },
   };
 }

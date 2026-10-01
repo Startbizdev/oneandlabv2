@@ -1,14 +1,15 @@
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { PreleveurAppointmentsListScreen } from '@/features/appointments/screens/PreleveurAppointmentsListScreen';
-import { AppointmentsTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { useGreetingTitle } from '@/navigation/use-greeting-title';
 
 export default function PreleveurHome() {
+  const greeting = useGreetingTitle();
   return (
-    <AppointmentsTabScreenFrame>
+    <TabScreenFrame title={greeting}>
       <PreleveurAppointmentsListScreen
-        detailPathPrefix="/(preleveur)/appointment"
         bookHref="/(preleveur)/appointments/new"
         bookLabel="Demander un prélèvement"
       />
-    </AppointmentsTabScreenFrame>
+    </TabScreenFrame>
   );
 }

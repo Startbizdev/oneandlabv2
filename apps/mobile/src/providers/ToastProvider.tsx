@@ -140,8 +140,8 @@ function ToastCard({
       >
         <Shell {...shellProps} style={styles.card}>
           <Row gap={spacing[2.5]} align="center" style={styles.rowInner}>
-            <Icon size={iconSize.smMd} color={meta.iconColor} strokeWidth={2.35} />
-            <AppText style={styles.line} numberOfLines={1} ellipsizeMode="tail">
+            <Icon size={iconSize.sm} color={meta.iconColor} strokeWidth={2.35} />
+            <AppText style={styles.line} numberOfLines={3} ellipsizeMode="tail">
               {toast.line}
             </AppText>
             {action ? (

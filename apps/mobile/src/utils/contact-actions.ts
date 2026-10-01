@@ -1,6 +1,5 @@
 import { Linking } from 'react-native';
 import type { Appointment, AuthUser } from '@oneandlab/shared-types';
-import type { AppColors } from '@/theme/colors';
 import {
   patientContactEmail,
   patientPhone,
@@ -10,7 +9,6 @@ export type PatientContactButton = {
   key: string;
   label: string;
   icon: 'phone' | 'message' | 'email';
-  color: string;
   onPress: () => void;
 };
 
@@ -20,6 +18,13 @@ export type PhoneContactAction = {
   icon: 'phone' | 'message';
   onPress: () => void;
 };
+
+/** Appareil sans téléphonie / SMS / messagerie (tablette, émulateur) : `openURL` rejette. */
+function openContactUrl(url: string): void {
+  Linking.openURL(url).catch((error: unknown) => {
+    console.warn('[contact] lien non ouvert', url.split(':')[0], error);
+  });
+}
 
 export function normalizePhone(phone?: string | null): string {
   return String(phone ?? '')
@@ -36,19 +41,18 @@ export function buildPhoneContactActions(phone?: string | null): PhoneContactAct
       key: 'phone',
       label: 'Appeler',
       icon: 'phone',
-      onPress: () => void Linking.openURL(`tel:${tel}`),
+      onPress: () => openContactUrl(`tel:${tel}`),
     },
     {
       key: 'sms',
-      label: 'Message',
+      label: 'SMS',
       icon: 'message',
-      onPress: () => void Linking.openURL(`sms:${tel}`),
+      onPress: () => openContactUrl(`sms:${tel}`),
     },
   ];
 }
 
 export function buildPatientContactButtons(
-  c: AppColors,
   apt: Appointment,
   viewer?: AuthUser | null,
 ): PatientContactButton[] {
@@ -63,25 +67,23 @@ export function buildPatientContactButtons(
       key: 'phone',
       label: 'Appeler',
       icon: 'phone',
-      color: c.success,
-      onPress: () => void Linking.openURL(`tel:${tel}`),
+      onPress: () => openContactUrl(`tel:${tel}`),
     });
     buttons.push({
       key: 'sms',
-      label: 'Message',
+      label: 'SMS',
       icon: 'message',
-      color: c.primary,
-      onPress: () => void Linking.openURL(`sms:${tel}`),
+      onPress: () => openContactUrl(`sms:${tel}`),
     });
   }
 
-  if (email.href) {
+  const emailHref = email.href;
+  if (emailHref) {
     buttons.push({
       key: 'email',
       label: 'E-mail',
       icon: 'email',
-      color: c.gradientEnd,
-      onPress: () => void Linking.openURL(email.href!),
+      onPress: () => openContactUrl(emailHref),
     });
   }
 

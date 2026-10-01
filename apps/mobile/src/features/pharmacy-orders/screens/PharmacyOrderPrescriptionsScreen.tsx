@@ -1,12 +1,11 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Download, Eye, FileText } from 'lucide-react-native';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Row } from '@/components/layout/primitives';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { IconActionButton } from '@/components/ui/IconActionButton';
@@ -17,14 +16,14 @@ import { useToast } from '@/providers/ToastProvider';
 import { fetchPharmacyOrder } from '../api/pharmacy-orders.service';
 import { fetchMedicalDocumentById } from '@/features/appointments/api/medical-documents.service';
 import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
+/** Ordonnances jointes à une commande pharmacie : aperçu et téléchargement. */
 export function PharmacyOrderPrescriptionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = String(id ?? '');
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const scrollConfig = useStackScrollConfig(styles.content);
   const { show: toast } = useToast();
 
   const orderQ = useQuery({
@@ -68,16 +67,12 @@ export function PharmacyOrderPrescriptionsScreen() {
     if (!exported.ok) toast(exported.error ?? 'Enregistrement impossible', { type: 'error' });
   };
 
-  if (orderQ.isError) {
+  if (orderQ.isError && !orderQ.data) {
     return (
       <StackChromeScreen>
-        <EmptyState
-          Icon={FileText}
-          title="Ordonnances indisponibles"
-          description={orderQ.error instanceof Error ? orderQ.error.message : 'Réessayez plus tard.'}
-          actionLabel="Réessayer"
-          onAction={() => void orderQ.refetch()}
-        />
+        <View style={styles.errorWrap}>
+          <ErrorState title="Ordonnances indisponibles" error={orderQ.error} onRetry={() => void orderQ.refetch()} />
+        </View>
       </StackChromeScreen>
     );
   }
@@ -87,65 +82,55 @@ export function PharmacyOrderPrescriptionsScreen() {
       {loading ? (
         <ActivityIndicator style={styles.loader} color={c.primary} />
       ) : (
-        <ScrollView
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
-        >
-          <AppText style={styles.lead}>
-            {docIds.length === 1
-              ? '1 ordonnance jointe à cette commande.'
-              : `${docIds.length} ordonnances jointes à cette commande.`}
-          </AppText>
-
+        <ScrollView contentContainerStyle={styles.content}>
           {!docIds.length ? (
-            <EmptyState
-              Icon={FileText}
-              title="Aucune ordonnance"
-              description="Aucun fichier n’a été joint à cette commande."
-            />
+            <EmptyState illustration="prescriptions" title="Aucune ordonnance jointe" />
           ) : (
             <View style={styles.list}>
               {docIds.map((documentId, index) => {
-                const meta = docsQ[index]?.data;
-                const title =
-                  docIds.length > 1 ? `Ordonnance ${index + 1}` : 'Ordonnance';
+                const docQ = docsQ[index];
+                const meta = docQ?.data;
+                const title = docIds.length > 1 ? `Ordonnance ${index + 1}` : 'Ordonnance';
                 const subtitle = meta
-                  ? formatDocumentFileSubtitle(meta.document_type, meta.file_name, meta.created_at)
-                  : 'Chargement…';
+                  ? formatDocumentFileSubtitle(meta.created_at)
+                  : docQ?.isError
+                    ? 'Informations indisponibles'
+                    : null;
 
                 return (
                   <ListRowShell
                     key={documentId}
+                    topBorder={index > 0}
                     leading={
                       <View style={styles.iconWrap}>
-                        <FileText size={iconSize.md} color={c.primary} strokeWidth={2} />
+                        <FileText size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
                       </View>
                     }
                     body={
                       <View style={styles.body}>
                         <AppText style={styles.rowTitle}>{title}</AppText>
-                        <AppText style={styles.rowSub} numberOfLines={2}>
-                          {subtitle}
-                        </AppText>
+                        {subtitle ? <AppText variant="caption">{subtitle}</AppText> : null}
                       </View>
                     }
                     trailing={
                       <Row style={styles.actions}>
                         <IconActionButton
                           label={`Voir ${title}`}
+                          variant="muted"
                           onPress={() => {
                             void openDoc(documentId, meta?.file_name);
                           }}
                         >
-                          <Eye size={iconSize.sm} color={c.primary} strokeWidth={2.5} />
+                          <Eye size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
                         </IconActionButton>
                         <IconActionButton
                           label={`Télécharger ${title}`}
+                          variant="secondary"
                           onPress={() => {
                             void downloadDoc(documentId, meta?.file_name);
                           }}
                         >
-                          <Download size={iconSize.sm} color={c.primary} strokeWidth={2.5} />
+                          <Download size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                         </IconActionButton>
                       </Row>
                     }
@@ -166,24 +151,26 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
       paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
       paddingBottom: spacing[8],
-      gap: spacing[3],
+      flexGrow: 1,
     },
     loader: { marginTop: spacing[10] },
-    lead: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
+    errorWrap: { flex: 1, paddingTop: spacing[3] },
+    list: {
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
     },
-    list: { gap: spacing[2] },
     iconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
+      width: spacing[10],
+      height: spacing[10],
+      borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      backgroundColor: c.primaryLight,
+      backgroundColor: c.surfaceAlt,
     },
     body: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     rowTitle: {
@@ -191,14 +178,9 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
-    rowSub: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-    },
     actions: {
       alignItems: 'center' as const,
-      gap: spacing[1],
+      gap: spacing[2],
     },
   };
 }

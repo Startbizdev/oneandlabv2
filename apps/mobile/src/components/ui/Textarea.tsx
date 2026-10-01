@@ -1,9 +1,10 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import React, { useCallback, useState } from 'react';
-import { Platform, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { useInBottomSheet, useSheetTextInputComponent } from './sheet-keyboard-context';
+import { Platform, TextInput, View, type TextInputProps } from 'react-native';
+import { spacing, AppText, useStyles, font, lh, type Theme } from '@/theme';
+import { buildFieldStyles } from './field-styles';
+import { useInBottomSheet, useSheetTextInputComponent, useSheetTextInputRef } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
 interface TextareaProps extends TextInputProps {
@@ -28,9 +29,11 @@ function TextareaComponent(
 ) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const field = useStyles(buildFieldStyles);
 
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
+  const textFieldRef = useSheetTextInputRef(ref);
   const inSheet = useInBottomSheet();
   const borderColor = error
     ? c.borderError
@@ -55,19 +58,20 @@ function TextareaComponent(
   );
 
   return (
-    <View style={styles.wrapper}>
+    <View style={field.wrapper}>
       {label ? (
-        <AppText style={[styles.label, isFocused && styles.labelFocused]}>{label}</AppText>
+        <AppText style={[field.label, isFocused && field.labelFocused]}>{label}</AppText>
       ) : null}
 
       <View
         style={[
+          field.container,
           styles.container,
           { borderColor, borderWidth: isFocused ? 1.5 : 1 },
         ]}
       >
         <TextField
-          ref={ref as never}
+          ref={textFieldRef}
           multiline
           numberOfLines={5}
           textAlignVertical="top"
@@ -93,9 +97,11 @@ function TextareaComponent(
       </View>
 
       {error ? (
-        <AppText style={styles.error}>{error}</AppText>
+        <AppText style={field.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          {error}
+        </AppText>
       ) : hint ? (
-        <AppText style={styles.hint}>{hint}</AppText>
+        <AppText style={field.hint}>{hint}</AppText>
       ) : null}
     </View>
   );
@@ -105,50 +111,20 @@ export const Textarea = React.memo(React.forwardRef(TextareaComponent));
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  wrapper: {
-    gap: spacing[1],
-  },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    letterSpacing: 0.3,
-    color: c.textSecondary,
-    marginBottom: 2,
-  },
-  labelFocused: {
-    color: c.primary,
-  },
-  container: {
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    minHeight: 128,
-    overflow: 'hidden' as const,
-  },
-  input: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    minHeight: 128,
-    lineHeight: fontSize.base * 1.45,
-    ...(Platform.OS === 'android' ? { textAlignVertical: 'top' as const } : {}),
-  },
-  error: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.error,
-    letterSpacing: 0.1,
-  },
-  hint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-};
+    container: {
+      minHeight: 128,
+    },
+    input: {
+      minWidth: 0,
+      flex: 1,
+      ...font.regular,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      minHeight: 128,
+      lineHeight: Math.round(fontSize.base * 1.45),
+      ...(Platform.OS === 'android' ? { textAlignVertical: 'top' as const } : {}),
+    },
+  };
 }
-

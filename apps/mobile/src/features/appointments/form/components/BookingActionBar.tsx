@@ -1,9 +1,8 @@
 import { Platform, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import { BookingPremiumStepCta } from './BookingPremiumStepCta';
-import { elevation, hexToRgba, spacing, useStyles, type Theme } from '@/theme';
+import { hexToRgba, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -23,10 +22,7 @@ export function BookingActionBar({
 }: Props) {
   const styles = useStyles(buildStyles);
 
-  const { bottom } = useSafeAreaInsets();
-  const tabSceneBottom = useTabSceneInsetBottom();
-  const bottomPad =
-    tabSceneBottom > 0 ? tabSceneBottom : Math.max(bottom, spacing[2]);
+  const { footerPadding: bottomPad } = useSceneBottomInset();
 
   const content = (
     <View style={[styles.bar, { paddingBottom: bottomPad }]}>
@@ -60,10 +56,6 @@ function buildStyles({ colors: c }: Theme) {
     flexShrink: 0,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
-    ...elevation.lg,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
   },
   blur: {
     overflow: 'hidden' as const,

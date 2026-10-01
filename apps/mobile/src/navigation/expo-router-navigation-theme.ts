@@ -1,7 +1,7 @@
 import { DefaultTheme, type Theme } from '@react-navigation/native';
 import type { AppColors } from '@/theme/colors';
 
-/** Thème React Navigation / expo-router aligné sur les tokens Cary (iOS 26 NativeTabs). */
+/** Thème React Navigation / expo-router aligné sur les tokens Cary. */
 export function buildExpoRouterNavigationTheme(c: AppColors): Theme {
   return {
     ...DefaultTheme,

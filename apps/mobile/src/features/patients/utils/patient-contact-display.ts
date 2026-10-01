@@ -38,27 +38,24 @@ export function patientRecordEmailLine(p: {
   });
 }
 
-/** 2e ligne liste patients — court uniquement (pas de paragraphe API). */
+/** 2e ligne liste patients : un seul contact (téléphone, sinon e-mail) pour tenir sur une ligne. */
 export function patientListSubtitle(p: {
   email?: string | null;
   email_display?: string | null;
   phone?: string | null;
 }): string {
-  const parts: string[] = [];
   const phone = p.phone?.trim();
-  if (phone) parts.push(phone);
+  if (phone) return phone;
 
   const raw = typeof p.email === 'string' ? p.email.trim() : '';
   if (raw && !isTechnicalPatientEmail(raw)) {
-    parts.push(raw.length > 40 ? `${raw.slice(0, 37)}…` : raw);
-  } else if (isTechnicalPatientEmail(raw)) {
-    const d = typeof p.email_display === 'string' ? p.email_display.trim() : '';
-    if (d && d.length <= 48 && !d.toLowerCase().includes('sans adresse')) {
-      parts.push(d);
-    }
+    return raw.length > 40 ? `${raw.slice(0, 37)}…` : raw;
   }
-
-  return parts.join(' · ');
+  if (isTechnicalPatientEmail(raw)) {
+    const d = typeof p.email_display === 'string' ? p.email_display.trim() : '';
+    if (d && d.length <= 48 && !d.toLowerCase().includes('sans adresse')) return d;
+  }
+  return '';
 }
 
 /** Option sélecteur patient (nom seul à l’écran ; searchText pour le filtre). */

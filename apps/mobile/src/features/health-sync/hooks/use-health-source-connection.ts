@@ -1,6 +1,8 @@
-import { useCallback } from 'react';
-import { Alert } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { readDeviceHealthAccess } from '../native/health-authorization';
+import type { HealthSourceRevokeSheetProps } from '../components/HealthSourceRevokeSheet';
 import { useToast } from '@/providers/ToastProvider';
 import { revokeHealthSource } from '../api/health.service';
 import { useHealthDashboard, useHealthSources, useHealthSyncs } from './use-health-dashboard';
@@ -35,8 +37,15 @@ export function useHealthSourceConnection() {
   const { sync, syncing } = useHealthSync();
   const platform = getHealthPlatformUiConfig();
 
+  const deviceAccessQ = useQuery({
+    queryKey: ['health', 'device-access'],
+    queryFn: readDeviceHealthAccess,
+    staleTime: 0,
+  });
+  useAppForegroundRefetch(deviceAccessQ.refetch);
+
   const activeSources = (sourcesQ.data ?? []).filter((s) => !s.revoked_at);
-  const connected = activeSources.length > 0;
+  const connected = activeSources.length > 0 && deviceAccessQ.data !== 'revoked';
   const primarySource = activeSources[0] ?? null;
   const lastSyncAt = pickLatestSyncAt(
     dashboardQ.data?.summary?.last_sync_at,
@@ -46,41 +55,42 @@ export function useHealthSourceConnection() {
 
   const connectOrSync = useCallback(async () => {
     const ok = await sync();
-    await Promise.all([sourcesQ.refetch(), dashboardQ.refetch(), syncsQ.refetch()]);
+    await Promise.all([sourcesQ.refetch(), dashboardQ.refetch(), syncsQ.refetch(), deviceAccessQ.refetch()]);
     return ok;
-  }, [dashboardQ, sourcesQ, syncsQ, sync]);
+  }, [dashboardQ, deviceAccessQ, sourcesQ, syncsQ, sync]);
 
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+
+  /** Ouvre la confirmation ; la révocation se fait dans `revokeSheet.onConfirm`. */
   const revokeConnection = useCallback(() => {
+    if (primarySource) setRevokeOpen(true);
+  }, [primarySource]);
+
+  const confirmRevoke = useCallback(async () => {
     if (!primarySource) return;
-    Alert.alert(
-      `Déconnecter ${platform.name} ?`,
-      'Cary ne lira plus vos données depuis cette source. Vous pourrez vous reconnecter à tout moment.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnecter',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              try {
-                await revokeHealthSource(primarySource.id);
-                await Promise.all([
-                  sourcesQ.refetch(),
-                  dashboardQ.refetch(),
-                  syncsQ.refetch(),
-                ]);
-                void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.recap });
-                void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.completion });
-                toast(`${platform.name} déconnecté`, { type: 'success' });
-              } catch (e) {
-                toast(e instanceof Error ? e.message : 'Déconnexion impossible', { type: 'error' });
-              }
-            })();
-          },
-        },
-      ],
-    );
+    setRevoking(true);
+    try {
+      await revokeHealthSource(primarySource.id);
+      await Promise.all([sourcesQ.refetch(), dashboardQ.refetch(), syncsQ.refetch()]);
+      void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.recap });
+      void qc.invalidateQueries({ queryKey: healthRecordQueryKeys.completion });
+      setRevokeOpen(false);
+      toast(`${platform.name} déconnecté`, { type: 'success' });
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Déconnexion impossible', { type: 'error' });
+    } finally {
+      setRevoking(false);
+    }
   }, [dashboardQ, platform.name, primarySource, qc, sourcesQ, syncsQ, toast]);
+
+  const revokeSheet: HealthSourceRevokeSheetProps = {
+    visible: revokeOpen,
+    platformName: platform.name,
+    loading: revoking,
+    onConfirm: () => void confirmRevoke(),
+    onClose: () => setRevokeOpen(false),
+  };
 
   const invalidateAll = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['health'] });
@@ -98,6 +108,7 @@ export function useHealthSourceConnection() {
     syncing,
     connectOrSync,
     revokeConnection,
+    revokeSheet,
     invalidateAll,
     refetchAll,
     sourcesQ,

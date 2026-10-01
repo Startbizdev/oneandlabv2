@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import type { Appointment } from '@oneandlab/shared-types';
 import { isPendingIncomingOffer, isBloodTestAppointment, isNursingAppointment, isOfferModalSnoozed } from '@oneandlab/shared-utils';
+import {
+  offerOpenFailureFromError,
+  type OpenIncomingOfferFailure,
+} from '@/lib/errors/offer-open-failure';
 import { fetchAppointment } from '../api/appointments.service';
 
-export type OpenIncomingOfferResult =
-  | { ok: true }
-  | { ok: false; reason: 'invalid' | 'unavailable' | 'already_accepted' | 'network' };
+export type OpenIncomingOfferResult = { ok: true } | { ok: false; reason: OpenIncomingOfferFailure };
 
 function batchKey(apt: Appointment): string | null {
   const bid = apt.creation_batch_id;
@@ -195,10 +197,12 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         presentNonce: previewData ? get().presentNonce : get().presentNonce + 1,
       });
       return { ok: true };
-    } catch {
-      if (previewData) return { ok: true };
+    } catch (error) {
+      const reason = offerOpenFailureFromError(error);
+      if (previewData && (reason === 'network' || reason === 'error')) return { ok: true };
+      if (reason === 'error') console.warn('[offer-queue] ouverture de l’offre impossible', error);
       set({ visible: false, selected: null });
-      return { ok: false, reason: 'network' };
+      return { ok: false, reason };
     }
   },
 

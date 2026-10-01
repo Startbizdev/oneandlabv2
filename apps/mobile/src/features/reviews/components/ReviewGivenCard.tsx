@@ -1,172 +1,57 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import { MessageSquare } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
+import { Card } from '@/components/ui/Card';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { ReviewResponseBlock } from '@/features/reviews/components/ReviewResponseBlock';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
-import {
-  appointmentTypeLabel,
-  formatReviewDate,
-} from '@/features/reviews/utils/review-labels';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import dayjs from 'dayjs';
-import 'dayjs/locale/fr';
+import { formatReviewDate, reviewAppointmentContext } from '@/features/reviews/utils/review-labels';
+import { AppText, iconSize, spacing, useStyles } from '@/theme';
 
-dayjs.locale('fr');
+const AVATAR_SIZE = 40;
 
 interface Props {
   review: Review;
 }
 
 export function ReviewGivenCard({ review }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
-
   const proName = review.reviewee_name?.trim() || 'Professionnel';
   const date = formatReviewDate(review.created_at);
-  const aptMeta = [
-    appointmentTypeLabel(review.appointment_type),
-    review.category_name,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const aptDate = review.appointment_scheduled_at
-    ? dayjs(review.appointment_scheduled_at).format('D MMM YYYY')
-    : null;
+  const context = reviewAppointmentContext(review);
+  const comment = review.comment?.trim();
+  const response = review.response?.trim();
 
   return (
-    <View style={[styles.card, elevation.xs]}>
-      <Cluster
-        gap={spacing[2]}
-        leading={
-          <ProfileAvatar
-            profileImageUrl={review.reviewee_profile_image_url}
-            seed={review.reviewee_id ?? proName}
-            gender={review.reviewee_gender}
-            size={iconSize['4xl']}
-            style={styles.proAvatar}
-          />
-        }
-        actions={date ? <AppText style={styles.date}>{date}</AppText> : undefined}
-      >
-        <View>
-          <AppText style={styles.proLabel}>Pour</AppText>
-          <AppText style={styles.proName} numberOfLines={1}>
-            {proName}
-          </AppText>
+    <Card style={styles.card}>
+      <Row gap={spacing[3]} align="start">
+        <ProfileAvatar
+          profileImageUrl={review.reviewee_profile_image_url}
+          seed={review.reviewee_id ?? proName}
+          gender={review.reviewee_gender}
+          size={AVATAR_SIZE}
+        />
+        <View style={styles.identity}>
+          <AppText variant="headline">{proName}</AppText>
+          {context ? <AppText variant="caption">{context}</AppText> : null}
         </View>
-      </Cluster>
+      </Row>
 
-      <ReviewStars rating={review.rating ?? 0} size={iconSize.mdSm} />
+      <Row gap={spacing[2]} wrap>
+        <ReviewStars rating={review.rating ?? 0} size={iconSize.sm} showValue={false} />
+        {date ? <AppText variant="caption">{date}</AppText> : null}
+      </Row>
 
-      {aptMeta || aptDate ? (
-        <AppText style={styles.context}>
-          {aptMeta}
-          {aptMeta && aptDate ? ' — ' : ''}
-          {aptDate ? `RDV du ${aptDate}` : ''}
-        </AppText>
-      ) : null}
+      {comment ? <AppText variant="body">{comment}</AppText> : null}
 
-      {review.comment?.trim() ? (
-        <AppText style={styles.comment}>{review.comment.trim()}</AppText>
-      ) : null}
-
-      {review.response?.trim() ? (
-        <View style={styles.responseBox}>
-          <Row gap={spacing[1.5]}>
-            <MessageSquare size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2} />
-            <AppText style={styles.responseLabel}>Réponse du professionnel</AppText>
-          </Row>
-          <AppText style={styles.responseText}>{review.response.trim()}</AppText>
-        </View>
-      ) : null}
-
-      {review.is_visible === false ? (
-        <View style={styles.hiddenPill}>
-          <AppText style={styles.hiddenText}>Masqué</AppText>
-        </View>
-      ) : null}
-    </View>
+      {response ? <ReviewResponseBlock label="Réponse du professionnel" text={response} /> : null}
+    </Card>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[4],
-    gap: spacing[3],
-  },
-  proAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.lg,
-    overflow: 'hidden' as const,
-    flexShrink: 0,
-  },
-  proLabel: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-  proName: {
-    ...font.bold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  date: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-  context: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.4,
-  },
-  comment: {
-    ...font.regular,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    lineHeight: fontSize.base * 1.55,
-  },
-  responseBox: {
-    backgroundColor: c.surfaceAlt,
-    borderRadius: radius.lg,
-    padding: spacing[3],
-    gap: spacing[2],
-    borderWidth: 1,
-    borderColor: c.borderLight,
-  },
-  responseLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.3,
-  },
-  responseText: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.5,
-  },
-  hiddenPill: {
-    alignSelf: 'flex-start' as const,
-    backgroundColor: c.surfaceAlt,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  hiddenText: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-};
+    card: { gap: spacing[3] },
+    identity: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+  };
 }

@@ -1,24 +1,20 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
-import { Cluster, Row } from '@/components/layout/primitives';
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Zap } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { api } from '@/api/client';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import {
   normalizeNursePlanLimits,
   type NursePlanLimitsApi,
 } from '@/features/nurse/utils/nurse-plan-limits';
 import { scrollSectionEntering } from '@/lib/platform/list-entering-animation';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PlanLimitsBanner() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { data } = useQuery({
@@ -40,41 +36,26 @@ export function PlanLimitsBanner() {
   const Shell = entering ? Animated.View : View;
 
   return (
-    <Shell entering={entering} style={[styles.card, elevation.sm]}>
-      <Cluster
-        gap={spacing[3]}
-        leading={
-          <View style={styles.iconWrap}>
-            <Zap size={iconSize.sm} color={full ? c.warning : c.primary} strokeWidth={2} />
-          </View>
-        }
+    <Shell entering={entering} style={styles.card}>
+      <Row justify="between" align="center" wrap gap={spacing[2]}>
+        <AppText variant="headline">Offre Découverte</AppText>
+        <AppText style={[styles.count, full && styles.countFull]}>
+          {used} / {max} ce mois-ci
+        </AppText>
+      </Row>
+      <View
+        style={styles.trackBg}
+        accessibilityRole="progressbar"
+        accessibilityLabel="Rendez-vous acceptés ce mois-ci"
+        accessibilityValue={{ min: 0, max, now: Math.min(used, max) }}
       >
-        <Row justify="between" align="center" flex={1} wrap gap={spacing[2]}>
-          <AppText style={styles.title}>Offre Découverte</AppText>
-          <AppText style={[styles.pill, full ? styles.pillFull : styles.pillActive]}>
-            {full ? 'Quota atteint' : 'Ce mois-ci'}
-          </AppText>
-        </Row>
-      </Cluster>
-
-      <AppText style={styles.countText}>
-        <AppText style={[styles.countBig, full && styles.countBigFull]}>{used}</AppText>
-        {' / '}{max} rendez-vous
-      </AppText>
-
-      <AppText style={styles.countText}>
-        {full ? 'Votre limite mensuelle est atteinte. Pro permet de recevoir des rendez-vous sans limite.' : `${Math.max(0, max - used)} rendez-vous encore disponibles ce mois-ci.`}
-      </AppText>
-      <View style={styles.trackBg} accessibilityRole="progressbar" accessibilityLabel="Rendez-vous acceptés ce mois-ci" accessibilityValue={{ min: 0, max, now: Math.min(used, max) }}>
-        <View
-          style={[
-            styles.trackFill,
-            { width: `${pct}%` as `${number}%` },
-            full && styles.trackFull,
-          ]}
-        />
+        <View style={[styles.trackFill, { width: `${pct}%` as `${number}%` }, full && styles.trackFull]} />
       </View>
-
+      <AppText variant="secondary">
+        {full
+          ? 'Limite mensuelle atteinte. L’offre Pro supprime cette limite.'
+          : `Encore ${Math.max(0, max - used)} rendez-vous possibles ce mois-ci.`}
+      </AppText>
       <Button
         title="Découvrir l’offre Pro"
         variant={full ? 'primary' : 'outline'}
@@ -86,73 +67,37 @@ export function PlanLimitsBanner() {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[4],
-    gap: spacing[3],
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  title: {
-    ...font.bold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  pill: {
-    ...font.bold,
-    fontSize: fontSize.xs,
-    letterSpacing: 0.5,
-    paddingHorizontal: spacing[2],
-    paddingVertical: 3,
-    borderRadius: radius.full,
-  },
-  pillActive: {
-    backgroundColor: c.primaryLight,
-    color: c.textLink,
-  },
-  pillFull: {
-    backgroundColor: c.warningLight,
-    color: c.warning,
-  },
-  countText: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  countBig: {
-    ...font.headingExtraBold,
-    fontSize: fontSize.xl,
-    color: c.textLink,
-  },
-  countBigFull: {
-    color: c.warning,
-  },
-  trackBg: {
-    height: 6,
-    backgroundColor: c.surfaceAlt,
-    borderRadius: radius.full,
-    overflow: 'hidden' as const,
-  },
-  trackFill: {
-    height: '100%' as const,
-    backgroundColor: c.primary,
-    borderRadius: radius.full,
-  },
-  trackFull: {
-    backgroundColor: c.warning,
-  },
-};
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      padding: spacing[4],
+      gap: spacing[3],
+    },
+    count: {
+      ...text.secondary,
+      ...font.medium,
+      color: c.textSecondary,
+    },
+    countFull: {
+      color: c.warning,
+    },
+    trackBg: {
+      height: spacing[1.5],
+      backgroundColor: c.surfaceAlt,
+      borderRadius: radius.full,
+      overflow: 'hidden' as const,
+    },
+    trackFill: {
+      height: '100%' as const,
+      backgroundColor: c.primary,
+      borderRadius: radius.full,
+    },
+    trackFull: {
+      backgroundColor: c.warning,
+    },
+  };
 }
-

@@ -49,9 +49,12 @@ export async function registerPushTokenWithBackend(expoPushToken: string): Promi
 
 export async function unregisterPushTokenWithBackend(expoPushToken: string): Promise<void> {
   try {
-    await api.delete('/notifications/device-token', { token: expoPushToken });
-  } catch {
-    /* non bloquant */
+    const res = await api.delete('/notifications/device-token', { token: expoPushToken });
+    if (res.success === false) {
+      console.warn('[push] désenregistrement du token refusé', res.error);
+    }
+  } catch (e) {
+    console.warn('[push] désenregistrement du token impossible', e);
   }
 }
 

@@ -1,6 +1,5 @@
-import { layoutRowWrap } from '@/theme/layout-styles';
 import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { FilterOptionChips } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,7 +9,7 @@ import type {
   ClinicalVitalType,
 } from '@oneandlab/shared-types';
 import { CLINICAL_VITAL_UI } from '@oneandlab/shared-types';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Stack } from '@/components/layout/primitives';
 import {
@@ -21,7 +20,7 @@ import {
 } from '../api/clinical-vitals.service';
 import { validateClinicalVital, type ClinicalVitalFieldErrors } from '../utils/clinical-vital-bounds';
 import { getErrorMessage } from '@/lib/errors/handle-api-error';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -51,6 +50,7 @@ export function ClinicalVitalEditSheet({
   const [valueSecondary, setValueSecondary] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<ClinicalVitalFieldErrors>({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const config = useMemo(() => CLINICAL_VITAL_UI.find((x) => x.type === vitalType), [vitalType]);
 
@@ -64,6 +64,7 @@ export function ClinicalVitalEditSheet({
     );
     setNotes(reading?.notes ?? '');
     setErrors({});
+    setConfirmDelete(false);
   }, [visible, reading, initialType]);
 
   const saveMut = useMutation({
@@ -117,9 +118,7 @@ export function ClinicalVitalEditSheet({
     setErrors({});
   };
 
-  const title = isEdit
-    ? `Modifier — ${config?.label_fr ?? 'Constante'}`
-    : config?.label_fr ?? 'Nouvelle constante';
+  const title = isEdit ? `Modifier · ${config?.label_fr ?? 'Constante'}` : 'Nouvelle mesure';
 
   const snapPoints = useMemo(() => {
     if (config?.has_secondary) return ['90%'];
@@ -128,47 +127,56 @@ export function ClinicalVitalEditSheet({
   }, [config?.has_secondary, isEdit]);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title={title}
       snapPoints={snapPoints}
       stackBehavior={stackBehavior}
       footer={
-        <Stack gap={spacing[2]}>
-          <Button
-            title={isEdit ? 'Enregistrer' : 'Ajouter'}
-            loading={saveMut.isPending}
-            onPress={onSave}
-          />
-          {isEdit ? (
+        confirmDelete ? (
+          <Stack gap={spacing[2]}>
+            <AppText variant="secondary" style={styles.confirmText}>
+              Supprimer définitivement cette mesure ?
+            </AppText>
             <Button
               title="Supprimer"
               variant="destructive"
+              size="lg"
+              fullWidth
               loading={deleteMut.isPending}
               onPress={() => deleteMut.mutate()}
             />
-          ) : null}
-        </Stack>
+            <Button title="Annuler" variant="ghost" fullWidth onPress={() => setConfirmDelete(false)} />
+          </Stack>
+        ) : (
+          <Stack gap={spacing[2]}>
+            <Button
+              title={isEdit ? 'Enregistrer' : 'Ajouter'}
+              size="lg"
+              fullWidth
+              loading={saveMut.isPending}
+              onPress={onSave}
+            />
+            {isEdit ? (
+              <Button
+                title="Supprimer la mesure"
+                variant="dangerOutline"
+                fullWidth
+                onPress={() => setConfirmDelete(true)}
+              />
+            ) : null}
+          </Stack>
+        )
       }
     >
       <Stack gap={spacing[4]}>
         {!isEdit ? (
-          <View style={styles.typeGrid}>
-            {CLINICAL_VITAL_UI.map((item) => {
-              const active = item.type === vitalType;
-              return (
-                <Button
-                  key={item.type}
-                  title={`${item.emoji} ${item.label_fr}`}
-                  variant={active ? 'primary' : 'secondary'}
-                  size="sm"
-                  onPress={() => selectType(item.type)}
-                  accessibilityState={{ selected: active }}
-                />
-              );
-            })}
-          </View>
+          <FilterOptionChips
+            options={CLINICAL_VITAL_UI.map((item) => ({ value: item.type, label: `${item.emoji} ${item.label_fr}` }))}
+            value={vitalType}
+            onChange={selectType}
+          />
         ) : null}
 
         {config?.has_secondary ? (
@@ -219,24 +227,18 @@ export function ClinicalVitalEditSheet({
         />
 
         {saveMut.error || deleteMut.error ? (
-          <AppText style={styles.error} accessibilityRole="alert">
+          <AppText variant="body" style={styles.error} accessibilityRole="alert">
             {getErrorMessage(saveMut.error ?? deleteMut.error)}
           </AppText>
         ) : null}
       </Stack>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    typeGrid: {
-      ...layoutRowWrap(spacing[2]),
-    },
-    error: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.error,
-    },
+    confirmText: { textAlign: 'center' as const },
+    error: { color: c.error },
   };
 }

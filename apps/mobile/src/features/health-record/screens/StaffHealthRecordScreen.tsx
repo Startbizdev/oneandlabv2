@@ -1,53 +1,63 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { RefreshControl, ScrollView, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { SceneScrollView } from '@/components/navigation/SceneScrollView';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import {
-  useStackContentTopInset,
-  useStackScrollConfig,
-  STACK_SCENE_CONTENT_TOP_GAP,
-} from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { clinicalVitalsQueryKey } from '@/features/health-record/api/clinical-vitals.service';
+import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health-record-completion';
 import { PassageFormHealthRecordPanel } from '@/features/nurse-passage/components/PassageFormHealthRecordPanel';
-import { spacing } from '@/theme';
+import { spacing, useStyles } from '@/theme';
 
+/** Carnet de santé d'un patient, vu par l'infirmier ou le pro. */
 export function StaffHealthRecordScreen() {
+  const styles = useStyles(buildStyles);
+  const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
   const patientId = typeof id === 'string' ? id : '';
-  const [refreshKey, setRefreshKey] = useState(0);
-  const scrollConfig = useStackScrollConfig(
-    { paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
-    { extraTop: STACK_SCENE_CONTENT_TOP_GAP },
+
+  const refetchRecord = useCallback(
+    () =>
+      Promise.all([
+        qc.refetchQueries({ queryKey: healthRecordQueryKeys.staffRecap(patientId) }),
+        qc.refetchQueries({ queryKey: clinicalVitalsQueryKey(patientId) }),
+      ]),
+    [qc, patientId],
   );
-  const contentTopInset = useStackContentTopInset();
-  const { refreshing, onRefresh } = useManualRefresh(async () => {
-    setRefreshKey((k) => k + 1);
-  });
+  const { refreshing, onRefresh } = useManualRefresh(refetchRecord);
 
   if (!patientId) {
     return (
       <StackChromeScreen>
-        <View style={{ paddingTop: contentTopInset, paddingHorizontal: spacing[4] }} />
+        <View style={styles.empty}>
+          <EmptyState illustration="error" title="Patient introuvable" />
+        </View>
       </StackChromeScreen>
     );
   }
 
   return (
     <StackChromeScreen>
-      <Stack.Screen options={{ title: 'Carnet de santé' }} />
-      <ScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        <PassageFormHealthRecordPanel
-          patientId={patientId}
-          variant="screen"
-          refreshKey={refreshKey}
-        />
-      </ScrollView>
+      <SceneScrollView contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
+        <PassageFormHealthRecordPanel patientId={patientId} variant="screen" />
+      </SceneScrollView>
     </StackChromeScreen>
   );
+}
+
+function buildStyles() {
+  return {
+    content: {
+      paddingTop: spacing[3],
+      paddingHorizontal: spacing[4],
+    },
+    empty: {
+      flex: 1,
+      minWidth: 0,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
+    },
+  };
 }

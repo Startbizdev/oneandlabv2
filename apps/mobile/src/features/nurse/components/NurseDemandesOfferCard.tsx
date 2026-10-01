@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,7 +17,7 @@ import { RdvListCardBody } from '@/features/appointments/components/RdvListCardB
 import { buildRdvListCardAccessibilityLabel } from '@/features/appointments/components/rdv-list-card-accessibility';
 import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
-import { spacing, animation, useStyles, type Theme } from '@/theme';
+import { spacing, animation, useStyles } from '@/theme';
 
 interface Props {
   row: AppointmentListRow;
@@ -102,12 +102,11 @@ function NurseDemandesOfferCardComponent({ row, index = 0, onPress }: Props) {
 
 export const NurseDemandesOfferCard = React.memo(NurseDemandesOfferCardComponent);
 
-function buildStyles({ colors: c }: Theme) {
+function buildStyles() {
   return {
-  inner: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3.5],
-    paddingBottom: spacing[3.5],
-  },
-};
+    inner: {
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3.5],
+    },
+  };
 }

@@ -8,7 +8,7 @@ import {
   Trash2,
   UserX,
 } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import {
   DetailActionList,
   type DetailActionItem,
@@ -189,13 +189,13 @@ export function PassageDetailActionsSheet({
   ]);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Actions"
       disableScroll
     >
       <DetailActionList actions={actions} />
-    </BottomSheet>
+    </SheetModal>
   );
 }

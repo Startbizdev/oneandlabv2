@@ -61,12 +61,12 @@ export function missingPrescriptionCopy(serviceType?: string): { title: string; 
     return {
       title: 'Prélèvement sans ordonnance médicale',
       description:
-        'Sans prescription, la prise en charge par l’Assurance Maladie et votre complémentaire peut être refusée selon votre contrat.',
+        'Sans prescription, l’Assurance Maladie et la complémentaire santé peuvent refuser la prise en charge.',
     };
   }
   return {
     title: 'Soins sans prescription médicale',
     description:
-      'Sans ordonnance, la prise en charge par l’Assurance Maladie et votre complémentaire peut être refusée selon votre contrat.',
+      'Sans ordonnance, l’Assurance Maladie et la complémentaire santé peuvent refuser la prise en charge.',
   };
 }

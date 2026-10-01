@@ -1,12 +1,6 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import dayjs from 'dayjs';
-import { Route } from 'lucide-react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { Button } from '@/components/ui/Button';
-import { radius, spacing, iconSize, AppText, useLayoutMetrics, centeredCopyMaxWidth, centeredActionMaxWidth, useStyles, font, type Theme } from '@/theme';
-import { hexToRgba } from '@/theme/color-utils';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 type Props = {
   date: string;
@@ -14,78 +8,20 @@ type Props = {
 
 function dateLabel(iso: string): string {
   const today = dayjs().format('YYYY-MM-DD');
-  if (iso === today) return "aujourd'hui";
+  if (iso === today) return 'aujourd’hui';
   if (iso === dayjs(today).add(1, 'day').format('YYYY-MM-DD')) return 'demain';
   return `le ${dayjs(iso).format('dddd D MMMM')}`;
 }
 
 export function TourEmptyPanel({ date }: Props) {
-  const c = useAppColors();
-  const layout = useLayoutMetrics();
-  const styles = useStyles(buildStyles);
-  const copyMaxWidth = centeredCopyMaxWidth(layout);
-  const actionMaxWidth = centeredActionMaxWidth(layout);
   const router = useRouter();
-  const label = dateLabel(date);
-
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={styles.wrap}>
-      <View style={[styles.iconRing, { backgroundColor: hexToRgba(c.primary, 0.1) }]}>
-        <Route size={iconSize['3xl']} color={c.primary} strokeWidth={1.8} />
-      </View>
-
-      <AppText style={[styles.title, { color: c.textPrimary }]}>Rien de prévu ce jour-là</AppText>
-      <AppText style={[styles.description, { color: c.textSecondary, maxWidth: copyMaxWidth }]}>
-        Aucun soin planifié {label}. Parcourez le calendrier pour voir les autres journées.
-      </AppText>
-
-      <View style={[styles.actions, { maxWidth: actionMaxWidth }]}>
-        <Button
-          title="Voir mes rendez-vous"
-          onPress={() => router.push('/(nurse)/(tabs)/appointments' as never)}
-          size="lg"
-          fullWidth
-          variant="secondary"
-        />
-      </View>
-    </Animated.View>
+    <EmptyState
+      illustration="tour"
+      title={`Aucun passage ${dateLabel(date)}`}
+      description="Ajoutez un passage avec le bouton +."
+      actionLabel="Voir mes rendez-vous"
+      onAction={() => router.push('/(nurse)/(tabs)/appointments')}
+    />
   );
-}
-
-function buildStyles({ fontSize }: Theme) {
-  return {
-    wrap: {
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      paddingVertical: spacing[10],
-      paddingHorizontal: spacing[6],
-      gap: spacing[3],
-      minHeight: 360,
-    },
-    iconRing: {
-      width: 88,
-      height: 88,
-      borderRadius: radius.full,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      marginBottom: spacing[1],
-    },
-    title: {
-      ...font.heading,
-      fontSize: fontSize.xl,
-      textAlign: 'center' as const,
-      letterSpacing: -0.4,
-    },
-    description: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      textAlign: 'center' as const,
-      lineHeight: fontSize.sm * 1.55,
-    },
-    actions: {
-      width: '100%' as const,
-      gap: spacing[3],
-      marginTop: spacing[2],
-    },
-  };
 }

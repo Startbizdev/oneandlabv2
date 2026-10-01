@@ -1,12 +1,20 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { View } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
-import { Cluster } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
-import { MessageSquare, Pin } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
-import { showConversationRowActions } from '../utils/conversation-row-actions';
+import { MoreHorizontal, Pin } from 'lucide-react-native';
+import {
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+  ICON_STROKE_WIDTH,
+} from '@/theme';
+import { showConversationRowActions, type ConversationRowAction } from '../utils/conversation-row-actions';
 
 interface Props {
   title: string;
@@ -34,140 +42,99 @@ export function PatientAiConversationRow({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
-  const canLongPress = Boolean(onTogglePin || onArchive || (deletable && onDelete));
+  const hasActions = Boolean(onTogglePin || onArchive || (deletable && onDelete));
 
-  const handleLongPress = () => {
-    if (!canLongPress) return;
+  const openActions = () => {
+    if (!hasActions) return;
 
-    const actions = [];
+    const actions: ConversationRowAction[] = [];
     if (onTogglePin) {
-      actions.push({
-        text: pinned ? 'Désépingler' : 'Épingler',
-        onPress: onTogglePin,
-      });
+      actions.push({ text: pinned ? 'Désépingler' : 'Épingler', onPress: onTogglePin });
     }
     if (onArchive) {
       actions.push({ text: archiveLabel, onPress: onArchive });
     }
     if (deletable && onDelete) {
-      actions.push({
-        text: 'Supprimer',
-        style: 'destructive' as const,
-        onPress: onDelete,
-      });
+      actions.push({ text: 'Supprimer', style: 'destructive', onPress: onDelete });
     }
 
     showConversationRowActions(title, actions);
   };
 
   return (
-    <Pressable
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      onLongPress={canLongPress ? handleLongPress : undefined}
-      delayLongPress={420}
-      style={({ pressed }) => [
-        styles.card,
-        active && styles.cardActive,
-        pressed && styles.cardPressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      accessibilityHint={canLongPress ? 'Maintenir pour épingler, archiver ou supprimer' : undefined}
-    >
-      <Cluster
-        gap={spacing[2.5]}
-        align="start"
-        style={styles.row}
-        leading={
-          <View style={[styles.bubble, active ? styles.bubbleActive : styles.bubbleIdle]}>
-            <MessageSquare
-              size={iconSize.sm}
-              color={active ? c.primary : c.textSecondary}
-              strokeWidth={2}
-            />
-            {pinned ? (
-              <View style={styles.pinBadge}>
-                <Pin size={iconSize['3xs']} color={c.primary} strokeWidth={2.5} fill={c.primary} />
-              </View>
-            ) : null}
-          </View>
-        }
+    <View style={[styles.row, active && styles.rowActive]}>
+      <Pressable
+        onPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress();
+        }}
+        onLongPress={hasActions ? openActions : undefined}
+        delayLongPress={420}
+        style={({ pressed }) => [styles.main, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={pinned ? `${title}, épinglée` : title}
+        accessibilityState={{ selected: active }}
       >
-        <AppText
-          style={[styles.title, active && styles.titleActive]}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-        >
+        <AppText variant="body" style={[styles.title, active && styles.titleActive]}>
           {title}
         </AppText>
-      </Cluster>
-    </Pressable>
+        {pinned ? (
+          <Pin size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+        ) : null}
+      </Pressable>
+      {hasActions ? (
+        <Pressable
+          onPress={openActions}
+          style={({ pressed }) => [styles.more, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Actions pour ${title}`}
+        >
+          <MoreHorizontal size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    card: {
-      alignSelf: 'stretch' as const,
-      borderRadius: radius.lg,
+    row: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      minWidth: 0,
+      borderRadius: radius.md,
       marginBottom: spacing[0.5],
     },
-    cardActive: {
+    rowActive: {
       backgroundColor: c.surfaceAlt,
     },
-    cardPressed: {
-      backgroundColor: c.surfaceAlt,
-      opacity: 0.92,
-    },
-    row: {
-      paddingVertical: spacing[2.5],
-      paddingHorizontal: spacing[3],
+    main: {
+      flex: 1,
       minWidth: 0,
-      alignSelf: 'stretch' as const,
-    },
-    bubble: {
-      width: 32,
-      height: 32,
+      minHeight: MIN_TOUCH_TARGET,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[2],
+      paddingVertical: spacing[2.5],
+      paddingLeft: spacing[3],
       borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      flexShrink: 0,
     },
-    bubbleIdle: {
-      backgroundColor: c.surfaceAlt,
-    },
-    bubbleActive: {
-      backgroundColor: c.primaryLight,
-    },
-    pinBadge: {
-      position: 'absolute' as const,
-      top: -3,
-      right: -3,
-      width: 14,
-      height: 14,
-      borderRadius: radius.full,
-      backgroundColor: c.surface,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+    pressed: {
+      opacity: 0.6,
     },
     title: {
       flex: 1,
       minWidth: 0,
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.45),
-      color: c.textPrimary,
-      letterSpacing: -0.1,
-      paddingTop: 4,
     },
     titleActive: {
       ...font.medium,
-      color: c.textPrimary,
+    },
+    more: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      borderRadius: radius.full,
     },
   };
 }

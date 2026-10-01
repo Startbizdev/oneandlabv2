@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
-import { BookingCareSelectionHeaderTitle } from '@/features/appointments/form/components/BookingCareSelectionHeaderTitle';
-import { HeaderTitleText } from '@/navigation/HeaderTitle';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { bookingCareSelectionTitle } from '../utils/booking-wizard-titles';
 
 type Props = {
   step: number;
@@ -16,7 +15,7 @@ type Props = {
   children: ReactNode;
 };
 
-/** Header glass wizard booking — onglet Réserver ou stack modal. */
+/** Header du wizard booking — tête d'onglet Réserver, ou écran de pile avec retour d'étape. */
 export function BookingWizardChrome({
   step,
   role,
@@ -26,39 +25,22 @@ export function BookingWizardChrome({
   hideBack = false,
   children,
 }: Props) {
-  const title =
-    step === 0 && !hideBack ? (
-      <BookingCareSelectionHeaderTitle role={role} embedded />
-    ) : (
-      <HeaderTitleText title={wizardPageTitle} />
-    );
+  const title = step === 0 && !hideBack ? bookingCareSelectionTitle(role) : wizardPageTitle;
+  const hasStepBack = step > 0 && !hideBack;
 
-  const headerLeft: ReactNode | null | undefined =
-    hideBack ? (
-      null
-    ) : step > 0 ? (
-      <StackHeaderBackButton onPress={onWizardBack} />
-    ) : embeddedInTab ? (
-      null
-    ) : undefined;
-
-  if (embeddedInTab) {
+  if (embeddedInTab && !hasStepBack) {
     return (
-      <TabScreenFrame
-        title={title}
-        headerLeft={headerLeft}
-        headerRight={null}
-        headerVisual="inline"
-        shellStyle={{
-    minWidth: 0, flex: 1 }}
-      >
+      <TabScreenFrame title={title} headerRight={null}>
         {children}
       </TabScreenFrame>
     );
   }
 
   return (
-    <StackChromeScreen title={title} headerLeft={headerLeft}>
+    <StackChromeScreen
+      title={title}
+      headerLeft={hasStepBack ? <HeaderBackButton onPress={onWizardBack} /> : hideBack ? null : undefined}
+    >
       {children}
     </StackChromeScreen>
   );

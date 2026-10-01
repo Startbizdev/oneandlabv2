@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import {
   CreditCard,
   Download,
@@ -12,14 +12,11 @@ import {
   Shield,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
 import {
   formatDocumentFileSubtitle,
   formatDocumentRowTitle,
 } from '@/utils/document-display-name';
-import { useRdvDetailSectionStyles } from '@/features/appointments/detail/components/layout/rdv-detail-section-styles';
-import { SkeletonList } from '@/components/ui/skeletons';
 import {
   cacheMedicalDocument,
   getCachedMedicalDocumentUri,
@@ -53,7 +50,7 @@ export type MedicalDocumentStackItem = {
 };
 
 function buildDocumentRowHint(doc: MedicalDocumentStackItem): string {
-  const base = formatDocumentFileSubtitle(doc.document_type, null, doc.created_at);
+  const base = formatDocumentFileSubtitle(doc.created_at);
   const tags: string[] = [];
   if (doc.profile_newer_than_appointment) tags.push('Version profil à jour');
   if (tags.length === 0) return base;
@@ -100,53 +97,6 @@ export function filterUploadTypesForStack(
   return orderedTypes.filter((t) => replaceAlways.has(t) || !existingTypes.has(t));
 }
 
-// --- en-tête carte ---
-
-export function MedicalDocumentsStackHead({
-  title,
-  subtitle,
-  loading,
-}: {
-  title: string;
-  subtitle: string;
-  loading?: boolean;
-}) {
-  const c = useAppColors();
-  const section = useRdvDetailSectionStyles();
-  const styles = useStyles(buildHeadStyles);
-
-  if (loading) {
-    return (
-      <View style={section.card}>
-        <View style={styles.head}>
-          <AppText style={[styles.title, { color: c.textPrimary }]}>{title}</AppText>
-        </View>
-        <View style={styles.skeletonPad}>
-          <SkeletonList count={3} itemHeight={72} gap={spacing[2]} />
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <Cluster
-      align="start"
-      gap={spacing[3]}
-      style={styles.head}
-      leading={
-        <View style={[styles.headIcon, { backgroundColor: c.primaryLight }]}>
-          <FileText size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
-        </View>
-      }
-    >
-      <View style={styles.headText}>
-        <AppText style={[styles.title, { color: c.textPrimary }]}>{title}</AppText>
-        <AppText style={[styles.sub, { color: c.textSecondary }]}>{subtitle}</AppText>
-      </View>
-    </Cluster>
-  );
-}
-
 export function useMedicalDocumentsStackHeadStyles() {
   return useStyles(buildHeadStyles);
 }
@@ -157,7 +107,6 @@ type StackRowTone = 'primary' | 'muted' | 'ready';
 
 function DocumentStackRow({
   topBorder,
-  rowExtraStyle,
   disabled,
   tone,
   onLeadingPress,
@@ -168,14 +117,13 @@ function DocumentStackRow({
   actions,
 }: {
   topBorder: boolean;
-  rowExtraStyle?: StyleProp<ViewStyle>;
   disabled?: boolean;
   tone: StackRowTone;
   onLeadingPress: () => void;
   leadingLabel: string;
   Icon: LucideIcon;
   label: string;
-  hint: string;
+  hint?: string;
   actions: ReactNode;
 }) {
   const c = useAppColors();
@@ -190,7 +138,7 @@ function DocumentStackRow({
   return (
     <ListRowShell
       topBorder={topBorder}
-      style={[rowExtraStyle, disabled && styles.rowDisabled]}
+      style={disabled ? styles.rowDisabled : undefined}
       leading={
         <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
           <Icon size={iconSize.md} color={iconColor} strokeWidth={2.25} />
@@ -207,12 +155,14 @@ function DocumentStackRow({
           >
             {label}
           </AppText>
-          <AppText
-            style={[styles.hint, styles.shrinkText, { color: hintColor }]}
-            numberOfLines={2}
-          >
-            {hint}
-          </AppText>
+          {hint ? (
+            <AppText
+              style={[styles.hint, styles.shrinkText, { color: hintColor }]}
+              numberOfLines={2}
+            >
+              {hint}
+            </AppText>
+          ) : null}
         </>
       }
       actions={actions}
@@ -240,7 +190,6 @@ export function MedicalDocumentOpenRow({
   onReplace: () => void;
 }) {
   const c = useAppColors();
-  const styles = useStyles(buildRowStyles);
   const Icon = MEDICAL_DOC_ICONS[doc.document_type] ?? FileText;
   const label = formatDocumentRowTitle(doc.document_type);
   const hint = buildDocumentRowHint(doc);
@@ -252,7 +201,6 @@ export function MedicalDocumentOpenRow({
   return (
     <DocumentStackRow
       topBorder={topBorder}
-      rowExtraStyle={styles.rowReady}
       disabled={busy}
       tone="ready"
       onLeadingPress={onPreview}
@@ -431,7 +379,6 @@ export function MedicalDocumentAddRow({
   onAdd: (type: string) => void;
 }) {
   const c = useAppColors();
-  const styles = useStyles(buildRowStyles);
   const Icon = MEDICAL_DOC_ICONS[docType] ?? FileText;
   const label = getDocumentTypeLabel(docType);
   const pick = () => onAdd(docType);
@@ -439,14 +386,13 @@ export function MedicalDocumentAddRow({
   return (
     <DocumentStackRow
       topBorder={topBorder}
-      rowExtraStyle={styles.rowAdd}
       disabled={uploading}
       tone="muted"
       onLeadingPress={pick}
       leadingLabel={`Ajouter ${label}`}
       Icon={Icon}
       label={label}
-      hint={uploading ? 'Envoi en cours…' : 'Appareil photo, galerie ou fichier'}
+      hint={uploading ? 'Envoi en cours…' : undefined}
       actions={
         <IconActionButton
           label={`Ajouter ${label}`}
@@ -467,33 +413,6 @@ export function MedicalDocumentAddRow({
 
 function buildHeadStyles({ colors: c, fontSize }: Theme) {
   return {
-    head: {
-      paddingHorizontal: spacing[4],
-      paddingTop: spacing[4],
-      paddingBottom: spacing[3],
-    },
-    headIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    headText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
-    title: {
-      ...font.bold,
-      fontSize: fontSize.base,
-      letterSpacing: -0.2,
-    },
-    sub: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: fontSize.sm * 1.4,
-    },
-    skeletonPad: {
-      paddingHorizontal: spacing[4],
-      paddingBottom: spacing[4],
-    },
     emptyRow: {
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[5],
@@ -511,8 +430,6 @@ function buildHeadStyles({ colors: c, fontSize }: Theme) {
 
 function buildRowStyles({ colors: c, fontSize }: Theme) {
   return {
-    rowAdd: { backgroundColor: c.surfaceSubtle },
-    rowReady: { backgroundColor: c.successSurface },
     rowDisabled: { opacity: 0.65 },
     iconWrap: {
       width: spacing[10],

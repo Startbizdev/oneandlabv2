@@ -3,7 +3,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Keyboard, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import {
   PrescriptionSignaturePad,
@@ -132,7 +132,7 @@ export function PrescriptionSignatureSheet({
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       presentKey={presentKey}
       onClose={onClose}
@@ -184,7 +184,7 @@ export function PrescriptionSignatureSheet({
           />
         ) : null}
       </Row>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

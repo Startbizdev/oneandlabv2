@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { View } from 'react-native';
-import { Bell } from 'lucide-react-native';
+import { Image, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { ILLUSTRATIONS } from '@/constants/illustrations';
 import { useToast } from '@/providers/ToastProvider';
 import { usePushPermissionActivation } from '../hooks/use-push-permission-activation';
-import { AppText, font, iconSize, radius, spacing, useAppColors, useStyles, type Theme } from '@/theme';
+import { AppText, spacing, useStyles } from '@/theme';
+
+const ILLUSTRATION_SIZE = 184;
 
 interface Props {
   isPatient: boolean;
@@ -13,7 +15,6 @@ interface Props {
 
 /** Explication affichée avant la fenêtre système de permission push. */
 export function PushPermissionPrompt({ isPatient, onDone }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const { activate, decline } = usePushPermissionActivation();
@@ -42,18 +43,20 @@ export function PushPermissionPrompt({ isPatient, onDone }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.body}>
-        <View style={styles.iconWrap}>
-          <Bell size={iconSize['2xl']} color={c.primary} strokeWidth={2} />
-        </View>
-        <AppText accessibilityRole="header" style={styles.title}>
+        <Image
+          source={ILLUSTRATIONS.notifications}
+          style={styles.illustration}
+          resizeMode="contain"
+          accessible={false}
+        />
+        <AppText variant="title" accessibilityRole="header" style={styles.centered}>
           {isPatient ? 'Suivez vos visites en temps réel' : 'Ne manquez aucune demande'}
         </AppText>
-        <AppText style={styles.text}>
+        <AppText variant="secondary" style={styles.centered}>
           {isPatient
-            ? 'Recevez la confirmation de votre rendez-vous et l’arrivée du soignant, sans avoir à ouvrir l’application.'
-            : 'Soyez prévenu des nouveaux rendez-vous, des messages et des changements importants.'}
+            ? 'Confirmation du rendez-vous et arrivée du soignant, sans ouvrir l’application.'
+            : 'Nouveaux rendez-vous, messages et changements importants.'}
         </AppText>
-        <AppText style={styles.hint}>Vous pourrez changer d’avis à tout moment dans les paramètres.</AppText>
       </View>
       <View style={styles.actions}>
         <Button
@@ -69,7 +72,7 @@ export function PushPermissionPrompt({ isPatient, onDone }: Props) {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
     root: {
       flex: 1,
@@ -82,36 +85,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       flex: 1,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      gap: spacing[4],
+      gap: spacing[3],
     },
-    iconWrap: {
-      width: 88,
-      height: 88,
-      borderRadius: radius.full,
-      backgroundColor: c.primaryLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
+    illustration: {
+      width: ILLUSTRATION_SIZE,
+      height: ILLUSTRATION_SIZE,
       marginBottom: spacing[2],
     },
-    title: {
-      ...font.heading,
-      fontSize: fontSize.xl,
-      lineHeight: fontSize.xl * 1.2,
-      color: c.textPrimary,
-      textAlign: 'center' as const,
-    },
-    text: {
-      ...font.regular,
-      fontSize: fontSize.base,
-      lineHeight: fontSize.base * 1.5,
-      color: c.textSecondary,
-      textAlign: 'center' as const,
-    },
-    hint: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: fontSize.sm * 1.45,
-      color: c.textTertiary,
+    centered: {
       textAlign: 'center' as const,
     },
     actions: { gap: spacing[2] },

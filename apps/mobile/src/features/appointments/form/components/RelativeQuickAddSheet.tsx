@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { View } from 'react-native';
+import { FilterOptionChips } from '@/components/ui/FilterOptionChips';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
@@ -15,7 +15,7 @@ import { RELATIONSHIP_OPTIONS } from '@/features/patient-relatives/constants/rel
 import { useToast } from '@/providers/ToastProvider';
 import { THIRD_PARTY_NAME_INPUT } from '../constants/third-party-input-props';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -74,84 +74,45 @@ export function RelativeQuickAddSheet({ visible, onClose, onCreated, patientId, 
   });
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={() => {
         reset();
         onClose();
       }}
       title="Ajouter un proche"
+      footer={
+        <Button
+          title="Enregistrer le proche"
+          size="lg"
+          loading={mut.isPending}
+          onPress={() => mut.mutate()}
+          fullWidth
+        />
+      }
     >
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} {...THIRD_PARTY_NAME_INPUT} />
         <Input label="Nom" value={lastName} onChangeText={setLastName} {...THIRD_PARTY_NAME_INPUT} />
-        <View>
-          <AppText style={styles.label}>Lien de parenté</AppText>
-          <Row wrap gap={spacing[2]}>
-            {RELATIONSHIP_OPTIONS.map((o) => {
-              const active = relationshipType === o.value;
-              return (
-                <Pressable
-                  key={o.value}
-                  onPress={() => setRelationshipType(o.value)}
-                  style={[styles.pill, active && styles.pillActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  accessibilityLabel={o.label}
-                >
-                  <AppText style={[styles.pillText, active && styles.pillTextActive]}>{o.label}</AppText>
-                </Pressable>
-              );
-            })}
-          </Row>
+        <View style={styles.group}>
+          <AppText variant="headline">Lien de parenté</AppText>
+          <FilterOptionChips
+            options={[...RELATIONSHIP_OPTIONS]}
+            value={relationshipType}
+            onChange={setRelationshipType}
+          />
         </View>
         <GenderSelect value={gender} onChange={setGender} />
         <BirthDatePicker value={birthDate} onChange={setBirthDate} />
       </View>
-      <Button
-        title="Enregistrer le proche"
-        loading={mut.isPending}
-        onPress={() => mut.mutate()}
-        fullWidth
-      />
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  fields: { gap: spacing[3] },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    marginBottom: spacing[2],
-    lineHeight: fontSize.base * 1.3,
-  },
-  pill: {
-    minHeight: 44,
-    justifyContent: 'center' as const,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2.5],
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  pillActive: {
-    borderColor: c.primary,
-    backgroundColor: c.primaryLight,
-  },
-  pillText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.35,
-  },
-  pillTextActive: {
-    color: c.primary,
-    ...font.semiBold,
-  },
-};
+    fields: { gap: spacing[3] },
+    group: { gap: spacing[2] },
+  };
 }
 

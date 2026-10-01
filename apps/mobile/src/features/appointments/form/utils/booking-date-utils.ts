@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { parisBookingClock } from '@oneandlab/shared-utils';
+import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 
 const PARIS_OFFSET_HINT = 'Europe/Paris';
 
@@ -93,7 +94,7 @@ export function formatBookingSlidePeriod(days: dayjs.Dayjs[]): string {
   const first = days[0].locale('fr');
   const last = days[days.length - 1].locale('fr');
   if (first.isSame(last, 'day')) {
-    return first.format('dddd D MMMM YYYY');
+    return capitalizeFrench(first.format('dddd D MMMM YYYY'));
   }
   if (first.isSame(last, 'month')) {
     return `${first.format('D')} – ${last.format('D MMMM YYYY')}`;

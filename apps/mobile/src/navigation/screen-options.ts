@@ -1,6 +1,9 @@
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
-import { appFlatContentStyle } from '@/components/navigation/header-layout';
-import type { Theme } from '@/theme';
+import type { AppColors, Theme } from '@/theme';
+
+function sceneContentStyle(c: AppColors): NativeStackNavigationOptions['contentStyle'] {
+  return { minWidth: 0, flex: 1, backgroundColor: c.background };
+}
 
 /** Stack — headerShown false ; StackChromeScreen affiche le header (titres : `STACK_HEADER_CATALOG`). */
 export function stackHeaderOptions(
@@ -9,7 +12,7 @@ export function stackHeaderOptions(
 ): NativeStackNavigationOptions {
   return {
     headerShown: false,
-    contentStyle: appFlatContentStyle(c),
+    contentStyle: sceneContentStyle(c),
     ...(overrides ?? {}),
   };
 }
@@ -22,9 +25,6 @@ export function bookingWizardScreenOptions(theme: Theme): NativeStackNavigationO
 }
 
 /** Tutoriel startup — plein écran, sans header stack. */
-export function onboardingScreenOptions({ colors: c }: Theme): NativeStackNavigationOptions {
-  return {
-    headerShown: false,
-    contentStyle: appFlatContentStyle(c),
-  };
+export function onboardingScreenOptions(theme: Theme): NativeStackNavigationOptions {
+  return stackHeaderOptions(theme);
 }

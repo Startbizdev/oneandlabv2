@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react-native';
+import { FileText, Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
-import { PatientDetailHubCard } from '@/features/appointments/detail/components/patient/PatientDetailHubCard';
-import { DetailActionList } from '@/features/appointments/detail/components/layout/DetailActionList';
 import {
   deletePatientRelative,
   fetchPatientRelative,
@@ -16,17 +16,14 @@ import {
 import { PatientRelativeFormSheet } from '../components/PatientRelativeFormSheet';
 import { relationshipLabel } from '../constants/relationship-types';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { HeaderTitleText } from '@/navigation/HeaderTitle';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
+import { bookingNewHref } from '@/navigation/role-hrefs';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { fetchProfileDocuments } from '@/features/patients/api/patient-profile.service';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { formatBirthDateFr } from '@oneandlab/shared-utils';
+import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { ageFromBirthDate, formatBirthDateFr } from '@oneandlab/shared-utils';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function PatientRelativeDetailScreen() {
@@ -36,8 +33,7 @@ export function PatientRelativeDetailScreen() {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const q = useQuery({
     queryKey: ['patient-relatives', id],
@@ -59,7 +55,7 @@ export function PatientRelativeDetailScreen() {
     enabled: Boolean(id),
   });
 
-  const documentsCount = docsQ.data?.length ?? 0;
+  const { refreshing, onRefresh } = useManualRefresh(() => Promise.all([q.refetch(), docsQ.refetch()]));
 
   const saveMut = useMutation({
     mutationFn: (body: Parameters<typeof updatePatientRelative>[1]) =>
@@ -77,58 +73,29 @@ export function PatientRelativeDetailScreen() {
     mutationFn: () => deletePatientRelative(id!),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['patient-relatives'] });
+      setConfirmDelete(false);
       toast('Proche supprimé', { type: 'success' });
       router.back();
     },
     onError: (e) => handleApiError(e, toast, 'deleteRelative'),
   });
 
-  const onDelete = useCallback(() => {
-    const name = `${q.data?.first_name ?? ''} ${q.data?.last_name ?? ''}`.trim() || 'ce proche';
-    Alert.alert('Supprimer', `Supprimer ${name} ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => deleteMut.mutate() },
-    ]);
-  }, [deleteMut, q.data]);
-
-  const deleteActions = useMemo(
-    () => [
-      {
-        key: 'delete',
-        label: 'Supprimer ce proche',
-        hint: 'Action irréversible',
-        icon: Trash2,
-        tone: 'destructive' as const,
-        onPress: onDelete,
-        loading: deleteMut.isPending,
-        showChevron: false,
-      },
-    ],
-    [deleteMut.isPending, onDelete],
-  );
-
-  const book = () => {
-    router.push(`/(patient)/booking/new?relative_id=${encodeURIComponent(id!)}` as never);
-  };
-
-  const openDocuments = () => {
-    router.push(`/(patient)/relatives/${id}/documents` as never);
-  };
-
   if (q.isError || (!q.isLoading && !q.data)) {
-    return <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
-      <View style={styles.errorWrap}>
-        <ErrorState
-          error={q.error}
-          title="Impossible de charger ce proche"
-          onRetry={() => void q.refetch()}
-        />
-      </View>
-    </StackChromeScreen>;
+    return (
+      <StackChromeScreen title="Proche">
+        <View style={styles.errorWrap}>
+          <ErrorState
+            error={q.error}
+            title="Impossible de charger ce proche"
+            onRetry={() => void q.refetch()}
+          />
+        </View>
+      </StackChromeScreen>
+    );
   }
   if (q.isLoading || !q.data) {
     return (
-      <StackChromeScreen title={<HeaderTitleText title="Proche" />}>
+      <StackChromeScreen title="Proche">
         <SkeletonProfileScreen cards={2} />
       </StackChromeScreen>
     );
@@ -136,41 +103,44 @@ export function PatientRelativeDetailScreen() {
 
   const r = q.data;
   const name = `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim();
+  const age = ageFromBirthDate(r.birth_date);
+  const meta = [
+    r.relationship_type ? relationshipLabel(r.relationship_type) : '',
+    r.birth_date && age != null
+      ? `${age} an${age > 1 ? 's' : ''} (${formatBirthDateFr(r.birth_date)})`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const contact = [r.phone, r.email].filter(Boolean).join('\n');
+  const documentsCount = docsQ.data?.length ?? 0;
 
   return (
     <StackChromeScreen
-      title={<HeaderTitleText title={name || 'Proche'} />}
       headerRight={
-        <Button title="Modifier" variant="ghost" onPress={() => setEditOpen(true)} />
+        <HeaderAction label="Modifier" accessibilityLabel="Modifier le proche" onPress={() => setEditOpen(true)} />
       }
     >
       <ScrollView
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl
-            refreshing={q.isRefetching || docsQ.isRefetching}
-            onRefresh={() => {
-              void q.refetch();
-              void docsQ.refetch();
-            }}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <View style={styles.hero}>
-          <AppText style={styles.heroName}>{name}</AppText>
-          {r.relationship_type ? (
-            <AppText style={styles.heroSub}>{relationshipLabel(r.relationship_type)}</AppText>
-          ) : null}
-          {r.birth_date ? (
-            <AppText style={styles.heroSub}>Né(e) le {formatBirthDateFr(r.birth_date)}</AppText>
-          ) : null}
-          {r.phone ? <AppText style={styles.heroSub}>{r.phone}</AppText> : null}
-          {r.email ? <AppText style={styles.heroSub}>{r.email}</AppText> : null}
+          <AppText style={styles.heroName} accessibilityRole="header">
+            {name}
+          </AppText>
+          {meta ? <AppText variant="secondary">{meta}</AppText> : null}
+          {contact ? <AppText variant="secondary">{contact}</AppText> : null}
         </View>
 
-        <Button title="Réserver pour ce proche" onPress={book} fullWidth size="lg" />
+        <Button
+          title="Réserver pour ce proche"
+          onPress={() => router.push(bookingNewHref('/(patient)', { relative_id: r.id }))}
+          fullWidth
+          size="lg"
+        />
 
         {docsQ.isError && !docsQ.data ? (
           <ErrorState
@@ -179,10 +149,30 @@ export function PatientRelativeDetailScreen() {
             onRetry={() => void docsQ.refetch()}
           />
         ) : (
-          <PatientDetailHubCard documentsCount={documentsCount} onDocuments={openDocuments} />
+          <SettingsSection
+            items={[
+              {
+                icon: FileText,
+                label: 'Documents',
+                value: documentsCount > 0 ? String(documentsCount) : undefined,
+                onPress: () =>
+                  router.push({ pathname: '/(patient)/relatives/[id]/documents', params: { id: r.id } }),
+              },
+            ]}
+          />
         )}
 
-        <DetailActionList actions={deleteActions} edgeToEdge={false} />
+        <SettingsSection
+          items={[
+            {
+              icon: Trash2,
+              label: 'Supprimer ce proche',
+              destructive: true,
+              inlineAction: true,
+              onPress: () => setConfirmDelete(true),
+            },
+          ]}
+        />
       </ScrollView>
 
       <PatientRelativeFormSheet
@@ -192,31 +182,29 @@ export function PatientRelativeDetailScreen() {
         onClose={() => setEditOpen(false)}
         onSubmit={(body) => saveMut.mutate(body)}
       />
+
+      <ConfirmSheet
+        visible={confirmDelete}
+        title={`Supprimer ${name || 'ce proche'} ?`}
+        message="Sa fiche sera définitivement retirée de vos proches."
+        confirmLabel="Supprimer"
+        loading={deleteMut.isPending}
+        onConfirm={() => deleteMut.mutate()}
+        onClose={() => setConfirmDelete(false)}
+      />
     </StackChromeScreen>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  scroll: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[12] },
-  errorWrap: { flex: 1, justifyContent: 'center' as const, padding: spacing[4] },
-  hero: { gap: spacing[1] },
-  heroName: {
-    ...font.headingExtraBold,
-    fontSize: fontSize['2xl'],
-    color: c.textPrimary,
-  },
-  heroSub: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  headerEdit: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.primary,
-    marginRight: spacing[2],
-  },
-};
+    scroll: { padding: spacing[4], gap: spacing[6], paddingBottom: spacing[12] },
+    errorWrap: { flex: 1, justifyContent: 'center' as const, padding: spacing[4] },
+    hero: { gap: spacing[1] },
+    heroName: {
+      ...font.headingExtraBold,
+      fontSize: fontSize['2xl'],
+      color: c.textPrimary,
+    },
+  };
 }
-

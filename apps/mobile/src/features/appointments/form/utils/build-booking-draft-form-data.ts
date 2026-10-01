@@ -56,7 +56,7 @@ export async function buildPatientBookingDraftFormData(
         uri: entry.uri,
         name: entry.name,
         type: entry.mimeType ?? 'application/octet-stream',
-      } as unknown as Blob);
+      });
     }
   }
 

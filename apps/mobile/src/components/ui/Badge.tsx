@@ -1,25 +1,20 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import Animated from 'react-native-reanimated';
 import { STATUS_BADGE_COLOR, STATUS_LABELS } from '@oneandlab/shared-utils';
+import { radius, spacing, useStyles, font, AppText, type AppColors, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
-import { radius, spacing, useStyles, font, type Theme } from '@/theme';
 
-type BadgeVariant = 'primary' | 'success' | 'error' | 'warning' | 'neutral' | 'teal';
+type BadgeVariant = 'primary' | 'success' | 'error' | 'warning' | 'neutral';
 
 interface BadgeProps {
   label: string;
   variant?: BadgeVariant;
   dot?: boolean;
   size?: 'sm' | 'md';
-  shape?: 'rounded' | 'square';
 }
 
-function variantConfigFor(
-  variant: BadgeVariant,
-  c: ReturnType<typeof useAppColors>,
-): { bg: string; text: string; dot: string } {
+function variantConfigFor(variant: BadgeVariant, c: AppColors): { bg: string; text: string; dot: string } {
   switch (variant) {
     case 'primary':
       return { bg: c.primaryLight, text: c.primaryDark, dot: c.primary };
@@ -29,9 +24,7 @@ function variantConfigFor(
       return { bg: c.errorLight, text: c.error, dot: c.error };
     case 'warning':
       return { bg: c.warningLight, text: c.warning, dot: c.warning };
-    case 'teal':
-      return { bg: c.primaryLight, text: c.primaryDark, dot: c.primary };
-    default:
+    case 'neutral':
       return { bg: c.surfaceAlt, text: c.textSecondary, dot: c.textTertiary };
   }
 }
@@ -44,13 +37,7 @@ const statusToVariant: Record<string, BadgeVariant> = {
   neutral: 'neutral',
 };
 
-function BadgeComponent({
-  label,
-  variant = 'neutral',
-  dot = true,
-  size = 'sm',
-  shape = 'rounded',
-}: BadgeProps) {
+function BadgeComponent({ label, variant = 'neutral', dot = true, size = 'sm' }: BadgeProps) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
@@ -60,26 +47,16 @@ function BadgeComponent({
   return (
     <Row
       align="center"
-      gap={5}
-      style={[
-        styles.base,
-        isSmall ? styles.sm : styles.md,
-        shape === 'square' ? styles.square : null,
-        { backgroundColor: config.bg },
-      ]}
+      gap={spacing[1.5]}
+      style={[styles.base, isSmall ? styles.sm : styles.md, { backgroundColor: config.bg }]}
     >
       {dot && <View style={[styles.dot, { backgroundColor: config.dot }]} />}
-      <Animated.Text
+      <AppText
         accessibilityLabel={dot ? `Statut : ${label}` : label}
-        style={[
-          styles.label,
-          isSmall ? styles.labelSm : styles.labelMd,
-          { color: config.text },
-        ]}
-        numberOfLines={1}
+        style={[styles.label, isSmall ? styles.labelSm : styles.labelMd, { color: config.text }]}
       >
         {label}
-      </Animated.Text>
+      </AppText>
     </Row>
   );
 }
@@ -89,7 +66,6 @@ export const Badge = React.memo(BadgeComponent);
 interface StatusBadgeProps {
   status: string;
   size?: 'sm' | 'md';
-  shape?: 'rounded' | 'square';
 }
 
 function normalizeAppointmentStatusKey(status: string): string {
@@ -99,54 +75,46 @@ function normalizeAppointmentStatusKey(status: string): string {
   return s;
 }
 
-function StatusBadgeComponent({
-  status,
-  size = 'sm',
-  shape = 'rounded',
-}: StatusBadgeProps) {
+function StatusBadgeComponent({ status, size = 'sm' }: StatusBadgeProps) {
   const normalized = normalizeAppointmentStatusKey(status);
   const colorKey = STATUS_BADGE_COLOR[normalized] ?? 'neutral';
   const label = STATUS_LABELS[normalized] ?? status;
   const variant = statusToVariant[colorKey] ?? 'neutral';
-  return (
-    <Badge label={label} variant={variant} dot size={size} shape={shape} />
-  );
+  return <Badge label={label} variant={variant} dot size={size} />;
 }
 
 export const StatusBadge = React.memo(StatusBadgeComponent);
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ fontSize }: Theme) {
   return {
-  base: {
-    alignSelf: 'flex-start' as const,
-  },
-  sm: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  md: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: radius.md,
-  },
-  square: {
-    borderRadius: 0,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: radius.full,
-  },
-  label: {
-    ...font.semiBold,
-    letterSpacing: 0.1,
-  },
-  labelSm: {
-    fontSize: fontSize.xs,
-  },
-  labelMd: {
-    fontSize: fontSize.sm,
-  },
-};
+    base: {
+      alignSelf: 'flex-start' as const,
+      maxWidth: '100%' as const,
+    },
+    sm: {
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
+      borderRadius: radius.sm,
+    },
+    md: {
+      paddingHorizontal: spacing[3],
+      paddingVertical: spacing[1],
+      borderRadius: radius.md,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: radius.full,
+    },
+    label: {
+      ...font.semiBold,
+      flexShrink: 1,
+    },
+    labelSm: {
+      fontSize: fontSize.xs,
+    },
+    labelMd: {
+      fontSize: fontSize.sm,
+    },
+  };
 }

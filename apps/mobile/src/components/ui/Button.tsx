@@ -1,24 +1,17 @@
 import React, { useCallback } from 'react';
-import { Pressable, ActivityIndicator, StyleSheet, type PressableProps } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
+import {
+  Pressable,
+  ActivityIndicator,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { animation, radius, spacing, useStyles, font, type Theme } from '@/theme';
+import { animation, MIN_TOUCH_TARGET, radius, spacing, useStyles, font, type AppColors, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
-type Variant =
-  | 'primary'
-  | 'secondary'
-  | 'outline'
-  | 'ghost'
-  | 'muted'
-  | 'destructive'
-  | 'dangerOutline'
-  | 'teal';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'muted' | 'destructive' | 'dangerOutline';
 type Size = 'mini' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
@@ -31,59 +24,41 @@ interface ButtonProps extends Omit<PressableProps, 'style'> {
   iconOnly?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  style?: PressableProps['style'];
+  style?: StyleProp<ViewStyle>;
 }
 
-const sizeStyleBase: Record<
-  Size,
-  { paddingVertical: number; paddingHorizontal: number; borderRadius: number; baseMinHeight: number }
-> = {
-  mini: { paddingVertical: spacing[2], paddingHorizontal: spacing[2], borderRadius: radius.md, baseMinHeight: 44 },
-  sm: { paddingVertical: spacing[2], paddingHorizontal: spacing[4], borderRadius: radius.md, baseMinHeight: 44 },
-  md: { paddingVertical: spacing[3], paddingHorizontal: spacing[5], borderRadius: radius.lg, baseMinHeight: 44 },
-  lg: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], borderRadius: radius.xl, baseMinHeight: 48 },
-};
-
-function triggerHaptic() {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-}
-
-function variantStyleFor(variant: Variant, c: ReturnType<typeof useAppColors>): object {
+function variantStyleFor(variant: Variant, c: AppColors) {
   switch (variant) {
     case 'primary':
       return { backgroundColor: c.primary };
     case 'secondary':
-      return { backgroundColor: c.primaryMid };
+      return { backgroundColor: c.primaryLight };
     case 'outline':
-      return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary };
+      return { backgroundColor: 'transparent', borderWidth: 1, borderColor: c.border };
     case 'ghost':
       return { backgroundColor: 'transparent' };
     case 'muted':
-      return { backgroundColor: c.surfaceSubtle };
+      return { backgroundColor: c.surfaceAlt };
     case 'destructive':
       return { backgroundColor: c.error };
     case 'dangerOutline':
-      return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.error };
-    case 'teal':
-      return { backgroundColor: c.primaryDark };
-    default:
-      return { backgroundColor: c.primary };
+      return { backgroundColor: 'transparent', borderWidth: 1, borderColor: c.error };
   }
 }
 
-function textColorFor(variant: Variant, c: ReturnType<typeof useAppColors>): string {
+function textColorFor(variant: Variant, c: AppColors): string {
   switch (variant) {
     case 'primary':
       return c.onPrimary;
     case 'destructive':
-    case 'teal':
       return c.textInverse;
     case 'secondary':
     case 'outline':
       return c.textLink;
     case 'dangerOutline':
       return c.error;
-    default:
+    case 'ghost':
+    case 'muted':
       return c.textSecondary;
   }
 }
@@ -106,50 +81,37 @@ function ButtonComponent({
   const styles = useStyles(buildStyles);
 
   const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.965, animation.spring.snappy);
-    opacity.value = withSpring(0.92, animation.spring.snappy);
-  }, [scale, opacity]);
+    scale.value = withSpring(0.98, animation.spring.snappy);
+  }, [scale]);
 
   const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, animation.spring.bouncy);
-    opacity.value = withSpring(1, animation.spring.snappy);
-  }, [scale, opacity]);
+    scale.value = withSpring(1, animation.spring.snappy);
+  }, [scale]);
 
   const handlePress = useCallback(
     (e: Parameters<NonNullable<PressableProps['onPress']>>[0]) => {
-      runOnJS(triggerHaptic)();
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onPress?.(e);
     },
     [onPress],
   );
 
   const isDisabled = disabled || loading;
-
   const isMini = size === 'mini';
+  const labelColor = textColorFor(variant, c);
 
   return (
-    <Animated.View
-      style={[
-        fullWidth && styles.fullWidth,
-        isMini && styles.inlineWrap,
-        animatedStyle,
-      ]}
-    >
+    <Animated.View style={[fullWidth && styles.fullWidth, isMini && styles.inlineWrap, animatedStyle]}>
       <Pressable
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}
         disabled={isDisabled}
         accessibilityRole="button"
-        accessibilityLabel={props.accessibilityLabel ?? (iconOnly ? title : undefined)}
+        accessibilityLabel={props.accessibilityLabel ?? title}
         style={[
           styles.base,
           styles[SIZE_STYLE_KEY[size]],
@@ -159,39 +121,16 @@ function ButtonComponent({
           style,
         ]}
         {...props}
-        accessibilityState={{ ...props.accessibilityState, disabled: !!isDisabled, busy: !!loading }}
+        accessibilityState={{ ...props.accessibilityState, disabled: !!isDisabled, ...(loading ? { busy: true } : null) }}
       >
         {loading ? (
-          <ActivityIndicator
-            size="small"
-            color={
-              variant === 'outline' ||
-              variant === 'ghost' ||
-              variant === 'secondary' ||
-              variant === 'muted'
-                ? c.primary
-                : variant === 'dangerOutline'
-                  ? c.error
-                  : textColorFor(variant, c)
-            }
-          />
+          <ActivityIndicator size="small" color={variant === 'primary' ? c.onPrimary : labelColor} />
         ) : iconOnly ? (
           leftIcon ?? rightIcon ?? null
         ) : (
           <>
             {leftIcon ?? null}
-            <Animated.Text
-              style={[
-                isMini ? styles.textMini : styles.text,
-                styles[TEXT_SIZE_STYLE_KEY[size]],
-                { color: textColorFor(variant, c) },
-                leftIcon || rightIcon
-                  ? isMini
-                    ? styles.textWithIconMini
-                    : styles.textWithIcon
-                  : null,
-              ]}
-            >
+            <Animated.Text style={[styles.label, styles[TEXT_SIZE_STYLE_KEY[size]], { color: labelColor }]}>
               {title}
             </Animated.Text>
             {rightIcon ?? null}
@@ -212,23 +151,14 @@ const TEXT_SIZE_STYLE_KEY = {
   lg: 'textSizeLg',
 } as const;
 
-function sizeStyle(size: Size, scale: Theme['scale']) {
-  const base = sizeStyleBase[size];
-  return {
-    paddingVertical: base.paddingVertical,
-    paddingHorizontal: base.paddingHorizontal,
-    borderRadius: base.borderRadius,
-    minHeight: scale(base.baseMinHeight),
-    gap: size === 'mini' ? 3 : 0,
-  };
-}
-
 function buildStyles({ fontSize, scale }: Theme) {
   return {
     base: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: spacing[2],
+      borderRadius: radius.md,
     },
     inlineWrap: {
       flexShrink: 0,
@@ -237,30 +167,38 @@ function buildStyles({ fontSize, scale }: Theme) {
     fullWidth: {
       width: '100%',
     },
-    text: {
+    label: {
       ...font.semiBold,
-      letterSpacing: 0.1,
-    },
-    textMini: {
-      ...font.medium,
-      letterSpacing: 0,
-    },
-    textWithIcon: {
-      marginHorizontal: spacing[2],
-    },
-    textWithIconMini: {
-      marginHorizontal: 0,
+      flexShrink: 1,
+      textAlign: 'center',
     },
     disabled: {
       opacity: 0.45,
     },
-    sizeMini: sizeStyle('mini', scale),
-    sizeSm: sizeStyle('sm', scale),
-    sizeMd: sizeStyle('md', scale),
-    sizeLg: sizeStyle('lg', scale),
-    textSizeMini: { fontSize: fontSize.xs },
+    sizeMini: {
+      minHeight: scale(MIN_TOUCH_TARGET),
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[2],
+      gap: spacing[1],
+    },
+    sizeSm: {
+      minHeight: scale(MIN_TOUCH_TARGET),
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[4],
+    },
+    sizeMd: {
+      minHeight: scale(48),
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[5],
+    },
+    sizeLg: {
+      minHeight: scale(52),
+      paddingVertical: spacing[3],
+      paddingHorizontal: spacing[6],
+    },
+    textSizeMini: { ...font.medium, fontSize: fontSize.xs },
     textSizeSm: { fontSize: fontSize.sm },
     textSizeMd: { fontSize: fontSize.base },
-    textSizeLg: { fontSize: fontSize.md },
+    textSizeLg: { fontSize: fontSize.base },
   } as const;
 }

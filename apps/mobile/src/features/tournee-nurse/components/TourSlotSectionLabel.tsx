@@ -26,9 +26,7 @@ function buildStyles({ fontSize }: Theme) {
     },
     label: {
       ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.6,
+      fontSize: fontSize.sm,
     },
   };
 }

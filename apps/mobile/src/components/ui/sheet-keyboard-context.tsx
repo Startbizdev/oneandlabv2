@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useCallback, useContext, type ForwardedRef } from 'react';
 import { TextInput } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
@@ -19,4 +19,19 @@ export function useInBottomSheet(): boolean {
  */
 export function useSheetTextInputComponent() {
   return useInBottomSheet() ? BottomSheetTextInput : TextInput;
+}
+
+/**
+ * Ref compatible avec les deux composants de {@link useSheetTextInputComponent} :
+ * `BottomSheetTextInput` expose `TextInput | undefined` (variante gesture-handler), le TextInput natif `TextInput | null`.
+ */
+export function useSheetTextInputRef(ref: ForwardedRef<TextInput>) {
+  return useCallback(
+    (node: TextInput | null | undefined) => {
+      const instance = node ?? null;
+      if (typeof ref === 'function') ref(instance);
+      else if (ref) ref.current = instance;
+    },
+    [ref],
+  );
 }

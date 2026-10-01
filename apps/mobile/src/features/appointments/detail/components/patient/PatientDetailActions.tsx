@@ -6,16 +6,10 @@ interface Props {
   canceled: boolean;
   cancelCount: number;
   onCancel: () => void;
-  edgeToEdge?: boolean;
 }
 
 /** Action destructive gardée dans le contenu, hors de la barre fixe. */
-export function PatientDetailActions({
-  canceled,
-  cancelCount,
-  onCancel,
-  edgeToEdge = true,
-}: Props) {
+export function PatientDetailActions({ canceled, cancelCount, onCancel }: Props) {
   const actions = useMemo((): DetailActionItem[] => {
     if (canceled || cancelCount <= 0) return [];
     return [
@@ -32,5 +26,5 @@ export function PatientDetailActions({
     ];
   }, [cancelCount, canceled, onCancel]);
 
-  return <DetailActionList actions={actions} edgeToEdge={edgeToEdge} />;
+  return <DetailActionList actions={actions} />;
 }

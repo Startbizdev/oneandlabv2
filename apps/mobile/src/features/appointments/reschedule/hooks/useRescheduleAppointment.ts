@@ -1,3 +1,4 @@
+import { appointmentCreateErrorMessage } from '@oneandlab/shared-api';
 import { appointmentTimeFrance, canCancelAppointment, createAppointmentRequestId } from '@oneandlab/shared-utils';
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,8 @@ import {
   updateAppointment,
 } from '@/features/appointments/api/appointments.service';
 import { useAuthStore } from '@/store/auth-store';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import type { AddressPayload } from '../../form/types';
 import {
   availabilityMaxHour,
@@ -95,8 +98,8 @@ function initialAvailabilityFromAppointment(apt: Appointment): {
       } else if (av.range?.length === 2) {
         range = [av.range[0], av.range[1]];
       }
-    } catch {
-      /* default */
+    } catch (e) {
+      console.warn('[reschedule] invalid stored availability, using default range', apt.id, e);
     }
   } else if (apt.scheduled_at) {
     const h = Number((appointmentTimeFrance(apt.scheduled_at) || '09:00').split(':')[0]);
@@ -112,7 +115,7 @@ function initialAvailabilityFromAppointment(apt: Appointment): {
 export function useRescheduleAppointment(opts: {
   appointmentId: string;
   role: string;
-  basePath: string;
+  basePath: RoleRoutePrefix;
 }) {
   const requestId = useRef(createAppointmentRequestId());
   const { show: toast } = useToast();
@@ -270,9 +273,9 @@ export function useRescheduleAppointment(opts: {
       if (inPlace) {
         void qc.invalidateQueries({ queryKey: queryKeys.appointments.detail(resultId) });
       }
-      router.replace(`${opts.basePath}/appointment/${resultId}` as never);
+      router.replace(appointmentDetailHref(opts.basePath, resultId));
     },
-    onError: (e) => handleApiError(e, toast, 'rescheduleAppointment'),
+    onError: (e) => handleApiError(e, toast, 'rescheduleAppointment', undefined, appointmentCreateErrorMessage),
   });
 
   const submitLabel = useMemo(() => {

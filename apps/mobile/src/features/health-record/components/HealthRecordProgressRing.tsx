@@ -1,16 +1,12 @@
-import { useId } from 'react';
-import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
-import { AppText, palette, useStyles, font, type Theme } from '@/theme';
+import { AppText, useStyles, font, type Theme } from '@/theme';
 import { View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 
 interface Props {
   percent: number;
   size?: number;
   strokeWidth?: number;
-  /** Texte / piste clairs sur fond dégradé. */
-  tone?: 'default' | 'onGradient';
   /** Anneau compact pour listes (Plus, menus). */
   variant?: 'default' | 'mini';
 }
@@ -19,7 +15,6 @@ export function HealthRecordProgressRing({
   percent,
   size,
   strokeWidth,
-  tone = 'default',
   variant = 'default',
 }: Props) {
   const isMini = variant === 'mini';
@@ -27,30 +22,23 @@ export function HealthRecordProgressRing({
   const resolvedStroke = strokeWidth ?? (isMini ? 3 : 5);
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const onGradient = tone === 'onGradient';
-  const gradientId = useId();
   const clamped = Math.min(100, Math.max(0, percent));
   const radiusPx = (resolvedSize - resolvedStroke) / 2;
   const circumference = 2 * Math.PI * radiusPx;
   const offset = circumference - (clamped / 100) * circumference;
-  const trackColor = onGradient ? hexToRgba(palette.white, 0.28) : c.borderLight;
-  const progressStart = onGradient ? palette.white : c.primary;
-  const progressEnd = onGradient ? hexToRgba(palette.white, 0.72) : (c.gradientEnd ?? c.primary);
-
   return (
-    <View style={[styles.wrap, { width: resolvedSize, height: resolvedSize }]}>
+    <View
+      style={[styles.wrap, { width: resolvedSize, height: resolvedSize }]}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: clamped, text: `${clamped} %` }}
+    >
       <Svg width={resolvedSize} height={resolvedSize}>
-        <Defs>
-          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={progressStart} />
-            <Stop offset="1" stopColor={progressEnd} />
-          </LinearGradient>
-        </Defs>
         <Circle
           cx={resolvedSize / 2}
           cy={resolvedSize / 2}
           r={radiusPx}
-          stroke={trackColor}
+          stroke={c.borderLight}
           strokeWidth={resolvedStroke}
           fill="none"
         />
@@ -58,7 +46,7 @@ export function HealthRecordProgressRing({
           cx={resolvedSize / 2}
           cy={resolvedSize / 2}
           r={radiusPx}
-          stroke={`url(#${gradientId})`}
+          stroke={c.primary}
           strokeWidth={resolvedStroke}
           fill="none"
           strokeDasharray={`${circumference} ${circumference}`}
@@ -73,7 +61,6 @@ export function HealthRecordProgressRing({
           styles.label,
           isMini && styles.labelMini,
           resolvedSize >= 64 && styles.labelLarge,
-          onGradient ? styles.labelOnGradient : styles.labelDefault,
         ]}
       >
         {clamped}%
@@ -91,22 +78,16 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     label: {
       position: 'absolute' as const,
       zIndex: 2,
-      ...font.bold,
+      ...font.semiBold,
       fontSize: fontSize.xs,
+      fontVariant: ['tabular-nums' as const],
+      color: c.textPrimary,
     },
     labelMini: {
       fontSize: fontSize['2xs'],
-      letterSpacing: -0.3,
     },
     labelLarge: {
       fontSize: fontSize.sm,
-      letterSpacing: -0.2,
-    },
-    labelDefault: {
-      color: c.textPrimary,
-    },
-    labelOnGradient: {
-      color: palette.white,
     },
   };
 }

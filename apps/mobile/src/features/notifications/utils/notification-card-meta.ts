@@ -1,14 +1,13 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { Bell, CalendarClock, MessageSquare, Pill, type LucideIcon } from 'lucide-react-native';
+import { Bell, CalendarClock, FlaskConical, MessageSquare, Pill, type LucideIcon } from 'lucide-react-native';
 import {
   formatParisDayMonthYear,
   formatParisHm,
   formatParisWeekdayDate,
   parseParisWallClock,
 } from '@/utils/paris-datetime';
-import type { AppColors } from '@/theme/colors';
 
 dayjs.extend(relativeTime);
 dayjs.locale('fr');
@@ -28,23 +27,11 @@ export function formatNotificationTime(iso?: string): string {
   return formatParisDayMonthYear(ms);
 }
 
-export function notificationVisual(
-  c: AppColors,
-  type?: string,
-): {
-  Icon: LucideIcon;
-  color: string;
-  bg: string;
-} {
+export function notificationIcon(type?: string): LucideIcon {
   const t = (type ?? '').toLowerCase();
-  if (t.includes('pharmacy_order') || t.includes('pharmacie')) {
-    return { Icon: Pill, color: c.primaryDark, bg: c.primaryLight };
-  }
-  if (t.includes('appointment') || t.includes('rdv') || t.includes('booking')) {
-    return { Icon: CalendarClock, color: c.primary, bg: c.primaryLight };
-  }
-  if (t.includes('message') || t.includes('chat')) {
-    return { Icon: MessageSquare, color: c.primaryDark, bg: c.primaryLight };
-  }
-  return { Icon: Bell, color: c.primary, bg: c.primaryLight };
+  if (t.includes('pharmacy_order') || t.includes('pharmacie')) return Pill;
+  if (t.includes('result')) return FlaskConical;
+  if (t.includes('appointment') || t.includes('rdv') || t.includes('booking')) return CalendarClock;
+  if (t.includes('message') || t.includes('chat')) return MessageSquare;
+  return Bell;
 }

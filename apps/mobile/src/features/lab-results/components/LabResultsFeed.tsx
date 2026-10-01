@@ -1,6 +1,14 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  View,
+  type ListRenderItem,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import { LabResultListCard } from './LabResultListCard';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
@@ -9,32 +17,32 @@ type RoleMode = 'patient' | 'nurse' | 'pro';
 
 interface Props {
   items: LabResultListItem[];
+  total: number;
   role: RoleMode;
   openingId: string | null;
   refreshing: boolean;
+  loadingMore: boolean;
   onRefresh: () => void;
+  onEndReached: () => void;
   onOpenDocument: (item: LabResultListItem) => void;
   onOpenAppointment: (appointmentId: string) => void;
   onAskCary?: (item: LabResultListItem) => void;
-  contentContainerStyle?: object | object[];
-  scrollIndicatorInsets?: { top: number; bottom: number };
-  contentInsetAdjustmentBehavior?: 'automatic' | 'never';
-  refreshProgressOffset?: number;
+  contentContainerStyle: StyleProp<ViewStyle>;
 }
 
 export function LabResultsFeed({
   items,
+  total,
   role,
   openingId,
   refreshing,
+  loadingMore,
   onRefresh,
+  onEndReached,
   onOpenDocument,
   onOpenAppointment,
   onAskCary,
-  contentContainerStyle: contentContainerStyleProp,
-  scrollIndicatorInsets,
-  contentInsetAdjustmentBehavior = 'automatic',
-  refreshProgressOffset = 0,
+  contentContainerStyle,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -63,12 +71,12 @@ export function LabResultsFeed({
 
   const ListHeader = useCallback(
     () =>
-      items.length > 0 ? (
+      total > 0 ? (
         <AppText style={styles.sectionTitle}>
-          {items.length} résultat{items.length > 1 ? 's' : ''}
+          {total} résultat{total > 1 ? 's' : ''}
         </AppText>
       ) : null,
-    [items.length, styles.sectionTitle],
+    [total, styles.sectionTitle],
   );
 
   const ItemSeparator = useCallback(() => <View style={styles.separator} />, [styles.separator]);
@@ -80,22 +88,21 @@ export function LabResultsFeed({
       renderItem={renderItem}
       ItemSeparatorComponent={ItemSeparator}
       ListHeaderComponent={ListHeader}
-      contentContainerStyle={contentContainerStyleProp ?? styles.listContent}
-      contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
-      scrollIndicatorInsets={scrollIndicatorInsets}
+      contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={false}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.4}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
           tintColor={c.primary}
-          progressViewOffset={refreshProgressOffset}
         />
       }
       ListFooterComponent={
-        openingId ? (
+        loadingMore ? (
           <View style={styles.footerLoader}>
-            <ActivityIndicator color={c.primary} />
+            <ActivityIndicator color={c.primary} accessibilityLabel="Chargement de résultats supplémentaires" />
           </View>
         ) : null
       }
@@ -103,26 +110,17 @@ export function LabResultsFeed({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  listContent: {
-    minWidth: 0,
-    flexGrow: 1,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[10],
-  },
   sectionTitle: {
+    ...text.caption,
     ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
+    color: c.textSecondary,
     paddingHorizontal: spacing[1],
     marginBottom: spacing[2],
   },
   separator: {
-    height: spacing[2],
+    height: spacing[3],
   },
   footerLoader: {
     paddingVertical: spacing[3],

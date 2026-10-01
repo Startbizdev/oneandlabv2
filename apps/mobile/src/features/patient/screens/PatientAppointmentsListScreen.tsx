@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HeartPulse } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { useTabSceneInsets } from '@/components/navigation/liquid-glass-header-inset';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
 import { InfiniteQueryFlatList } from '@/components/ui/InfiniteQueryFlatList';
@@ -30,20 +29,14 @@ import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination
 import { useStaleForegroundRefetch } from '@/lib/hooks/use-stale-foreground-refetch';
 import { prefetchAppointmentsForUser } from '@/features/appointments/lib/prefetch-appointments';
 import type { PatientListTab } from '@/constants/appointments-list-filters';
-import {
-  EMPTY_RDV_IMAGE,
-  EMPTY_RDV_IMAGE_HEIGHT,
-  EMPTY_RDV_IMAGE_WIDTH,
-} from '@/constants/empty-state-images';
 import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
 import { useHealthRecordCompletionSyncOnFocus } from '@/features/health-record/hooks/use-health-record-completion-sync-on-focus';
 import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
 import { healthRecordHeroSubtitle } from '@/features/health-record/utils/health-record-display';
 import { PatientNextVisitCard } from '../components/PatientNextVisitCard';
+import { appointmentDetailHref, bookingNewHref } from '@/navigation/role-hrefs';
 import { spacing, useStyles } from '@/theme';
-
-const BOOKING_HREF = '/(patient)/booking/new';
 
 const PERIOD_SEGMENTS: FullWidthSegment<PatientListTab>[] = [
   { id: 'upcoming', label: 'À venir' },
@@ -68,7 +61,6 @@ export function PatientAppointmentsListScreen() {
   const router = useRouter();
   const chromeStyles = useRdvListChromeStyles();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
   const [tab, setTab] = useState<PatientListTab>('upcoming');
   const [search, setSearch] = useState('');
 
@@ -124,7 +116,7 @@ export function PatientAppointmentsListScreen() {
   }, query.dataUpdatedAt);
 
   const openAppointment = useCallback(
-    (apt: Appointment) => router.push(`/(patient)/appointment/${apt.id}` as never),
+    (apt: Appointment) => router.push(appointmentDetailHref('/(patient)', apt.id)),
     [router],
   );
 
@@ -147,18 +139,20 @@ export function PatientAppointmentsListScreen() {
       style={[
         chromeStyles.listChrome,
         {
-          paddingTop: sceneInsets.insetTop + RDV_LIST_SEARCH_EDGE,
+          paddingTop: RDV_LIST_SEARCH_EDGE,
           paddingBottom: RDV_LIST_SEARCH_EDGE,
         },
       ]}
     >
       <FullWidthSegmentBar segments={PERIOD_SEGMENTS} value={tab} onChange={setTab} />
-      <AppointmentsListSearchHost
-        embedded
-        compactTop
-        onQueryChange={onSearchQueryChange}
-        searchPlaceholder={APPOINTMENTS_RDV_SEARCH_PLACEHOLDER}
-      />
+      {appointments.length > 0 || search.trim() ? (
+        <AppointmentsListSearchHost
+          embedded
+          compactTop
+          onQueryChange={onSearchQueryChange}
+          searchPlaceholder={APPOINTMENTS_RDV_SEARCH_PLACEHOLDER}
+        />
+      ) : null}
     </View>
   );
 
@@ -181,7 +175,7 @@ export function PatientAppointmentsListScreen() {
                 label: 'Carnet de santé',
                 description: healthRecordHeroSubtitle(healthPercent),
                 trailing: <HealthRecordProgressRing variant="mini" percent={healthPercent} />,
-                onPress: () => router.push('/(patient)/health-record' as never),
+                onPress: () => router.push('/(patient)/health-record'),
               },
             ]}
           />
@@ -191,27 +185,20 @@ export function PatientAppointmentsListScreen() {
 
   const emptyState = search.trim() ? (
     <EmptyState
-      title="Aucun résultat pour cette recherche"
+      illustration="search"
+      title="Aucun résultat"
       description="Essayez un autre nom, soin ou adresse."
     />
   ) : tab === 'upcoming' ? (
     <EmptyState
-      imageSource={EMPTY_RDV_IMAGE}
-      imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-      imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-      title="Pas encore de visite prévue"
-      description="Réservez une visite à domicile : cela prend quelques minutes."
+      illustration="appointments"
+      title="Aucune visite prévue"
+      description="Réservez une visite à domicile en quelques minutes."
       actionLabel="Réserver une visite"
-      onAction={() => router.push(BOOKING_HREF as never)}
+      onAction={() => router.push(bookingNewHref('/(patient)'))}
     />
   ) : (
-    <EmptyState
-      imageSource={EMPTY_RDV_IMAGE}
-      imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-      imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-      title="Aucune visite passée pour le moment"
-      description="Vos visites passées apparaîtront ici."
-    />
+    <EmptyState illustration="history" title="Aucune visite passée" />
   );
 
   return (
@@ -222,7 +209,6 @@ export function PatientAppointmentsListScreen() {
         renderItem={renderItem}
         keyExtractor={appointmentListItemKey}
         header={listChrome}
-        reserveTopInsetInHeader
         ListHeaderComponent={listHeader}
         contentContainerStyle={chromeStyles.listContent}
         showsVerticalScrollIndicator={false}

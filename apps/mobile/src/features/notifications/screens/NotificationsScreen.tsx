@@ -22,6 +22,8 @@ import {
 import { NotificationsFeed } from '@/features/notifications/components/NotificationsFeed';
 import { NotificationsReadAllAction } from '@/features/notifications/components/NotificationsReadAllAction';
 import { useAuthStore } from '@/store/auth-store';
+import { handleApiError } from '@/lib/errors/handle-api-error';
+import { useToast } from '@/providers/ToastProvider';
 import {
   decrementUnreadNotificationsCount,
   setUnreadNotificationsCount,
@@ -37,6 +39,7 @@ export function NotificationsScreen() {
 
   const router = useRouter();
   const qc = useQueryClient();
+  const { show: toast } = useToast();
   const role = useAuthStore((s) => s.user?.role);
   const token = useAuthStore((s) => s.token);
   const focused = useIsFocused();
@@ -94,7 +97,8 @@ export function NotificationsScreen() {
       }
       return { wasUnread, prev };
     },
-    onError: (_err, _id, ctx) => {
+    onError: (err, _id, ctx) => {
+      console.warn('[notifications] marquage comme lue impossible', err);
       if (ctx?.wasUnread) {
         if (ctx.prev) qc.setQueryData(FEED_QUERY_KEY, ctx.prev);
         void qc.invalidateQueries({ queryKey: queryKeys.notifications.unread });
@@ -130,7 +134,8 @@ export function NotificationsScreen() {
       });
       return { prev, prevUnread };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, _vars, ctx) => {
+      handleApiError(err, toast, 'notifications.readAll');
       if (ctx?.prev) qc.setQueryData(FEED_QUERY_KEY, ctx.prev);
       if (ctx?.prevUnread !== undefined) {
         qc.setQueryData(queryKeys.notifications.unread, ctx.prevUnread);
@@ -149,13 +154,8 @@ export function NotificationsScreen() {
   const onPressItem = useCallback(
     (n: AppNotification) => {
       if (!n.read_at) markRead.mutate(n.id);
-      const target = resolveNotificationNavigation(n, role, { pharmacyCanReceive });
-      if (target.kind === 'route') {
-        router.push({
-          pathname: target.pathname,
-          params: target.params,
-        } as never);
-      }
+      const href = resolveNotificationNavigation(n, role, { pharmacyCanReceive });
+      if (href) router.push(href);
     },
     [markRead, pharmacyCanReceive, role, router],
   );
@@ -166,7 +166,6 @@ export function NotificationsScreen() {
         <NotificationsFeed
           query={feedQ}
           items={items}
-          pageSize={NOTIFICATIONS_PAGE_SIZE}
           onPressItem={onPressItem}
         />
       </View>

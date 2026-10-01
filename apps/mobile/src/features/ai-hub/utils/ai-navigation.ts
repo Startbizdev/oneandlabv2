@@ -1,3 +1,4 @@
+import type { Href } from 'expo-router';
 import type { UserRole } from '@oneandlab/shared-types';
 
 export type AiDeepLinkParams = {
@@ -8,7 +9,9 @@ export type AiDeepLinkParams = {
   initial_message?: string;
 };
 
-export function aiTabHref(role: UserRole | string): string {
+type AiTabPathname = '/(pro)/ai' | '/(nurse)/ai' | '/(preleveur)/ai' | '/(patient)/(tabs)/ai';
+
+function aiTabPathname(role: UserRole | string): AiTabPathname {
   switch (role) {
     case 'pro':
       return '/(pro)/ai';
@@ -21,30 +24,12 @@ export function aiTabHref(role: UserRole | string): string {
   }
 }
 
-/** Détail RDV après création — aligné wizard / formulaire staff. */
-export function appointmentDetailHref(role: UserRole | string, appointmentId: string): string {
-  switch (role) {
-    case 'nurse':
-      return `/(nurse)/appointment/${appointmentId}`;
-    case 'preleveur':
-      return `/(preleveur)/appointment/${appointmentId}`;
-    case 'pro':
-      return `/(pro)/appointment/${appointmentId}`;
-    default:
-      return `/(patient)/appointment/${appointmentId}`;
+export function buildAiDeepLink(role: UserRole | string, params: AiDeepLinkParams): Href {
+  const query: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query[key] = value;
   }
-}
-
-export function buildAiDeepLink(role: UserRole | string, params: AiDeepLinkParams): string {
-  const base = aiTabHref(role);
-  const qs = new URLSearchParams();
-  if (params.conversation_type) qs.set('conversation_type', params.conversation_type);
-  if (params.patient_id) qs.set('patient_id', params.patient_id);
-  if (params.appointment_id) qs.set('appointment_id', params.appointment_id);
-  if (params.lab_result_id) qs.set('lab_result_id', params.lab_result_id);
-  if (params.initial_message) qs.set('initial_message', params.initial_message);
-  const q = qs.toString();
-  return q ? `${base}?${q}` : base;
+  return { pathname: aiTabPathname(role), params: query };
 }
 
 export function mapSuggestionToMessage(id: string): string {
@@ -55,8 +40,12 @@ export function mapSuggestionToMessage(id: string): string {
       return 'Je souhaite prendre un rendez-vous';
     case 'lab_results':
       return 'Explique mes derniers résultats de labo';
+    case 'patient_lab_results':
+      return 'Résume les derniers résultats de labo reçus pour mes patients';
     case 'analyze_docs':
       return 'Analyse mes documents médicaux récents et résume-les pour moi';
+    case 'patient_docs':
+      return 'Analyse les documents médicaux récents de ce patient et résume-les';
     case 'health_trends':
       return 'Comment va mon activité cette semaine ? Montre-moi mes tendances santé récentes.';
     case 'complete_health_record':
@@ -67,6 +56,8 @@ export function mapSuggestionToMessage(id: string): string {
       return 'Prépare mon prochain rendez-vous';
     case 'patient_rdv':
       return 'Je veux planifier un rendez-vous pour un patient';
+    case 'case_question':
+      return 'J’ai une question sur le dossier d’un patient';
     default:
       return 'J’ai une question sur mon suivi';
   }

@@ -3,14 +3,13 @@ import { useCallback, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ArrowRight } from 'lucide-react-native';
-import { animation, elevation, hexToRgba, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, animation, elevation, hexToRgba, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface BookingPremiumStepCtaProps {
   /** `wizard` : pill + 2 lignes. `list` : une ligne, coins modérés (liste RDV). */
@@ -32,12 +31,7 @@ export interface BookingPremiumStepCtaProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const DEFAULT_TITLE = 'Valider la sélection';
-const DEFAULT_SUBTITLE = 'Passer à l’étape suivante';
-
-function triggerHaptic() {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-}
+const DEFAULT_TITLE = 'Continuer';
 
 export function BookingPremiumStepCta({
   variant = 'wizard',
@@ -46,7 +40,7 @@ export function BookingPremiumStepCta({
   showStepBadge = true,
   leadingIcon,
   title = DEFAULT_TITLE,
-  subtitle = DEFAULT_SUBTITLE,
+  subtitle,
   onPress,
   onSelectionBadgePress,
   loading,
@@ -82,7 +76,7 @@ export function BookingPremiumStepCta({
 
   const handlePress = useCallback(() => {
     if (disabled || loading) return;
-    runOnJS(triggerHaptic)();
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onPress();
   }, [disabled, loading, onPress]);
 
@@ -145,11 +139,11 @@ export function BookingPremiumStepCta({
           ) : null}
 
           <View style={styles.copy}>
-            <AppText style={[styles.title, isList && styles.titleList]} numberOfLines={2}>
+            <AppText style={[styles.title, isList && styles.titleList]}>
               {title}
             </AppText>
             {!isList && subtitle ? (
-              <AppText style={styles.subtitle} numberOfLines={2}>
+              <AppText style={styles.subtitle}>
                 {subtitle}
               </AppText>
             ) : null}
@@ -160,9 +154,9 @@ export function BookingPremiumStepCta({
               <ActivityIndicator color={c.onPrimary} size="small" />
             ) : (
               <ArrowRight
-                size={isList ? 18 : 20}
+                size={iconSize.md}
                 color={c.onPrimary}
-                strokeWidth={2.5}
+                strokeWidth={ICON_STROKE_WIDTH}
               />
             )}
           </View>
@@ -241,25 +235,23 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     justifyContent: 'center' as const,
   },
   title: {
-    ...font.bold,
+    ...font.semiBold,
     fontSize: fontSize.md,
     color: c.onPrimary,
-    letterSpacing: -0.15,
   },
   titleList: {
     fontSize: fontSize.base,
   },
   subtitle: {
-    ...font.medium,
+    ...font.regular,
     fontSize: fontSize.sm,
     color: c.onPrimary,
-    letterSpacing: 0.1,
   },
   arrowOrb: {
     width: ARROW_ORB,
     height: ARROW_ORB,
     borderRadius: radius.full,
-    backgroundColor: hexToRgba(palette.white, 0.22),
+    backgroundColor: hexToRgba(c.onPrimary, 0.22),
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexShrink: 0,

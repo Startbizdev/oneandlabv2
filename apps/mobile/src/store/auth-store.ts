@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { AuthUser } from '@oneandlab/shared-types';
 import { MOBILE_ROLES, type MobileRole } from '@oneandlab/shared-constants';
 import { isNonMobileRole } from '@/lib/auth/mobile-access';
+import { setSessionExpiredHandler } from '@/lib/auth/session-expiry';
 import { api, clearCsrfCache } from '@/api/client';
 import { setAuthToken } from '@/lib/auth-token';
 import {
@@ -58,8 +59,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clearSession: async () => {
     try {
       await api.post('/auth/logout');
-    } catch {
-      /* ignore */
+    } catch (error: unknown) {
+      // La session locale est effacée quand même : l'utilisateur doit pouvoir se déconnecter hors ligne.
+      console.warn('[auth] POST /auth/logout en échec', error);
     }
     await clearAuthSession();
     await clearAppSessionCache();
@@ -75,11 +77,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ token, user, isHydrated: true });
       if (token) {
         prefetchAppDataForRole(user?.role, user?.id);
+        // Session expirée (401) : effacée par le client API. Réseau ou serveur en panne : la session locale est conservée.
         const fresh = await get().fetchMe();
         if (fresh) prefetchAppDataForRole(fresh.role, fresh.id);
-        if (!fresh) await get().clearSession();
       }
-    } catch {
+    } catch (error: unknown) {
+      console.warn('[auth] restauration de session impossible', error);
       set({ isHydrated: true });
     }
   },
@@ -104,6 +107,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+setSessionExpiredHandler(() => useAuthStore.getState().clearSession());
 
 export function isMobileRole(role: string | undefined): role is MobileRole {
   return MOBILE_ROLES.includes(role as MobileRole);

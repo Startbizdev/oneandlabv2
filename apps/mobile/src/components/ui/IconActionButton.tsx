@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { radius, spacing, useStyles } from '@/theme';
+import { MIN_TOUCH_TARGET, radius, spacing, useStyles } from '@/theme';
 
 const VISUAL_SIZE = spacing[9];
-const MIN_TOUCH_TARGET = 44;
 
 interface IconActionButtonProps {
   label: string;

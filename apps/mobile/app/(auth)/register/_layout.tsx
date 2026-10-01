@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { REGISTER_META } from '@/features/auth/constants/register-meta';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { stackHeaderOptions } from '@/navigation/screen-options';
+import { STACK_HEADER_CATALOG } from '@/navigation/stack-header-catalog';
 import { useTheme } from '@/theme';
 
 const patient = REGISTER_META.patient;
@@ -35,7 +36,7 @@ export default function RegisterLayout() {
           headerTitle: registerHeaderTitle(pro.headerTitle, pro.headerSubtitle, pro.Icon),
         }}
       />
-      <Stack.Screen name="merci" options={{ title: 'Confirmation', headerShown: false }} />
+      <Stack.Screen name="merci" options={{ title: STACK_HEADER_CATALOG.merci.title, headerShown: false }} />
     </Stack>
   );
 }

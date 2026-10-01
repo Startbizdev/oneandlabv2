@@ -12,10 +12,9 @@ import {
 import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 import { PrescriptionPatientSelectSheet } from './PrescriptionPatientSelectSheet';
 import { patientDisplayName } from '@/features/patients/utils/patient-contact-display';
-import { adoptStaffPatient } from '@/features/patients/api/patients.service';
 import { queryKeys } from '@/lib/query-keys';
-import { useToast } from '@/providers/ToastProvider';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { buildFieldStyles, FIELD_MIN_HEIGHT } from '@/components/ui/field-styles';
 
 interface Props {
   patients: PatientRow[];
@@ -57,7 +56,6 @@ export function PrescriptionPatientSelectField({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
-  const { show: toast } = useToast();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [pinnedPatient, setPinnedPatient] = useState<PatientRow | null>(null);
@@ -104,23 +102,12 @@ export function PrescriptionPatientSelectField({
     [adoptPatient],
   );
 
+  /** `CreatePatientModal` a déjà rattaché le dossier (contact recherché + consentement). */
   const handleExistingPatient = useCallback(
     (row: PatientRow) => {
-      void (async () => {
-        try {
-          const res = await adoptStaffPatient(row.id);
-          if (!res.success) {
-            toast(res.error ?? 'Impossible d’utiliser ce dossier.', { type: 'error' });
-            return;
-          }
-        } catch (e) {
-          toast(e instanceof Error ? e.message : 'Impossible d’utiliser ce dossier.', { type: 'error' });
-          return;
-        }
-        await adoptPatient(row);
-      })();
+      void adoptPatient(row);
     },
-    [adoptPatient, toast],
+    [adoptPatient],
   );
 
   return (
@@ -151,7 +138,7 @@ export function PrescriptionPatientSelectField({
                     accessibilityRole="button"
                     accessibilityLabel="Modifier la fiche patient"
                   >
-                    <PenLine size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
+                    <PenLine size={iconSize.md} color={c.primary} strokeWidth={2} />
                   </Pressable>
                 ) : null}
                 {selectedPatient ? (
@@ -161,10 +148,10 @@ export function PrescriptionPatientSelectField({
                     accessibilityRole="button"
                     accessibilityLabel="Effacer le patient sélectionné"
                   >
-                    <X size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+                    <X size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
                   </Pressable>
                 ) : (
-                  <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
+                  <ChevronDown size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
                 )}
               </View>
             )
@@ -186,7 +173,7 @@ export function PrescriptionPatientSelectField({
         accessibilityLabel="Ajouter un patient"
       >
         <Row gap={spacing[2]} align="center" justify="center">
-          <UserPlus size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
+          <UserPlus size={iconSize.md} color={c.primary} strokeWidth={2.25} />
           <AppText style={styles.addPatientText}>Ajouter un patient</AppText>
         </Row>
       </Pressable>
@@ -216,24 +203,21 @@ export function PrescriptionPatientSelectField({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles(theme: Theme) {
+  const { colors: c, fontSize } = theme;
+  const fieldStyles = buildFieldStyles(theme);
   return {
     wrap: {
       gap: spacing[1],
       alignSelf: 'stretch' as const,
     },
-    label: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      marginBottom: spacing[0.5],
-    },
+    label: fieldStyles.label,
     trigger: {
       borderWidth: 1,
-      borderColor: c.borderLight,
-      borderRadius: radius.lg,
+      borderColor: c.border,
+      borderRadius: radius.md,
       backgroundColor: c.surface,
-      minHeight: 48,
+      minHeight: FIELD_MIN_HEIGHT,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2.5],
     },
@@ -251,6 +235,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...layoutRowCenter(spacing[2]),
     },
     addPatientBtn: {
+      marginTop: spacing[1],
       borderWidth: 1,
       borderColor: c.primaryMid,
       borderRadius: radius.lg,

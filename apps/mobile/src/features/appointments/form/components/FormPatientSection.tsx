@@ -1,15 +1,15 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
+import type { PatientLookupResult } from '@oneandlab/shared-api';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ChevronDown, UserPlus, Users } from 'lucide-react-native';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
-import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
+import { usePatientDuplicateDetection } from '@/features/patients/hooks/use-patient-duplicate-detection';
 import { PatientDuplicatePrompt } from './PatientDuplicatePrompt';
 import { PatientSelectSheet } from './PatientSelectSheet';
 import {
@@ -18,7 +18,7 @@ import {
   THIRD_PARTY_PHONE_INPUT,
 } from '../constants/third-party-input-props';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { normalizePatientGender, patientGenderIsSet } from '@/utils/patient-gender';
 
 export interface PatientOption {
@@ -50,7 +50,8 @@ interface Props {
   birthDate: string;
   onChange: (field: string, value: string) => void;
   emailOptional?: boolean;
-  onAdoptLookupPatient?: (patient: PatientRow) => void;
+  /** Rattache le dossier trouvé ; `false` si l'adoption n'a pas eu lieu (consentement manquant, refus serveur). */
+  onAdoptLookupPatient: (match: PatientLookupResult) => Promise<boolean>;
 }
 
 export function FormPatientSection({
@@ -75,11 +76,12 @@ export function FormPatientSection({
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [selectOpen, setSelectOpen] = useState(false);
-  const [duplicateOpen, setDuplicateOpen] = useState(false);
-  const [duplicateRow, setDuplicateRow] = useState<PatientRow | null>(null);
-  const suppressKeyRef = useRef('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lookupVersion = useRef(0);
+  const [adopting, setAdopting] = useState(false);
+  const { duplicate, dismissDuplicate, resetDuplicate } = usePatientDuplicateDetection(
+    email,
+    phone,
+    patientMode === 'new',
+  );
 
   const selectedLabel =
     patients.find((p) => p.id === selectedPatientId)?.label ?? 'Sélectionner un patient…';
@@ -89,107 +91,59 @@ export function FormPatientSection({
     Boolean(selectedPatientId) &&
     (!patientGenderIsSet(gender) || !birthDate.trim());
 
-  const runLookup = useCallback(async () => {
-    const version = ++lookupVersion.current;
-    if (patientMode !== 'new') return;
-    const em = email.trim();
-    const ph = phone.trim();
-    if (!em && !ph.replace(/\D/g, '')) {
-      setDuplicateOpen(false);
-      setDuplicateRow(null);
-      return;
-    }
-
+  const adoptDuplicate = async () => {
+    if (!duplicate || adopting) return;
+    setAdopting(true);
     try {
-      const res = await lookupPatientByContact(em, ph);
-      if (version !== lookupVersion.current) return;
-      const row = res.success ? res.data : null;
-      if (!row?.id) {
-        setDuplicateOpen(false);
-        setDuplicateRow(null);
-        return;
-      }
-      const suppress = `${em}|${ph}|${row.id}`;
-      if (suppressKeyRef.current === suppress) return;
-      setDuplicateRow(row);
-      setDuplicateOpen(true);
-    } catch {
-      /* silencieux */
+      if (!(await onAdoptLookupPatient(duplicate))) return;
+      resetDuplicate();
+      toast('Patient existant sélectionné', { type: 'success' });
+    } finally {
+      setAdopting(false);
     }
-  }, [email, patientMode, phone]);
-
-  useEffect(() => {
-    const requestVersion = lookupVersion;
-    requestVersion.current++;
-    if (patientMode !== 'new') {
-      setDuplicateOpen(false);
-      return;
-    }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      void runLookup();
-    }, 450);
-    return () => {
-      requestVersion.current++;
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [email, phone, patientMode, runLookup]);
-
-  const dismissDuplicate = () => {
-    if (duplicateRow?.id) {
-      suppressKeyRef.current = `${email.trim()}|${phone.trim()}|${duplicateRow.id}`;
-    }
-    setDuplicateOpen(false);
-    setDuplicateRow(null);
-  };
-
-  const adoptDuplicate = () => {
-    if (!duplicateRow) return;
-    setDuplicateOpen(false);
-    onAdoptLookupPatient?.(duplicateRow);
-    onSelectPatient(duplicateRow.id, { keepMode: true });
-    toast('Patient existant sélectionné', { type: 'success' });
-    setDuplicateRow(null);
-    suppressKeyRef.current = '';
   };
 
   return (
     <View style={styles.wrapper}>
-      <AppText style={styles.sectionLabel}>Patient</AppText>
-
-      <Row gap={spacing[2]} style={styles.modeTabs}>
+      <View style={styles.modeTabs} accessibilityRole="radiogroup">
         <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: patientMode === 'existing' }}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: patientMode === 'existing' }}
           onPress={() => onPatientModeChange('existing')}
           style={[styles.modeTab, patientMode === 'existing' && styles.modeTabActive]}
         >
           <Row gap={spacing[1.5]} align="center" justify="center">
-            <Users size={iconSize.sm} color={patientMode === 'existing' ? c.primary : c.textTertiary} />
+            <Users
+              size={iconSize.md}
+              color={patientMode === 'existing' ? c.primaryDark : c.textSecondary}
+              strokeWidth={ICON_STROKE_WIDTH}
+            />
             <AppText style={[styles.modeTabText, patientMode === 'existing' && styles.modeTabTextActive]}>
               Patient existant
             </AppText>
           </Row>
         </Pressable>
         <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: patientMode === 'new' }}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: patientMode === 'new' }}
           onPress={() => onPatientModeChange('new')}
           style={[styles.modeTab, patientMode === 'new' && styles.modeTabActive]}
         >
           <Row gap={spacing[1.5]} align="center" justify="center">
-            <UserPlus size={iconSize.sm} color={patientMode === 'new' ? c.primary : c.textTertiary} />
+            <UserPlus
+              size={iconSize.md}
+              color={patientMode === 'new' ? c.primaryDark : c.textSecondary}
+              strokeWidth={ICON_STROKE_WIDTH}
+            />
             <AppText style={[styles.modeTabText, patientMode === 'new' && styles.modeTabTextActive]}>
               Nouveau patient
             </AppText>
           </Row>
         </Pressable>
-      </Row>
+      </View>
 
       {patientMode === 'existing' ? (
         <>
-          <AppText style={styles.fieldLabel}>Choisir un patient</AppText>
           {patientsError ? <View style={styles.errorBox}>
             <AppText accessibilityRole="alert" style={styles.errorText}>Liste des patients indisponible.</AppText>
             <Button title="Recharger les patients" variant="outline" loading={patientsLoading} onPress={retryPatients} />
@@ -197,14 +151,13 @@ export function FormPatientSection({
           {patientsLoading ? <AppText style={styles.existingProfileHint}>Chargement des patients…</AppText> : null}
           <Pressable accessibilityRole="button" accessibilityLabel={`Choisir un patient : ${selectedLabel}`} accessibilityState={{ disabled: patientsLoading || patientsError }} disabled={patientsLoading || patientsError} onPress={() => setSelectOpen(true)} style={styles.selectBtn}>
             <Cluster
-              actions={<ChevronDown size={iconSize.mdSm} color={c.textTertiary} />}
+              actions={<ChevronDown size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
             >
               <AppText
                 style={[
                   styles.selectBtnText,
                   !selectedPatientId && styles.selectPlaceholder,
                 ]}
-                numberOfLines={1}
               >
                 {selectedLabel}
               </AppText>
@@ -217,16 +170,11 @@ export function FormPatientSection({
           </View> : null}
           {selectedPatientId && !patientProfileLoading && !patientProfileError ? (
             <View style={styles.existingProfileCard}>
-              <AppText style={styles.existingProfileTitle}>Fiche patient</AppText>
-              {existingProfileIncomplete ? (
-                <AppText style={styles.existingProfileHint}>
-                  Complétez les informations manquantes pour valider le rendez-vous.
-                </AppText>
-              ) : (
-                <AppText style={styles.existingProfileHint}>
-                  Vous pouvez corriger les coordonnées avant la prise de rendez-vous.
-                </AppText>
-              )}
+              <AppText variant="secondary" style={styles.existingProfileHint}>
+                {existingProfileIncomplete
+                  ? 'Complétez les informations manquantes pour valider le rendez-vous.'
+                  : 'Vous pouvez corriger les coordonnées avant de valider.'}
+              </AppText>
               <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} {...THIRD_PARTY_NAME_INPUT} />
               <Input label="Nom" value={lastName} onChangeText={(v) => onChange('last_name', v)} {...THIRD_PARTY_NAME_INPUT} />
               <Input
@@ -252,12 +200,13 @@ export function FormPatientSection({
         </>
       ) : (
         <View style={styles.fields}>
-          {duplicateOpen && duplicateRow ? (
+          {duplicate ? (
             <PatientDuplicatePrompt
-              patient={duplicateRow}
+              patient={duplicate.patient}
               variant="booking"
+              adopting={adopting}
               onDismiss={dismissDuplicate}
-              onUseExisting={adoptDuplicate}
+              onUseExisting={() => void adoptDuplicate()}
             />
           ) : null}
           <Input label="Prénom" value={firstName} onChangeText={(v) => onChange('first_name', v)} {...THIRD_PARTY_NAME_INPUT} />
@@ -274,26 +223,11 @@ export function FormPatientSection({
             onChangeText={(v) => onChange('phone', v)}
             {...THIRD_PARTY_PHONE_INPUT}
           />
-          <View style={styles.genderRow}>
-            <AppText style={styles.fieldLabel}>Genre</AppText>
-            <Row gap={spacing[2]}>
-              {(['M', 'F'] as const).map((g) => {
-                const norm = normalizePatientGender(gender);
-                const on = (g === 'M' && norm === 'male') || (g === 'F' && norm === 'female');
-                return (
-                  <Pressable
-                    key={g}
-                    onPress={() => onChange('gender', g === 'M' ? 'male' : 'female')}
-                    style={[styles.genderPill, on && styles.genderPillActive]}
-                  >
-                    <AppText style={[styles.genderText, on && styles.genderTextActive]}>
-                      {g === 'M' ? 'Homme' : 'Femme'}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </Row>
-          </View>
+          <GenderSelect
+            label="Genre"
+            value={normalizePatientGender(gender)}
+            onChange={(v) => onChange('gender', v)}
+          />
           <BirthDatePicker value={birthDate} onChange={(v) => onChange('birth_date', v)} />
         </View>
       )}
@@ -315,22 +249,19 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     errorBox: { padding: spacing[3], gap: spacing[2], borderRadius: radius.lg, backgroundColor: c.errorLight },
     errorText: { color: c.error, fontSize: fontSize.sm },
   wrapper: { gap: spacing[3] },
-  sectionLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
   modeTabs: {
+    flexDirection: 'row' as const,
+    gap: spacing[2],
     padding: spacing[1],
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: c.surfaceAlt,
-    borderWidth: 1,
-    borderColor: c.borderLight,
   },
   modeTab: {
     minWidth: 0,
     flex: 1,
-    paddingVertical: spacing[2.5],
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingVertical: spacing[2],
     paddingHorizontal: spacing[2],
     borderRadius: radius.lg,
   },
@@ -340,19 +271,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderColor: c.primaryMid,
   },
   modeTabText: {
-    ...font.medium,
-    fontSize: fontSize.xs,
+    ...font.semiBold,
+    fontSize: fontSize.sm,
     color: c.textSecondary,
     textAlign: 'center' as const,
   },
   modeTabTextActive: {
-    color: c.primary,
-    ...font.semiBold,
-  },
-  fieldLabel: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
+    color: c.primaryDark,
   },
   selectBtn: {
     paddingVertical: spacing[3.5],
@@ -380,39 +305,9 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderColor: c.borderLight,
     backgroundColor: c.surfaceAlt,
   },
-  existingProfileTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
   existingProfileHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
     marginBottom: spacing[1],
   },
-  genderRow: { gap: spacing[2] },
-  genderPill: {
-    minWidth: 0,
-    flex: 1,
-    paddingVertical: spacing[2.5],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    alignItems: 'center' as const,
-  },
-  genderPillActive: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  genderText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  genderTextActive: { color: c.textInverse },
 };
 }
 

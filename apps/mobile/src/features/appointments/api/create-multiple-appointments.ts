@@ -1,4 +1,6 @@
+import { appointmentCreateErrorResolver } from '@oneandlab/shared-api';
 import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
+import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 import { randomUUID } from '@/lib/uuid';
 import { createAppointment } from './appointments.service';
 import { uploadAppointmentDocuments } from './upload-appointment-documents';
@@ -40,7 +42,12 @@ export async function createMultipleAppointments(
     fingerprint,
     prepared,
     async (payload, requestId) => {
-      const response = await createAppointment({ ...payload, client_request_id: requestId });
+      let response: Awaited<ReturnType<typeof createAppointment>>;
+      try {
+        response = await createAppointment({ ...payload, client_request_id: requestId });
+      } catch (e) {
+        throw new Error(apiErrorMessage(e, appointmentCreateErrorResolver(payload), 'Création impossible'));
+      }
       if (!response.success || !response.data?.id) throw new Error(response.error || 'Création impossible');
       return response.data.id;
     },

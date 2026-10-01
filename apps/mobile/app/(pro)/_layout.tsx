@@ -1,7 +1,6 @@
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
-import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 import { useStyles, useTheme, type Theme } from '@/theme';
 
 export default function ProLayout() {
@@ -10,7 +9,6 @@ export default function ProLayout() {
 
   return (
     <View style={styles.stackHost}>
-      <StackSceneInsetLayout>
       <Stack screenOptions={stackHeaderOptions(theme)}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
@@ -22,7 +20,6 @@ export default function ProLayout() {
         <Stack.Screen name="commandes-pharmacie/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="commandes-recues/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
       </Stack>
-      </StackSceneInsetLayout>
     </View>
   );
 }

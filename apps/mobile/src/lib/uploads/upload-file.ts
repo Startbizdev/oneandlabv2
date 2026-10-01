@@ -49,7 +49,7 @@ function buildFormDataFromPrepared(prepared: UploadFileInput, meta: MedicalDocum
     uri: prepared.uri,
     name: prepared.fileName,
     type: mimeType,
-  } as unknown as Blob);
+  });
 
   if (meta.appointment_id) fd.append('appointment_id', meta.appointment_id);
   if (meta.document_type) fd.append('document_type', meta.document_type);

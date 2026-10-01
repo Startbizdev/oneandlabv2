@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRowCenterAll } from '@/theme/layout-styles';
 
 type Props = {
@@ -22,7 +22,7 @@ export function PassageFab({ onPress }: Props) {
         accessibilityRole="button"
         accessibilityLabel="Ajouter un passage"
       >
-        <Plus size={iconSize.mdLg} color={c.textInverse} strokeWidth={2.5} />
+        <Plus size={iconSize.lg} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={[styles.label, { color: c.textInverse }]}>Ajouter un passage</AppText>
       </Pressable>
     </View>
@@ -38,7 +38,7 @@ function buildStyles({ fontSize }: Theme) {
     },
     btn: {
       ...layoutRowCenterAll(spacing[2]),
-      minHeight: 52,
+      minHeight: spacing[12],
       paddingHorizontal: spacing[5],
       borderRadius: radius.full,
     },

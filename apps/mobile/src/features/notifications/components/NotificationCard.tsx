@@ -1,35 +1,41 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { ListRowShell } from '@/components/ui/ListRowShell';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
+import { ListRowShell } from '@/components/ui/ListRowShell';
 import type { AppNotification } from '@/features/notifications/api/notifications.service';
 import { useAuthStore } from '@/store/auth-store';
 import { resolveNotificationDisplayLines } from '@/features/notifications/utils/notification-display-lines';
-import { notificationIsNavigable } from '@/features/notifications/utils/notification-navigation';
+import { resolveNotificationNavigation } from '@/features/notifications/utils/notification-navigation';
 import {
   formatNotificationTime,
-  notificationVisual,
+  notificationIcon,
 } from '@/features/notifications/utils/notification-card-meta';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
+import { radius, spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
+
+const ICON_WELL = 36;
+const UNREAD_DOT = 8;
 
 interface Props {
   item: AppNotification;
+  /** Première / dernière ligne de son groupe de jour (coins arrondis, séparateur). */
+  first: boolean;
+  last: boolean;
   onPress: () => void;
 }
 
-export const NotificationCard = React.memo(function NotificationCard({ item, onPress }: Props) {
+export const NotificationCard = React.memo(function NotificationCard({ item, first, last, onPress }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const role = useAuthStore((s) => s.user?.role);
 
   const { label, message } = resolveNotificationDisplayLines(item);
   const isUnread = !item.read_at;
-  const hasLink = notificationIsNavigable(item, role);
+  const hasLink = resolveNotificationNavigation(item, role) !== null;
   const time = formatNotificationTime(item.created_at);
-  const { Icon, color, bg } = notificationVisual(c, item.type);
+  const Icon = notificationIcon(item.type);
   const pressable = hasLink || isUnread;
 
   return (
@@ -41,39 +47,42 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
       }}
       disabled={!pressable}
       style={({ pressed }) => [
-        styles.card,
-        isUnread && styles.cardUnread,
-        pressable && pressed && styles.cardPressed,
+        styles.row,
+        first && styles.rowFirst,
+        last && styles.rowLast,
+        pressable && pressed && styles.rowPressed,
       ]}
       accessibilityRole={pressable ? 'button' : 'text'}
+      accessibilityLabel={[isUnread ? 'Non lue' : null, label, message, time].filter(Boolean).join(', ')}
       accessibilityHint={
         hasLink ? 'Ouvre le détail' : isUnread ? 'Marque la notification comme lue' : undefined
       }
     >
-      {isUnread ? <View style={styles.unreadStripe} /> : null}
-
+      {!first ? <View style={styles.divider} /> : null}
       <ListRowShell
+        style={styles.shell}
         leading={
-          <View style={[styles.iconBox, { backgroundColor: bg }]}>
-            <Icon size={iconSize.mdSm} color={color} strokeWidth={2} />
+          <View style={styles.iconWell}>
+            <Icon size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
           </View>
         }
         body={
-          <>
-            <Row align="start">
-              <View style={styles.titleWrap}>
-                <AppText style={[styles.title, isUnread && styles.titleUnread]} numberOfLines={2}>
-                  {label}
-                </AppText>
-              </View>
-              {time ? <AppText style={styles.time}>{time}</AppText> : null}
+          <View style={styles.texts}>
+            <Row align="start" gap={spacing[2]}>
+              <AppText style={[styles.title, isUnread && styles.titleUnread]}>{label}</AppText>
+              {time ? <AppText variant="caption" style={styles.time}>{time}</AppText> : null}
             </Row>
-            {message ? <AppText style={styles.body}>{message}</AppText> : null}
-          </>
+            {message ? <AppText variant="secondary">{message}</AppText> : null}
+          </View>
         }
         trailing={
-          hasLink ? (
-            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
+          isUnread || hasLink ? (
+            <>
+              {isUnread ? <View style={styles.unreadDot} /> : null}
+              {hasLink ? (
+                <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+              ) : null}
+            </>
           ) : null
         }
       />
@@ -81,67 +90,66 @@ export const NotificationCard = React.memo(function NotificationCard({ item, onP
   );
 });
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-    card: {
+    row: {
       alignSelf: 'stretch' as const,
       backgroundColor: c.surface,
-      borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.borderLight,
+      borderColor: c.cardBorder,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
       overflow: 'hidden' as const,
     },
-    cardUnread: {
-      backgroundColor: c.primaryLight,
+    rowFirst: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
     },
-    cardPressed: {
-      opacity: 0.88,
+    rowLast: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomLeftRadius: radius.lg,
+      borderBottomRightRadius: radius.lg,
     },
-    unreadStripe: {
-      position: 'absolute' as const,
-      left: 0,
-      top: spacing[3],
-      bottom: spacing[3],
-      width: 3,
-      borderTopRightRadius: radius.full,
-      borderBottomRightRadius: radius.full,
-      backgroundColor: c.primary,
+    rowPressed: {
+      backgroundColor: c.surfaceAlt,
     },
-    iconBox: {
-      width: 40,
-      height: 40,
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: spacing[4] + ICON_WELL + spacing[3],
+      backgroundColor: c.borderLight,
+    },
+    shell: {
+      alignItems: 'flex-start' as const,
+    },
+    iconWell: {
+      width: ICON_WELL,
+      height: ICON_WELL,
       borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
+      backgroundColor: c.surfaceAlt,
     },
-  titleWrap: {
-    flex: 1,
-    minWidth: 0,
-    marginRight: spacing[2],
-  },
+    texts: {
+      gap: spacing[0.5],
+    },
     title: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
+      ...text.body,
+      ...font.medium,
+      flex: 1,
+      minWidth: 0,
       color: c.textPrimary,
-      letterSpacing: -0.15,
     },
     titleUnread: {
-      ...font.bold,
+      ...font.semiBold,
     },
     time: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      lineHeight: 14,
       flexShrink: 0,
-      paddingTop: 1,
     },
-    body: {
-      marginTop: spacing[1],
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.5,
+    unreadDot: {
+      width: UNREAD_DOT,
+      height: UNREAD_DOT,
+      borderRadius: radius.full,
+      backgroundColor: c.primary,
     },
   };
 }

@@ -94,8 +94,8 @@ async function resolveWritableCalendarId(): Promise<string | null> {
     try {
       const cal = await Calendar.getDefaultCalendarAsync();
       if (cal?.id && cal.allowsModifications !== false) return cal.id;
-    } catch {
-      /* fallback liste */
+    } catch (error) {
+      console.warn('[tour-calendar] calendrier par défaut indisponible, recherche dans la liste', error);
     }
   }
 
@@ -135,7 +135,8 @@ async function openIcsInCalendarApp(path: string, filename: string): Promise<boo
 async function shareIcsFile(path: string, filename: string): Promise<boolean> {
   try {
     return await openIcsInCalendarApp(path, filename);
-  } catch {
+  } catch (error) {
+    console.warn('[tour-calendar] ouverture directe impossible, partage du fichier', error);
     if (!(await Sharing.isAvailableAsync())) return false;
     await Sharing.shareAsync(path, {
       mimeType: 'text/calendar',
@@ -214,8 +215,8 @@ async function shareDayIcsFallback(date: string, stops: NurseTourStop[]): Promis
       if (!shared) return { ok: false, reason: 'unavailable' };
       return { ok: true, count: activeStops.length, mode: 'share' };
     }
-  } catch {
-    /* fallback client */
+  } catch (error) {
+    console.warn('[tour-calendar] ICS serveur indisponible, génération locale', error);
   }
 
   const events = activeStops.map(buildStopEvent).filter(Boolean) as string[];
@@ -258,40 +259,18 @@ export async function importTourToDeviceCalendar(input: {
       return shareDayIcsFallback(input.date, input.todayStops);
     }
     return { ok: false, reason: native.reason ?? 'error' };
-  } catch {
+  } catch (error) {
+    console.warn('[tour-calendar] ajout natif impossible', error);
     if (input.scope === 'today') {
       try {
         return await shareDayIcsFallback(input.date, input.todayStops);
-      } catch {
+      } catch (fallbackError) {
+        console.warn('[tour-calendar] partage ICS impossible', fallbackError);
         return { ok: false, reason: 'error' };
       }
     }
     return { ok: false, reason: 'error' };
   }
-}
-
-/** @deprecated Préférer importTourToDeviceCalendar */
-export async function addTourDayToDeviceCalendar(
-  date: string,
-  stops: NurseTourStop[],
-): Promise<TourCalendarAddResult> {
-  return importTourToDeviceCalendar({ scope: 'today', date, todayStops: stops });
-}
-
-/** Ajoute un passage au calendrier du téléphone. */
-export async function shareTourStopCalendarEvent(stop: NurseTourStop): Promise<TourCalendarAddResult> {
-  if (isTourStopAbsent(stop)) return { ok: false, reason: 'no_events' };
-  return importTourToDeviceCalendar({
-    scope: 'today',
-    date: appointmentDayFrance(stop.scheduled_at),
-    todayStops: [stop],
-  });
-}
-
-/** @deprecated Préférer importTourToDeviceCalendar */
-export async function shareTourDayCalendar(date: string, stops: NurseTourStop[]): Promise<boolean> {
-  const result = await importTourToDeviceCalendar({ scope: 'today', date, todayStops: stops });
-  return result.ok;
 }
 
 export function countTodayActiveStops(stops: NurseTourStop[]): number {

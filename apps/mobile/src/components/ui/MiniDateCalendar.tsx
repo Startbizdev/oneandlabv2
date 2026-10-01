@@ -1,4 +1,4 @@
-import { useStyles, type Theme } from '@/theme';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Platform,
@@ -31,7 +31,7 @@ type Props = {
   date?: string | Date | null;
   parts?: MiniDateCalendarParts | null;
   size?: MiniDateCalendarSize;
-  /** `brand` = teal Cary (défaut liste RDV) ; `apple` = rouge emoji décoratif. */
+  /** `brand` = teal Cary (défaut liste RDV) ; `neutral` = jour non sélectionné d'un sélecteur. */
   variant?: MiniDateCalendarVariant;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
@@ -232,7 +232,7 @@ function getStyleFactory(
 }
 
 function buildStyles(
-  { colors: c, space }: Theme,
+  { colors: c }: Theme,
   layout: MiniDateCalendarLayout,
   variant: MiniDateCalendarVariant,
 ) {
@@ -262,7 +262,7 @@ function buildStyles(
       width: '100%' as const,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      paddingHorizontal: space['2xs'],
+      paddingHorizontal: spacing[0.5],
     },
     headerBand: {
       backgroundColor: palette.headerBg,

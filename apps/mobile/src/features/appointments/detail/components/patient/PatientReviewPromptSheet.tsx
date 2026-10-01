@@ -1,6 +1,6 @@
 import type { Appointment } from '@oneandlab/shared-types';
 import { View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { RatingStars } from '@/features/reviews/components/RatingStars';
@@ -40,7 +40,7 @@ export function PatientReviewPromptSheet({
   const isReadOnly = Boolean(existing);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title={isReadOnly ? 'Mon avis' : 'Laisser un avis'}
@@ -97,7 +97,7 @@ export function PatientReviewPromptSheet({
           />
         </View>
       ) : null}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

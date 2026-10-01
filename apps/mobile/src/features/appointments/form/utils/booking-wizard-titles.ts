@@ -37,13 +37,8 @@ export function bookingWizardFooterCtaCopy(opts: {
   const { section, mode, returnToReview, vipPriceLabel } = opts;
   if (section === 'review') {
     if (mode === 'dashboard') return { title: 'Créer le rendez-vous', subtitle: '' };
-    if (vipPriceLabel) {
-      return {
-        title: `Payer ${vipPriceLabel} et réserver`,
-        subtitle: `Paiement sécurisé via ${vipStoreLabel()}`,
-      };
-    }
-    return { title: 'Réserver', subtitle: 'Aucun paiement à la réservation' };
+    if (vipPriceLabel) return { title: `Payer ${vipPriceLabel} et réserver`, subtitle: '' };
+    return { title: 'Réserver', subtitle: '' };
   }
   if (returnToReview) return { title: 'Revenir au récapitulatif', subtitle: '' };
   if (section === 'personal') {

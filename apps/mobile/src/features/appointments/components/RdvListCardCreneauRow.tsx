@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { StatusBadge } from '@/components/ui/Badge';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
-import { spacing, AppText, useStyles, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 const CLOCK_SIZE = 14;
 
@@ -31,9 +31,9 @@ export function RdvListCardCreneauRow({ label, status }: Props) {
       {label ? (
         <Row gap={spacing[1.5]} align="start">
           <View style={styles.iconWrap}>
-            <Clock size={CLOCK_SIZE} color={c.textTertiary} strokeWidth={2} />
+            <Clock size={CLOCK_SIZE} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
           </View>
-          <AppText style={styles.label} numberOfLines={2}>
+          <AppText style={styles.label}>
             {label}
           </AppText>
         </Row>

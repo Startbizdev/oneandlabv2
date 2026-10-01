@@ -32,8 +32,8 @@ export type PatientDocumentRow = {
 export const PATIENT_PROFILE_UPLOAD_TYPES = [
   'carte_vitale',
   'carte_mutuelle',
-  'autres_assurances',
   'attestation_droits_ame',
+  'autres_assurances',
 ] as const;
 
 export type PatientProfileUploadType = (typeof PATIENT_PROFILE_UPLOAD_TYPES)[number];

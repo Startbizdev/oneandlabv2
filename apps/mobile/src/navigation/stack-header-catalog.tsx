@@ -11,8 +11,7 @@ export type StackHeaderCatalogEntry = {
 export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   index: { title: 'Mon profil' },
   menu: { title: 'Compte' },
-  personal: { title: 'Informations personnelles' },
-  settings: { title: "Paramètres de l'app" },
+  settings: { title: 'Paramètres' },
   'help/index': { title: "Centre d'aide" },
   'help/[slug]': { title: 'Aide' },
   support: { title: 'Contacter le support' },
@@ -37,11 +36,15 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   'patient/[id]': { title: 'Patient' },
   'patient/[id]/history': { title: 'Historique' },
   'patient/[id]/documents': { title: 'Documents' },
+  'patient/[id]/health-record': { title: 'Carnet de santé' },
   prescriptions: { title: 'Prescriptions' },
   abonnement: { title: 'Abonnement' },
   'informations-legales': { title: 'Informations légales' },
   web: { title: 'Page web' },
-  'appointment/[id]/conversation': { title: 'Échanges du rendez-vous' },
+  'appointment/[id]/conversation': { title: 'Messages' },
+  'appointment/[id]/exchange': { title: 'Suivi des soins' },
+  'appointment/[id]/care-photo/[photoId]': { title: 'Suivi des soins' },
+  'appointment/[id]/prescription': { title: 'Prescription' },
   'passage/new': { title: 'Prise en charge' },
   'passage/patient-pick': { title: 'Choisir un patient' },
   'passage/[seriesId]': { title: 'Détail passage' },
@@ -58,9 +61,10 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   'health-data': { title: 'Mes données santé' },
   'health-record/index': { title: 'Mon carnet de santé' },
   'health-record/wizard': { title: 'Compléter mon carnet' },
-  'pharmacy-settings': { title: 'Commandes pharmacie' },
+  'pharmacy-settings': { title: 'Réglages de l’officine' },
   'care-origins': { title: 'Mes donneurs de soins' },
   'delete-account': { title: 'Supprimer mon compte' },
+  merci: { title: 'Confirmation' },
 };
 
 export function useStackHeaderCatalogEntry(): StackHeaderCatalogEntry | null {

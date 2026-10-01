@@ -14,7 +14,7 @@ import type { NurseTourStop } from '../api/nurse-tour.service';
 import {
   tourStopAsAppointment,
 } from '../utils/tour-stop-as-appointment';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 type Props = {
@@ -37,7 +37,7 @@ function isDetailOptionLabel(label: string): boolean {
   );
 }
 
-/** Soins (emoji + libellé) et options catalogue — aligné détail RDV. */
+/** Soins (icône + libellé) et options catalogue — aligné détail RDV. */
 export function TourStopCareSection({ stop, embedded = false, muted = false, listCompact = false }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -78,7 +78,7 @@ export function TourStopCareSection({ stop, embedded = false, muted = false, lis
         <View style={styles.optionsBlock}>
           {displayOptionRows.map((row) => {
             const line = (
-              <AppText style={styles.optionLine} numberOfLines={2}>
+              <AppText style={styles.optionLine}>
                 <AppText style={styles.optionLabel}>{row.label} : </AppText>
                 {row.value}
               </AppText>
@@ -124,7 +124,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       alignSelf: 'stretch' as const,
     },
     metaIconWrap: {
-      width: 18,
+      width: iconSize.sm,
       alignItems: 'center' as const,
       flexShrink: 0,
     },

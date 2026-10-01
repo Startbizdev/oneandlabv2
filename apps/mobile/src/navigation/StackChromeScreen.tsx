@@ -1,34 +1,47 @@
 import type { ReactNode } from 'react';
-import { StackScreenFrame } from '@/components/navigation/StackScreenFrame';
-import { HeaderTitleText } from '@/navigation/HeaderTitle';
+import { ScreenFrame } from '@/components/navigation/ScreenFrame';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useStackHeaderCatalogEntry } from '@/navigation/stack-header-catalog';
 import { useStackChromeTabRoot } from '@/navigation/stack-chrome-tab-root';
 
 type Props = {
   children: ReactNode;
   title?: ReactNode;
-  headerLeft?: ReactNode | null;
-  headerRight?: ReactNode | null;
+  /** Retour par défaut ; `null` pour le masquer, ou un retour à comportement propre. */
+  headerLeft?: ReactNode;
+  headerRight?: ReactNode;
 };
 
 /**
- * Enveloppe stack — titre depuis props (spécifique au rôle), onglet hôte (`StackChromeTabRoot`)
+ * Écran de pile — titre depuis props (spécifique au rôle), onglet hôte (`StackChromeTabRoot`)
  * ou `STACK_HEADER_CATALOG`. Le header natif est masqué : les `options.title` des `_layout`
  * ne sont pas lisibles ici.
  */
 export function StackChromeScreen({ children, title, headerLeft, headerRight }: Props) {
   const catalogEntry = useStackHeaderCatalogEntry();
   const tabRoot = useStackChromeTabRoot();
-  const resolved = title ?? tabRoot?.title ?? catalogEntry?.title;
+  const resolvedTitle = title ?? tabRoot?.title ?? catalogEntry?.title;
+
+  if (tabRoot) {
+    return (
+      <ScreenFrame
+        variant="large"
+        title={resolvedTitle}
+        right={headerRight !== undefined ? headerRight : tabRoot.headerRight}
+      >
+        {children}
+      </ScreenFrame>
+    );
+  }
 
   return (
-    <StackScreenFrame
-      title={typeof resolved === 'string' ? <HeaderTitleText title={resolved} /> : resolved}
-      headerLeft={headerLeft !== undefined ? headerLeft : tabRoot ? null : undefined}
-      headerRight={headerRight !== undefined ? headerRight : tabRoot?.headerRight}
-      aboveTabBar={tabRoot != null}
+    <ScreenFrame
+      variant="compact"
+      title={resolvedTitle}
+      left={headerLeft !== undefined ? headerLeft : <HeaderBackButton />}
+      right={headerRight}
     >
       {children}
-    </StackScreenFrame>
+    </ScreenFrame>
   );
 }

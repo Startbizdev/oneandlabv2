@@ -8,6 +8,7 @@ import { PrescriptionAppointmentSelectSheet } from './PrescriptionAppointmentSel
 import { prescriptionAppointmentSelectSummary } from '../utils/prescription-display';
 import { groupAppointmentsByBatch } from '@/utils/appointment-batch';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { buildFieldStyles, FIELD_MIN_HEIGHT } from '@/components/ui/field-styles';
 
 interface Props {
   appointments: Appointment[];
@@ -90,10 +91,10 @@ export function PrescriptionAppointmentSelectField({
                 accessibilityRole="button"
                 accessibilityLabel="Effacer le rendez-vous sélectionné"
               >
-                <X size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+                <X size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
               </Pressable>
             ) : (
-              <ChevronDown size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2} />
+              <ChevronDown size={iconSize.md} color={c.textSecondary} strokeWidth={2} />
             )
           }
         >
@@ -123,24 +124,21 @@ export function PrescriptionAppointmentSelectField({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles(theme: Theme) {
+  const { colors: c, fontSize } = theme;
+  const fieldStyles = buildFieldStyles(theme);
   return {
     wrap: {
       gap: spacing[1],
       alignSelf: 'stretch' as const,
     },
-    label: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      marginBottom: spacing[0.5],
-    },
+    label: fieldStyles.label,
     trigger: {
       borderWidth: 1,
-      borderColor: c.borderLight,
-      borderRadius: radius.lg,
+      borderColor: c.border,
+      borderRadius: radius.md,
       backgroundColor: c.surface,
-      minHeight: 48,
+      minHeight: FIELD_MIN_HEIGHT,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2.5],
     },

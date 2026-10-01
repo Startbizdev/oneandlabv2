@@ -24,8 +24,8 @@ function buildStyles() {
       paddingTop: spacing[2],
     },
     summaryPlaceholder: {
-      height: 108,
-      borderRadius: radius.xl,
+      height: spacing[24],
+      borderRadius: radius.lg,
       borderWidth: 1,
     },
   };

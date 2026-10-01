@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { ListFilter, Search, X } from 'lucide-react-native';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export interface FilterChip {
   key: string;
@@ -23,7 +23,7 @@ interface Props {
   embedded?: boolean;
   /** Recherche suivie du CTA « Prendre RDV » — évite le double espacement vertical. */
   followedByBookCta?: boolean;
-  /** Premier élément sous le header glass — supprime la marge haute par défaut. */
+  /** Premier élément sous le header — supprime la marge haute par défaut. */
   compactTop?: boolean;
 }
 
@@ -92,7 +92,7 @@ export function AppointmentsListFilterBar({
           gap={spacing[2]}
           align="center"
           style={[styles.searchField, elevation.xs]}
-          leading={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+          leading={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
           actions={
             search.length > 0 ? (
               <Pressable
@@ -100,7 +100,7 @@ export function AppointmentsListFilterBar({
                 hitSlop={8}
                 accessibilityLabel="Effacer la recherche"
               >
-                <X size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
+                <X size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
               </Pressable>
             ) : undefined
           }
@@ -124,13 +124,15 @@ export function AppointmentsListFilterBar({
             accessibilityLabel="Filtres"
           >
             <ListFilter
-              size={iconSize.mdSm}
+              size={iconSize.md}
               color={advancedFilterCount > 0 ? c.primary : c.textSecondary}
-              strokeWidth={2}
+              strokeWidth={ICON_STROKE_WIDTH}
             />
             {advancedFilterCount > 0 ? (
               <View style={styles.filterBadge}>
-                <AppText style={styles.filterBadgeText}>{advancedFilterCount}</AppText>
+                <AppText style={styles.filterBadgeText} maxFontSizeMultiplier={1}>
+                  {advancedFilterCount}
+                </AppText>
               </View>
             ) : null}
           </Pressable>
@@ -149,7 +151,7 @@ export function AppointmentsListFilterBar({
               >
                 <Row gap={spacing[1]} align="center">
                   <AppText style={styles.chipLabel}>{chip.label}</AppText>
-                  <X size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+                  <X size={iconSize.xs} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                 </Row>
               </Pressable>
             ))}
@@ -220,20 +222,24 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   filterBadge: {
     position: 'absolute' as const,
-    top: 6,
-    right: 6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -spacing[1.5],
+    right: -spacing[1.5],
+    minWidth: 18,
+    minHeight: 18,
+    paddingHorizontal: spacing[1],
+    borderRadius: radius.full,
     backgroundColor: c.primary,
+    borderWidth: 1.5,
+    borderColor: c.surface,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingHorizontal: 4,
   },
   filterBadgeText: {
     ...font.bold,
-    fontSize: fontSize.xs,
-    color: c.textInverse,
+    fontSize: fontSize['2xs'],
+    lineHeight: Math.round(fontSize['2xs'] * 1.2),
+    color: c.onPrimary,
+    includeFontPadding: false,
   },
   chipsRow: {
     minWidth: 0,

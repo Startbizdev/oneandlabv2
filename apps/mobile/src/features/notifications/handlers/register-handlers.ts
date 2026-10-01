@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
-import { notificationShouldRefreshAppointmentsList } from '@oneandlab/shared-utils';
+import { canShowReceiveTab, notificationShouldRefreshAppointmentsList } from '@oneandlab/shared-utils';
+import { pharmacyModuleFlagsQueryOptions } from '@/features/pharmacy-orders/hooks/pharmacy-module-flags-query';
 import { queryClient } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -17,16 +18,21 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function isPharmacistEmploi(emploi: string | null | undefined): boolean {
-  const e = (emploi ?? '').trim();
-  return e.localeCompare('Pharmacien', undefined, { sensitivity: 'accent' }) === 0;
+async function pharmacyCanReceiveFor(userId: string): Promise<boolean> {
+  try {
+    const flags = await queryClient.fetchQuery(pharmacyModuleFlagsQueryOptions(userId));
+    return canShowReceiveTab(flags);
+  } catch (error: unknown) {
+    console.warn('[notifications] droits pharmacie indisponibles', error);
+    return false;
+  }
 }
 
-function navigateFromNotificationData(data: Record<string, unknown>) {
+async function navigateFromNotificationData(data: Record<string, unknown>) {
   const user = useAuthStore.getState().user;
   const role = user?.role;
-  const pharmacyCanReceive = user?.role === 'pro' && isPharmacistEmploi(user.emploi);
-  const target = resolveNotificationNavigation(
+  const pharmacyCanReceive = user?.role === 'pro' ? await pharmacyCanReceiveFor(user.id) : false;
+  const href = resolveNotificationNavigation(
     {
       id: String(data.notification_id ?? data.id ?? ''),
       type: typeof data.type === 'string' ? data.type : undefined,
@@ -41,11 +47,7 @@ function navigateFromNotificationData(data: Record<string, unknown>) {
     role,
     { pharmacyCanReceive },
   );
-  if (target.kind !== 'route') return;
-  router.push({
-    pathname: target.pathname,
-    params: target.params,
-  } as never);
+  if (href) router.push(href);
 }
 
 function maybeRefreshAppointmentsFromPush(data: Record<string, unknown>) {
@@ -63,6 +65,6 @@ export function registerNotificationHandlers() {
 
   Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data as Record<string, unknown>;
-    navigateFromNotificationData(data);
+    void navigateFromNotificationData(data);
   });
 }

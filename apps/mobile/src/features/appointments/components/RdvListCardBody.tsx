@@ -1,4 +1,3 @@
-import { palette } from '@/theme/colors';
 import { useAppColors } from '@/theme/use-app-colors';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -19,7 +18,7 @@ import {
 } from '@/utils/rdv-maquette-card-display';
 import { buildRdvListCardTypography } from './rdv-list-card-typography';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
-import { spacing, iconSize, AppText, useStyles, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, type Theme } from '@/theme';
 
 const LIST_CARD_INSET_X = spacing[4];
 
@@ -52,7 +51,7 @@ function MaquetteCardBlock({
           <RdvListCardPersonRow
             person={counterparty}
             blurred={maskIdentity}
-            seed={counterparty.name ?? apt.id}
+            seed={counterparty.avatarSeed || counterparty.name || apt.id}
             size="footer"
           />
         </View>
@@ -72,7 +71,7 @@ function CardNavChevron() {
   const styles = useStyles(buildStyles);
   return (
     <View style={styles.chevronCorner} pointerEvents="none" accessible={false}>
-      <ChevronRight size={iconSize.md} color={c.textSecondary} strokeWidth={2.15} style={styles.chevronIcon} />
+      <ChevronRight size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} style={styles.chevronIcon} />
     </View>
   );
 }
@@ -149,7 +148,7 @@ function buildStyles(t: Theme) {
       paddingTop: spacing[2.5],
       paddingHorizontal: LIST_CARD_INSET_X,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: palette.slate[300],
+      borderTopColor: c.borderLight,
     },
     chevronCorner: {
       position: 'absolute' as const,

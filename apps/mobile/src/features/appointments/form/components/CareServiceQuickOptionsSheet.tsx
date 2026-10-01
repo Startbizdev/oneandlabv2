@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { View } from 'react-native';
+import { FilterOptionChips } from '@/components/ui/FilterOptionChips';
 import {
   NURSING_DURATION_OPTIONS,
   NURSING_FREQUENCY_OPTIONS,
@@ -12,7 +12,7 @@ import {
 } from '@oneandlab/shared-constants';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
@@ -65,27 +65,11 @@ function OptionSelect({
   const styles = useStyles(buildStyles);
   return (
     <View style={styles.field}>
-      <AppText style={styles.fieldLabel}>
+      <AppText variant="headline">
         {label}
         {required ? ' *' : ''}
       </AppText>
-      <Row wrap gap={spacing[2]}>
-        {items.map((item) => {
-          const on = value === item.value;
-          return (
-            <Pressable
-              key={item.value}
-              onPress={() => onChange(item.value)}
-              style={[styles.pill, on && styles.pillActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={item.label}
-            >
-              <AppText style={[styles.pillText, on && styles.pillTextActive]}>{item.label}</AppText>
-            </Pressable>
-          );
-        })}
-      </Row>
+      <FilterOptionChips options={items} value={value} onChange={onChange} />
     </View>
   );
 }
@@ -122,8 +106,10 @@ export function CareServiceQuickOptionsSheet({
   const showNursingCommonFields =
     category != null && isNursingAppointment(category.type) && !onlyCategoryOptions;
 
+  const categoryId = category?.id ?? null;
+
   useEffect(() => {
-    if (!visible || !category) return;
+    if (!visible || categoryId === null) return;
     setLocalError('');
     const next: Record<string, string | number> = {};
     for (const o of sortedCategoryOptions) {
@@ -134,7 +120,7 @@ export function CareServiceQuickOptionsSheet({
     setDurationDays('1');
     setCustomDays('');
     setFrequency('');
-  }, [visible, category?.id, sortedCategoryOptions]);
+  }, [visible, categoryId, sortedCategoryOptions]);
 
   const setCareOpt = useCallback(
     (key: string, value: string | number) => {
@@ -240,7 +226,7 @@ export function CareServiceQuickOptionsSheet({
     <>
       {localError ? (
         <View style={styles.errorBox}>
-          <AppText style={styles.errorText}>{localError}</AppText>
+          <AppText accessibilityRole="alert" style={styles.errorText}>{localError}</AppText>
         </View>
       ) : null}
 
@@ -353,31 +339,34 @@ export function CareServiceQuickOptionsSheet({
           ) : null}
         </>
       ) : null}
-
-      <View style={styles.sheetFooter}>
-        <Button title={confirmLabel} onPress={handleConfirm} fullWidth size="lg" />
-      </View>
     </>
   );
 
+  const confirmButton = <Button title={confirmLabel} onPress={handleConfirm} fullWidth size="lg" />;
+
   if (embedded) {
     if (!isOpen) return null;
-    return <View style={styles.embeddedBody}>{formBody}</View>;
+    return (
+      <View style={styles.embeddedBody}>
+        {formBody}
+        <View style={styles.sheetFooter}>{confirmButton}</View>
+      </View>
+    );
   }
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={isOpen}
       presentKey={category?.id ?? 'closed'}
       onClose={onClose}
       onDismissed={onDismissed}
-      onBack={onClose}
       title={category?.label ?? ''}
-      subtitle="Paramétrez votre soin"
+      subtitle="Quelques précisions sur ce soin."
       stackBehavior="push"
+      footer={confirmButton}
     >
       {formBody}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
@@ -394,30 +383,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     color: c.error,
   },
   field: { gap: spacing[2] },
-  fieldLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    lineHeight: fontSize.base * 1.3,
-  },
-  pill: {
-    minHeight: 44,
-    justifyContent: 'center' as const,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2.5],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  pillActive: { backgroundColor: c.primary, borderColor: c.primary },
-  pillText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.35,
-  },
-  pillTextActive: { color: c.textInverse },
   sheetFooter: {
     paddingTop: spacing[4],
     marginTop: spacing[1],

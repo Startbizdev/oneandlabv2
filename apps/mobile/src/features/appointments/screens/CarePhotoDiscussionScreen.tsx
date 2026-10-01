@@ -11,9 +11,11 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Maximize2, Plus, Send } from 'lucide-react-native';
+import { Maximize2, Plus, Send } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import { Cluster, Row } from '@/components/layout/primitives';
+import { Row } from '@/components/layout/primitives';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { FullscreenImageViewer } from '@/components/ui/FullscreenImageViewer';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
@@ -30,10 +32,7 @@ import {
 } from '../detail/api/appointment-detail.service';
 import { CarePhotoAttachment } from '../detail/components/blocks/CarePhotoAttachment';
 import { isCarePhotoPdf } from '../detail/utils/care-photo-file';
-import {
-  carePhotoComposerPlaceholder,
-  carePhotoDiscussionHeaderSubtitle,
-} from '../detail/utils/care-photo-copy';
+import { carePhotoComposerPlaceholder } from '../detail/utils/care-photo-copy';
 import { loadCarePhotoLocalUri } from '../detail/utils/care-photo-image';
 import {
   latestCarePhoto,
@@ -49,7 +48,7 @@ import {
 } from '../hooks/appointment-detail-result';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display';
-import { staffPatientProfilePath } from '@/features/patients/utils/staff-hub-navigation';
+import { staffPatientProfileHref } from '@/features/patients/utils/staff-hub-navigation';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -59,12 +58,24 @@ import {
   ConversationDaySeparator,
   withConversationDaySeparators,
 } from '../detail/components/conversation/ConversationDaySeparator';
-import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  hexToRgba,
+  palette,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 dayjs.locale('fr');
 
-const COMPOSER_BAR_HEIGHT = 56 + spacing[2];
-const HEADER_AVATAR = 44;
+const COMPOSER_BAR_HEIGHT = MIN_TOUCH_TARGET + spacing[5];
+const HEADER_AVATAR = 32;
 
 interface Props {
   role: AppointmentDetailRole;
@@ -93,7 +104,8 @@ export function CarePhotoDiscussionScreen({
   role }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const { id: appointmentId } = useLocalSearchParams<{ id: string; photoId?: string }>();
+  const { id } = useLocalSearchParams<{ id?: string; photoId?: string }>();
+  const appointmentId = id ?? '';
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const focused = useIsFocused();
@@ -112,14 +124,9 @@ export function CarePhotoDiscussionScreen({
     return rdvMaquetteAvatarCounterparty(apt, cardRole);
   }, [apt, role]);
 
-  const patientProfilePath = useMemo(
-    () => staffPatientProfilePath(role, apt?.patient_id),
+  const patientProfileHref = useMemo(
+    () => staffPatientProfileHref(role, apt?.patient_id),
     [apt?.patient_id, role],
-  );
-
-  const headerSubtitle = useMemo(
-    () => carePhotoDiscussionHeaderSubtitle(apt, role),
-    [apt, role],
   );
 
   const [draft, setDraft] = useState('');
@@ -132,7 +139,7 @@ export function CarePhotoDiscussionScreen({
   const threadQ = useQuery({
     queryKey: ['appointments', 'care-photos', appointmentId] as const,
     queryFn: async () => {
-      const res = await fetchCarePhotos(appointmentId!);
+      const res = await fetchCarePhotos(appointmentId);
       if (!res.success || !res.data) throw new Error(res.error ?? 'Chargement impossible');
       return res.data;
     },
@@ -201,7 +208,7 @@ export function CarePhotoDiscussionScreen({
       setDraft('');
       toast('Message envoyé', { type: 'success' });
       await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', appointmentId] });
-      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(appointmentId!) });
+      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(appointmentId) });
       scrollToBottom();
     },
     onError: (e) => handleApiError(e, toast, 'care-photo-comment'),
@@ -216,7 +223,7 @@ export function CarePhotoDiscussionScreen({
     onSuccess: async () => {
       toast('Fichier envoyé', { type: 'success' });
       await qc.invalidateQueries({ queryKey: ['appointments', 'care-photos', appointmentId] });
-      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(appointmentId!) });
+      await qc.invalidateQueries({ queryKey: queryKeys.documents.medical(appointmentId) });
       scrollToBottom();
     },
     onError: (e) => handleApiError(e, toast, 'care-photo-upload'),
@@ -262,90 +269,40 @@ export function CarePhotoDiscussionScreen({
 
   if (!appointmentId) {
     return (
-      <View style={styles.errorWrap}>
-        <AppText style={styles.errorText}>Rendez-vous introuvable.</AppText>
-      </View>
+      <StackChromeScreen>
+        <AppointmentDetailBlockedEmptyState onBack={() => router.back()} />
+      </StackChromeScreen>
     );
   }
 
   if (detailBlock) {
     return (
-      <View style={styles.root}>
-        <Row align="center" style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-          >
-            <ChevronLeft size={iconSize.lg} color={c.textPrimary} strokeWidth={2.25} />
-          </Pressable>
-          <View style={styles.headerSpacer} />
-        </Row>
-        <AppointmentDetailBlockedEmptyState
-          onBack={() => router.back()}
-          block={detailBlock}
-        />
-      </View>
+      <StackChromeScreen>
+        <AppointmentDetailBlockedEmptyState onBack={() => router.back()} block={detailBlock} />
+      </StackChromeScreen>
     );
   }
 
-  return (
-    <View style={styles.root}>
-      <Row align="center" style={[styles.header, { paddingTop: insets.top + spacing[1] }]}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
-        >
-          <ChevronLeft size={iconSize.lg} color={c.textPrimary} strokeWidth={2.25} />
-        </Pressable>
-        <Cluster
-          gap={spacing[3]}
-          align="center"
-          style={styles.headerIdentity}
-          leading={
-            patientHeader?.name ? (
-              <ProfileAvatar
-                profileImageUrl={patientHeader.profileImageUrl}
-                seed={patientHeader.name || apt?.id || appointmentId}
-                gender={patientHeader.gender}
-                size={HEADER_AVATAR}
-                style={styles.headerAvatar}
-              />
-            ) : undefined
-          }
-        >
-          {patientHeader?.name ? (
-            <View style={styles.headerCopy}>
-              {patientProfilePath ? (
-                <Pressable
-                  onPress={() => router.push(patientProfilePath as never)}
-                  accessibilityRole="link"
-                  accessibilityLabel={`Voir la fiche de ${patientHeader.name}`}
-                >
-                  <AppText style={[styles.headerPatientName, styles.headerPatientLink]} numberOfLines={1}>
-                    {patientHeader.name}
-                  </AppText>
-                </Pressable>
-              ) : (
-                <AppText style={styles.headerPatientName} numberOfLines={1}>
-                  {patientHeader.name}
-                </AppText>
-              )}
-              <AppText style={styles.headerSub}>{headerSubtitle}</AppText>
-            </View>
-          ) : (
-            <View style={styles.headerCopy}>
-              <AppText style={styles.headerTitle}>Échanges</AppText>
-              <AppText style={styles.headerSub}>{headerSubtitle}</AppText>
-            </View>
-          )}
-        </Cluster>
-        <View style={styles.headerSpacer} />
-      </Row>
+  const patientName = patientHeader?.name;
+  const headerRight =
+    patientName && patientProfileHref ? (
+      <Pressable
+        onPress={() => router.push(patientProfileHref)}
+        style={({ pressed }) => [styles.headerAvatarBtn, pressed && styles.pressed]}
+        accessibilityRole="link"
+        accessibilityLabel={`Voir la fiche de ${patientName}`}
+      >
+        <ProfileAvatar
+          profileImageUrl={patientHeader.profileImageUrl}
+          seed={patientHeader.avatarSeed || patientName || appointmentId}
+          gender={patientHeader.gender}
+          size={HEADER_AVATAR}
+        />
+      </Pressable>
+    ) : undefined;
 
+  return (
+    <StackChromeScreen headerRight={headerRight}>
       <ScreenActionLayout
         style={styles.flex}
         footer={
@@ -363,7 +320,7 @@ export function CarePhotoDiscussionScreen({
                     {uploadMut.isPending ? (
                       <ActivityIndicator size="small" color={c.primary} />
                     ) : (
-                      <Plus size={iconSize.lg} color={c.primary} strokeWidth={2.25} />
+                      <Plus size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                     )}
                   </Pressable>
                 ) : null}
@@ -394,7 +351,7 @@ export function CarePhotoDiscussionScreen({
                       {sendMut.isPending ? (
                         <ActivityIndicator size="small" color={c.onPrimary} />
                       ) : (
-                        <Send size={iconSize.md} color={c.onPrimary} strokeWidth={2.25} />
+                        <Send size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
                       )}
                     </Pressable>
                   </>
@@ -423,14 +380,15 @@ export function CarePhotoDiscussionScreen({
               onRetry={() => void threadQ.refetch()}
             />
           ) : photos.length === 0 && !threadQ.data?.thread?.comments?.length ? (
-            <View style={styles.emptyCard}>
-              <AppText style={styles.emptyTitle}>Envoyez un premier message pour commencer</AppText>
-              <AppText style={styles.emptySub}>
-                {canUpload
-                  ? 'Envoyez un message ou utilisez le bouton + pour partager une photo ou un PDF.'
-                  : 'Les messages et fichiers partagés apparaîtront ici.'}
-              </AppText>
-            </View>
+            <EmptyState
+              illustration="messages"
+              title="Aucun message"
+              description={
+                canUpload
+                  ? 'Écrivez un message ou ajoutez une photo ou un PDF avec +.'
+                  : 'Les messages et fichiers partagés apparaîtront ici.'
+              }
+            />
           ) : (
             <>
               {threadQ.data?.thread?.comments?.length ? (
@@ -496,7 +454,7 @@ export function CarePhotoDiscussionScreen({
           setPreviewFileName(undefined);
         }}
       />
-    </View>
+    </StackChromeScreen>
   );
 }
 
@@ -530,8 +488,8 @@ function PhotoThreadBlock({
         accessibilityLabel={`Ouvrir le fichier ${index + 1}`}
       >
         {!isCarePhotoPdf(photo) ? (
-          <Row align="center" gap={5} style={styles.zoomPill}>
-            <Maximize2 size={iconSize.xs} color={appColors.textInverse} strokeWidth={2.5} />
+          <Row align="center" gap={spacing[1.5]} style={styles.zoomPill}>
+            <Maximize2 size={iconSize.sm} color={appColors.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
             <AppText style={styles.zoomPillText}>Agrandir</AppText>
           </Row>
         ) : null}
@@ -566,100 +524,21 @@ function PhotoThreadBlock({
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  root: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-  },
   flex: { minWidth: 0, flex: 1 },
-  errorWrap: {
-    minWidth: 0,
-    flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    padding: spacing[6],
-  },
-  errorText: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  header: {
-    minWidth: 0,
-    paddingHorizontal: spacing[2],
-    paddingBottom: spacing[3],
-    backgroundColor: c.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.borderLight,
-  },
-  headerIdentity: {
-    flex: 1,
-    minWidth: 0,
-    paddingRight: spacing[1],
-  },
-  headerAvatar: {
-    flexShrink: 0,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
+  headerAvatarBtn: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: radius.full,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'center' as const,
-    gap: 2,
-  },
-  headerSpacer: { width: 44 },
-  headerPatientName: {
-    ...font.bold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    letterSpacing: -0.2,
-  },
-  headerPatientLink: {
-    color: c.primaryDark,
-    textDecorationLine: 'underline' as const,
-  },
-  headerTitle: {
-    ...font.heading,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-  },
-  headerSub: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
-  },
+  pressed: { opacity: 0.6 },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     paddingBottom: spacing[8],
     gap: spacing[5],
-  },
-  emptyCard: {
-    padding: spacing[5],
-    borderRadius: radius.xl,
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    alignItems: 'center' as const,
-    gap: spacing[2],
-  },
-  emptyTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  emptySub: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textTertiary,
-    textAlign: 'center' as const,
-    lineHeight: fontSize.sm * 1.45,
   },
   photoBlock: {
     gap: spacing[2],
@@ -673,21 +552,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     ...font.regular,
     fontSize: fontSize.xs,
     color: c.textTertiary,
-    marginTop: -4,
+    marginTop: -spacing[1],
   },
   heroImageWrap: {
     width: '100%' as const,
     aspectRatio: 1,
-    borderRadius: radius['2xl'],
-    ...Platform.select({
-      ios: {
-        shadowColor: palette.black,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: { elevation: 3 },
-    }),
+    borderRadius: radius.lg,
   },
   zoomPill: {
     minWidth: 0,
@@ -695,7 +565,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     bottom: spacing[3],
     right: spacing[3],
     paddingHorizontal: spacing[3],
-    paddingVertical: 6,
+    paddingVertical: spacing[1.5],
     borderRadius: radius.full,
     backgroundColor: hexToRgba(palette.black, 0.55),
   },
@@ -731,7 +601,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   bubbleMeta: {
     minWidth: 0,
-    marginBottom: 4,
+    marginBottom: spacing[1],
   },
   author: {
     ...font.semiBold,
@@ -761,22 +631,21 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     backgroundColor: c.surface,
   },
   attachBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: radius.full,
     backgroundColor: c.primaryLight,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    marginBottom: 2,
   },
   input: {
     minWidth: 0,
     flex: 1,
-    minHeight: 44,
-    maxHeight: 120,
+    minHeight: MIN_TOUCH_TARGET,
+    maxHeight: spacing[24],
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.borderLight,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border,
     backgroundColor: c.surfaceAlt,
     paddingHorizontal: spacing[3],
     paddingVertical: Platform.OS === 'ios' ? spacing[2.5] : spacing[2],
@@ -785,13 +654,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     color: c.textPrimary,
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: radius.full,
     backgroundColor: c.primary,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    marginBottom: 2,
   },
   sendDisabled: { opacity: 0.45 },
   readOnlyHint: {

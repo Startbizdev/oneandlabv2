@@ -1,35 +1,26 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
 import type { ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
 import { Platform, RefreshControl, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { useStyles } from '@/theme';
-
-type ScrollPaddingOptions = {
-  extraTop?: number;
-  extraBottom?: number;
-};
 
 type Props = {
   children: ReactNode;
   scrollRef?: RefObject<ScrollView | null>;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  scrollPaddingOptions?: ScrollPaddingOptions;
   refreshing?: boolean;
   onRefresh?: () => void;
   bottomOffset?: number;
   showsVerticalScrollIndicator?: boolean;
 };
 
-/** Stack + clavier — pattern Android aligné StackScrollView. */
+/** Scroll d'écran de pile avec formulaire — suit le clavier. */
 export function StackKeyboardScrollView({
   children,
   scrollRef,
   contentContainerStyle,
-  scrollPaddingOptions,
   refreshing = false,
   onRefresh,
   bottomOffset,
@@ -39,7 +30,6 @@ export function StackKeyboardScrollView({
   const styles = useStyles(buildStyles);
   const innerRef = useRef<ScrollView>(null);
   const resolvedRef = scrollRef ?? innerRef;
-  const scrollConfig = useStackScrollConfig(contentContainerStyle, scrollPaddingOptions);
 
   useScrollToTopOnPop(resolvedRef);
 
@@ -50,17 +40,11 @@ export function StackKeyboardScrollView({
       bottomOffset={bottomOffset}
       collapsable={false}
       nestedScrollEnabled={Platform.OS === 'android'}
-      contentContainerStyle={scrollConfig.contentContainerStyle}
-      {...spreadTabSceneScrollProps(scrollConfig)}
+      contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       refreshControl={
         onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.primary}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
         ) : undefined
       }
     >

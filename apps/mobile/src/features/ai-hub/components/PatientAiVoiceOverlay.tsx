@@ -1,16 +1,11 @@
-import { hexToRgba } from '@/theme/color-utils';
-import { useAppColors } from '@/theme/use-app-colors';
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Svg, { Rect } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
   FadeInDown,
   cancelAnimation,
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -21,9 +16,11 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
+import { Button } from '@/components/ui/Button';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
-import { CaryAiEmergencyLine } from '@/features/ai-hub/components/CaryAiDisclosureCard';
+import { CARY_AI_NOTICE, CaryAiEmergencyLine } from '@/features/ai-hub/components/CaryAiDisclosure';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
+import { CaryVoiceOrb, type VoiceActivityMode } from '@/features/ai-hub/components/CaryVoiceOrb';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
 import { canConfirmAiDraftRecap, shouldShowAiDraftRecap } from '../utils/should-show-ai-draft-recap';
 import {
@@ -31,13 +28,24 @@ import {
   shouldShowAiDraftDocumentUpload,
 } from '../utils/should-show-ai-draft-documents';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import { useAppColors } from '@/theme/use-app-colors';
+import {
+  H_PADDING,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  lh,
+  type Theme,
+  ICON_STROKE_WIDTH,
+} from '@/theme';
 
 /** Réserve bas d’écran pour l’orbe + safe area — évite que le fil soit masqué. */
 const TRANSCRIPT_DOCK_CLEARANCE = 196;
-
-type ActivityMode = 'idle' | 'user' | 'assistant' | 'processing' | 'connecting' | 'reconnecting';
+const TYPING_DOT = 8;
 
 interface Props {
   visible: boolean;
@@ -58,7 +66,7 @@ interface Props {
   onInterrupt?: () => void;
 }
 
-function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): ActivityMode {
+function resolveActivityMode(phase: VoicePhase, sessionActive: boolean): VoiceActivityMode {
   if (phase === 'connecting' || phase === 'fallback') return 'connecting';
   if (phase === 'reconnecting') return 'reconnecting';
   if (phase === 'processing') return 'processing';
@@ -81,66 +89,24 @@ function statusTitle(
   if (phase === 'processing') return hasUserMessage ? 'Réflexion…' : 'Connexion…';
   if (phase === 'speaking') return 'Cary parle';
   if (sessionActive && phase === 'listening') return 'Parlez…';
-  return '…';
+  return null;
 }
 
-function VoiceWaveform({
-  energy,
-  active,
-  color,
-}: {
-  energy: number;
-  active: boolean;
-  color: string;
-}) {
-  const bars = 12;
-  const heights = Array.from({ length: bars }, (_, i) => {
-    const wave = Math.sin((i / bars) * Math.PI * 2 + energy * 6);
-    const base = active ? 0.25 + energy * 0.75 : 0.15;
-    return Math.max(0.12, Math.min(1, base + wave * 0.18 * (active ? 1 : 0.3)));
-  });
-
-  return (
-    <Svg width={120} height={28} accessibilityElementsHidden importantForAccessibility="no">
-      {heights.map((h, i) => (
-        <Rect
-          key={i}
-          x={i * 10 + 2}
-          y={(1 - h) * 14 + 7}
-          width={6}
-          height={h * 22}
-          rx={3}
-          fill={color}
-          opacity={0.55 + h * 0.45}
-        />
-      ))}
-    </Svg>
-  );
-}
-
-function TurnBubble({
-  turn,
-  styles,
-}: {
-  turn: VoiceTurn;
-  styles: ReturnType<typeof buildStyles>;
-}) {
-  const c = useAppColors();
+/** Fil vocal : vos phrases dans une bulle neutre, celles de Cary en texte libre. */
+function Turn({ turn, styles }: { turn: VoiceTurn; styles: ReturnType<typeof buildStyles> }) {
   const isUser = turn.role === 'user';
   return (
     <Animated.View
       entering={FadeInDown.duration(280).springify().damping(18)}
-      style={[styles.turnBubble, isUser ? styles.turnUser : styles.turnAssistant]}
+      style={isUser ? styles.turnUser : styles.turnAssistant}
+      accessibilityLabel={`${isUser ? 'Vous' : 'Cary'} : ${turn.text}`}
     >
-      <AppText style={[styles.turnLabel, { color: isUser ? c.primary : c.textSecondary }]}>
-        {isUser ? 'Vous' : 'Cary'}
-      </AppText>
-      <AppText style={[styles.turnText, { color: c.textPrimary }]}>{turn.text}</AppText>
+      <AppText style={styles.turnText}>{turn.text}</AppText>
     </Animated.View>
   );
 }
 
-function ProcessingBubble({ styles }: { styles: ReturnType<typeof buildStyles> }) {
+function ProcessingDots({ styles }: { styles: ReturnType<typeof buildStyles> }) {
   const c = useAppColors();
   const d1 = useSharedValue(0.35);
   const d2 = useSharedValue(0.35);
@@ -175,8 +141,7 @@ function ProcessingBubble({ styles }: { styles: ReturnType<typeof buildStyles> }
   const s3 = useAnimatedStyle(() => ({ opacity: d3.value, transform: [{ scale: 0.85 + d3.value * 0.25 }] }));
 
   return (
-    <View style={[styles.turnBubble, styles.turnAssistant]}>
-      <AppText style={[styles.turnLabel, { color: c.textSecondary }]}>Cary</AppText>
+    <View style={styles.turnAssistant} accessible accessibilityLabel="Cary réfléchit">
       <Row gap={spacing[1.5]} align="center">
         <Animated.View style={[styles.typingDot, { backgroundColor: c.textTertiary }, s1]} />
         <Animated.View style={[styles.typingDot, { backgroundColor: c.textTertiary }, s2]} />
@@ -186,147 +151,7 @@ function ProcessingBubble({ styles }: { styles: ReturnType<typeof buildStyles> }
   );
 }
 
-function VoiceOrbDock({
-  mode,
-  title,
-  voiceEnergy,
-  sessionActive,
-  onOrbPress,
-  styles,
-}: {
-  mode: ActivityMode;
-  title: string | null;
-  voiceEnergy: number;
-  sessionActive: boolean;
-  onOrbPress?: () => void;
-  styles: ReturnType<typeof buildStyles>;
-}) {
-  const c = useAppColors();
-  const breathe = useSharedValue(1);
-  const ring = useSharedValue(0.72);
-  const energy = useSharedValue(0);
-
-  useEffect(() => {
-    energy.value = withTiming(voiceEnergy, { duration: 120 });
-  }, [energy, voiceEnergy]);
-
-  useEffect(() => {
-    cancelAnimation(breathe);
-    cancelAnimation(ring);
-    if (!sessionActive || mode === 'idle') {
-      breathe.value = withTiming(1, { duration: 280 });
-      ring.value = withTiming(0.72, { duration: 280 });
-      return;
-    }
-
-    const breatheScale =
-      mode === 'user' ? 1.08 : mode === 'assistant' ? 1.05 : mode === 'processing' ? 1.03 : 1;
-    const breatheMs = mode === 'assistant' ? 900 : mode === 'processing' ? 1100 : 700;
-
-    breathe.value = withRepeat(
-      withSequence(
-        withTiming(breatheScale, { duration: breatheMs, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration: breatheMs, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      true,
-    );
-
-    ring.value = withRepeat(
-      withSequence(
-        withTiming(1.18, { duration: breatheMs + 120, easing: Easing.out(Easing.quad) }),
-        withTiming(0.72, { duration: 0 }),
-      ),
-      -1,
-      false,
-    );
-  }, [breathe, mode, ring, sessionActive]);
-
-  const orbColor = mode === 'assistant' ? c.primaryDark : c.primary;
-  const orbStyle = useAnimatedStyle(() => {
-    const energyBoost = mode === 'user' ? energy.value * 0.14 : 0;
-    return {
-      transform: [{ scale: breathe.value + energyBoost }],
-    };
-  });
-
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ring.value }],
-    opacity: interpolate(ring.value, [0.72, 1.18], [0.45, 0]),
-  }));
-
-  const ring2Style = useAnimatedStyle(() => ({
-    transform: [{ scale: ring.value * 0.88 }],
-    opacity: interpolate(ring.value, [0.72, 1.18], [0.28, 0]),
-  }));
-
-  const coreStyle = useAnimatedStyle(() => ({
-    opacity: mode === 'processing' ? 0.72 : 0.92 + energy.value * 0.08,
-    transform: [{ scale: 0.42 + energy.value * 0.12 }],
-  }));
-
-  const orbInteractive = sessionActive && mode === 'assistant';
-
-  return (
-    <View style={[styles.dock, { backgroundColor: c.surface }]}>
-      <View style={styles.dockInner}>
-        <Pressable
-          onPress={orbInteractive ? onOrbPress : undefined}
-          disabled={!orbInteractive}
-          accessibilityRole="button"
-          accessibilityLabel={
-            mode === 'assistant'
-              ? 'Interrompre Cary'
-              : mode === 'user'
-                ? 'Écoute en cours'
-                : 'Assistant vocal Cary'
-          }
-          accessibilityHint={mode === 'assistant' ? 'Toucher pour reprendre la parole' : undefined}
-          style={styles.orbStage}
-        >
-          <Animated.View
-            style={[styles.orbRing, ring2Style, { borderColor: hexToRgba(orbColor, 0.18) }]}
-          />
-          <Animated.View
-            style={[styles.orbRing, ringStyle, { borderColor: hexToRgba(orbColor, 0.28) }]}
-          />
-          <Animated.View
-            style={[
-              styles.voiceOrb,
-              orbStyle,
-              { backgroundColor: hexToRgba(orbColor, mode === 'processing' ? 0.12 : 0.2) },
-            ]}
-          >
-            <Animated.View
-              style={[
-                styles.voiceOrbCore,
-                coreStyle,
-                { backgroundColor: mode === 'processing' ? hexToRgba(orbColor, 0.8) : orbColor },
-              ]}
-            />
-          </Animated.View>
-        </Pressable>
-
-        <VoiceWaveform
-          energy={voiceEnergy}
-          active={mode === 'user' || mode === 'assistant'}
-          color={orbColor}
-        />
-
-        {title ? (
-          <AppText
-            style={[styles.dockTitle, { color: c.textSecondary }]}
-            accessibilityLiveRegion="polite"
-          >
-            {title}
-          </AppText>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-/** Mode vocal Cary — fil conversation + orbe d’activité. */
+/** Mode vocal Cary — fil de conversation + orbe d’activité. */
 export function PatientAiVoiceOverlay({
   visible,
   onClose,
@@ -354,16 +179,11 @@ export function PatientAiVoiceOverlay({
   const hasUserMessage = turns.some((t) => t.role === 'user');
   const activityMode = resolveActivityMode(phase, sessionActive);
   const title = statusTitle(phase, sessionActive, available, hasUserMessage);
-  const showRecap =
-    activeDraft && shouldShowAiDraftRecap(activeDraft) && onConfirmDraft != null;
+  const showRecap = activeDraft && shouldShowAiDraftRecap(activeDraft) && onConfirmDraft != null;
   const showDocumentUpload =
-    activeDraft &&
-    shouldShowAiDraftDocumentUpload(activeDraft) &&
-    onAttachDocument != null;
+    activeDraft && shouldShowAiDraftDocumentUpload(activeDraft) && onAttachDocument != null;
   const docUploadLabel =
-    draftPendingUploadType(activeDraft ?? null) === 'ordonnance'
-      ? 'Joignez votre ordonnance'
-      : 'Joignez le document';
+    draftPendingUploadType(activeDraft ?? null) === 'ordonnance' ? 'Joignez votre ordonnance' : 'Joignez le document';
 
   const prevPhaseRef = useRef<VoicePhase>('idle');
 
@@ -417,32 +237,20 @@ export function PatientAiVoiceOverlay({
       statusBarTranslucent
       onRequestClose={handleClose}
     >
-      <View style={[styles.root, { backgroundColor: c.background }]}>
-        <LinearGradient
-          colors={[c.background, hexToRgba(c.primaryLight, 0.28), c.background]}
-          locations={[0, 0.42, 1]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-
-        <View style={[styles.shell, { paddingTop: insets.top }]}>
-          <Row justify="between" align="center" gap={spacing[3]} style={styles.header}>
-            <View style={styles.disclosure}>
-              <AppText style={[styles.disclosureText, { color: c.textSecondary }]}>
-                Assistant automatique, ne remplace pas un avis médical.
-              </AppText>
-              <CaryAiEmergencyLine compact />
-            </View>
-            <Pressable
-              onPress={handleClose}
-              hitSlop={12}
-              style={[styles.closeBtn, { backgroundColor: hexToRgba(c.textPrimary, 0.06) }]}
-              accessibilityRole="button"
-              accessibilityLabel="Fermer le mode vocal"
-            >
-              <X size={iconSize.mdLg} color={c.textSecondary} strokeWidth={2.25} />
-            </Pressable>
-          </Row>
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <Row justify="between" align="start" gap={spacing[3]} style={styles.header}>
+          <View style={styles.disclosure}>
+            <CaryAiEmergencyLine lead={CARY_AI_NOTICE} />
+          </View>
+          <Pressable
+            onPress={handleClose}
+            style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Fermer le mode vocal"
+          >
+            <X size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+          </Pressable>
+        </Row>
 
         <View style={styles.body}>
           <ScrollView
@@ -450,33 +258,25 @@ export function PatientAiVoiceOverlay({
             style={styles.transcriptScroll}
             contentContainerStyle={[
               styles.transcriptContent,
-              {
-                paddingBottom:
-                  dockClearance + (showRecap || showDocumentUpload ? spacing[4] : spacing[2]),
-              },
+              { paddingBottom: dockClearance + (showRecap || showDocumentUpload ? spacing[4] : spacing[2]) },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {turns.map((turn) => (
-              <TurnBubble key={turn.id} turn={turn} styles={styles} />
+              <Turn key={turn.id} turn={turn} styles={styles} />
             ))}
-
-            {phase === 'processing' ? <ProcessingBubble styles={styles} /> : null}
+            {phase === 'processing' ? <ProcessingDots styles={styles} /> : null}
           </ScrollView>
 
-          {showDocumentUpload ? (
-            <View style={[styles.recapWrap, { backgroundColor: c.background }]}>
-              <CaryAiVoiceDocumentUpload
-                label={docUploadLabel}
-                attaching={attachingDocument}
-                onPick={onAttachDocument!}
-              />
+          {showDocumentUpload && onAttachDocument ? (
+            <View style={styles.panel}>
+              <CaryAiVoiceDocumentUpload label={docUploadLabel} attaching={attachingDocument} onPick={onAttachDocument} />
             </View>
           ) : null}
 
           {showRecap ? (
-            <View style={[styles.recapWrap, { backgroundColor: c.background }]}>
+            <View style={styles.panel}>
               <CaryAiBookingRecapCard
                 draft={activeDraft}
                 canConfirm={canConfirmAiDraftRecap(activeDraft)}
@@ -487,194 +287,95 @@ export function PatientAiVoiceOverlay({
           ) : null}
         </View>
 
-        <View
-          style={[
-            styles.bottomBar,
-            {
-              paddingBottom: insets.bottom,
-              backgroundColor: c.surface,
-              borderTopColor: hexToRgba(c.textPrimary, 0.08),
-            },
-          ]}
-        >
-          <VoiceOrbDock
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing[2] }]}>
+          <CaryVoiceOrb
             mode={activityMode}
             title={title}
             voiceEnergy={voiceEnergy}
             sessionActive={sessionActive}
-            onOrbPress={onInterrupt}
-            styles={styles}
+            onInterrupt={onInterrupt}
           />
 
           {speechError ? (
             <View style={styles.errorWrap}>
-              <AppText style={[styles.errorCaption, { color: c.error }]} accessibilityRole="alert">
+              <AppText variant="secondary" style={styles.errorText} accessibilityRole="alert">
                 {speechError}
               </AppText>
               {micDenied ? (
-                <Pressable
+                <Button
+                  title="Ouvrir les réglages"
+                  variant="ghost"
+                  size="sm"
                   onPress={() => void Linking.openSettings()}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ouvrir les réglages du micro"
-                  hitSlop={8}
-                >
-                  <AppText style={[styles.settingsLink, { color: c.primary }]}>Ouvrir Réglages</AppText>
-                </Pressable>
+                />
               ) : null}
             </View>
           ) : null}
 
           {sessionActive ? (
-            <Pressable
+            <Button
+              title="Terminer"
+              variant="secondary"
               onPress={handleClose}
-              style={[styles.endBtn, { backgroundColor: hexToRgba(c.textPrimary, 0.06) }]}
-              accessibilityRole="button"
               accessibilityLabel="Terminer la conversation vocale"
-            >
-              <AppText style={[styles.endBtnText, { color: c.textSecondary }]}>Terminer</AppText>
-            </Pressable>
+            />
           ) : null}
-        </View>
         </View>
       </View>
     </Modal>
   );
 }
 
-/** @deprecated Utiliser PatientAiVoiceOverlay */
-export const PatientAiVoiceMockOverlay = PatientAiVoiceOverlay;
-
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    root: { minWidth: 0, flex: 1 },
-    shell: { minWidth: 0, flex: 1 },
+    root: { minWidth: 0, flex: 1, backgroundColor: c.background },
     body: { minWidth: 0, flex: 1 },
-    bottomBar: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-    },
-    header: { paddingHorizontal: H_PADDING, paddingBottom: spacing[1] },
+    header: { paddingHorizontal: H_PADDING, paddingTop: spacing[2], paddingBottom: spacing[2] },
     disclosure: { flex: 1, minWidth: 0, gap: spacing[0.5] },
-    disclosureText: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.35),
-    },
     closeBtn: {
-      width: 44,
-      height: 44,
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
       borderRadius: radius.full,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
+    closeBtnPressed: { backgroundColor: c.surfaceAlt },
     transcriptScroll: { minWidth: 0, flex: 1 },
     transcriptContent: {
       minWidth: 0,
-      paddingHorizontal: spacing[4],
-      gap: spacing[2.5],
-      paddingTop: spacing[1],
+      paddingHorizontal: H_PADDING,
+      gap: spacing[4],
+      paddingTop: spacing[2],
       flexGrow: 1,
-    },
-    turnBubble: {
-      borderRadius: radius.xl,
-      paddingHorizontal: spacing[3.5],
-      paddingVertical: spacing[2.5],
-      maxWidth: '92%' as const,
     },
     turnUser: {
       alignSelf: 'flex-end' as const,
-      backgroundColor: hexToRgba(c.primary, 0.12),
-    },
-    turnAssistant: {
-      alignSelf: 'flex-start' as const,
+      maxWidth: '85%' as const,
+      borderRadius: radius.xl,
+      borderBottomRightRadius: radius.sm,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2.5],
       backgroundColor: c.surfaceAlt,
     },
-    turnLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      marginBottom: spacing[0.5],
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
-    },
+    turnAssistant: { alignSelf: 'flex-start' as const, maxWidth: '100%' as const },
     turnText: {
       ...font.regular,
       fontSize: fontSize.md,
       lineHeight: lh(fontSize.md, 1.45),
+      color: c.textPrimary,
     },
-    typingDot: {
-      width: 8,
-      height: 8,
-      borderRadius: radius.full,
-    },
-    recapWrap: { paddingHorizontal: spacing[4], paddingVertical: spacing[2] },
-    dock: {
-      paddingTop: spacing[2],
-      paddingHorizontal: H_PADDING,
-    },
-    dockInner: {
+    typingDot: { width: TYPING_DOT, height: TYPING_DOT, borderRadius: radius.full },
+    panel: { paddingHorizontal: H_PADDING, paddingVertical: spacing[2], backgroundColor: c.background },
+    bottomBar: {
       alignItems: 'center' as const,
       gap: spacing[3],
+      paddingTop: spacing[3],
+      paddingHorizontal: H_PADDING,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+      backgroundColor: c.background,
     },
-    dockTitle: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      textAlign: 'center' as const,
-    },
-    orbStage: {
-      width: 120,
-      height: 120,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    orbRing: {
-      position: 'absolute' as const,
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      borderWidth: 1.5,
-    },
-    voiceOrb: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    voiceOrbCore: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
-    },
-    errorWrap: {
-      alignItems: 'center' as const,
-      gap: spacing[1],
-      paddingHorizontal: spacing[5],
-      paddingTop: spacing[1],
-    },
-    errorCaption: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.45),
-      textAlign: 'center' as const,
-    },
-    settingsLink: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      textDecorationLine: 'underline' as const,
-      paddingVertical: spacing[1],
-    },
-    endBtn: {
-      alignSelf: 'center' as const,
-      marginTop: spacing[1],
-      marginBottom: spacing[2],
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[2],
-      borderRadius: radius.full,
-      minHeight: 44,
-      justifyContent: 'center' as const,
-    },
-    endBtnText: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-    },
+    errorWrap: { alignItems: 'center' as const, gap: spacing[1] },
+    errorText: { color: c.error, textAlign: 'center' as const },
   };
 }

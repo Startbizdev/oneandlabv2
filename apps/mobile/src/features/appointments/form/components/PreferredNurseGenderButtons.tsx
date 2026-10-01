@@ -1,12 +1,12 @@
-import { Pressable, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { View } from 'react-native';
+import { FilterOptionChips } from '@/components/ui/FilterOptionChips';
+import { spacing, AppText, useStyles } from '@/theme';
 
 const OPTIONS = [
   { label: 'Sans préférence', value: 'any' },
-  { label: 'Femme', value: 'female' },
-  { label: 'Homme', value: 'male' },
-] as const;
+  { label: 'Une femme', value: 'female' },
+  { label: 'Un homme', value: 'male' },
+];
 
 interface Props {
   value: string;
@@ -17,44 +17,16 @@ export function PreferredNurseGenderButtons({ value, onChange }: Props) {
   const styles = useStyles(buildStyles);
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.label}>Préférence pour l&apos;infirmier(ère)</AppText>
-      <Row wrap gap={spacing[2]}>
-        {OPTIONS.map((o) => {
-          const on = (value || 'any') === o.value;
-          return (
-            <Pressable
-              key={o.value}
-              onPress={() => onChange(o.value)}
-              style={[styles.pill, on && styles.pillActive]}
-            >
-              <AppText style={[styles.text, on && styles.textActive]}>{o.label}</AppText>
-            </Pressable>
-          );
-        })}
-      </Row>
+      <AppText variant="headline" accessibilityRole="header">
+        Infirmier ou infirmière ?
+      </AppText>
+      <FilterOptionChips options={OPTIONS} value={value || 'any'} onChange={onChange} />
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  wrap: { gap: spacing[2] },
-  label: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  pill: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  pillActive: { backgroundColor: c.primary, borderColor: c.primary },
-  text: { ...font.medium, fontSize: fontSize.sm, color: c.textSecondary },
-  textActive: { color: c.textInverse },
-};
+    wrap: { gap: spacing[2] },
+  };
 }
-

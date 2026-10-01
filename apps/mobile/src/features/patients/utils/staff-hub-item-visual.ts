@@ -5,70 +5,24 @@ import {
   FlaskConical,
   MessageCircle,
   Shield,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react-native';
-import type { AppColors } from '@/theme/colors';
 
-export type HubItemVisual = {
-  Icon: LucideIcon;
-  iconColor: string;
-  iconBg: string;
+/** Icônes neutres du hub Patients : le type se lit à la forme, la couleur reste réservée au statut. */
+const DOCUMENT_ICONS: Record<string, LucideIcon> = {
+  carte_vitale: CreditCard,
+  carte_mutuelle: Shield,
+  ordonnance: FileText,
+  autres_assurances: FileText,
+  resultats: FlaskConical,
+  care_photo: Camera,
+  cancellation_photo: Camera,
 };
 
-function docVisuals(c: AppColors): Record<string, HubItemVisual> {
-  return {
-    carte_vitale: {
-      Icon: CreditCard,
-      iconColor: c.success,
-      iconBg: c.successLight,
-    },
-    carte_mutuelle: {
-      Icon: Shield,
-      iconColor: c.primary,
-      iconBg: c.primaryLight,
-    },
-    ordonnance: {
-      Icon: FileText,
-      iconColor: c.warning,
-      iconBg: c.warningLight,
-    },
-    autres_assurances: {
-      Icon: FileText,
-      iconColor: c.warning,
-      iconBg: c.warningLight,
-    },
-    resultats: {
-      Icon: FlaskConical,
-      iconColor: c.primaryDark,
-      iconBg: c.primaryLight,
-    },
-    care_photo: {
-      Icon: Camera,
-      iconColor: c.primary,
-      iconBg: c.primaryLight,
-    },
-    cancellation_photo: {
-      Icon: Camera,
-      iconColor: c.error,
-      iconBg: c.errorLight,
-    },
-    other: {
-      Icon: FileText,
-      iconColor: c.textSecondary,
-      iconBg: c.surfaceSubtle,
-    },
-  };
+export function hubDocumentIcon(documentType: string): LucideIcon {
+  return DOCUMENT_ICONS[documentType] ?? FileText;
 }
 
-export function hubDocumentVisual(documentType: string, c: AppColors): HubItemVisual {
-  const visuals = docVisuals(c);
-  return visuals[documentType] ?? visuals.other;
-}
-
-export function hubExchangeVisual(c: AppColors): HubItemVisual {
-  return {
-    Icon: MessageCircle,
-    iconColor: c.primary,
-    iconBg: c.primaryLight,
-  };
-}
+export const HUB_EXCHANGE_ICON: LucideIcon = MessageCircle;
+export const HUB_RELATIVE_ICON: LucideIcon = UserRound;

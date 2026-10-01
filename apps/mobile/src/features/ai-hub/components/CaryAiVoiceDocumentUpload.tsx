@@ -1,11 +1,9 @@
-import { hexToRgba } from '@/theme/color-utils';
-import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, View } from 'react-native';
-import { Camera, FileUp, ImageIcon } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Camera, FileUp, ImageIcon, type LucideIcon } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import { useAppColors } from '@/theme/use-app-colors';
+import { MIN_TOUCH_TARGET, radius, spacing, iconSize, AppText, useStyles, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 
 interface Props {
   label?: string;
@@ -13,45 +11,39 @@ interface Props {
   onPick: (source: CarePhotoPickSource) => void;
 }
 
-const OPTIONS: { source: CarePhotoPickSource; label: string; Icon: typeof Camera }[] = [
+const OPTIONS: { source: CarePhotoPickSource; label: string; Icon: LucideIcon }[] = [
   { source: 'camera', label: 'Photo', Icon: Camera },
   { source: 'library', label: 'Galerie', Icon: ImageIcon },
   { source: 'file', label: 'Fichier', Icon: FileUp },
 ];
 
-/** Boutons photo / galerie / fichier — étape ordonnance en mode vocal. */
-export function CaryAiVoiceDocumentUpload({
-  label = 'Joignez votre ordonnance',
-  attaching,
-  onPick,
-}: Props) {
+/** Étape ordonnance du mode vocal : trois sources, une seule intention. */
+export function CaryAiVoiceDocumentUpload({ label = 'Joignez votre ordonnance', attaching, onPick }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   return (
-    <View style={[styles.block, { backgroundColor: c.surfaceAlt, borderColor: hexToRgba(c.primary, 0.2) }]}>
-      <AppText style={[styles.title, { color: c.textPrimary }]}>{label}</AppText>
-      <AppText style={[styles.sub, { color: c.textSecondary }]}>
-        {attaching ? 'Envoi en cours…' : 'Choisissez une source ci-dessous.'}
-      </AppText>
-      <Row gap={spacing[2]} style={styles.row}>
+    <View style={styles.block}>
+      <AppText variant="headline">{label}</AppText>
+      {attaching ? (
+        <AppText variant="secondary" accessibilityLiveRegion="polite">
+          Envoi en cours…
+        </AppText>
+      ) : null}
+      <Row gap={spacing[2]}>
         {OPTIONS.map(({ source, label: optLabel, Icon }) => (
           <Pressable
             key={source}
             onPress={() => onPick(source)}
             disabled={attaching}
-            style={({ pressed }) => [
-              styles.btn,
-              {
-                backgroundColor: pressed ? hexToRgba(c.primary, 0.14) : hexToRgba(c.primary, 0.08),
-                opacity: attaching ? 0.55 : 1,
-              },
-            ]}
+            style={({ pressed }) => [styles.option, pressed && styles.optionPressed, attaching && styles.disabled]}
             accessibilityRole="button"
             accessibilityLabel={optLabel}
           >
-            <Icon size={iconSize.mdLg} color={c.primary} strokeWidth={2.1} />
-            <AppText style={[styles.btnLabel, { color: c.primary }]}>{optLabel}</AppText>
+            <Icon size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
+            <AppText variant="caption" style={styles.optionLabel}>
+              {optLabel}
+            </AppText>
           </Pressable>
         ))}
       </Row>
@@ -59,40 +51,24 @@ export function CaryAiVoiceDocumentUpload({
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    block: {
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      padding: spacing[3],
-      gap: spacing[1.5],
-    },
-    title: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.3),
-    },
-    sub: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.4),
-    },
-    row: {
-      marginTop: spacing[0.5],
-    },
-    btn: {
-      minWidth: 0,
+    block: { gap: spacing[2] },
+    option: {
       flex: 1,
+      minWidth: 0,
+      minHeight: MIN_TOUCH_TARGET + spacing[6],
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       gap: spacing[1],
-      paddingVertical: spacing[2.5],
+      paddingVertical: spacing[3],
       borderRadius: radius.lg,
-      minHeight: 72,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
     },
-    btnLabel: {
-      ...font.medium,
-      fontSize: fontSize['2xs'],
-    },
+    optionPressed: { backgroundColor: c.surfaceAlt },
+    optionLabel: { color: c.textPrimary },
+    disabled: { opacity: 0.5 },
   };
 }

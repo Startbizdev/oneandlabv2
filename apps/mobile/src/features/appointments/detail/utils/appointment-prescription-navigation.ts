@@ -1,18 +1,18 @@
+import type { Href } from 'expo-router';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
 
 export function appointmentPrescriptionTitle(role: string): string {
-  return role === 'nurse' ? "Prescription d'actes infirmiers" : 'Créer une ordonnance';
+  return role === 'nurse' ? 'Prescription' : 'Ordonnance';
 }
 
-export function appointmentPrescriptionSubtitle(role: string, documents: MedicalDocumentRow[]): string {
-  const hasOrdonnance = documents.some((d) => d.document_type === 'ordonnance');
-  if (hasOrdonnance) return 'Ordonnance enregistrée sur ce rendez-vous';
+/** État affiché sous l'entrée « Prescription / Ordonnance » de la fiche RDV, absent s'il n'y a rien à signaler. */
+export function appointmentPrescriptionStatus(documents: MedicalDocumentRow[]): string | undefined {
+  return documents.some((d) => d.document_type === 'ordonnance') ? 'Ordonnance enregistrée' : undefined;
+}
+
+export function appointmentPrescriptionHref(role: string, appointmentId: string): Href {
+  const params = { id: appointmentId };
   return role === 'nurse'
-    ? 'Rédiger, générer et enregistrer une ordonnance'
-    : 'Rédiger et générer une ordonnance PDF';
-}
-
-export function appointmentPrescriptionHref(role: string, appointmentId: string): string {
-  const prefix = role === 'nurse' ? '/(nurse)' : '/(pro)';
-  return `${prefix}/appointment/${appointmentId}/prescription`;
+    ? { pathname: '/(nurse)/appointment/[id]/prescription', params }
+    : { pathname: '/(pro)/appointment/[id]/prescription', params };
 }

@@ -121,7 +121,7 @@ function AssignmentPendingRow({ size }: { size: keyof typeof AVATAR_BY_SIZE }) {
     <View accessibilityRole="text" accessibilityLabel={ASSIGNMENT_LABEL}>
       <Row gap={spacing[2]} align="center" style={styles.pendingRow}>
         <AssignmentPulseDots />
-        <Animated.Text style={[styles.pendingLabel, labelAnimStyle]} numberOfLines={1}>
+        <Animated.Text style={[styles.pendingLabel, labelAnimStyle]}>
           {ASSIGNMENT_LABEL}
         </Animated.Text>
       </Row>
@@ -162,7 +162,7 @@ export function RdvListCardPersonRow({
       }
     >
       <View style={styles.metaCol}>
-        <AppText style={styles.nameLine} numberOfLines={1} ellipsizeMode="tail">
+        <AppText style={styles.nameLine}>
           <AppText style={styles.name}>{name}</AppText>
           {roleLabel ? (
             <>

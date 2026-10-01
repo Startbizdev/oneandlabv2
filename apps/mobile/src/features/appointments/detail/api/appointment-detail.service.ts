@@ -2,14 +2,6 @@ import { api } from '@/api/client';
 import type { Appointment } from '@oneandlab/shared-types';
 import { buildMedicalDocumentForm } from '@/lib/uploads/upload-file';
 
-export interface AppointmentHistoryEntry {
-  id: string;
-  action?: string;
-  created_at?: string;
-  user_name?: string;
-  details?: string;
-}
-
 export interface MedicalDocumentRow {
   id: string;
   document_type: string;
@@ -52,10 +44,6 @@ export interface ShareForNurseData {
   repended?: boolean;
 }
 
-export async function fetchAppointmentHistory(id: string) {
-  return api.get<AppointmentHistoryEntry[]>(`/appointments/${id}/history`);
-}
-
 export async function fetchMedicalDocuments(appointmentId: string) {
   return api.get<MedicalDocumentRow[]>(`/medical-documents?appointment_id=${appointmentId}`);
 }
@@ -73,11 +61,6 @@ export async function postCarePhotoComment(
     ...(medicalDocumentId ? { medical_document_id: medicalDocumentId } : {}),
     body,
   });
-}
-
-/** Prépare le message de partage sans libérer le RDV (lecture seule). */
-export async function fetchShareForNurse(appointmentId: string) {
-  return api.get<ShareForNurseData>(`/appointments/${appointmentId}/share-for-nurse`);
 }
 
 /** Partage confrère : repasse le RDV en attente si assigné, puis retourne le lien / texte. */

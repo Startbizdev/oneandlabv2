@@ -42,7 +42,9 @@ export async function readAndroidHealthMetrics(days: number): Promise<HealthRead
       { record: 'ActiveCaloriesBurned', metric: 'active_energy', unit: 'kcal' },
     ];
 
+    const granted = new Set(auth.grantedRecordTypes ?? []);
     for (const m of mapType) {
+      if (!granted.has(m.record)) continue;
       const result = await HealthConnect.readRecords(m.record, { timeRangeFilter });
       const records = result?.records ?? [];
 

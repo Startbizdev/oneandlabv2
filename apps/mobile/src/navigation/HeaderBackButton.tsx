@@ -1,31 +1,31 @@
+import { useNavigation, useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
-import { GlassHeaderButton } from '@/components/navigation/GlassHeaderButton';
-import {
-  LIQUID_GLASS_HEADER_SYMBOL_SIZE,
-} from '@/components/navigation/nav-chrome-tokens';
-import { useAppColors } from '@/theme/use-app-colors';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
+import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { useAuthStore } from '@/store/auth-store';
 
-interface Props {
-  onPress: () => void;
-}
+type Props = {
+  /** Retour propre à l'écran (étape précédente d'un assistant…). */
+  onPress?: () => void;
+};
 
-/** Retour header onglets flottants — GlassView (pas pour stacks). */
+/** Retour de pile : pile courante, historique global, puis accueil du rôle. */
 export function HeaderBackButton({ onPress }: Props) {
-  const c = useAppColors();
+  const navigation = useNavigation();
+  const router = useRouter();
+  const role = useAuthStore((s) => s.user?.role);
 
-  return (
-    <GlassHeaderButton
-      symbol="chevron.backward"
-      accessibilityLabel="Retour"
-      onPress={onPress}
-      iconColor={c.primaryDark}
-      fallback={
-        <ChevronLeft
-          size={LIQUID_GLASS_HEADER_SYMBOL_SIZE}
-          color={c.primaryDark}
-          strokeWidth={2.25}
-        />
-      }
-    />
-  );
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace(role ? getRoleHome(role) : '/');
+  };
+
+  return <HeaderAction icon={ChevronLeft} accessibilityLabel="Retour" onPress={onPress ?? goBack} />;
 }

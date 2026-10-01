@@ -5,9 +5,6 @@ const MIN_REFRESH_VISIBLE_MS = 450;
 /**
  * RefreshControl découplé du polling / invalidateQueries :
  * le spinner n’apparaît que lors d’un pull-to-refresh explicite.
- *
- * N’active pas l’indicateur pill du TabScreenFrame — cumuler les deux
- * provoque un double spinner (pill sous le header + natif dans la liste).
  */
 export function useManualRefresh(refetch: () => Promise<unknown>) {
   const [refreshing, setRefreshing] = useState(false);

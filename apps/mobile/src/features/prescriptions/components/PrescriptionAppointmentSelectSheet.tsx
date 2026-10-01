@@ -6,7 +6,7 @@ import { Search } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
 import { navigateAppointmentForListRow } from '@/utils/appointment-batch';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Input } from '@/components/ui/Input';
 import {
   PrescriptionAppointmentPickerRow,
@@ -121,7 +121,7 @@ export function PrescriptionAppointmentSelectSheet({
     : `${resolvedTotal} rendez-vous`;
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={handleClose}
       title="Choisir un rendez-vous"
@@ -174,7 +174,7 @@ export function PrescriptionAppointmentSelectSheet({
           />
         </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

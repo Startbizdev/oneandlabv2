@@ -1,13 +1,20 @@
+import type { Href } from 'expo-router';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
+
 export type PharmacyOrderDetailMode = 'sent' | 'received';
 
-export function pharmacyOrderPrescriptionsPath(
-  rolePrefix: '/(pro)' | '/(nurse)' | undefined,
+export function pharmacyOrderPrescriptionsHref(
+  rolePrefix: StaffRoutePrefix | undefined,
   mode: PharmacyOrderDetailMode,
   orderId: string,
-): string | null {
+): Href | null {
   if (!rolePrefix || !orderId) return null;
-  if (mode === 'received' && rolePrefix === '/(pro)') {
-    return `${rolePrefix}/commandes-recues/${orderId}/ordonnances`;
+  const params = { id: orderId };
+  if (rolePrefix === '/(nurse)') {
+    return { pathname: '/(nurse)/commandes-pharmacie/[id]/ordonnances', params };
   }
-  return `${rolePrefix}/commandes-pharmacie/${orderId}/ordonnances`;
+  if (mode === 'received') {
+    return { pathname: '/(pro)/commandes-recues/[id]/ordonnances', params };
+  }
+  return { pathname: '/(pro)/commandes-pharmacie/[id]/ordonnances', params };
 }

@@ -1,76 +1,58 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PatientLookupResult } from '@oneandlab/shared-api';
 import { lookupPatientByContact } from '@/features/patients/api/patient-lookup.service';
-import type { PatientRow } from '@/features/patients/api/fetch-all-patients';
 
-/** Détecte un patient existant par email ou téléphone (debounce 450 ms). */
+function suppressKey(email: string, phone: string, patientId: string): string {
+  return `${email.trim()}|${phone.trim()}|${patientId}`;
+}
+
+/**
+ * Détecte un patient existant par e-mail ou téléphone (debounce 450 ms).
+ * `duplicate` garde le contact qui a trouvé le dossier : il est exigé pour l'adopter.
+ */
 export function usePatientDuplicateDetection(email: string, phone: string, enabled: boolean) {
-  const [duplicateOpen, setDuplicateOpen] = useState(false);
-  const [duplicateRow, setDuplicateRow] = useState<PatientRow | null>(null);
+  const [duplicate, setDuplicate] = useState<PatientLookupResult | null>(null);
   const suppressKeyRef = useRef('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const runLookup = useCallback(async () => {
-    if (!enabled) return;
-    const em = email.trim();
-    const ph = phone.trim();
-    if (!em && !ph.replace(/\D/g, '')) {
-      setDuplicateOpen(false);
-      setDuplicateRow(null);
-      return;
-    }
-
-    try {
-      const res = await lookupPatientByContact(em, ph);
-      const row = res.success ? res.data : null;
-      if (!row?.id) {
-        setDuplicateOpen(false);
-        setDuplicateRow(null);
-        return;
-      }
-      const suppress = `${em}|${ph}|${row.id}`;
-      if (suppressKeyRef.current === suppress) return;
-      setDuplicateRow(row);
-      setDuplicateOpen(true);
-    } catch {
-      /* silencieux */
-    }
-  }, [email, enabled, phone]);
 
   useEffect(() => {
-    if (!enabled) {
-      setDuplicateOpen(false);
+    const em = email.trim();
+    const ph = phone.trim();
+    if (!enabled || (!em && !ph.replace(/\D/g, ''))) {
+      setDuplicate(null);
       return;
     }
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      void runLookup();
+    let stale = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const found = await lookupPatientByContact(em, ph);
+          if (stale) return;
+          if (!found || suppressKeyRef.current === suppressKey(em, ph, found.patient.id)) {
+            setDuplicate(null);
+            return;
+          }
+          setDuplicate(found);
+        } catch (e) {
+          if (!stale) setDuplicate(null);
+          console.warn('[patients] duplicate lookup failed', e);
+        }
+      })();
     }, 450);
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      stale = true;
+      clearTimeout(timer);
     };
-  }, [email, enabled, phone, runLookup]);
+  }, [email, enabled, phone]);
 
   const dismissDuplicate = useCallback(() => {
-    if (duplicateRow?.id) {
-      suppressKeyRef.current = `${email.trim()}|${phone.trim()}|${duplicateRow.id}`;
-    }
-    setDuplicateOpen(false);
-    setDuplicateRow(null);
-  }, [duplicateRow, email, phone]);
+    if (duplicate) suppressKeyRef.current = suppressKey(email, phone, duplicate.patient.id);
+    setDuplicate(null);
+  }, [duplicate, email, phone]);
 
   const resetDuplicate = useCallback(() => {
     suppressKeyRef.current = '';
-    setDuplicateOpen(false);
-    setDuplicateRow(null);
+    setDuplicate(null);
   }, []);
 
-  return {
-    duplicateOpen,
-    duplicateRow,
-    dismissDuplicate,
-    resetDuplicate,
-    setDuplicateOpen,
-    setDuplicateRow,
-  };
+  return { duplicate, dismissDuplicate, resetDuplicate, showDuplicate: setDuplicate };
 }

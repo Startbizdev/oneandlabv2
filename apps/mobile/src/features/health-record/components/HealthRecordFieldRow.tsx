@@ -1,16 +1,10 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { Platform, View } from 'react-native';
-import { CheckCircle2, CircleDashed } from 'lucide-react-native';
-import { Row } from '@/components/layout/primitives';
-import { Badge } from '@/components/ui/Badge';
+import { View } from 'react-native';
 import {
-  HEALTH_RECORD_EMPTY_LABEL,
-  HEALTH_RECORD_OPTIONAL_BADGE,
   formatHealthRecordDisplay,
   healthRecordFieldAccessibilityLabel,
   isHealthRecordValueFilled,
 } from '../utils/health-record-display';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { AppText, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   label: string;
@@ -18,125 +12,32 @@ interface Props {
 }
 
 export function HealthRecordFieldRow({ label, display: rawDisplay }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const display = formatHealthRecordDisplay(rawDisplay);
   const filled = isHealthRecordValueFilled(display);
-  const a11yLabel = healthRecordFieldAccessibilityLabel(label, display, filled);
 
   return (
     <View
       style={styles.row}
       accessible
       accessibilityRole="text"
-      accessibilityLabel={a11yLabel}
+      accessibilityLabel={healthRecordFieldAccessibilityLabel(label, display, filled)}
     >
-      <AppText style={styles.label} numberOfLines={2}>
+      <AppText variant="caption" style={styles.label}>
         {label}
       </AppText>
-
-      {filled ? (
-        <View style={[styles.valueShell, styles.valueShellFilled]}>
-          <Row gap={spacing[2]} align="center" style={styles.valueInner}>
-            <CheckCircle2
-              size={iconSize.sm}
-              color={c.success}
-              strokeWidth={2.25}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
-            <AppText style={styles.valueFilled} numberOfLines={3}>
-              {display}
-            </AppText>
-          </Row>
-        </View>
-      ) : (
-        <View style={[styles.valueShell, styles.valueShellEmpty]}>
-          <Row gap={spacing[2]} align="center" justify="between" style={styles.valueInner}>
-            <Row gap={spacing[2]} align="center" style={styles.emptyLeading}>
-              <CircleDashed
-                size={iconSize.sm}
-                color={c.textTertiary}
-                strokeWidth={2}
-                accessibilityElementsHidden
-                importantForAccessibility="no"
-              />
-              <AppText style={styles.valueEmpty}>{HEALTH_RECORD_EMPTY_LABEL}</AppText>
-            </Row>
-            <Badge
-              label={HEALTH_RECORD_OPTIONAL_BADGE}
-              variant="neutral"
-              dot={false}
-              size="sm"
-              shape="square"
-            />
-          </Row>
-        </View>
-      )}
+      <AppText variant="body" style={filled ? styles.value : styles.empty}>
+        {display}
+      </AppText>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    row: {
-      gap: spacing[1.5],
-    },
-    label: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      letterSpacing: 0.2,
-    },
-    valueShell: {
-      borderRadius: radius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2.5],
-      minHeight: 44,
-      justifyContent: 'center' as const,
-    },
-    valueShellFilled: {
-      backgroundColor: c.successLight,
-      borderWidth: 1,
-      borderColor: c.successMid,
-      ...Platform.select({
-        ios: { borderCurve: 'continuous' as const },
-        default: {},
-      }),
-    },
-    valueShellEmpty: {
-      backgroundColor: c.surfaceAlt,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      borderStyle: 'dashed' as const,
-      ...Platform.select({
-        ios: { borderCurve: 'continuous' as const },
-        default: {},
-      }),
-    },
-    valueInner: {
-      minWidth: 0,
-      flex: 1,
-    },
-    emptyLeading: {
-      flex: 1,
-      minWidth: 0,
-    },
-    valueFilled: {
-      flex: 1,
-      minWidth: 0,
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    valueEmpty: {
-      flex: 1,
-      minWidth: 0,
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textTertiary,
-      lineHeight: fontSize.sm * 1.45,
-    },
+    row: { gap: spacing[0.5] },
+    label: { color: c.textSecondary },
+    value: { color: c.textPrimary },
+    empty: { color: c.textTertiary },
   };
 }

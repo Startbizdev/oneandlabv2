@@ -1,18 +1,17 @@
 import { spacing, useStyles } from '@/theme';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, type ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
-import { StackKeyboardScrollView } from '@/components/navigation/StackKeyboardScrollView';
+import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
 import { PatientAppointmentSummaryHeader } from '../detail/components/patient/PatientAppointmentSummaryHeader';
-import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
+import { PatientAssigneeRows, hasAssigneeContent } from '../detail/components/patient/PatientAssigneeRows';
 import { PatientCancelAppointmentSheet } from '../detail/components/patient/PatientCancelAppointmentSheet';
 import { PatientDetailActions } from '../detail/components/patient/PatientDetailActions';
 import { PatientDetailStickyActions } from '../detail/components/patient/PatientDetailStickyActions';
@@ -77,14 +76,12 @@ export function PatientAppointmentDetailScreen() {
     const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
     if (raw !== 'documents') return;
     setSegment(raw);
-    router.setParams({ segment: undefined } as never);
+    router.setParams({ segment: undefined });
   }, [segmentParam, router]);
 
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
   });
-  const scrollRef = useRef<ScrollView>(null);
-  useScrollToTopOnPop(scrollRef);
 
   if (s.detailBlock) {
     return (
@@ -135,19 +132,28 @@ export function PatientAppointmentDetailScreen() {
               }
               onEditSchedule={
                 canEditSchedule
-                  ? () => router.push(`/(patient)/appointment/${id}/edit-schedule` as never)
+                  ? () =>
+                      router.push({
+                        pathname: '/(patient)/appointment/[id]/edit-schedule',
+                        params: { id: String(id) },
+                      })
                   : undefined
               }
             />
           }
         >
-          <StackKeyboardScrollView
-            scrollRef={scrollRef}
+          <SceneScrollView
             contentContainerStyle={[styles.scroll, styles.content]}
             refreshing={pullRefresh.refreshing}
             onRefresh={pullRefresh.onRefresh}
           >
-            <PatientAppointmentSummaryHeader apt={primary} batchCount={batchSorted.length} />
+            <PatientAppointmentSummaryHeader
+              apt={primary}
+              batchCount={batchSorted.length}
+              assigneeShownElsewhere={
+                activeSegment === 'infos' && hasAssigneeContent(primary, user?.role ?? 'patient', user?.id)
+              }
+            />
 
             {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
@@ -169,23 +175,18 @@ export function PatientAppointmentDetailScreen() {
 
             {activeSegment === 'infos' ? (
               <View style={styles.tabBody}>
-                <View style={styles.edgeBleed}>
-                  <RdvAppointmentInfoSection
-                    apt={primary}
-                    viewer={user}
-                    edgeToEdge
-                    batch={isMultiBatch ? batchSorted : undefined}
-                    batchLoading={s.siblingsLoading}
-                  />
-                </View>
+                <RdvAppointmentInfoSection
+                  apt={primary}
+                  viewer={user}
+                  batch={isMultiBatch ? batchSorted : undefined}
+                  batchLoading={s.siblingsLoading}
+                />
                 <PatientAssigneeRows apt={primary} />
-                <View style={styles.edgeBleed}>
-                  <PatientDetailActions
-                    canceled={canceled}
-                    cancelCount={cancellableForPatient.length}
-                    onCancel={() => setCancelOpen(true)}
-                  />
-                </View>
+                <PatientDetailActions
+                  canceled={canceled}
+                  cancelCount={cancellableForPatient.length}
+                  onCancel={() => setCancelOpen(true)}
+                />
               </View>
             ) : null}
 
@@ -200,7 +201,7 @@ export function PatientAppointmentDetailScreen() {
                 onRetry={s.retryDocs}
               />
             ) : null}
-          </StackKeyboardScrollView>
+          </SceneScrollView>
         </ScreenActionLayout>
       </StackChromeScreen>
 
@@ -230,8 +231,5 @@ function buildStyles() {
     gap: spacing[3],
   },
   tabBody: { gap: spacing[3] },
-  edgeBleed: {
-    marginHorizontal: -spacing[4],
-  },
 };
 }

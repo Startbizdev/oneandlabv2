@@ -1,29 +1,19 @@
+import type { Href } from 'expo-router';
 import type { AppNotification } from '../api/notifications.service';
-import {
-  notificationIsNavigable,
-  parseNotificationData,
-  resolveNotificationNavIntent,
-} from '@oneandlab/shared-utils';
+import { resolveNotificationNavIntent } from '@oneandlab/shared-utils';
+import { appointmentDetailHref, appointmentsListHref } from '@/navigation/role-hrefs';
+import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 
-export type NotificationNavTarget =
-  | { kind: 'none' }
-  | { kind: 'route'; pathname: string; params?: Record<string, string> };
+/** Rôles disposant d'une pile Expo Router ; les autres (labo, sous-compte, admin) n'ont aucune cible. */
+type NavRole = 'nurse' | 'pro' | 'preleveur' | 'patient';
 
-export { notificationIsNavigable, parseNotificationData, resolveNotificationNavIntent };
-
-function rolePrefix(role: string): string | null {
+function navRole(role: string | undefined): NavRole | null {
   switch (role) {
     case 'nurse':
-      return '/(nurse)';
-    case 'preleveur':
-      return '/(preleveur)';
     case 'pro':
-      return '/(pro)';
+    case 'preleveur':
     case 'patient':
-      return '/(patient)';
-    case 'lab':
-    case 'subaccount':
-      return '/(lab)';
+      return role;
     default:
       return null;
   }
@@ -37,6 +27,8 @@ export type NotificationNavigationOptions = {
   pharmacyCanReceive?: boolean;
 };
 
+type RouteParams = Record<string, string>;
+
 const PHARMACY_REQUESTER_NOTIF_TYPES = new Set([
   'pharmacy_order_accepted',
   'pharmacy_order_refused',
@@ -44,105 +36,130 @@ const PHARMACY_REQUESTER_NOTIF_TYPES = new Set([
   'pharmacy_order_completed',
 ]);
 
-function pharmacyOrderPathname(
-  prefix: string,
-  orderId: string,
-  notifType: string,
-  role: string,
-  options?: NotificationNavigationOptions,
-): string {
-  if (role === 'patient') {
-    return `${prefix}/traitements/${orderId}`;
-  }
-  if (role === 'nurse') {
-    return `${prefix}/commandes-pharmacie/${orderId}`;
-  }
-  if (notifType === 'pharmacy_order_created') {
-    return `${prefix}/commandes-recues/${orderId}`;
-  }
-  if (PHARMACY_REQUESTER_NOTIF_TYPES.has(notifType)) {
-    return `${prefix}/commandes-pharmacie/${orderId}`;
-  }
-  if (notifType === 'pharmacy_order_message' && options?.pharmacyCanReceive) {
-    return `${prefix}/commandes-recues/${orderId}`;
-  }
-  if (notifType === 'pharmacy_order_message') {
-    return `${prefix}/commandes-pharmacie/${orderId}`;
-  }
-  if (options?.pharmacyCanReceive) {
-    return `${prefix}/commandes-recues/${orderId}`;
-  }
-  return `${prefix}/commandes-pharmacie/${orderId}`;
+function proOrderIsReceived(notifType: string, options?: NotificationNavigationOptions): boolean {
+  if (notifType === 'pharmacy_order_created') return true;
+  if (PHARMACY_REQUESTER_NOTIF_TYPES.has(notifType)) return false;
+  return Boolean(options?.pharmacyCanReceive);
 }
 
+function pharmacyOrderHref(
+  role: NavRole,
+  orderId: string,
+  notifType: string,
+  extra: RouteParams,
+  options?: NotificationNavigationOptions,
+): Href | null {
+  const params = { ...extra, id: orderId };
+  switch (role) {
+    case 'patient':
+      return { pathname: '/(patient)/traitements/[id]', params };
+    case 'nurse':
+      return { pathname: '/(nurse)/commandes-pharmacie/[id]', params };
+    case 'pro':
+      return proOrderIsReceived(notifType, options)
+        ? { pathname: '/(pro)/commandes-recues/[id]', params }
+        : { pathname: '/(pro)/commandes-pharmacie/[id]', params };
+    default:
+      return null;
+  }
+}
+
+function resultsHref(role: NavRole): Href | null {
+  switch (role) {
+    case 'nurse':
+      return '/(nurse)/resultats';
+    case 'pro':
+      return '/(pro)/resultats';
+    case 'patient':
+      return '/(patient)/resultats';
+    default:
+      return null;
+  }
+}
+
+function reviewsHref(role: NavRole, params: RouteParams): Href | null {
+  switch (role) {
+    case 'nurse':
+      return { pathname: '/(nurse)/reviews', params };
+    case 'patient':
+      return { pathname: '/(patient)/reviews', params };
+    default:
+      return null;
+  }
+}
+
+function conversationHref(role: NavRole, appointmentId: string, extra: RouteParams): Href {
+  const params = { ...extra, id: appointmentId };
+  switch (role) {
+    case 'nurse':
+      return { pathname: '/(nurse)/appointment/[id]/conversation', params };
+    case 'pro':
+      return { pathname: '/(pro)/appointment/[id]/conversation', params };
+    case 'patient':
+      return { pathname: '/(patient)/appointment/[id]/conversation', params };
+    case 'preleveur':
+      return { pathname: '/(preleveur)/appointment/[id]/conversation', params };
+  }
+}
+
+function carePhotoHref(role: NavRole, appointmentId: string, photoId: string): Href | null {
+  const params = { id: appointmentId, photoId };
+  switch (role) {
+    case 'nurse':
+      return { pathname: '/(nurse)/appointment/[id]/care-photo/[photoId]', params };
+    case 'pro':
+      return { pathname: '/(pro)/appointment/[id]/care-photo/[photoId]', params };
+    default:
+      return null;
+  }
+}
+
+/** Cible de navigation d'une notification, ou `null` si elle n'ouvre aucun écran pour ce rôle. */
 export function resolveNotificationNavigation(
   notif: AppNotification,
   role: string | undefined,
   options?: NotificationNavigationOptions,
-): NotificationNavTarget {
+): Href | null {
   const intent = resolveNotificationNavIntent(notif, role);
-  const prefix = role ? rolePrefix(role) : null;
-
-  if (intent.kind === 'none' || !prefix) {
-    return { kind: 'none' };
-  }
+  const r = navRole(role);
+  if (!r) return null;
 
   switch (intent.kind) {
-    case 'pharmacy_order': {
-      const params = intent.messageId ? { messageId: intent.messageId } : undefined;
-      return {
-        kind: 'route',
-        pathname: pharmacyOrderPathname(
-          prefix,
-          intent.orderId,
-          String(notif.type ?? ''),
-          role ?? '',
-          options,
-        ),
-        params,
-      };
-    }
+    case 'pharmacy_order':
+      return pharmacyOrderHref(
+        r,
+        intent.orderId,
+        String(notif.type ?? ''),
+        intent.messageId ? { messageId: intent.messageId } : {},
+        options,
+      );
     case 'results':
-      return { kind: 'route', pathname: `${prefix}/resultats` };
+      return resultsHref(r);
     case 'reviews': {
-      const params: Record<string, string> = {};
+      const params: RouteParams = {};
       if (intent.reviewId) params.review = intent.reviewId;
       else if (intent.appointmentId) params.appointment = intent.appointmentId;
-      return {
-        kind: 'route',
-        pathname: `${prefix}/reviews`,
-        params: Object.keys(params).length ? params : undefined,
-      };
+      return reviewsHref(r, params);
     }
     case 'appointments_list':
-      return { kind: 'route', pathname: `${prefix}/(tabs)/appointments` };
+      return appointmentsListHref(roleRoutePrefix(r));
     case 'appointment': {
       if (intent.conversation) {
-        return {
-          kind: 'route',
-          pathname: `${prefix}/appointment/${intent.appointmentId}/conversation`,
-          params: {
-            fromNotification: '1',
-            ...(intent.messageId ? { messageId: intent.messageId } : {}),
-          },
-        };
+        return conversationHref(r, intent.appointmentId, {
+          fromNotification: '1',
+          ...(intent.messageId ? { messageId: intent.messageId } : {}),
+        });
       }
-      if (intent.careGallery && intent.carePhotoId) {
-        return {
-          kind: 'route',
-          pathname: `${prefix}/appointment/${intent.appointmentId}/care-photo/${intent.carePhotoId}`,
-        };
+      const hasCareGallery = r === 'nurse' || r === 'pro';
+      if (hasCareGallery && intent.careGallery && intent.carePhotoId) {
+        return carePhotoHref(r, intent.appointmentId, intent.carePhotoId);
       }
-      const params: Record<string, string> = {};
+      const params: RouteParams = {};
       if (intent.review) params.review = '1';
-      if (intent.careGallery) params.careGallery = '1';
-      return {
-        kind: 'route',
-        pathname: `${prefix}/appointment/${intent.appointmentId}`,
-        params: Object.keys(params).length ? params : undefined,
-      };
+      if (hasCareGallery && intent.careGallery) params.careGallery = '1';
+      return appointmentDetailHref(roleRoutePrefix(r), intent.appointmentId, params);
     }
-    default:
-      return { kind: 'none' };
+    case 'none':
+      return null;
   }
 }

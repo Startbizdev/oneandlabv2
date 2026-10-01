@@ -1,27 +1,25 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import { MapPin, Star, Store } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Cluster } from '@/components/layout/primitives';
+import { Star } from 'lucide-react-native';
 import type { PharmacyCatalogItem } from '@oneandlab/shared-types';
-import { PHARMACY_FULFILLMENT_LABELS } from '@oneandlab/shared-constants';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   item: PharmacyCatalogItem;
   selected?: boolean;
   favorite?: boolean;
-  fulfillmentMode: 'click_collect' | 'home_delivery';
   onPress: () => void;
   onToggleFavorite?: () => void;
   favoriteLoading?: boolean;
 }
 
+/** Pharmacie du catalogue (assistant de commande) : sélection et favori. */
 export function PharmacyCatalogCard({
   item,
   selected = false,
   favorite = false,
-  fulfillmentMode,
   onPress,
   onToggleFavorite,
   favoriteLoading = false,
@@ -39,16 +37,12 @@ export function PharmacyCatalogCard({
     <Pressable
       onPress={onPress}
       style={[styles.card, selected && styles.cardSelected]}
-      accessibilityRole="button"
+      accessibilityRole="radio"
       accessibilityState={{ selected }}
+      accessibilityLabel={item.display_name}
     >
       <Cluster
         gap={spacing[3]}
-        leading={
-          <View style={[styles.iconBox, selected && styles.iconBoxSelected]}>
-            <Store size={iconSize.md} color={selected ? c.primary : c.textSecondary} strokeWidth={2} />
-          </View>
-        }
         actions={
           onToggleFavorite ? (
             <IconActionButton
@@ -60,36 +54,16 @@ export function PharmacyCatalogCard({
                 size={iconSize.md}
                 color={favorite ? c.warning : c.textTertiary}
                 fill={favorite ? c.warning : 'transparent'}
-                strokeWidth={2}
+                strokeWidth={ICON_STROKE_WIDTH}
               />
             </IconActionButton>
           ) : null
         }
       >
         <View style={styles.body}>
-          <Row gap={spacing[2]} align="center">
-            <AppText style={[styles.title, selected && styles.titleSelected]} numberOfLines={2}>
-              {item.display_name}
-            </AppText>
-          </Row>
-          {item.emploi ? (
-            <AppText style={styles.meta} numberOfLines={1}>
-              {item.emploi}
-            </AppText>
-          ) : null}
-          {addressLine ? (
-            <Row gap={spacing[1]} align="start" style={styles.addressRow}>
-              <MapPin size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
-              <AppText style={styles.address} numberOfLines={2}>
-                {addressLine}
-              </AppText>
-            </Row>
-          ) : null}
-          <AppText style={styles.modeHint}>
-            {fulfillmentMode === 'click_collect'
-              ? PHARMACY_FULFILLMENT_LABELS.click_collect
-              : PHARMACY_FULFILLMENT_LABELS.home_delivery}
-          </AppText>
+          <AppText style={styles.title}>{item.display_name}</AppText>
+          {item.emploi ? <AppText variant="secondary">{item.emploi}</AppText> : null}
+          {addressLine ? <AppText variant="caption">{addressLine}</AppText> : null}
         </View>
       </Cluster>
     </Pressable>
@@ -99,65 +73,26 @@ export function PharmacyCatalogCard({
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
-      padding: spacing[3],
+      padding: spacing[4],
       borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.border,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       backgroundColor: c.surface,
     },
     cardSelected: {
-      borderColor: c.primaryMid,
+      borderWidth: 1.5,
+      borderColor: c.primary,
       backgroundColor: c.primaryLight,
-    },
-    iconBox: {
-      width: 44,
-      height: 44,
-      borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      backgroundColor: c.surfaceSubtle,
-    },
-    iconBoxSelected: {
-      backgroundColor: c.surface,
     },
     body: {
       minWidth: 0,
       flex: 1,
-      gap: spacing[1],
+      gap: spacing[0.5],
     },
     title: {
-      flex: 1,
-      minWidth: 0,
       ...font.semiBold,
-      fontSize: fontSize.md,
+      fontSize: fontSize.base,
       color: c.textPrimary,
-    },
-    titleSelected: {
-      color: c.primaryDark,
-    },
-    meta: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    addressRow: {
-      marginTop: spacing[0.5],
-    },
-    address: {
-      flex: 1,
-      minWidth: 0,
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.4,
-    },
-    modeHint: {
-      marginTop: spacing[1],
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.primary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.3,
     },
   };
 }

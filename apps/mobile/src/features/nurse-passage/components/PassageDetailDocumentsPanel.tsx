@@ -4,7 +4,8 @@ import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appo
 import { RdvDocumentsPremiumPanel } from '@/features/appointments/detail/components/RdvDocumentsPremiumPanel';
 import { PrescriptionWorkspaceScreen } from '@/features/prescriptions/screens/PrescriptionWorkspaceScreen';
 import { usePassagePrescriptionGapsAlert } from '../hooks/use-passage-prescription-gaps-alert';
-import { H_PADDING, spacing } from '@/theme';
+import { useStyles } from '@/theme';
+import { buildPassageDocumentsPanelStyles } from './passage-documents-panel-styles';
 
 type Props = {
   patientId: string;
@@ -23,10 +24,11 @@ export function PassageDetailDocumentsPanel({
   docsLoading,
   onDocumentsChanged,
 }: Props) {
+  const styles = useStyles(buildPassageDocumentsPanelStyles);
   const { gapsAlert } = usePassagePrescriptionGapsAlert(patientId);
 
   return (
-    <View style={{ gap: spacing[4], paddingHorizontal: H_PADDING, paddingBottom: spacing[10] }}>
+    <View style={styles.panel}>
       {gapsAlert}
       <RdvDocumentsPremiumPanel
         appointmentId={appointmentId}

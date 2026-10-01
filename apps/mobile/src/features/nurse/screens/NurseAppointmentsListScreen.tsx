@@ -9,22 +9,17 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { CalendarPlus } from 'lucide-react-native';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { BookAppointmentCta } from '@/features/nurse/components/BookAppointmentCta';
+import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 import { NurseSegmentChips } from '@/features/nurse/components/NurseSegmentChips';
-import { NurseTodayTourCard } from '@/features/nurse/components/NurseTodayTourCard';
+import { useOpenIncomingOffer } from '@/features/nurse/hooks/use-open-incoming-offer';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
-import { offerPreviewFromListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
@@ -33,13 +28,12 @@ import {
   useInfiniteAppointmentsList,
 } from '@/features/appointments/hooks/use-infinite-appointments-list';
 import { APPOINTMENTS_LIST_PAGE_SIZE } from '@/constants/appointments-pagination';
-import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
-import { useToast } from '@/providers/ToastProvider';
 import { useAppointmentsCacheSyncOnFocus } from '@/features/appointments/hooks/use-appointments-cache-sync';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useAuthStore } from '@/store/auth-store';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
   NURSE_SEGMENT_OPTIONS,
@@ -48,14 +42,6 @@ import {
   type NurseListTab,
   type NurseSegment,
 } from '@/constants/appointments-list-filters';
-import {
-  EMPTY_DEMANDE_IMAGE,
-  EMPTY_DEMANDE_IMAGE_HEIGHT,
-  EMPTY_DEMANDE_IMAGE_WIDTH,
-  EMPTY_RDV_IMAGE,
-  EMPTY_RDV_IMAGE_HEIGHT,
-  EMPTY_RDV_IMAGE_WIDTH,
-} from '@/constants/empty-state-images';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { spacing, useStyles, type Theme } from '@/theme';
 
@@ -78,18 +64,21 @@ function rowKey(row: AppointmentListRow): string {
   return row.kind === 'batch' ? row.key : row.appointment.id;
 }
 
+function isIncomingOfferRow(row: AppointmentListRow, userId: string | undefined): boolean {
+  const apts = row.kind === 'batch' ? row.appointments : [row.appointment];
+  return apts.some((a) => a.status === 'pending' && isPendingIncomingOffer(a, userId));
+}
+
 /** Liste RDV infirmier — ScrollView natif (pattern PatientsListScreen). */
 export function NurseAppointmentsListScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.listContent);
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
+  const fabClearance = useScreenFabScrollClearance();
 
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const { show: toast } = useToast();
 
   const [tab, setTab] = useState<NurseListTab>('soins');
   const [segment, setSegment] = useState<NurseSegment>('tous');
@@ -133,10 +122,13 @@ export function NurseAppointmentsListScreen() {
     [filtered, tab, segment, sortDirection],
   );
 
-  useAppointmentsCacheSyncOnFocus();
-  useAppForegroundRefetch(() => {
+  const refetchList = useCallback(() => {
     void refetch();
-  });
+  }, [refetch]);
+
+  useAppointmentsCacheSyncOnFocus();
+  useAppForegroundRefetch(refetchList);
+  const openOffer = useOpenIncomingOffer(refetchList);
 
   const filterChips = useMemo(() => {
     if (tab === 'soins') return [];
@@ -165,44 +157,23 @@ export function NurseAppointmentsListScreen() {
     [loadMore],
   );
 
-  const onRowPress = useCallback(
-    (row: AppointmentListRow, apt: Appointment) => {
-      const isOffer =
-        segment === 'en_attente' &&
-        (row.kind === 'batch'
-          ? row.appointments.some(
-              (a) => a.status === 'pending' && isPendingIncomingOffer(a, user?.id),
-            )
-          : row.appointment.status === 'pending' &&
-            isPendingIncomingOffer(row.appointment, user?.id));
+  const isDemandesSegment = segment === 'en_attente';
 
+  const onRowPress = useCallback(
+    (row: AppointmentListRow, apt: Appointment, isOffer: boolean) => {
       if (isOffer && user?.id) {
-        const preview = offerPreviewFromListRow(row);
-        void useOfferQueueStore.getState().openIncomingOffer(apt.id, 'nurse', user.id, preview).then(
-          (result) => {
-            if (result.ok) return;
-            if (result.reason === 'already_accepted') {
-              toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
-            } else if (result.reason === 'unavailable') {
-              toast('Cette demande n’est plus disponible.', { type: 'info' });
-            } else if (result.reason === 'network') {
-              toast('Connexion instable — réessayez.', { type: 'error' });
-            }
-            void refetch();
-          },
-        );
+        openOffer(row, apt);
       } else {
-        router.push(`/(nurse)/appointment/${apt.id}` as never);
+        router.push(appointmentDetailHref('/(nurse)', apt.id));
       }
     },
-    [refetch, router, segment, toast, user?.id],
+    [openOffer, router, user?.id],
   );
 
-  const isDemandesEmpty = segment === 'en_attente';
-  const emptyTitle = isDemandesEmpty ? 'Aucune demande pour le moment' : 'Aucune visite pour le moment';
-  const emptyDescription = isDemandesEmpty
-    ? 'Les nouvelles propositions de soins apparaîtront ici.'
-    : 'Quand vous acceptez une demande, elle arrive ici.';
+  const emptyTitle = isDemandesSegment ? 'Aucune demande' : 'Aucun rendez-vous';
+  const emptyDescription = isDemandesSegment
+    ? 'Les nouvelles demandes de soins apparaîtront ici.'
+    : 'Les demandes acceptées apparaîtront ici.';
 
   return (
     <View style={styles.screen}>
@@ -211,27 +182,21 @@ export function NurseAppointmentsListScreen() {
         style={styles.list}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={Platform.OS === 'android'}
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
+        contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={c.primary}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
           />
         }
         onScroll={handleScroll}
         scrollEventThrottle={200}
       >
         <View style={styles.scrollHeader}>
-          {tab === 'soins' && (segment === 'acceptes' || segment === 'tous') ? (
-            <NurseTodayTourCard />
-          ) : null}
           <AppointmentsListSearchHost
             embedded
-            followedByBookCta
             onQueryChange={setSearch}
             searchPlaceholder="Nom, téléphone, adresse…"
             onOpenFilters={() => setSheetOpen(true)}
@@ -239,11 +204,10 @@ export function NurseAppointmentsListScreen() {
             chips={filterChips}
           />
           <NurseSegmentChips value={segment} onChange={setSegment} />
-          <BookAppointmentCta href="/(nurse)/appointments/new" />
         </View>
 
         {isInitialLoading ? (
-          <SkeletonList count={4} itemHeight={116} gap={12} />
+          <SkeletonList count={4} itemHeight={116} gap={spacing[3]} />
         ) : isInitialError ? (
           <View style={styles.emptyWrap}>
             <ErrorState
@@ -257,22 +221,13 @@ export function NurseAppointmentsListScreen() {
             <EmptyState
               title={emptyTitle}
               description={emptyDescription}
-              imageSource={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE : EMPTY_RDV_IMAGE}
-              imageWidth={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE_WIDTH : EMPTY_RDV_IMAGE_WIDTH}
-              imageHeight={isDemandesEmpty ? EMPTY_DEMANDE_IMAGE_HEIGHT : EMPTY_RDV_IMAGE_HEIGHT}
+              illustration={isDemandesSegment ? 'requests' : 'appointments'}
             />
           </View>
         ) : (
           <View style={styles.rows}>
             {displayRows.map((row, index) => {
-              const isOffer =
-                segment === 'en_attente' &&
-                (row.kind === 'batch'
-                  ? row.appointments.some(
-                      (a) => a.status === 'pending' && isPendingIncomingOffer(a, user?.id),
-                    )
-                  : row.appointment.status === 'pending' &&
-                    isPendingIncomingOffer(row.appointment, user?.id));
+              const isOffer = isDemandesSegment && isIncomingOfferRow(row, user?.id);
               return (
                 <AppointmentListRowCard
                   key={rowKey(row)}
@@ -280,7 +235,7 @@ export function NurseAppointmentsListScreen() {
                   index={index}
                   role={isOffer ? 'demande' : 'nurse'}
                   viewerId={user?.id}
-                  onPress={(apt) => onRowPress(row, apt)}
+                  onPress={(apt) => onRowPress(row, apt, isOffer)}
                 />
               );
             })}
@@ -298,9 +253,6 @@ export function NurseAppointmentsListScreen() {
         visible={sheetOpen}
         onClose={() => setSheetOpen(false)}
         title="Filtres"
-        search=""
-        onSearchChange={() => {}}
-        showSearch={false}
         closeOnPick={false}
         onReset={() => {
           setTab('soins');
@@ -313,6 +265,11 @@ export function NurseAppointmentsListScreen() {
         segment={segment}
         onSegmentChange={setSegment}
         segmentSectionLabel="Statut"
+      />
+      <ScreenFab
+        Icon={CalendarPlus}
+        onPress={() => router.push('/(nurse)/appointments/new')}
+        accessibilityLabel="Nouveau rendez-vous"
       />
     </View>
   );

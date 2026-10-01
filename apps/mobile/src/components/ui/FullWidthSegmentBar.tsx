@@ -1,8 +1,18 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  elevation,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  type Theme,
+} from '@/theme';
 
 export type FullWidthSegment<T extends string = string> = {
   id: T;
@@ -16,7 +26,10 @@ interface FullWidthSegmentBarProps<T extends string> {
   value: T;
   onChange: (id: T) => void;
   accessibilityRole?: 'tablist' | 'radiogroup';
+  accessibilityLabel?: string;
 }
+
+const LARGE_FONT_SCALE = 1.15;
 
 /** Segmented control pleine largeur — source unique pour onglets mode / détail RDV. */
 export function FullWidthSegmentBar<T extends string>({
@@ -24,30 +37,34 @@ export function FullWidthSegmentBar<T extends string>({
   value,
   onChange,
   accessibilityRole = 'tablist',
+  accessibilityLabel,
 }: FullWidthSegmentBarProps<T>) {
   const c = useAppColors();
   const styles = useStyles(buildFullWidthSegmentBarStyles);
+  const { fontScale } = useWindowDimensions();
+  // Grande police : l'icône passe au-dessus du libellé pour lui laisser toute la largeur (pas de mot coupé).
+  const stacked = fontScale > LARGE_FONT_SCALE;
 
   if (segments.length <= 1) return null;
 
   return (
-    <View style={styles.track} accessibilityRole={accessibilityRole}>
+    <View style={styles.track} accessibilityRole={accessibilityRole} accessibilityLabel={accessibilityLabel}>
       {segments.map((segment) => {
         const active = value === segment.id;
         const Icon = segment.Icon;
-        const iconColor = active ? c.primary : c.textTertiary;
+        const iconColor = active ? c.primaryDark : c.textTertiary;
 
         return (
           <Pressable
             key={segment.id}
             onPress={() => onChange(segment.id)}
-            style={[styles.tab, active && styles.tabActive]}
+            style={[styles.tab, stacked && styles.tabStacked, active && styles.tabActive]}
             accessibilityRole={accessibilityRole === 'tablist' ? 'tab' : 'radio'}
             accessibilityState={{ selected: active }}
             accessibilityLabel={segment.label}
           >
-            {Icon ? <Icon size={iconSize.sm} color={iconColor} strokeWidth={2.25} /> : null}
-            <AppText style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
+            {Icon ? <Icon size={iconSize.sm} color={iconColor} strokeWidth={ICON_STROKE_WIDTH} /> : null}
+            <AppText style={[styles.label, active && styles.labelActive]}>
               {segment.label}
             </AppText>
             {segment.badge != null && segment.badge > 0 ? (
@@ -64,27 +81,32 @@ export function FullWidthSegmentBar<T extends string>({
   );
 }
 
-function buildFullWidthSegmentBarStyles({ colors: c, fontSize }: Theme) {
+function buildFullWidthSegmentBarStyles({ colors: c, fontSize, scale }: Theme) {
   return {
     track: {
       minWidth: 0,
       flexDirection: 'row' as const,
       backgroundColor: c.surfaceAlt,
       borderRadius: radius.lg,
-      padding: spacing[0.5] + 1,
-      gap: spacing[0.5] + 1,
+      padding: spacing[0.5],
+      gap: spacing[0.5],
     },
     tab: {
       minWidth: 0,
       flex: 1,
+      flexBasis: 0,
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       gap: spacing[1.5],
-      minHeight: spacing[10] + spacing[1],
-      paddingVertical: spacing[2.5],
+      minHeight: scale(MIN_TOUCH_TARGET),
+      paddingVertical: spacing[2],
       paddingHorizontal: spacing[1.5],
       borderRadius: radius.md,
+    },
+    tabStacked: {
+      flexDirection: 'column' as const,
+      gap: spacing[0.5],
     },
     tabActive: {
       backgroundColor: c.surface,
@@ -94,6 +116,8 @@ function buildFullWidthSegmentBarStyles({ colors: c, fontSize }: Theme) {
       ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
+      flexShrink: 1,
+      textAlign: 'center' as const,
     },
     labelActive: {
       color: c.primaryDark,
@@ -102,7 +126,7 @@ function buildFullWidthSegmentBarStyles({ colors: c, fontSize }: Theme) {
       minWidth: 18,
       height: 18,
       borderRadius: 9,
-      paddingHorizontal: spacing[1] + 1,
+      paddingHorizontal: spacing[1],
       backgroundColor: c.borderLight,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -121,11 +145,3 @@ function buildFullWidthSegmentBarStyles({ colors: c, fontSize }: Theme) {
   };
 }
 
-/** Slot optionnel pour contenu custom dans un segment (non utilisé par défaut). */
-export function FullWidthSegmentIcon({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  return <>{children}</>;
-}

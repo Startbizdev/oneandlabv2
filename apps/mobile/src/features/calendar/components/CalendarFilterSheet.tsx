@@ -39,9 +39,6 @@ export function CalendarFilterSheet({
       visible={visible}
       onClose={onClose}
       title="Filtres"
-      search=""
-      onSearchChange={() => {}}
-      showSearch={false}
       closeOnPick={false}
       onReset={() => {
         onStatusChange('');

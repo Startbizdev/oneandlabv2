@@ -62,7 +62,7 @@ export function RdvScheduleCompactRow({
         <Stack gap={mainColGap} flex={1} style={styles.mainCol}>
           <RdvListCardCreneauRow label={creneau} status={status} />
           {careLabel ? (
-            <AppText style={styles.careFallback} numberOfLines={1}>
+            <AppText style={styles.careFallback}>
               {careLabel}
             </AppText>
           ) : (

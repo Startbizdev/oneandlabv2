@@ -92,22 +92,11 @@ export const flexText = {
   minWidth: 0,
 } as const;
 
-export const flexCenter = {
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-} as const;
-
+/** Séparateur haut (hairline) entre deux rangées d'un même groupe. */
 export function hairlineTop(c: AppColors) {
   return {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: c.borderLight,
-  };
-}
-
-export function hairlineBottom(c: AppColors) {
-  return {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.borderLight,
   };
 }
 

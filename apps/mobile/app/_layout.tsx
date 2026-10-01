@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { Stack } from 'expo-router';
+import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAuthGuard } from '@/features/auth/hooks/use-auth-guard';
 import { useOnboardingGate } from '@/features/onboarding/hooks/use-onboarding-gate';
 import { MustChangePasswordGate } from '@/features/auth/components/MustChangePasswordGate';
+import { BiometricEnrollmentOfferHost } from '@/features/auth/components/BiometricEnrollmentOfferHost';
 import { AppUpdateGate } from '@/features/app-update/components/AppUpdateGate';
 import { registerNotificationHandlers } from '@/features/notifications/handlers/register-handlers';
 import { useAppointmentsRefreshOnNotifications } from '@/features/appointments/hooks/use-appointments-refresh-on-notifications';
@@ -27,15 +28,23 @@ import { usePushTokenRegistration } from '@/features/notifications/hooks/use-pus
 import { useAppColors } from '@/theme/use-app-colors';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ fade: true, duration: 250 });
 
 function RootLayoutInner() {
   const c = useAppColors();
   const hydrate = useAuthStore((s) => s.hydrate);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  // `index` ne fait qu'aiguiller (Redirect) : le splash couvre l'écran tant qu'on n'a pas quitté cette route.
+  const onDestinationRoute = useSegments().length > 0;
 
   useEffect(() => {
     void hydrate();
     registerNotificationHandlers();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (isHydrated && onDestinationRoute) SplashScreen.hide();
+  }, [isHydrated, onDestinationRoute]);
 
   useAuthGuard();
   useOnboardingGate();
@@ -59,6 +68,7 @@ function RootLayoutInner() {
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
       </Stack>
       <MustChangePasswordGate />
+      <BiometricEnrollmentOfferHost />
       <AppUpdateGate />
     </View>
   );
@@ -77,10 +87,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontError) console.warn('[fonts] Raleway non chargée, police système utilisée', fontError);
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsLoaded, fontError]);
+  }, [fontError]);
 
   // Android ne remesure pas un texte quand sa police arrive après le premier layout (texte tronqué).
   if (!fontsLoaded && !fontError) return null;

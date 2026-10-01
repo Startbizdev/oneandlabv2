@@ -1,409 +1,202 @@
-
-
-import { useAppColors } from '@/theme/use-app-colors';
-
-import { Fragment, useCallback, useMemo, useState } from 'react';
-
-import { ActionSheetIOS, Alert, Platform, StyleSheet, View } from 'react-native';
-
+import { Fragment, useCallback, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-
-import { Users } from 'lucide-react-native';
-
 import type { StaffHubPatientItem, StaffHubSearchItem } from '@oneandlab/shared-types';
-
 import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
-
-import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
-
+import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { queryKeys } from '@/lib/query-keys';
-
 import { deletePatient } from '../api/patients.service';
-
 import { fetchStaffPatientHubSearch } from '../api/staff-hub-search.service';
-
-import type { PatientRow } from '../api/fetch-all-patients';
-
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
-
+import {
+  StaffPatientActionsSheet,
+  type StaffPatientActionTarget,
+} from '../components/StaffPatientActionsSheet';
 import { SkeletonPatientList } from '@/components/ui/skeletons';
-
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-
 import { useToast } from '@/providers/ToastProvider';
-
 import { handleApiError } from '@/lib/errors/handle-api-error';
-
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-
 import { CreatePatientModal } from '../components/CreatePatientModal';
-
 import { StaffPatientHubListRow } from '../components/StaffPatientHubListRow';
-
 import { staffHubItemRoute } from '../utils/staff-hub-navigation';
-
 import { useAuthStore } from '@/store/auth-store';
-
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-
-
-
-
-function hubPatientToRow(item: StaffHubPatientItem): PatientRow {
-
-  return {
-
-    id: item.patient_id,
-
-    first_name: item.first_name,
-
-    last_name: item.last_name,
-
-    email: item.email,
-
-    phone: item.phone ?? undefined,
-
-    birth_date: item.birth_date ?? undefined,
-
-    gender: item.gender ?? undefined,
-
-    profile_image_url: item.profile_image_url ?? undefined,
-
-    created_by: item.created_by ?? undefined,
-
-  };
-
-}
-
-
+import { iconSize, radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 interface Props {
-
   rolePrefix?: '/(nurse)' | '/(pro)';
-
   createOpen: boolean;
-
   onCreateOpenChange: (open: boolean) => void;
-
 }
 
-
-
+/** Hub Patients infirmier / pro : recherche patients, proches, documents et échanges. */
 export function PatientsListScreen({
-
   rolePrefix = '/(nurse)',
-
   createOpen,
-
   onCreateOpenChange: setCreateOpen,
-
 }: Props) {
-
-  const c = useAppColors();
-
   const styles = useStyles(buildStyles);
-
   const fabClearance = useScreenFabScrollClearance();
-
   const router = useRouter();
-
-  const user = useAuthStore((s) => s.user);
-
+  const userId = useAuthStore((s) => s.user?.id);
   const role = rolePrefix === '/(pro)' ? 'pro' : 'nurse';
 
-
-
   const { show: toast } = useToast();
-
   const qc = useQueryClient();
-
   const [search, setSearch] = useState('');
-
   const debouncedSearch = useDebouncedValue(search);
-
-
+  const hasQuery = search.trim().length > 0;
 
   const hubQ = useQuery({
-
     queryKey: queryKeys.patients.hubSearch(debouncedSearch.trim()),
-
     queryFn: async () => {
-
       const res = await fetchStaffPatientHubSearch(debouncedSearch.trim());
-
       if (!res.success) throw new Error(res.error ?? 'Recherche impossible');
-
       return res.data?.items ?? [];
-
     },
-
     staleTime: 15_000,
-
   });
 
-
-
   const items = hubQ.data ?? [];
-
-  const isLoading = hubQ.isLoading;
-
   const { refreshing, onRefresh } = useManualRefresh(hubQ.refetch);
-
 
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const removeMut = useMutation({
-
     mutationFn: deletePatient,
-
     onSuccess: () => {
       setPendingDelete(null);
       void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
       toast('Patient supprimé', { type: 'success' });
     },
-
     onError: (e) => {
       setPendingDelete(null);
       handleApiError(e, toast, 'deletePatient');
     },
-
   });
 
-
+  const [menuTarget, setMenuTarget] = useState<StaffPatientActionTarget | null>(null);
 
   const openPatientMenu = useCallback(
-
-    (p: PatientRow) => {
-
-      const name = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Patient';
-
-      const canDelete = p.created_by === user?.id;
-
-      const actions = [
-
-        { text: 'Voir le profil', onPress: () => router.push(`${rolePrefix}/patient/${p.id}` as never) },
-
-        {
-
-          text: 'Créer un RDV',
-
-          onPress: () =>
-
-            router.push(`${rolePrefix}/appointments/new?patient_id=${p.id}` as never),
-
-        },
-
-        ...(canDelete
-
-          ? [
-
-              {
-
-                text: 'Supprimer',
-
-                style: 'destructive' as const,
-
-                onPress: () => setPendingDelete({ id: p.id, name }),
-
-              },
-
-            ]
-
-          : []),
-
-        { text: 'Annuler', style: 'cancel' as const },
-
-      ];
-
-      if (Platform.OS === 'ios') {
-
-        const labels = actions.map((a) => a.text);
-
-        const destructive = canDelete ? labels.length - 2 : -1;
-
-        ActionSheetIOS.showActionSheetWithOptions(
-
-          { options: labels, cancelButtonIndex: labels.length - 1, destructiveButtonIndex: destructive },
-
-          (i) => actions[i]?.onPress?.(),
-
-        );
-
-      } else {
-
-        Alert.alert(name, undefined, actions);
-
-      }
-
+    (p: StaffHubPatientItem) => {
+      setMenuTarget({
+        patientId: p.patient_id,
+        name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Patient',
+        canDelete: p.created_by != null && p.created_by === userId,
+      });
     },
-
-    [router, user?.id, rolePrefix],
-
+    [userId],
   );
 
+  const openProfile = useCallback(
+    ({ patientId }: StaffPatientActionTarget) => {
+      const params = { id: patientId };
+      router.push(
+        role === 'pro'
+          ? { pathname: '/(pro)/patient/[id]', params }
+          : { pathname: '/(nurse)/patient/[id]', params },
+      );
+    },
+    [router, role],
+  );
 
+  const createAppointment = useCallback(
+    ({ patientId }: StaffPatientActionTarget) => {
+      const params = { patient_id: patientId };
+      router.push(
+        role === 'pro'
+          ? { pathname: '/(pro)/appointments/new', params }
+          : { pathname: '/(nurse)/appointments/new', params },
+      );
+    },
+    [router, role],
+  );
 
   const onItemPress = useCallback(
-
     (item: StaffHubSearchItem) => {
-
-      router.push(staffHubItemRoute(item, rolePrefix, role) as never);
-
+      router.push(staffHubItemRoute(item, role));
     },
-
-    [router, rolePrefix, role],
-
+    [router, role],
   );
 
-
-
-  const renderItem = useCallback(
-
-    (item: StaffHubSearchItem) => (
-
-      <StaffPatientHubListRow
-
-        item={item}
-
-        onPress={() => onItemPress(item)}
-
-        onLongPress={
-
-          item.kind === 'patient' ? () => openPatientMenu(hubPatientToRow(item)) : undefined
-
-        }
-
-      />
-
-    ),
-
-    [onItemPress, openPatientMenu],
-
-  );
-
-
-
-  const headerLabel = useMemo(() => {
-
-    const q = search.trim();
-
-    if (q) {
-
-      return `${items.length} résultat${items.length > 1 ? 's' : ''}`;
-
-    }
-
-    return `${items.length} patient${items.length > 1 ? 's' : ''}`;
-
-  }, [items.length, search]);
-
-
+  const countLabel = hasQuery
+    ? `${items.length} résultat${items.length > 1 ? 's' : ''}`
+    : `${items.length} patient${items.length > 1 ? 's' : ''}`;
 
   return (
-
     <View style={styles.screen}>
-
-      <TabSceneScrollView
-        contentContainerStyle={styles.listContent}
-        scrollPaddingOptions={{ extraBottom: fabClearance }}
+      <SceneScrollView
+        contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
         refreshing={refreshing}
         onRefresh={onRefresh}
       >
-
         <AppointmentsListFilterBar
-
           embedded
-
           search={search}
-
           onSearchChange={setSearch}
-
           searchPlaceholder="Patient, document, échange…"
-
         />
 
-
-
-        {isLoading ? (
-
+        {hubQ.isLoading ? (
           <SkeletonPatientList count={8} />
-
         ) : hubQ.isError && !hubQ.data ? (
           <View style={styles.emptyWrap}>
-            <ErrorState
-              title="Patients indisponibles"
-              error={hubQ.error}
-              onRetry={() => void hubQ.refetch()}
-            />
+            <ErrorState title="Patients indisponibles" error={hubQ.error} onRetry={() => void hubQ.refetch()} />
           </View>
         ) : items.length === 0 ? (
-
           <View style={styles.emptyWrap}>
-
-            <EmptyState
-
-              Icon={Users}
-
-              title={search.trim() ? 'Aucun résultat' : 'Votre liste de patients est vide'}
-
-              description={
-
-                search.trim()
-
-                  ? 'Essayez un autre nom, un type de document ou un mot-clé.'
-
-                  : 'Ajoutez votre premier patient avec le bouton + en bas à droite pour gérer ses rendez-vous, documents et échanges.'
-
-              }
-
-            />
-
+            {hasQuery ? (
+              <EmptyState illustration="search" title="Aucun résultat" description="Essayez un autre nom ou mot-clé." />
+            ) : (
+              <EmptyState
+                illustration="patients"
+                title="Aucun patient"
+                description="Ajoutez un patient pour gérer ses rendez-vous et documents."
+                actionLabel="Ajouter un patient"
+                onAction={() => setCreateOpen(true)}
+              />
+            )}
           </View>
-
         ) : (
-
-          <View style={styles.listCard}>
-
-            <AppText style={styles.sectionKicker}>{headerLabel}</AppText>
-
-            {items.map((item, index) => (
-
-              <Fragment key={item.id}>
-
-                {index > 0 ? <View style={styles.rowDivider} /> : null}
-
-                {renderItem(item)}
-
-              </Fragment>
-
-            ))}
-
+          <View style={styles.listSection}>
+            <AppText variant="secondary" style={styles.count}>
+              {countLabel}
+            </AppText>
+            <View style={styles.listCard}>
+              {items.map((item, index) => (
+                <Fragment key={item.id}>
+                  {index > 0 ? <View style={styles.rowDivider} /> : null}
+                  <StaffPatientHubListRow
+                    item={item}
+                    onPress={() => onItemPress(item)}
+                    onLongPress={item.kind === 'patient' ? () => openPatientMenu(item) : undefined}
+                  />
+                </Fragment>
+              ))}
+            </View>
           </View>
-
         )}
-
-      </TabSceneScrollView>
+      </SceneScrollView>
 
       <CreatePatientModal
-
         visible={createOpen}
-
         onClose={() => setCreateOpen(false)}
-
         onCreated={() => {
-
           setCreateOpen(false);
-
           void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
-
         }}
+      />
 
+      <StaffPatientActionsSheet
+        target={menuTarget}
+        onClose={() => setMenuTarget(null)}
+        onOpenProfile={openProfile}
+        onCreateAppointment={createAppointment}
+        onDelete={({ patientId, name }) => setPendingDelete({ id: patientId, name })}
       />
 
       <DeletePatientConfirmSheet
@@ -414,112 +207,48 @@ export function PatientsListScreen({
         }}
         onClose={() => setPendingDelete(null)}
       />
-
     </View>
-
   );
-
 }
 
-
-
-function buildStyles({ colors: c, fontSize }: Theme) {
-
+function buildStyles({ colors: c }: Theme) {
   return {
-
     screen: {
-
       minWidth: 0,
-
       flex: 1,
-
       backgroundColor: c.background,
-
     },
-
-    list: {
-
-      minWidth: 0,
-
-      flex: 1,
-
-    },
-
     listContent: {
-
       minWidth: 0,
-
       paddingHorizontal: spacing[4],
-
       paddingTop: spacing[2],
-
-      paddingBottom: spacing[4],
-
       flexGrow: 1,
-
     },
-
+    listSection: {
+      gap: spacing[2],
+    },
+    count: {
+      paddingHorizontal: spacing[1],
+    },
     listCard: {
-
       width: '100%' as const,
-
       alignSelf: 'stretch' as const,
-
       backgroundColor: c.surface,
-
-      borderRadius: radius.xl,
-
+      borderRadius: radius.lg,
       borderWidth: StyleSheet.hairlineWidth,
-
       borderColor: c.cardBorder,
-
       overflow: 'hidden' as const,
-
     },
-
-    sectionKicker: {
-
-      ...font.semiBold,
-
-      fontSize: fontSize.xs,
-
-      color: c.textTertiary,
-
-      letterSpacing: 0.6,
-
-      textTransform: 'uppercase' as const,
-
-      paddingHorizontal: spacing[4],
-
-      paddingTop: spacing[3.5],
-
-      paddingBottom: spacing[2],
-
-    },
-
     rowDivider: {
-
       height: StyleSheet.hairlineWidth,
-
       backgroundColor: c.borderLight,
-
-      marginLeft: spacing[4] + 40 + spacing[3],
-
+      marginLeft: spacing[4] + iconSize['2xl'] + spacing[3],
     },
-
     emptyWrap: {
-
       minWidth: 0,
-
       flexGrow: 1,
-
       justifyContent: 'center' as const,
-
       paddingVertical: spacing[6],
-
     },
-
   };
-
 }
-

@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePlus2, Home, Plus, Store, Trash2 } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { FormScreen } from '@/components/layout/FormScreen';
 import { Row } from '@/components/layout/primitives';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { Input } from '@/components/ui/Input';
+import { buildFieldStyles } from '@/components/ui/field-styles';
 import { BookingActionBar } from '@/features/appointments/form/components/BookingActionBar';
 import { BookingWizardProgress } from '@/features/appointments/form/components/BookingWizardProgress';
 import { RelativeQuickAddSheet } from '@/features/appointments/form/components/RelativeQuickAddSheet';
@@ -37,9 +38,10 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { StackHeaderBackButton } from '@/navigation/StackHeaderBackButton';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
+import { UnsavedChangesGuard } from '@/features/profile/components/UnsavedChangesGuard';
+import { HeaderBackButton } from '@/navigation/HeaderBackButton';
+import { pharmacyOrdersListHref } from '@/navigation/role-hrefs';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { PharmacyCatalogCard } from '../components/PharmacyCatalogCard';
 import { IsoDatePicker } from '@/features/nurse-passage/components/IsoDatePicker';
 import {
@@ -49,20 +51,37 @@ import {
   fetchPharmacyFavoriteIds,
   removePharmacyFavorite,
 } from '../api/pharmacy-orders.service';
-import { personDisplayName, pharmacyFulfillmentLabel } from '../utils/order-display';
+import {
+  formatPharmacyDesiredDate,
+  personDisplayName,
+  pharmacyFulfillmentLabel,
+} from '../utils/order-display';
 import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { IconActionButton } from '@/components/ui/IconActionButton';
+import {
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 const CATALOG_WIZARD_STEPS = 4;
 const OWN_PHARMACY_WIZARD_STEPS = 3;
 interface Props {
-  rolePrefix: '/(nurse)' | '/(pro)';
+  rolePrefix: StaffRoutePrefix;
   initialPatientId?: string;
 }
 
 export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const field = useStyles(buildFieldStyles);
   const router = useRouter();
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -82,8 +101,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
   const [favoritePendingId, setFavoritePendingId] = useState<string | null>(null);
 
-  const scrollConfig = useStackScrollConfig(styles.formContent);
-  const addressAlertShown = useRef<string | null>(null);
+  const [addressMissing, setAddressMissing] = useState(false);
   const addressLabelRef = useRef('');
 
   const patientsQ = usePrescriptionPatientPickerInfinite(true);
@@ -135,8 +153,25 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   }, [isOwnPharmacy, userId]);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
+
+  const initialPatientQ = useQuery({
+    queryKey: queryKeys.profile.user(initialPatientId ?? ''),
+    queryFn: async () => (await fetchUser(initialPatientId ?? '')).data,
+    enabled: !!initialPatientId,
+  });
+  const patientName = selectedPatient
+    ? personDisplayName(selectedPatient.first_name, selectedPatient.last_name)
+    : initialPatientQ.data
+      ? personDisplayName(initialPatientQ.data.first_name, initialPatientQ.data.last_name)
+      : null;
   const selectedPharmacy = catalogQ.data?.find((p) => p.id === selectedPharmacyId);
   const selectedRelative = (relativesQ.data ?? []).find((r) => r.id === relativeId);
+  const missingAddressError =
+    addressMissing && !address?.label?.trim()
+      ? relativeId
+        ? 'Aucune adresse trouvée pour ce proche ni pour le titulaire : saisissez l’adresse de livraison.'
+        : 'Aucune adresse dans le dossier du patient : saisissez l’adresse de livraison.'
+      : undefined;
 
   useEffect(() => {
     addressLabelRef.current = address?.label?.trim() ?? '';
@@ -157,51 +192,43 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   }, []);
 
   useEffect(() => {
+    setAddressMissing(false);
     if (!patientId || fulfillmentMode !== 'home_delivery') return;
     let cancelled = false;
 
     void (async () => {
       const sources: unknown[] = [];
 
-      if (relativeId) {
-        let rel: PatientRelative | undefined = selectedRelative;
-        const listHasAddress = Boolean(rel?.address?.label?.trim());
-        if (!listHasAddress) {
-          try {
-            const res = await fetchPatientRelative(relativeId, patientId);
-            if (res.success && res.data) rel = res.data;
-          } catch {
-            /* liste locale */
+      try {
+        if (relativeId) {
+          let rel: PatientRelative | undefined = selectedRelative;
+          const listHasAddress = Boolean(rel?.address?.label?.trim());
+          if (!listHasAddress) {
+            try {
+              const res = await fetchPatientRelative(relativeId, patientId);
+              if (res.success && res.data) rel = res.data;
+            } catch (error) {
+              if (__DEV__) console.warn('[pharmacy-wizard] fiche proche indisponible, liste locale utilisée', error);
+            }
           }
+          if (rel?.address) sources.push(rel.address);
         }
-        if (rel?.address) sources.push(rel.address);
         if (selectedPatient?.address) sources.push(selectedPatient.address);
         const profile = await fetchUser(patientId);
         if (cancelled) return;
         if (profile.data?.address) sources.push(profile.data.address);
-      } else {
-        if (selectedPatient?.address) sources.push(selectedPatient.address);
-        const profile = await fetchUser(patientId);
-        if (cancelled) return;
-        if (profile.data?.address) sources.push(profile.data.address);
-      }
 
-      for (const raw of sources) {
-        if (cancelled) return;
-        if (await applyAddressIfResolvable(raw)) return;
+        for (const raw of sources) {
+          if (cancelled) return;
+          if (await applyAddressIfResolvable(raw)) return;
+        }
+      } catch (error) {
+        if (__DEV__) console.warn('[pharmacy-wizard] préremplissage de l’adresse impossible', error);
       }
+      if (cancelled) return;
 
       if (addressLabelRef.current) return;
-
-      const alertKey = relativeId ? `${patientId}:${relativeId}` : patientId;
-      if (addressAlertShown.current === alertKey) return;
-      addressAlertShown.current = alertKey;
-      Alert.alert(
-        'Adresse manquante',
-        relativeId
-          ? 'Aucune adresse trouvée pour ce proche ni pour le titulaire. Saisissez l’adresse de livraison ci-dessous ou complétez la fiche du proche.'
-          : 'Ce patient n’a pas d’adresse dans son dossier. Saisissez l’adresse de livraison ou complétez sa fiche patient.',
-      );
+      setAddressMissing(true);
     })();
 
     return () => {
@@ -215,10 +242,6 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     selectedPatient?.address,
     selectedRelative,
   ]);
-
-  useEffect(() => {
-    if (!patientId) addressAlertShown.current = null;
-  }, [patientId]);
 
   const sortedCatalog = useMemo(() => {
     const items = catalogQ.data ?? [];
@@ -352,10 +375,10 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
       if (!res.success || !res.data) throw new Error(res.error ?? 'Envoi impossible');
       return res.data;
     },
-    onSuccess: (order) => {
+    onSuccess: () => {
       toast('Commande envoyée', { type: 'success' });
       void qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list('sent') });
-      router.replace(`${rolePrefix}/commandes-pharmacie` as never);
+      router.replace(pharmacyOrdersListHref(rolePrefix));
     },
     onError: (e) => handleApiError(e, toast, 'pharmacy-order-create'),
   });
@@ -369,6 +392,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   };
 
   const ctaTitle = step < CATALOG_WIZARD_STEPS ? 'Continuer' : 'Envoyer la commande';
+  const hasDraft = step > 1 || rxFiles.length > 0 || comment.trim() !== '';
 
   const addPrescriptionPage = useCallback(async () => {
     if (rxFiles.length >= 10) {
@@ -386,11 +410,10 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   return (
     <StackChromeScreen
       title="Commande pharmacie"
-      headerLeft={<StackHeaderBackButton onPress={wizardBack} />}
+      headerLeft={<HeaderBackButton onPress={wizardBack} />}
     >
       <FormScreen
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.formContent}
         backgroundColor={c.background}
         footer={
           <BookingActionBar
@@ -432,7 +455,6 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                 setRelativeId(null);
                 setAddress(null);
                 setAddressComplement('');
-                addressAlertShown.current = null;
               }}
               loading={patientsQ.isLoading}
               totalCount={prescriptionPatientPickerTotalCount(patientsQ.data?.pages)}
@@ -441,19 +463,19 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
               onLoadMore={() => void patientsQ.fetchNextPage()}
               label="Patient"
               placeholder="Choisir un patient…"
-            /> : (
-              <AppText style={styles.patientHint}>Patient présélectionné depuis sa fiche.</AppText>
-            )}
+            /> : patientName ? (
+              <View style={styles.fixedPatient}>
+                <AppText variant="caption">Patient</AppText>
+                <AppText variant="body">{patientName}</AppText>
+              </View>
+            ) : null}
 
             {patientId ? (
               <View style={styles.relativeBlock}>
-                <AppText style={styles.sectionLabel}>Bénéficiaire de la commande</AppText>
+                <AppText style={field.label}>Bénéficiaire de la commande</AppText>
                 <Row wrap gap={spacing[2]} align="center">
                   <Pressable
-                    onPress={() => {
-                      setRelativeId(null);
-                      addressAlertShown.current = null;
-                    }}
+                    onPress={() => setRelativeId(null)}
                     style={[styles.relativePill, !relativeId && styles.relativePillActive]}
                   >
                     <AppText style={[styles.relativePillText, !relativeId && styles.relativePillTextActive]}>
@@ -466,10 +488,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                     return (
                       <Pressable
                         key={r.id}
-                        onPress={() => {
-                          setRelativeId(r.id);
-                          addressAlertShown.current = null;
-                        }}
+                        onPress={() => setRelativeId(r.id)}
                         style={[styles.relativePill, active && styles.relativePillActive]}
                       >
                         <AppText style={[styles.relativePillText, active && styles.relativePillTextActive]}>
@@ -478,18 +497,17 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                       </Pressable>
                     );
                   })}
-                  <Pressable onPress={() => setRelativeSheetOpen(true)} style={styles.addRelativeBtn}>
-                    <Row gap={4} align="center">
-                      <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+                  <Pressable
+                    onPress={() => setRelativeSheetOpen(true)}
+                    style={styles.addRelativeBtn}
+                    accessibilityRole="button"
+                  >
+                    <Row gap={spacing[1]} align="center">
+                      <Plus size={iconSize.sm} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                       <AppText style={styles.addRelativeText}>Nouveau proche</AppText>
                     </Row>
                   </Pressable>
                 </Row>
-                {selectedPatient ? (
-                  <AppText style={styles.patientHint}>
-                    Dossier patient : {personDisplayName(selectedPatient.first_name, selectedPatient.last_name)}
-                  </AppText>
-                ) : null}
               </View>
             ) : null}
 
@@ -507,12 +525,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                   onChange={setAddress}
                   onComplementChange={setAddressComplement}
                   label="Adresse de livraison"
+                  error={missingAddressError}
                 />
-                {address?.label ? (
-                  <AppText style={styles.hint}>
-                    Appuyez sur ✕ pour modifier l’adresse.
-                  </AppText>
-                ) : null}
               </>
             ) : !isOwnPharmacy ? (
               <View style={styles.block}>
@@ -550,11 +564,13 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
             {catalogQ.isLoading ? (
               <ActivityIndicator color={c.primary} style={styles.loader} />
             ) : catalogQ.isError ? (
-              <AppText style={styles.errorText}>
-                {catalogQ.error instanceof Error ? catalogQ.error.message : 'Catalogue indisponible'}
-              </AppText>
+              <ErrorState
+                title="Pharmacies indisponibles"
+                error={catalogQ.error}
+                onRetry={() => void catalogQ.refetch()}
+              />
             ) : sortedCatalog.length === 0 ? (
-              <AppText style={styles.hint}>Aucune pharmacie disponible pour ce mode et ce secteur.</AppText>
+              <AppText variant="secondary">Aucune pharmacie disponible pour ce mode et ce secteur.</AppText>
             ) : (
               <View style={styles.catalogList}>
                 {sortedCatalog.map((item: PharmacyCatalogItem) => {
@@ -565,7 +581,6 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                       item={item}
                       selected={selectedPharmacyId === item.id}
                       favorite={fav}
-                      fulfillmentMode={fulfillmentMode}
                       favoriteLoading={favoritePendingId === item.id}
                       onPress={() => setSelectedPharmacyId(item.id)}
                       onToggleFavorite={() =>
@@ -582,25 +597,27 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
         {step === 4 ? (
           <View style={styles.block}>
             <View style={styles.documentsBlock}>
-              <AppText style={styles.sectionLabel}>Ordonnance (optionnel)</AppText>
-              <AppText style={styles.hint}>
-                Ajoutez toutes les pages, notamment pour une ordonnance recto-verso.
-              </AppText>
+              <AppText style={field.label}>Ordonnance (optionnel)</AppText>
+              <AppText variant="secondary">Ajoutez toutes les pages, recto-verso compris.</AppText>
               {rxFiles.map((file, index) => (
                 <View key={`${index}-${isLocalFileRef(file) ? file.uri : file.medical_document_id}`} style={styles.documentRow}>
-                  <AppText style={styles.documentName} numberOfLines={1}>
+                  <AppText style={styles.documentName}>
                     Page {index + 1} · {isLocalFileRef(file) ? file.name : file.file_name ?? 'Ordonnance'}
                   </AppText>
-                  <Pressable
+                  <IconActionButton
+                    label={`Retirer la page ${index + 1}`}
                     onPress={() => setRxFiles((current) => current.filter((_, i) => i !== index))}
-                    hitSlop={8}
                   >
-                    <Trash2 size={iconSize.sm} color={c.error} />
-                  </Pressable>
+                    <Trash2 size={iconSize.md} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />
+                  </IconActionButton>
                 </View>
               ))}
-              <Pressable onPress={() => void addPrescriptionPage()} style={styles.addDocumentButton}>
-                <FilePlus2 size={iconSize.sm} color={c.primary} />
+              <Pressable
+                onPress={() => void addPrescriptionPage()}
+                style={styles.addDocumentButton}
+                accessibilityRole="button"
+              >
+                <FilePlus2 size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                 <AppText style={styles.addDocumentText}>
                   {rxFiles.length ? 'Ajouter une autre page' : 'Ajouter une ordonnance'}
                 </AppText>
@@ -618,10 +635,12 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
             <View style={styles.recap}>
               <AppText style={styles.recapTitle}>Récapitulatif</AppText>
               <AppText style={styles.recapLine}>Mode : {pharmacyFulfillmentLabel(fulfillmentMode)}</AppText>
-              {selectedPatient ? (
+              {patientName ? (
                 <AppText style={styles.recapLine}>
-                  Patient : {personDisplayName(selectedPatient.first_name, selectedPatient.last_name)}
-                  {relativeId ? ' (proche)' : ''}
+                  Patient : {patientName}
+                  {selectedRelative
+                    ? ` · pour ${personDisplayName(selectedRelative.first_name, selectedRelative.last_name, 'un proche')}`
+                    : ''}
                 </AppText>
               ) : null}
               {isOwnPharmacy ? (
@@ -629,7 +648,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
               ) : selectedPharmacy ? (
                 <AppText style={styles.recapLine}>Pharmacie : {selectedPharmacy.display_name}</AppText>
               ) : null}
-              <AppText style={styles.recapLine}>Date souhaitée : {desiredDate}</AppText>
+              <AppText style={styles.recapLine}>Date souhaitée : {formatPharmacyDesiredDate(desiredDate)}</AppText>
               {fulfillmentMode === 'home_delivery' && address?.label ? (
                 <AppText style={styles.recapLine}>Livraison : {address.label}</AppText>
               ) : null}
@@ -648,6 +667,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
           void relativesQ.refetch();
         }}
       />
+      <UnsavedChangesGuard dirty={hasDraft && !submitMut.isPending && !submitMut.isSuccess} />
     </StackChromeScreen>
   );
 }
@@ -671,16 +691,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       color: c.textSecondary,
       lineHeight: fontSize.sm * 1.45,
     },
-    errorText: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.error,
-    },
     loader: { marginVertical: spacing[4] },
+    fixedPatient: { gap: spacing[0.5] },
     relativeBlock: { gap: spacing[2] },
     relativePill: {
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
+      minHeight: MIN_TOUCH_TARGET,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
       borderRadius: radius.full,
       borderWidth: 1,
       borderColor: c.border,
@@ -697,8 +714,9 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     relativePillTextActive: { color: c.textInverse },
     addRelativeBtn: {
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
+      minHeight: MIN_TOUCH_TARGET,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
       borderRadius: radius.full,
       borderWidth: 1,
       borderColor: c.primaryMid,
@@ -709,30 +727,28 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.primary,
     },
-    patientHint: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
     documentsBlock: { gap: spacing[2] },
     documentRow: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       gap: spacing[2],
-      padding: spacing[3],
+      paddingVertical: spacing[1],
+      paddingLeft: spacing[3],
+      paddingRight: spacing[1],
       borderRadius: radius.md,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.border,
       backgroundColor: c.surface,
     },
     documentName: {
       flex: 1,
+      minWidth: 0,
       ...font.medium,
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
     addDocumentButton: {
-      minHeight: 48,
+      minHeight: MIN_TOUCH_TARGET,
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,

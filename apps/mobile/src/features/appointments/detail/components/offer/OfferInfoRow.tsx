@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Cluster } from '@/components/layout/primitives';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   icon: LucideIcon;
@@ -20,7 +20,9 @@ export function OfferInfoRow({ icon: Icon, label, value, bordered }: Props) {
       gap={spacing[3]}
       align="start"
       style={[styles.row, bordered && styles.bordered]}
-      leading={<Icon size={iconSize.sm} color={c.textSecondary} strokeWidth={2} style={styles.icon} />}
+      leading={
+        <Icon size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} style={styles.icon} />
+      }
     >
       <View style={styles.body}>
         <AppText style={styles.label}>{label}</AppText>
@@ -30,7 +32,7 @@ export function OfferInfoRow({ icon: Icon, label, value, bordered }: Props) {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
     row: {
       minWidth: 0,
@@ -41,20 +43,16 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
     },
-    icon: { marginTop: 2 },
-    body: { flex: 1, gap: 2, minWidth: 0 },
+    icon: { marginTop: spacing[0.5] },
+    body: { flex: 1, gap: spacing[0.5], minWidth: 0 },
     label: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase' as const,
+      ...text.caption,
+      ...font.medium,
+      color: c.textTertiary,
     },
     value: {
-      ...font.medium,
-      fontSize: fontSize.sm,
+      ...text.body,
       color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.4,
     },
   };
 }

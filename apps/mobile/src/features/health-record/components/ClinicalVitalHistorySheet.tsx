@@ -1,27 +1,30 @@
-import { layoutRowBetween, layoutRowCenter } from '@/theme/layout-styles';
-import type { AppColors } from '@/theme/colors';
-import { useAppColors } from '@/theme/use-app-colors';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react-native';
 import type { ClinicalVitalReading, ClinicalVitalType } from '@oneandlab/shared-types';
 import { clinicalVitalUiConfig } from '@oneandlab/shared-types';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ListRowShell } from '@/components/ui/ListRowShell';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { Stack } from '@/components/layout/primitives';
-import {
-  clinicalVitalHistoryQueryKey,
-  fetchClinicalVitalHistory,
-} from '../api/clinical-vitals.service';
+import { clinicalVitalHistoryQueryKey, fetchClinicalVitalHistory } from '../api/clinical-vitals.service';
 import {
   formatClinicalVitalCardValue,
   formatClinicalVitalHistoryDate,
   formatClinicalVitalRecorderName,
 } from '../utils/clinical-vital-display';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  font,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -32,15 +35,7 @@ type Props = {
   onEdit: (reading: ClinicalVitalReading) => void;
 };
 
-export function ClinicalVitalHistorySheet({
-  visible,
-  patientId,
-  vitalType,
-  onClose,
-  onAdd,
-  onEdit,
-}: Props) {
-  const c = useAppColors();
+export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClose, onAdd, onEdit }: Props) {
   const styles = useStyles(buildStyles);
   const cfg = vitalType ? clinicalVitalUiConfig(vitalType) : null;
 
@@ -50,178 +45,100 @@ export function ClinicalVitalHistorySheet({
     enabled: visible && Boolean(patientId && vitalType),
   });
 
-  const title = cfg ? `${cfg.emoji} ${cfg.label_fr}` : 'Historique';
   const unit = historyQ.data?.unit ?? cfg?.unit ?? '';
+  const history = historyQ.data?.history ?? [];
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
-      title={title}
-      subtitle={unit ? `50 dernières mesures · en ${unit}` : '50 dernières mesures'}
+      title={cfg ? `${cfg.emoji} ${cfg.label_fr}` : 'Historique'}
+      subtitle={unit ? `Dernières mesures, en ${unit}` : 'Dernières mesures'}
       snapPoints={['88%']}
       stackBehavior="switch"
       footer={
-        vitalType ? (
-          <Button title="Nouvelle mesure" onPress={() => onAdd(vitalType)} />
-        ) : undefined
+        vitalType ? <Button title="Nouvelle mesure" size="lg" fullWidth onPress={() => onAdd(vitalType)} /> : undefined
       }
     >
       {historyQ.isLoading ? (
-        <SkeletonList count={5} itemHeight={72} gap={spacing[2]} />
+        <SkeletonList count={5} itemHeight={64} gap={spacing[2]} />
       ) : historyQ.isError ? (
         <ErrorState
           title="Historique indisponible"
           error={historyQ.error}
           onRetry={() => void historyQ.refetch()}
         />
-      ) : !historyQ.data?.history.length ? (
-        <Stack gap={spacing[3]} style={styles.emptyWrap}>
-          <AppText style={[styles.empty, { color: c.textSecondary }]}>
-            Aucune mesure enregistrée pour cette constante.
-          </AppText>
-          {vitalType ? (
-            <Button title="Ajouter une mesure" variant="secondary" onPress={() => onAdd(vitalType)} />
-          ) : null}
-        </Stack>
+      ) : history.length === 0 ? (
+        <AppText variant="secondary" style={styles.empty}>
+          Aucune mesure pour l’instant.
+        </AppText>
       ) : (
-        <Stack gap={spacing[2]}>
-          {historyQ.data.history.map((reading, index) => (
-            <HistoryRow
-              key={reading.id}
-              reading={reading}
-              unit={unit}
-              isLatest={index === 0}
-              onPress={() => onEdit(reading)}
-              styles={styles}
-              c={c}
-            />
+        <View style={styles.card}>
+          {history.map((reading, index) => (
+            <View key={reading.id}>
+              {index > 0 ? <View style={styles.divider} /> : null}
+              <HistoryRow reading={reading} unit={unit} onPress={() => onEdit(reading)} />
+            </View>
           ))}
-        </Stack>
+        </View>
       )}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
 function HistoryRow({
   reading,
   unit,
-  isLatest,
   onPress,
-  styles,
-  c,
 }: {
   reading: ClinicalVitalReading;
   unit: string;
-  isLatest: boolean;
   onPress: () => void;
-  styles: ReturnType<typeof buildStyles>;
-  c: AppColors;
 }) {
-  const value = formatClinicalVitalCardValue(reading);
-  const recorder = formatClinicalVitalRecorderName(reading);
-  const dateLabel = formatClinicalVitalHistoryDate(reading.recorded_at);
+  const c = useAppColors();
+  const styles = useStyles(buildStyles);
+  const value = `${formatClinicalVitalCardValue(reading)} ${unit}`.trim();
+  const meta = `${formatClinicalVitalHistoryDate(reading.recorded_at)} · ${formatClinicalVitalRecorderName(reading)}`;
   const note = reading.notes?.trim();
 
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.row,
-        {
-          borderColor: isLatest ? c.primary + '55' : c.borderLight,
-          backgroundColor: isLatest ? c.primaryLight + '14' : c.surface,
-        },
-      ]}
       accessibilityRole="button"
-      accessibilityLabel={`${value} ${unit}, ${dateLabel}, par ${recorder}`}
+      accessibilityLabel={`${value}, ${meta}${note ? `, ${note}` : ''}`}
+      accessibilityHint="Modifier cette mesure"
+      style={({ pressed }) => (pressed ? styles.pressed : null)}
     >
-      <View style={styles.rowMain}>
-        <View style={styles.rowTop}>
-          <AppText style={[styles.rowValue, { color: c.textPrimary }]}>
-            {value}
-            <AppText style={[styles.rowUnit, { color: c.textSecondary }]}> {unit}</AppText>
-          </AppText>
-          {isLatest ? (
-            <View style={[styles.latestBadge, { backgroundColor: c.primaryLight }]}>
-              <AppText style={[styles.latestBadgeText, { color: c.primary }]}>
-                Dernière
-              </AppText>
-            </View>
-          ) : null}
-        </View>
-        <AppText style={[styles.rowMeta, { color: c.textSecondary }]} numberOfLines={1}>
-          {dateLabel}
-        </AppText>
-        <AppText style={[styles.rowMeta, { color: c.textTertiary }]} numberOfLines={1}>
-          Par {recorder}
-        </AppText>
-        {note ? (
-          <AppText style={[styles.rowNote, { color: c.textSecondary }]} numberOfLines={2}>
-            {note}
-          </AppText>
-        ) : null}
-      </View>
-      <ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+      <ListRowShell
+        body={
+          <View style={styles.texts}>
+            <AppText style={styles.value}>{value}</AppText>
+            <AppText variant="caption" style={styles.meta}>
+              {meta}
+            </AppText>
+            {note ? <AppText variant="secondary">{note}</AppText> : null}
+          </View>
+        }
+        trailing={<ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
+      />
     </Pressable>
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-    emptyWrap: {
-      paddingVertical: spacing[4],
-    },
-    empty: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.45),
-      textAlign: 'center' as const,
-    },
-    row: {
-      ...layoutRowCenter(spacing[2]),
-      borderWidth: 1,
+    empty: { textAlign: 'center' as const, paddingVertical: spacing[6] },
+    card: {
+      backgroundColor: c.surface,
       borderRadius: radius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[3],
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      overflow: 'hidden' as const,
     },
-    rowMain: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing[0.5],
-    },
-    rowTop: {
-      ...layoutRowBetween(spacing[2]),
-    },
-    rowValue: {
-      minWidth: 0,
-      ...font.heading,
-      fontSize: fontSize.lg,
-      flexShrink: 1,
-    },
-    rowUnit: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-    },
-    latestBadge: {
-      borderRadius: radius.md,
-      paddingHorizontal: spacing[2],
-      paddingVertical: 2,
-    },
-    latestBadgeText: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-    },
-    rowMeta: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      lineHeight: lh(fontSize.xs, 1.35),
-    },
-    rowNote: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.4),
-      marginTop: spacing[0.5],
-    },
+    divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4], backgroundColor: c.borderLight },
+    pressed: { backgroundColor: c.surfaceAlt },
+    texts: { gap: spacing[0.5] },
+    value: { ...text.headline, ...font.semiBold, color: c.textPrimary },
+    meta: { color: c.textSecondary },
   };
 }

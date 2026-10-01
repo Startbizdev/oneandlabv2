@@ -1,5 +1,1 @@
-import { HealthDataScreen } from '@/features/health-sync/screens/HealthDataScreen';
-
-export default function PatientHealthDataRoute() {
-  return <HealthDataScreen variant="stack" />;
-}
+export { HealthDataScreen as default } from '@/features/health-sync/screens/HealthDataScreen';

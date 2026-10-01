@@ -1,4 +1,3 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,14 +6,17 @@ import { ProfileSubScreenLayout } from './ProfileSubScreenLayout';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
 import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { queryKeys } from '@/lib/query-keys';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { Row } from '@/components/layout/primitives';
-import { Card } from '@/components/ui/Card';
+import { SettingsRow, buildSettingsStyles } from '@/components/ui/SettingsRow';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 function boolField(v: unknown, fallback = true): boolean {
   if (v === false || v === 0 || v === '0') return false;
@@ -35,10 +37,12 @@ const WEEK_DAYS = [
 ];
 
 export function ProfilePharmacySettingsScreen() {
+  const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const qc = useQueryClient();
   const { show: toast } = useToast();
+  const pharmacy = usePharmacyModuleEnabled();
 
   const [clickCollect, setClickCollect] = useState(true);
   const [homeDelivery, setHomeDelivery] = useState(true);
@@ -49,7 +53,7 @@ export function ProfilePharmacySettingsScreen() {
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(userId),
     queryFn: async () => (await fetchUser(userId)).data,
-    enabled: !!userId,
+    enabled: !!userId && pharmacy.isOwnPharmacy,
   });
 
   const { dirty } = useProfileDraft(userId || undefined, profileQ.data,
@@ -81,10 +85,33 @@ export function ProfilePharmacySettingsScreen() {
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.profile.user(userId) });
-      toast('Paramètres pharmacie enregistrés', { type: 'success' });
+      toast('Réglages de l’officine enregistrés', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'pharmacy-profile-settings'),
   });
+
+  if (pharmacy.loading || pharmacy.error) {
+    return (
+      <ProfileLoadState
+        loading={pharmacy.loading || !userId}
+        error={pharmacy.error}
+        onRetry={() => void pharmacy.refetch()}
+      />
+    );
+  }
+
+  // Le serveur refuse ces réglages (403) hors compte officine : aucun formulaire, donc aucun envoi.
+  if (!pharmacy.isOwnPharmacy) {
+    return (
+      <ProfileSubScreenLayout hideSave>
+        <EmptyState
+          illustration="pharmacy"
+          title="Réservé aux officines"
+          description="Ces réglages concernent les comptes pharmacie."
+        />
+      </ProfileSubScreenLayout>
+    );
+  }
 
   // Tant que la configuration serveur n'est pas chargée, aucun formulaire (donc aucun envoi de valeurs par défaut).
   if (profileQ.isLoading || profileQ.isError || !profileQ.data) {
@@ -100,45 +127,53 @@ export function ProfilePharmacySettingsScreen() {
 
   return (
     <ProfileSubScreenLayout onSave={() => saveMut.mutate()} saving={saveMut.isPending} dirty={dirty}>
-      <AppText style={styles.intro}>
-        Indiquez les modes de commande que votre officine accepte. Vous pouvez activer les deux ou un seul.
-      </AppText>
-
-      <SettingRow
-        icon={Store}
-        label="Click & collect"
-        hint="Retrait en pharmacie"
-        value={clickCollect}
-        onChange={setClickCollect}
-      />
-      {clickCollect ? (
-        <DaysPicker label="Jours de retrait" value={clickCollectDays} onChange={setClickCollectDays} />
-      ) : null}
-      <SettingRow
-        icon={Truck}
-        label="Livraison à domicile"
-        hint="Livraison au patient"
-        value={homeDelivery}
-        onChange={setHomeDelivery}
-      />
-      {homeDelivery ? (
-        <DaysPicker label="Jours de livraison" value={homeDeliveryDays} onChange={setHomeDeliveryDays} />
-      ) : null}
-      <SettingRow
-        icon={PauseCircle}
-        label="Pause commandes"
-        hint="Masquer temporairement votre officine du catalogue"
-        value={ordersPaused}
-        onChange={setOrdersPaused}
-      />
-
-      {!clickCollect && !homeDelivery ? (
-        <Card style={styles.warnCard}>
-          <AppText style={styles.warnText}>
+      <View style={settings.section}>
+        <AppText style={settings.sectionTitle}>Modes de commande</AppText>
+        <View style={settings.sectionCard}>
+          <SettingsRow
+            icon={Store}
+            label="Click & collect"
+            description="Retrait en pharmacie"
+            trailing={
+              <ToggleSwitch value={clickCollect} onValueChange={setClickCollect} accessibilityLabel="Click & collect" />
+            }
+          />
+          {clickCollect ? (
+            <DaysPicker label="Jours de retrait" value={clickCollectDays} onChange={setClickCollectDays} />
+          ) : null}
+          <View style={settings.divider} />
+          <SettingsRow
+            icon={Truck}
+            label="Livraison à domicile"
+            description="Livraison au patient"
+            trailing={
+              <ToggleSwitch value={homeDelivery} onValueChange={setHomeDelivery} accessibilityLabel="Livraison à domicile" />
+            }
+          />
+          {homeDelivery ? (
+            <DaysPicker label="Jours de livraison" value={homeDeliveryDays} onChange={setHomeDeliveryDays} />
+          ) : null}
+        </View>
+        {!clickCollect && !homeDelivery ? (
+          <AppText style={styles.warn} accessibilityRole="alert">
             Activez au moins un mode pour recevoir des commandes.
           </AppText>
-        </Card>
-      ) : null}
+        ) : null}
+      </View>
+
+      <SettingsSection
+        title="Disponibilité"
+        items={[
+          {
+            icon: PauseCircle,
+            label: 'Pause commandes',
+            description: 'Masque temporairement votre officine du catalogue',
+            trailing: (
+              <ToggleSwitch value={ordersPaused} onValueChange={setOrdersPaused} accessibilityLabel="Pause commandes" />
+            ),
+          },
+        ]}
+      />
     </ProfileSubScreenLayout>
   );
 }
@@ -152,11 +187,10 @@ function DaysPicker({
   value: number[];
   onChange: (days: number[]) => void;
 }) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   return (
     <View style={styles.daysBlock}>
-      <AppText style={styles.daysLabel}>{label}</AppText>
+      <AppText variant="caption">{label}</AppText>
       <Row gap={spacing[1.5]} justify="between">
         {WEEK_DAYS.map((day) => {
           const active = value.includes(day.id);
@@ -174,9 +208,9 @@ function DaysPicker({
               accessibilityRole="checkbox"
               accessibilityLabel={day.name}
               accessibilityState={{ checked: active }}
-              style={[styles.day, active && { backgroundColor: c.primary, borderColor: c.primary }]}
+              style={[styles.day, active && styles.dayActive]}
             >
-              <AppText style={[styles.dayText, active && { color: c.onPrimary }]}>{day.label}</AppText>
+              <AppText style={[styles.dayText, active && styles.dayTextActive]}>{day.label}</AppText>
             </Pressable>
           );
         })}
@@ -185,58 +219,12 @@ function DaysPicker({
   );
 }
 
-function SettingRow({
-  icon: Icon,
-  label,
-  hint,
-  value,
-  onChange,
-}: {
-  icon: typeof Store;
-  label: string;
-  hint: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  const c = useAppColors();
-  const styles = useStyles(buildSettingStyles);
-
-  return (
-    <View style={styles.row}>
-      <Row gap={spacing[3]} align="center" style={styles.rowInner}>
-        <View style={styles.iconWrap}>
-          <Icon size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
-        </View>
-        <View style={styles.textCol}>
-          <AppText style={styles.label}>{label}</AppText>
-          <AppText style={styles.hint}>{hint}</AppText>
-        </View>
-        <ToggleSwitch value={value} onValueChange={onChange} accessibilityLabel={label} />
-      </Row>
-    </View>
-  );
-}
-
-function buildStyles({ colors: c, fontSize, scale }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    intro: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: scale(20),
-    },
     daysBlock: {
       gap: spacing[2],
-      padding: spacing[3],
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: c.border,
-      backgroundColor: c.surface,
-    },
-    daysLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[4],
     },
     day: {
       width: 36,
@@ -246,56 +234,25 @@ function buildStyles({ colors: c, fontSize, scale }: Theme) {
       borderRadius: radius.full,
       borderWidth: 1,
       borderColor: c.border,
-      backgroundColor: c.surfaceAlt,
+      backgroundColor: c.surface,
+    },
+    dayActive: {
+      backgroundColor: c.primary,
+      borderColor: c.primary,
     },
     dayText: {
       ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.textSecondary,
     },
-    warnCard: {
-      backgroundColor: c.warningLight,
-      borderColor: c.warning,
+    dayTextActive: {
+      color: c.onPrimary,
     },
-    warnText: {
+    warn: {
       ...font.medium,
       fontSize: fontSize.sm,
-      color: c.textPrimary,
-    },
-  };
-}
-
-function buildSettingStyles({ colors: c, fontSize }: Theme) {
-  return {
-    row: {
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: c.border,
-      backgroundColor: c.surface,
-      overflow: 'hidden' as const,
-    },
-    rowInner: {
-      padding: spacing[4],
-    },
-    iconWrap: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.sm,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      backgroundColor: c.primaryLight,
-    },
-    textCol: { flex: 1, minWidth: 0 },
-    label: {
-      ...font.semiBold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
-    },
-    hint: {
-      marginTop: 2,
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
+      color: c.warning,
+      paddingHorizontal: spacing[1],
     },
   };
 }

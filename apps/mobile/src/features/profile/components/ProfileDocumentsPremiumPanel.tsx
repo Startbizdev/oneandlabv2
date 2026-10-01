@@ -1,7 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useMemo, useState } from 'react';
-import { AppText } from '@/theme';
+import { AppText, spacing } from '@/theme';
 import { View } from 'react-native';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   medicalDocumentPickErrorMessage,
@@ -24,7 +26,6 @@ import { useRdvDetailSectionStyles } from '@/features/appointments/detail/compon
 import {
   MedicalDocumentAddRow,
   MedicalDocumentOpenRowContainer,
-  MedicalDocumentsStackHead,
   buildDocumentStackRows,
   filterUploadTypesForStack,
   type MedicalDocumentStackItem,
@@ -45,6 +46,7 @@ function toStackItem(row: PatientDocumentRow): MedicalDocumentStackItem {
 }
 
 interface Props {
+  /** Liste insérée sous un autre bloc : trait de séparation au-dessus de la première ligne. */
   embedded?: boolean;
   /** Dossier patient staff (pro / infirmier). Sinon patient connecté. */
   patientUserId?: string;
@@ -170,30 +172,25 @@ export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props)
     setPreview({ uri: localUri, fileName });
   }, []);
 
-  const headSubtitle = useMemo(() => {
-    if (docsQ.isFetching && !docsQ.data) {
-      return 'Chargement…';
-    }
-    if (list.length > 0) {
-      return `${list.length} pièce${list.length > 1 ? 's' : ''} enregistrée${list.length > 1 ? 's' : ''} · l’ordonnance se gère sur chaque rendez-vous`;
-    }
-    return 'Carte Vitale, mutuelle et autre prescription — appuyez sur une ligne pour ajouter';
-  }, [docsQ.data, docsQ.isFetching, list.length]);
-
   const showEmptyHint = stackRows.length === 0 && !docsQ.isFetching;
+
+  if (docsQ.isError && !docsQ.data) {
+    return (
+      <ErrorState title="Documents indisponibles" error={docsQ.error} onRetry={() => void docsQ.refetch()} />
+    );
+  }
+
+  if (docsQ.isLoading) {
+    return <SkeletonList count={PROFILE_DOC_TYPES.length} itemHeight={72} gap={spacing[2]} />;
+  }
 
   return (
     <>
       <View style={section.card}>
-        {!embedded ? (
-          <MedicalDocumentsStackHead title="Documents médicaux" subtitle={headSubtitle} />
-        ) : null}
-
         {showEmptyHint ? (
           <View style={headStyles.emptyRow}>
             <AppText style={[headStyles.emptyText, { color: c.textSecondary }]}>
-              Aucun document enregistré — ajoutez la Carte Vitale, la mutuelle ou une autre prescription
-              ci-dessous.
+              Aucun document enregistré.
             </AppText>
           </View>
         ) : null}

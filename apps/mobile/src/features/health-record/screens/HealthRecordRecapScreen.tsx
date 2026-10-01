@@ -1,42 +1,33 @@
-import { useAppColors } from '@/theme/use-app-colors';
+import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { RefreshControl, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { HeartPulse } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { Row } from '@/components/layout/primitives';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackContentTopInset, useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { HealthRecordProgressRing } from '../components/HealthRecordProgressRing';
 import { HealthRecordSectionRecap } from '../components/HealthRecordSectionRecap';
 import { HealthRecordGapActionCard } from '../components/HealthRecordGapActionCard';
-import { fetchHealthRecordRecap } from '../api/health-record.service';
+import { fetchHealthRecordRecap, recordGapAction } from '../api/health-record.service';
 import { healthRecordQueryKeys } from '../hooks/use-health-record-completion';
 import { healthRecordHeroSubtitle } from '../utils/health-record-display';
 import { HealthSyncStatusCard } from '@/features/health-sync/components/HealthSyncStatusCard';
+import { HealthSourceRevokeSheet } from '@/features/health-sync/components/HealthSourceRevokeSheet';
 import { useHealthSourceConnection } from '@/features/health-sync/hooks/use-health-source-connection';
 import { buildHealthMetricStats, buildHealthInsights, isHealthSyncRecent } from '@/features/health-sync/utils/health-metric-stats';
 import { HealthInsightCards } from '@/features/health-sync/components/HealthInsightCards';
-import { useMemo } from 'react';
-import { elevation, radius, spacing, iconSize, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function HealthRecordRecapScreen() {
   const styles = useStyles(buildStyles);
-  const c = useAppColors();
   const router = useRouter();
   const recapQ = useQuery({
     queryKey: healthRecordQueryKeys.recap,
     queryFn: fetchHealthRecordRecap,
   });
-  const scrollConfig = useStackScrollConfig(styles.scrollContent, {
-    extraTop: STACK_SCENE_CONTENT_TOP_GAP,
-  });
-  const contentTopInset = useStackContentTopInset();
   const healthConnection = useHealthSourceConnection();
   const { refreshing, onRefresh } = useManualRefresh(async () => {
     await Promise.all([recapQ.refetch(), healthConnection.refetchAll()]);
@@ -52,81 +43,102 @@ export function HealthRecordRecapScreen() {
     () => buildHealthInsights(healthConnection.dashboardQ.data),
     [healthConnection.dashboardQ.data],
   );
+  const allGaps = useMemo(() => (data?.open_gaps ?? []).filter((g) => g?.gap_key), [data?.open_gaps]);
+  const completeGap = percent < 100 ? allGaps.find((g) => g.action === 'complete_carnet') : undefined;
   const openGaps = useMemo(() => {
-    const gaps = (data?.open_gaps ?? []).filter((g) => g?.gap_key);
-    if (!healthConnection.connected || !isHealthSyncRecent(healthConnection.lastSyncAt)) {
-      return gaps;
-    }
-    return gaps.filter((g) => g.gap_key !== 'health_sync_stale');
-  }, [data?.open_gaps, healthConnection.connected, healthConnection.lastSyncAt]);
+    const syncFresh = healthConnection.connected && isHealthSyncRecent(healthConnection.lastSyncAt);
+    return allGaps.filter(
+      (g) => g !== completeGap && !(syncFresh && g.gap_key === 'health_sync_stale'),
+    );
+  }, [allGaps, completeGap, healthConnection.connected, healthConnection.lastSyncAt]);
+  const trends = (data?.trends ?? []).flatMap((t) => (t.observation_fr ? [t.observation_fr] : []));
 
   if (recapQ.isLoading && !data) {
     return (
       <StackChromeScreen>
-        <View style={[styles.loading, { paddingTop: contentTopInset }]}>
+        <View style={styles.loading}>
           <SkeletonList count={5} />
         </View>
       </StackChromeScreen>
     );
   }
 
-  if (recapQ.isError) {
+  if (recapQ.isError && !data) {
     return (
       <StackChromeScreen>
-        <View style={[styles.errorWrap, { paddingTop: contentTopInset }]}>
-          <EmptyState
-            title="Récap indisponible"
-            description={
-              recapQ.error instanceof Error ? recapQ.error.message : 'Vérifiez votre connexion.'
-            }
-            actionLabel="Réessayer"
-            onAction={() => void recapQ.refetch()}
+        <View style={styles.errorWrap}>
+          <ErrorState
+            error={recapQ.error}
+            title="Carnet indisponible"
+            onRetry={() => void recapQ.refetch()}
           />
         </View>
       </StackChromeScreen>
     );
   }
 
+  const openSection = (sectionId: string) =>
+    router.push({ pathname: '/(patient)/health-record/wizard', params: { section: sectionId } });
+
   return (
     <StackChromeScreen>
-      <Animated.ScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
-        }
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.duration(320).springify()} style={[styles.heroCard, elevation.sm]}>
-          <Row gap={spacing[4]} align="center">
-            <HealthRecordProgressRing percent={percent} size={progressRingSize.lg} strokeWidth={6} />
-            <View style={styles.heroText}>
-              <Row gap={spacing[2]} align="center">
-                <View style={[styles.heroIcon, { backgroundColor: c.primaryLight }]}>
-                  <HeartPulse size={iconSize.sm} color={c.primary} strokeWidth={2} />
-                </View>
-                <AppText style={styles.heroTitle}>Mon carnet de santé</AppText>
-              </Row>
-              <AppText style={styles.heroSub}>{healthRecordHeroSubtitle(percent)}</AppText>
-            </View>
-          </Row>
-        </Animated.View>
+        <Row gap={spacing[4]} align="center">
+          <HealthRecordProgressRing percent={percent} size={progressRingSize.lg} strokeWidth={6} />
+          <AppText variant="secondary" style={styles.heroText}>
+            {completeGap?.label_fr ?? healthRecordHeroSubtitle(percent)}
+          </AppText>
+        </Row>
 
         {percent < 100 ? (
           <Button
-            title="Répondre aux questionnaires"
-            onPress={() => router.push('/(patient)/health-record/wizard' as never)}
+            title="Compléter mon carnet"
+            size="lg"
+            onPress={() => {
+              if (completeGap) {
+                recordGapAction(completeGap.gap_key, 'clicked').catch((e: unknown) => {
+                  console.warn('[health-record] gap action not recorded', completeGap.gap_key, e);
+                });
+              }
+              router.push('/(patient)/health-record/wizard');
+            }}
             fullWidth
-            style={styles.cta}
           />
         ) : null}
 
+        {openGaps.length > 0 ? (
+          <View style={styles.block}>
+            <AppText style={styles.blockTitle} accessibilityRole="header">
+              Suggestions
+            </AppText>
+            {openGaps.map((gap) => (
+              <HealthRecordGapActionCard key={gap.gap_key} gap={gap} />
+            ))}
+          </View>
+        ) : null}
+
         <View style={styles.block}>
-          <AppText style={styles.blockTitle}>Données connectées</AppText>
+          <AppText style={styles.blockTitle} accessibilityRole="header">
+            Sections
+          </AppText>
+          <View style={styles.sectionCard}>
+            {(data?.sections ?? []).map((section, index) => (
+              <View key={section.id}>
+                {index > 0 ? <View style={styles.sectionDivider} /> : null}
+                <HealthRecordSectionRecap section={section} embedded hideEmptyItems onEdit={openSection} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.block}>
+          <AppText style={styles.blockTitle} accessibilityRole="header">
+            Données connectées
+          </AppText>
           <HealthSyncStatusCard
             connected={healthConnection.connected}
             lastSyncAt={healthConnection.lastSyncAt}
@@ -137,146 +149,71 @@ export function HealthRecordRecapScreen() {
             onSync={() => void healthConnection.connectOrSync()}
             onDisconnect={healthConnection.connected ? healthConnection.revokeConnection : undefined}
           />
-          <Button
-            title="Voir mes graphiques"
-            variant="outline"
-            size="sm"
-            onPress={() => router.push('/(patient)/health-data' as never)}
-            fullWidth
-          />
           {healthConnection.connected && healthInsights.length > 0 ? (
             <HealthInsightCards insights={healthInsights.slice(0, 2)} />
           ) : null}
+          <Button
+            title="Voir mes graphiques"
+            variant="ghost"
+            onPress={() => router.push('/(patient)/health-data')}
+            fullWidth
+          />
         </View>
 
-        {openGaps.length > 0 ? (
+        {trends.length > 0 ? (
           <View style={styles.block}>
-            <AppText style={styles.blockTitle}>Suggestions de suivi</AppText>
-            {openGaps.map((gap) => (
-              <HealthRecordGapActionCard key={gap.gap_key} gap={gap} />
+            <AppText style={styles.blockTitle} accessibilityRole="header">
+              Tendances sur 7 jours
+            </AppText>
+            {trends.map((observation) => (
+              <AppText key={observation} variant="secondary">
+                {observation}
+              </AppText>
             ))}
           </View>
         ) : null}
-
-        {(data?.trends ?? []).length > 0 ? (
-          <View style={styles.block}>
-            <AppText style={styles.blockTitle}>Tendances (7 j)</AppText>
-            {data!.trends!.map((t) => (
-              <View key={t.observation_fr} style={styles.trendBadge}>
-                <AppText style={styles.trendText}>{t.observation_fr}</AppText>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        <View style={styles.block}>
-          <AppText style={styles.blockTitle}>Sections</AppText>
-          <View style={[styles.sectionCard, elevation.xs]}>
-            {(data?.sections ?? []).map((section, index) => (
-              <View key={section.id}>
-                {index > 0 ? <View style={styles.sectionDivider} /> : null}
-                <HealthRecordSectionRecap
-                  section={section}
-                  embedded
-                  onEdit={(sectionId) =>
-                    router.push(`/(patient)/health-record/wizard?section=${sectionId}` as never)
-                  }
-                />
-              </View>
-            ))}
-          </View>
-        </View>
 
         {data?.disclaimer_fr ? (
-          <View style={styles.disclaimerBox}>
-            <AppText style={styles.disclaimer}>{data.disclaimer_fr}</AppText>
-          </View>
+          <AppText variant="caption" style={styles.disclaimer}>
+            {data.disclaimer_fr}
+          </AppText>
         ) : null}
-      </Animated.ScrollView>
+      </ScrollView>
+      <HealthSourceRevokeSheet {...healthConnection.revokeSheet} />
     </StackChromeScreen>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-    loading: {
-    minWidth: 0, flex: 1, padding: spacing[4] },
-    errorWrap: {
-    minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
+    loading: { minWidth: 0, flex: 1, padding: spacing[4], paddingTop: spacing[3] },
+    errorWrap: { minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
     scrollContent: {
+      paddingTop: spacing[4],
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[10],
-      gap: spacing[4],
+      gap: spacing[6],
     },
-    heroCard: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      padding: spacing[4],
-    },
-    heroIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
-    heroTitle: {
-      ...font.heading,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-    },
-    heroSub: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    cta: { marginTop: spacing[1] },
+    heroText: { flex: 1, minWidth: 0 },
     block: { gap: spacing[3] },
     blockTitle: {
+      ...text.caption,
       ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase' as const,
+      color: c.textSecondary,
+      paddingHorizontal: spacing[1],
     },
     sectionCard: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       overflow: 'hidden' as const,
     },
     sectionDivider: {
-      height: 1,
+      height: StyleSheet.hairlineWidth,
       backgroundColor: c.borderLight,
       marginHorizontal: spacing[4],
     },
-    trendBadge: {
-      backgroundColor: c.primaryLight,
-      borderRadius: radius.lg,
-      padding: spacing[3],
-    },
-    trendText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    disclaimerBox: {
-      backgroundColor: c.surfaceAlt,
-      borderRadius: radius.lg,
-      padding: spacing[4],
-    },
-    disclaimer: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      lineHeight: fontSize.xs * 1.6,
-      textAlign: 'center' as const,
-    },
+    disclaimer: { textAlign: 'center' as const, color: c.textTertiary },
   };
 }

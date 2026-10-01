@@ -3,7 +3,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
 import { Car, Route } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 import { resolveTourStopRouteMetrics } from '@oneandlab/shared-utils';
 
@@ -31,12 +31,12 @@ export function TourStopRouteChip({ stop }: Props) {
       accessibilityLabel={`Trajet depuis le passage précédent : ${kmLabel}, environ ${metrics.min} minutes`}
     >
       <Row gap={spacing[1]} align="center" style={styles.segment}>
-        <Route size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.4} />
+        <Route size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={[styles.value, { color: c.textSecondary }]}>{kmLabel}</AppText>
       </Row>
       <View style={[styles.divider, { backgroundColor: hexToRgba(c.textTertiary, 0.28) }]} />
       <Row gap={spacing[1]} align="center" style={styles.segment}>
-        <Car size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.4} />
+        <Car size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={[styles.value, { color: c.textSecondary }]}>{minLabel}</AppText>
       </Row>
     </View>

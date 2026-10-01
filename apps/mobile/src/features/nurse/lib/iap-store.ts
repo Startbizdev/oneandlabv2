@@ -12,8 +12,8 @@ export async function loadStoreProductFromStore(productId: string): Promise<Prod
   if (Platform.OS === 'ios') {
     try {
       await syncIOS();
-    } catch {
-      // Non bloquant — on tente quand même fetchProducts.
+    } catch (error) {
+      console.warn('[iap] syncIOS en échec, chargement du produit poursuivi', error);
     }
   }
 
@@ -47,8 +47,8 @@ export async function requestSubscriptionPurchase(payload: IapPurchaseRequest): 
   let native: { requestPurchase: (params: unknown) => Promise<unknown> } | null = null;
   try {
     native = requireNativeModule('ExpoIap');
-  } catch {
-    // Module absent (Expo Go, tests) — fallback JS expo-iap.
+  } catch (error) {
+    console.warn('[iap] module natif ExpoIap absent, repli sur expo-iap JS', error);
   }
 
   if (native) {

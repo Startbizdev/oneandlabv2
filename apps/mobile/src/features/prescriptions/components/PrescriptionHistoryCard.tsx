@@ -10,11 +10,10 @@ import {
 } from '../utils/prescription-display';
 import { prescriptionRowAsAppointment } from '../utils/prescription-row-appointment';
 import { Stack } from '@/components/layout/primitives';
-import { iconSize, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
 import { Download, Eye } from 'lucide-react-native';
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 interface RowProps {
   row: ProPrescriptionRow;
@@ -27,6 +26,7 @@ interface RowProps {
   topBorder?: boolean;
 }
 
+/** Ligne d'historique d'ordonnance : titre, contexte, aperçu et téléchargement. */
 export function PrescriptionHistoryCard({
   row,
   onDownload,
@@ -42,11 +42,10 @@ export function PrescriptionHistoryCard({
   const title = prescriptionHistoryRowTitle(row, { showPatient });
   const hint = prescriptionHistoryRowHint(row, { showPatient });
   const busy = downloading || previewing;
-  const lotLabel = prescriptionLotLabelFromMeta(
-    row.appointment_batch_count,
-    row.appointment_type,
-  );
+  const lotLabel = prescriptionLotLabelFromMeta(row.appointment_batch_count, row.appointment_type);
   const linkedApt = row.appointment_id ? prescriptionRowAsAppointment(row) : null;
+
+  const titleText = <AppText style={styles.title}>{title}</AppText>;
 
   return (
     <ListRowShell
@@ -61,25 +60,15 @@ export function PrescriptionHistoryCard({
               accessibilityRole="button"
               accessibilityLabel={`Ouvrir le rendez-vous lié, ${title}`}
             >
-              <AppText style={styles.title} numberOfLines={1}>
-                {title}
-              </AppText>
+              {titleText}
             </Pressable>
           ) : (
-            <AppText style={styles.title} numberOfLines={1}>
-              {title}
-            </AppText>
+            titleText
           )}
-          <AppText style={styles.hint} numberOfLines={2}>
-            {hint}
-          </AppText>
+          {hint ? <AppText variant="caption">{hint}</AppText> : null}
           {linkedApt ? (
             <Stack gap={spacing[0.5]} style={styles.careBlock}>
-              {lotLabel ? (
-                <AppText style={styles.lotLabel} numberOfLines={1}>
-                  {lotLabel}
-                </AppText>
-              ) : null}
+              {lotLabel ? <AppText variant="caption">{lotLabel}</AppText> : null}
               <RdvCareTagsRow apt={linkedApt} tone="neutral" density="compact" />
             </Stack>
           ) : null}
@@ -94,10 +83,8 @@ export function PrescriptionHistoryCard({
               loading={previewing}
               disabled={busy}
               variant="muted"
-              backgroundColor={c.surfaceAlt}
-              style={styles.actionBtn}
             >
-              <Eye size={iconSize.sm} color={c.textSecondary} strokeWidth={2.25} />
+              <Eye size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             </IconActionButton>
           ) : null}
           <IconActionButton
@@ -106,10 +93,8 @@ export function PrescriptionHistoryCard({
             loading={downloading}
             disabled={busy}
             variant="secondary"
-            backgroundColor={c.primaryLight}
-            style={styles.actionBtn}
           >
-            <Download size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
+            <Download size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
           </IconActionButton>
         </View>
       }
@@ -117,17 +102,10 @@ export function PrescriptionHistoryCard({
   );
 }
 
-/** Conteneur liste bordée (style table). */
-export function PrescriptionHistoryList({ children }: { children: ReactNode }) {
-  const styles = useStyles(buildListStyles);
-
-  return <View style={styles.table}>{children}</View>;
-}
-
 function buildRowStyles({ colors: c, fontSize }: Theme) {
   return {
     row: {
-      paddingVertical: spacing[2.5],
+      paddingVertical: spacing[3],
       paddingHorizontal: spacing[3],
       alignItems: 'flex-start' as const,
     },
@@ -139,47 +117,16 @@ function buildRowStyles({ colors: c, fontSize }: Theme) {
       ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
-      lineHeight: fontSize.sm * 1.3,
-    },
-    hint: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.35,
     },
     careBlock: {
       minWidth: 0,
       alignSelf: 'stretch' as const,
       paddingTop: spacing[0.5],
     },
-    lotLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.primary,
-      letterSpacing: 0.15,
-    },
     actionGroup: {
-      ...layoutRow(spacing[1]),
+      ...layoutRow(spacing[2]),
       flexShrink: 0,
       alignItems: 'center' as const,
-      paddingTop: spacing[0.5],
-    },
-    actionBtn: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.borderLight,
-    },
-  };
-}
-
-function buildListStyles({ colors: c }: Theme) {
-  return {
-    table: {
-      minWidth: 0,
-      borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.borderLight,
-      backgroundColor: c.surface,
-      overflow: 'hidden' as const,
     },
   };
 }

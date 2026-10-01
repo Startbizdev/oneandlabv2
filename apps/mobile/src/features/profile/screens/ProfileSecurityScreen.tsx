@@ -1,13 +1,10 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
-import { useCallback, useLayoutEffect, useState } from 'react';
-import { Linking, Platform, Pressable, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { ScanFace, Trash2 } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { Linking, Platform } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { ScanFace } from 'lucide-react-native';
 import { SettingsSection } from '@/components/ui/SettingsSection';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { PasswordManagementPanel } from '@/features/profile/components/PasswordManagementPanel';
-import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { loadAuthSession } from '@/lib/auth-storage';
 import {
@@ -17,7 +14,7 @@ import {
 } from '@/lib/biometric-auth';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { AppText } from '@/theme';
 
 function openDeviceBiometricSettings() {
   if (Platform.OS === 'ios') {
@@ -28,10 +25,6 @@ function openDeviceBiometricSettings() {
 }
 
 export function ProfileSecurityScreen() {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
-  const navigation = useNavigation();
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const { show: toast } = useToast();
@@ -54,10 +47,6 @@ export function ProfileSecurityScreen() {
       void refresh();
     }, [refresh]),
   );
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: 'Mot de passe et connexion' });
-  }, [navigation]);
 
   const onToggle = async (next: boolean) => {
     if (!user?.id || !hardwareReady) return;
@@ -95,105 +84,40 @@ export function ProfileSecurityScreen() {
     }
   };
 
-  const hint = !hardwareReady
-    ? Platform.OS === 'ios'
-      ? 'Configurer dans Réglages iOS'
-      : 'Configurer dans les réglages'
-      : enabled
-      ? 'Actif sur cet appareil'
-      : 'Reconnexion rapide sans code email';
-
   if (!user?.id) {
     return (
       <ProfileSubScreenLayout hideSave>
-        <AppText style={styles.error}>Connectez-vous pour gérer la sécurité.</AppText>
+        <AppText variant="secondary">Connectez-vous pour gérer la sécurité.</AppText>
       </ProfileSubScreenLayout>
     );
   }
 
-  const card = (
-    <Row gap={spacing[2]} align="center" style={[styles.card, elevation.xs]}>
-      <View style={[styles.iconWrap, enabled && styles.iconWrapActive]}>
-        <ScanFace size={iconSize.mdLg} color={c.primary} strokeWidth={2} />
-      </View>
-      <View style={styles.rowWrap}>
-        <ProfileToggleRow
-          label={label}
-          hint={hint}
-          value={enabled}
-          busy={busy}
-          disabled={!hardwareReady}
-          highlightWhenOn={false}
-          onValueChange={(v) => void onToggle(v)}
-        />
-      </View>
-    </Row>
-  );
-
   return (
     <ProfileSubScreenLayout hideSave>
-      <View style={styles.stack}>
-        {!hardwareReady ? (
-          <Pressable onPress={openDeviceBiometricSettings}>{card}</Pressable>
-        ) : (
-          card
-        )}
-        <PasswordManagementPanel />
-        <SettingsSection
-          title="Compte"
-          items={[
-            {
-              icon: Trash2,
-              label: 'Supprimer mon compte',
-              description:
-                user.role === 'patient'
-                  ? 'Suppression définitive de votre compte et de vos données personnelles'
-                  : 'Demande de suppression traitée par notre équipe',
-              onPress: () => router.push('/profile/delete-account' as never),
-              destructive: true,
-            },
-          ]}
-        />
-      </View>
+      <SettingsSection
+        title="Connexion rapide"
+        items={[
+          {
+            icon: ScanFace,
+            label,
+            description: hardwareReady
+              ? 'Sans code e-mail sur cet appareil'
+              : Platform.OS === 'ios'
+                ? 'À configurer dans Réglages'
+                : 'À configurer dans les réglages',
+            onPress: hardwareReady ? undefined : openDeviceBiometricSettings,
+            trailing: (
+              <ToggleSwitch
+                value={enabled}
+                disabled={busy || !hardwareReady}
+                onValueChange={(v) => void onToggle(v)}
+                accessibilityLabel={label}
+              />
+            ),
+          },
+        ]}
+      />
+      <PasswordManagementPanel />
     </ProfileSubScreenLayout>
   );
 }
-
-function buildStyles({ colors: c, fontSize }: Theme) {
-  return {
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    paddingLeft: spacing[3],
-    paddingRight: spacing[1],
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  iconWrapActive: {
-    backgroundColor: c.surfaceSubtle,
-  },
-  rowWrap: {
-    flex: 1,
-    minWidth: 0,
-  },
-  error: {
-    ...font.regular,
-    fontSize: fontSize.base,
-    color: c.textSecondary,
-    textAlign: 'center' as const,
-  },
-  stack: {
-    gap: spacing[4],
-  },
-};
-}
-

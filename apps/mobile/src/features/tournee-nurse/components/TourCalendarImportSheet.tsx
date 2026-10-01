@@ -2,9 +2,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
 import { CalendarDays, CalendarRange } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 export type TourCalendarImportScope = 'today' | 'all_upcoming';
@@ -57,7 +57,7 @@ export function TourCalendarImportSheet({
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Ajouter au calendrier"
@@ -75,7 +75,7 @@ export function TourCalendarImportSheet({
           >
             <Row gap={spacing[3]} align="center">
               <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-                <Icon size={iconSize.md} color={c.primary} strokeWidth={2.2} />
+                <Icon size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
               </View>
               <View style={styles.copy}>
                 <AppText style={[styles.optionTitle, { color: c.textPrimary }]}>{title}</AppText>
@@ -87,7 +87,7 @@ export function TourCalendarImportSheet({
           </Pressable>
         ))}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
@@ -100,8 +100,8 @@ function buildStyles({ fontSize }: Theme) {
       padding: spacing[3.5],
     },
     iconWrap: {
-      width: 40,
-      height: 40,
+      width: spacing[10],
+      height: spacing[10],
       borderRadius: radius.lg,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,

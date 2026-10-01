@@ -2,7 +2,7 @@ import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { PASSAGE_TIME_SLOT_LABELS } from '../utils/passage-display';
 import type { PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
@@ -48,7 +48,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Créneaux de passage"
@@ -88,7 +88,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
           })}
         </View>
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

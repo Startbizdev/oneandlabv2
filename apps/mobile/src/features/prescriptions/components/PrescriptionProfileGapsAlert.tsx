@@ -39,10 +39,10 @@ export function PrescriptionProfileGapsAlert({
       return;
     }
     if (prescriberRole === 'nurse') {
-      router.push('/profile/nurse/coordinates' as never);
+      router.push('/profile/nurse/coordinates');
       return;
     }
-    router.push('/profile' as never);
+    router.push('/profile');
   };
 
   return (
@@ -50,7 +50,7 @@ export function PrescriptionProfileGapsAlert({
       align="start"
       gap={spacing[2.5]}
       style={styles.box}
-      leading={<AlertTriangle size={iconSize.mdSm} color={c.warning} strokeWidth={2.25} />}
+      leading={<AlertTriangle size={iconSize.md} color={c.warning} strokeWidth={2.25} />}
     >
       <View style={styles.body}>
         <AppText style={styles.title}>À compléter pour l'ordonnance</AppText>

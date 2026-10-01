@@ -1,8 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useRef, useState } from 'react';
-import { Alert, View, type ScrollView } from 'react-native';
+import { View, type ScrollView } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { BookingWizardChrome } from '../components/BookingWizardChrome';
 import { FormScreen } from '@/components/layout/FormScreen';
@@ -11,7 +12,6 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { LabBrandPreferenceStep } from '../components/LabBrandPreferenceStep';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
-import { bookingWizardPhases } from '../utils/booking-wizard-steps';
 import { selectionRequiresFasting } from '../utils/booking-review-summary';
 import { CareSelectionStep } from '../components/CareSelectionStep';
 import { BookingSlotStep } from '../components/BookingSlotStep';
@@ -33,20 +33,17 @@ import {
 } from '../hooks/use-booking-draft';
 import { BookingDraftResumeSheet } from '../components/BookingDraftResumeSheet';
 import type { BookingDraftData } from '../utils/booking-draft';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import { PATIENT_VIP_FEE_LABEL } from '@oneandlab/shared-constants';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   mode: 'patient' | 'dashboard';
   role: string;
-  basePath: string;
-  /** Onglet Réserver patient — header glass onglet au lieu du stack natif. */
+  basePath: RoleRoutePrefix;
+  /** Onglet Réserver patient — header d'onglet au lieu du header de pile. */
   embeddedInTab?: boolean;
-  /** Onglet monté en arrière-plan (NativeTabs) : la reprise de brouillon attend qu'il soit affiché. */
-  isActiveTab?: boolean;
 }
 
 /**
@@ -60,9 +57,10 @@ export function BookingWizardScreen(props: Props) {
     patient_id?: string;
     relative_id?: string;
   }>();
+  const focused = useIsFocused();
   const draftResume = useBookingDraftResume(
     useBookingDraftOwnerKey(),
-    (props.isActiveTab ?? true) && !patientIdParam && !relativeIdParam,
+    focused && !patientIdParam && !relativeIdParam,
   );
   const restart = useCallback(() => {
     setInitialDraft(null);
@@ -110,14 +108,7 @@ function BookingWizardFlow({
     requestAnimationFrame(() => {
       formScrollRef.current?.scrollToEnd({ animated: true });
     });
-    Alert.alert(
-      'Consentement requis',
-      mode === 'patient'
-        ? 'Veuillez accepter la politique de confidentialité avant de confirmer votre rendez-vous.'
-        : 'Veuillez confirmer le consentement du patient avant de confirmer le rendez-vous.',
-      [{ text: 'OK' }],
-    );
-  }, [mode]);
+  }, []);
 
   const bw = useBookingWizard({
     mode,
@@ -131,8 +122,7 @@ function BookingWizardFlow({
   });
   useBookingDraftAutosave(bw, draftSession);
   const w = bw.wizard;
-  const scrollConfig = useStackScrollConfig(styles.formContent);
-  const phases = bookingWizardPhases(mode);
+  const { phases } = bw.progress;
 
   const leaveGuard = useBookingLeaveGuard({
     enabled: (bw.step > 0 || w.selectedServices.length > 0) && !bw.saving && !bw.created,
@@ -225,7 +215,6 @@ function BookingWizardFlow({
               bloodCategories={w.bloodCategories}
               allCategories={w.allCategories}
               selectedServices={w.selectedServices}
-              onlyCategoryOptionsFor={w.onlyCategoryOptionsFor}
               onQuickAdd={w.quickAddService}
               onRemove={w.removeService}
               onContinue={bw.confirmStep0}
@@ -245,8 +234,7 @@ function BookingWizardFlow({
     return (
       <BookingWizardChrome {...chromeProps}>
         <FormScreen
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={styles.formContent}
           backgroundColor={c.background}
           footer={
             <BookingActionBar
@@ -256,10 +244,10 @@ function BookingWizardFlow({
           }
         >
           <BookingWizardProgress
-            current={1}
+            current={bw.progress.current}
             total={phases.length}
             phases={phases}
-            label="Laboratoire"
+            label={bw.progress.label}
           />
           <LabBrandPreferenceStep
             mode={bw.labPreferenceMode}
@@ -308,8 +296,7 @@ function BookingWizardFlow({
       <View style={styles.screen}>
         <FormScreen
           ref={formScrollRef}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={styles.formContent}
           backgroundColor={c.background}
           footer={
             <BookingActionBar
@@ -332,10 +319,10 @@ function BookingWizardFlow({
           }
         >
           <BookingWizardProgress
-            current={bw.phaseIndex + 1}
+            current={bw.progress.current}
             total={phases.length}
             phases={phases}
-            label={bw.subStepLabel || phases[bw.phaseIndex]}
+            label={bw.progress.label}
             hint={bw.wizardProgressHint || undefined}
           />
 
@@ -353,7 +340,7 @@ function BookingWizardFlow({
               <Button title="Recharger les documents" variant="outline" onPress={bw.retryProfileDocs} />
             </View>
           ) : null}
-          {bw.validationError ? (
+          {bw.validationError && !consentError ? (
             <View style={styles.errorBox}>
               <AppText accessibilityRole="alert" style={styles.errorText}>{bw.validationError}</AppText>
             </View>

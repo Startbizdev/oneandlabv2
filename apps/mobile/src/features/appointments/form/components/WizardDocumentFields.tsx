@@ -1,11 +1,15 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import { Check, FileText, Upload } from 'lucide-react-native';
+import { Row } from '@/components/layout/primitives';
+import { Check, Upload } from 'lucide-react-native';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { Button } from '@/components/ui/Button';
+import { useToast } from '@/providers/ToastProvider';
 import type { PatientDocumentRow } from '@/features/patients/api/patient-profile.service';
 import { getDocumentTypeLabel } from '@/features/appointments/detail/utils/document-labels';
-import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
+import {
+  medicalDocumentPickErrorMessage,
+  pickMedicalDocumentFile,
+} from '@/lib/uploads/pick-medical-document';
 import type { AppointmentDocFieldDef } from '../constants/appointment-document-fields';
 import {
   hasDocumentFile,
@@ -14,7 +18,16 @@ import {
   profileDocRefFromRow,
   type DocumentFileRef,
 } from '../types/document-file-ref';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  ICON_STROKE_WIDTH,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 interface Props {
   title?: string;
@@ -37,14 +50,20 @@ export function WizardDocumentFields({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const { show: toast } = useToast();
+
   async function pick(key: string) {
-    const picked = await pickMedicalDocumentFile();
-    if (!picked) return;
-    onChange(key, {
-      uri: picked.uri,
-      name: picked.fileName,
-      mimeType: picked.mimeType,
-    });
+    try {
+      const picked = await pickMedicalDocumentFile();
+      if (!picked) return;
+      onChange(key, {
+        uri: picked.uri,
+        name: picked.fileName,
+        mimeType: picked.mimeType,
+      });
+    } catch (e) {
+      toast(medicalDocumentPickErrorMessage(e), { type: 'error' });
+    }
   }
 
   function applyProfile(key: string) {
@@ -55,170 +74,127 @@ export function WizardDocumentFields({
 
   return (
     <View style={styles.wrapper}>
-      {title ? <AppText style={styles.sectionLabel}>{title}</AppText> : null}
-      {subtitle ? (
-        <AppText style={styles.subtitle} numberOfLines={2}>
-          {subtitle}
-        </AppText>
+      {title || subtitle ? (
+        <View style={styles.header}>
+          {title ? (
+            <AppText variant="headline" accessibilityRole="header">
+              {title}
+            </AppText>
+          ) : null}
+          {subtitle ? <AppText variant="secondary">{subtitle}</AppText> : null}
+        </View>
       ) : null}
       {loadingProfile ? (
-        <Row gap={spacing[2]} align="center" style={styles.loadingRow}>
-          <ActivityIndicator size="small" color={c.primary} />
-          <AppText style={styles.loadingText}>Chargement de votre dossier…</AppText>
+        <Row gap={spacing[2]} align="center">
+          <ActivityIndicator size="small" color={c.textSecondary} />
+          <AppText variant="secondary">Chargement de votre dossier…</AppText>
         </Row>
       ) : null}
 
-      {fields.map((f) => {
-        const entry = files[f.key];
-        const profileRow = profileDocs?.[f.key];
-        const fromProfile = isProfileDocRef(entry) || Boolean(profileRow?.medical_document_id);
-        const local = isLocalFileRef(entry);
-        const done = hasDocumentFile(files, f.key, profileDocs);
-        const displayName =
-          (local && entry.name) ||
-          (isProfileDocRef(entry) && entry.file_name) ||
-          profileRow?.file_name ||
-          getDocumentTypeLabel(f.key);
+      <View style={styles.card}>
+        {fields.map((f, index) => {
+          const entry = files[f.key];
+          const profileRow = profileDocs?.[f.key];
+          const fromProfile = isProfileDocRef(entry) || Boolean(profileRow?.medical_document_id);
+          const local = isLocalFileRef(entry);
+          const done = hasDocumentFile(files, f.key, profileDocs);
+          const displayName =
+            (local && entry.name) ||
+            (isProfileDocRef(entry) && entry.file_name) ||
+            profileRow?.file_name ||
+            getDocumentTypeLabel(f.key);
+          const detail = done
+            ? `${fromProfile && !local ? 'Dans votre dossier · ' : ''}${displayName}`
+            : f.hint;
 
-        return (
-          <Pressable
-            key={f.key}
-            onPress={() => {
-              if (profileRow && !local) {
-                applyProfile(f.key);
-                return;
-              }
-              void pick(f.key);
-            }}
-            style={[styles.docRow, done && styles.docRowDone]}
-          >
-            <Cluster
-              gap={spacing[3]}
-              leading={
-                <View style={[styles.docIcon, done && styles.docIconDone]}>
-                  {done ? (
-                    <Check size={iconSize.xs} color={c.success} strokeWidth={2.5} />
-                  ) : (
-                    <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
-                  )}
-                </View>
-              }
-              actions={
-                done && local ? (
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      if (profileRow) applyProfile(f.key);
-                      else onChange(f.key, undefined);
-                    }}
-                    hitSlop={8}
-                  >
-                    <AppText style={styles.replaceLink}>
-                      {profileRow ? 'Dossier' : 'Modifier'}
-                    </AppText>
-                  </Pressable>
-                ) : null
-              }
+          const onRowPress = () => {
+            if (profileRow && !local) {
+              applyProfile(f.key);
+              return;
+            }
+            void pick(f.key);
+          };
+
+          return (
+            <Pressable
+              key={f.key}
+              onPress={onRowPress}
+              accessibilityRole="button"
+              accessibilityLabel={done ? `${f.label}, ajouté : ${displayName}` : `Ajouter ${f.label}`}
+              style={({ pressed }) => [pressed && styles.rowPressed]}
             >
-              <View style={styles.docTextCol}>
-                <AppText style={[styles.docLabel, done && styles.docLabelDone]}>
-                  {f.label}
-                  {done ? ' · OK' : ''}
-                </AppText>
-                {f.hint && !done ? <AppText style={styles.docHint}>{f.hint}</AppText> : null}
-                {done ? (
-                  <Row gap={4} align="center">
-                    <FileText size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2} />
-                    <AppText style={styles.fileMeta} numberOfLines={1}>
-                      {fromProfile && !local ? 'Déjà enregistré — ' : ''}
-                      {displayName}
+              <ListRowShell
+                topBorder={index > 0}
+                leading={
+                  <View style={[styles.docIcon, done && styles.docIconDone]}>
+                    {done ? (
+                      <Check size={iconSize.md} color={c.success} strokeWidth={ICON_STROKE_WIDTH} />
+                    ) : (
+                      <Upload size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+                    )}
+                  </View>
+                }
+                body={
+                  <View style={styles.texts}>
+                    <AppText variant="body" style={styles.label}>
+                      {f.label}
                     </AppText>
-                  </Row>
-                ) : null}
-              </View>
-            </Cluster>
-          </Pressable>
-        );
-      })}
+                    {detail ? <AppText variant="caption" style={styles.detail}>{detail}</AppText> : null}
+                  </View>
+                }
+                trailing={
+                  done && local ? (
+                    <Button
+                      title={profileRow ? 'Dossier' : 'Retirer'}
+                      variant="ghost"
+                      size="sm"
+                      accessibilityLabel={
+                        profileRow ? `Reprendre ${f.label} du dossier` : `Retirer ${f.label}`
+                      }
+                      onPress={() => {
+                        if (profileRow) applyProfile(f.key);
+                        else onChange(f.key, undefined);
+                      }}
+                    />
+                  ) : done ? null : (
+                    <AppText variant="body" style={styles.addLink}>
+                      Ajouter
+                    </AppText>
+                  )
+                }
+              />
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  wrapper: { gap: spacing[2] },
-  sectionLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  subtitle: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.primaryDark,
-  },
-  loadingRow: {
-    paddingVertical: spacing[1],
-  },
-  loadingText: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  docRow: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-  },
-  docRowDone: {
-    borderColor: c.successMid,
-    backgroundColor: c.successLight,
-  },
-  docIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.sm,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  docIconDone: {
-    backgroundColor: c.successLight,
-  },
-  docTextCol: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  docLabel: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  docLabelDone: {
-    color: c.success,
-  },
-  docHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-  fileMeta: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-  },
-  replaceLink: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.primary,
-  },
-};
+    wrapper: { gap: spacing[2] },
+    header: { gap: spacing[0.5] },
+    card: {
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+    rowPressed: { backgroundColor: c.surfaceAlt },
+    docIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
+      backgroundColor: c.surfaceAlt,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    docIconDone: { backgroundColor: c.successLight },
+    texts: { gap: spacing[0.5] },
+    label: { color: c.textPrimary },
+    detail: { color: c.textSecondary },
+    addLink: { color: c.textLink },
+  };
 }
-

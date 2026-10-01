@@ -1,139 +1,99 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
-  Calendar,
   ClipboardList,
-  CreditCard,
   FilePenLine,
   FolderOpen,
   HeartPulse,
   Mail,
-  MapPin,
   MessageCircle,
-  Pencil,
   Phone,
-  User,
+  Pill,
+  Trash2,
 } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { fetchPatientDocuments, fetchPatientProfile, fetchStaffPatientHistoryAppointments, filterCoverageProfileDocuments } from '../api/patient-profile.service';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import { buildSettingsStyles, type SettingsRowProps } from '@/components/ui/SettingsRow';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
+import {
+  fetchPatientDocuments,
+  fetchStaffPatientHistoryAppointments,
+  filterCoverageProfileDocuments,
+} from '../api/patient-profile.service';
+import { useStaffPatientProfile } from '../hooks/use-staff-patient-profile';
 import { useAuthStore } from '@/store/auth-store';
 import { deletePatient } from '../api/patients.service';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { resolvePatientContactEmail } from '@/utils/patient-email-display';
 import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
-import {
-  patientAddressLines,
-  patientBirthLine,
-  patientGenderLabel,
-} from '../utils/patient-profile-display';
+import { patientAddressLines, patientBirthLine, patientGenderLabel } from '../utils/patient-profile-display';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
-import { radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
+import { ICON_STROKE_WIDTH, spacing, iconSize, avatarSize, AppText, useStyles, type Theme } from '@/theme';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { bookingNewHref, pharmacyOrderNewHref, staffPatientHref } from '@/navigation/role-hrefs';
+import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { StaffPatientEditSheet } from '../components/StaffPatientEditSheet';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 
 interface Props {
-  rolePrefix?: '/(nurse)' | '/(pro)';
+  rolePrefix?: StaffRoutePrefix;
 }
 
 type ContactAction = {
   key: string;
   label: string;
   icon: LucideIcon;
-  primary: boolean;
   url: string;
 };
 
-function InfoRow({
-  icon: Icon,
-  label,
-  value,
-  secondary,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  secondary?: string;
-}) {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
-  return (
-    <View style={styles.infoRow}>
-      <Cluster gap={spacing[3]} align="start" leading={
-        <View style={styles.infoIconWrap}>
-          <Icon size={iconSize.sm} color={c.primary} strokeWidth={2.25} />
-        </View>
-      }>
-        <View style={styles.infoBody}>
-          <AppText style={styles.infoLabel}>{label}</AppText>
-          <AppText style={styles.infoValue}>{value}</AppText>
-          {secondary ? (
-            <AppText style={styles.infoSecondary} numberOfLines={2}>
-              {secondary}
-            </AppText>
-          ) : null}
-        </View>
-      </Cluster>
-    </View>
-  );
-}
+type InfoLine = { label: string; value: string; secondary?: string };
 
+/** Fiche patient vue par l'infirmier ou le pro : identité, contact, dossier, création de RDV. */
 export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const sectionStyles = useStyles(buildSettingsStyles);
 
   const { id } = useLocalSearchParams<{ id: string }>();
+  const patientId = id ?? '';
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
+  const { canOrder } = usePharmacyModuleEnabled();
 
-  const profileQ = useQuery({
-    queryKey: queryKeys.profile.user(id ?? ''),
-    queryFn: async () => {
-      const res = await fetchPatientProfile(id!);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Patient introuvable');
-      return res.data;
-    },
-    enabled: !!id,
-  });
+  const profileQ = useStaffPatientProfile(patientId);
 
   const historyQ = useQuery({
-    queryKey: queryKeys.patients.historyCount(id ?? ''),
+    queryKey: queryKeys.patients.historyCount(patientId),
     queryFn: async () => {
-      const { total } = await fetchStaffPatientHistoryAppointments(id!);
+      const { total } = await fetchStaffPatientHistoryAppointments(patientId);
       return total;
     },
-    enabled: !!id,
+    enabled: !!patientId,
   });
 
   const docsQ = useQuery({
-    queryKey: queryKeys.documents.patient(id ?? ''),
+    queryKey: queryKeys.documents.patient(patientId),
     queryFn: async () => {
-      const res = await fetchPatientDocuments(id!);
+      const res = await fetchPatientDocuments(patientId);
       if (!res.success) throw new Error(res.error ?? 'Impossible de charger les documents');
       return filterCoverageProfileDocuments(res.data);
     },
-    enabled: !!id,
+    enabled: !!patientId,
   });
 
   const pullRefresh = useManualRefresh(async () => {
@@ -146,7 +106,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
 
   const deleteMut = useMutation({
     mutationFn: async () => {
-      const res = await deletePatient(id!);
+      const res = await deletePatient(patientId);
       if (!res.success) throw new Error(res.error ?? 'Suppression impossible');
     },
     onSuccess: () => {
@@ -161,14 +121,10 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   });
 
   const p = profileQ.data;
-  const canDelete = p?.created_by === user?.id;
-  const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || 'Patient';
-  const age = ageFromBirthDate(p?.birth_date);
 
   if (!p) {
     return (
       <StackChromeScreen>
-        <Stack.Screen options={{ title: 'Patient' }} />
         {profileQ.isError ? (
           <View style={styles.errorWrap}>
             <ErrorState
@@ -183,6 +139,10 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       </StackChromeScreen>
     );
   }
+
+  const canDelete = p.created_by != null && p.created_by === user?.id;
+  const name = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Patient';
+  const age = ageFromBirthDate(p.birth_date);
 
   const openContact = (url: string) => {
     Linking.openURL(url).catch((error: unknown) => {
@@ -204,204 +164,152 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const address = patientAddressLines(p.address);
   const birthLine = patientBirthLine(p.birth_date, age);
   const genderLine = patientGenderLabel(p.gender);
+  const nir = p.nir?.trim();
 
-  const infoRows = [
-    birthLine
-      ? { icon: Calendar, label: 'Date de naissance', value: birthLine }
-      : null,
-    genderLine ? { icon: User, label: 'Genre', value: genderLine } : null,
-    p.nir?.trim()
-      ? { icon: CreditCard, label: 'N° sécurité sociale', value: p.nir.trim() }
-      : null,
-    address
-      ? {
-          icon: MapPin,
-          label: 'Adresse',
-          value: address.main,
-          secondary: address.complement,
-        }
-      : null,
-    p.phone ? { icon: Phone, label: 'Téléphone', value: p.phone } : null,
-    email.text ? { icon: Mail, label: 'E-mail', value: email.text } : null,
-  ].filter(Boolean) as {
-    icon: LucideIcon;
-    label: string;
-    value: string;
-    secondary?: string;
-  }[];
+  const infoLines: InfoLine[] = [];
+  if (birthLine) infoLines.push({ label: 'Date de naissance', value: birthLine });
+  if (genderLine) infoLines.push({ label: 'Genre', value: genderLine });
+  if (nir) infoLines.push({ label: 'N° de sécurité sociale', value: nir });
+  if (address) {
+    infoLines.push({
+      label: 'Adresse',
+      value: address.main,
+      ...(address.complement ? { secondary: address.complement } : {}),
+    });
+  }
+  if (p.phone) infoLines.push({ label: 'Téléphone', value: p.phone });
+  if (email.text) infoLines.push({ label: 'E-mail', value: email.text });
 
   const contactActions: ContactAction[] = [];
   if (tel) {
     contactActions.push(
-      { key: 'phone', label: 'Appeler', icon: Phone, primary: true, url: `tel:${tel}` },
-      { key: 'sms', label: 'Message', icon: MessageCircle, primary: false, url: `sms:${tel}` },
+      { key: 'phone', label: 'Appeler', icon: Phone, url: `tel:${tel}` },
+      { key: 'sms', label: 'SMS', icon: MessageCircle, url: `sms:${tel}` },
     );
   }
   if (email.href) {
-    contactActions.push({ key: 'email', label: 'E-mail', icon: Mail, primary: false, url: email.href });
+    contactActions.push({ key: 'email', label: 'E-mail', icon: Mail, url: email.href });
   }
 
-  const docsSubtitle =
-    docCount === 0
-      ? 'Vitale, mutuelle… · ouvrir le dossier'
-      : docCount === 1
-        ? '1 document enregistré'
-        : `${docCount} documents enregistrés`;
-
-  const histSubtitle =
-    histCount === 0
-      ? 'Aucun rendez-vous passé'
-      : histCount === 1
-        ? '1 rendez-vous passé'
-        : `${histCount} rendez-vous passés`;
+  const dossierItems: SettingsRowProps[] = [
+    {
+      icon: FolderOpen,
+      label: 'Documents',
+      ...(docCount > 0 ? { value: String(docCount) } : {}),
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'documents')),
+    },
+  ];
+  if (user?.role === 'pro' || user?.role === 'nurse') {
+    dossierItems.push({
+      icon: FilePenLine,
+      label: 'Ordonnances',
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'prescriptions')),
+    });
+  }
+  dossierItems.push(
+    {
+      icon: ClipboardList,
+      label: 'Historique',
+      ...(histCount > 0 ? { value: String(histCount) } : {}),
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'history')),
+    },
+    {
+      icon: HeartPulse,
+      label: 'Carnet de santé',
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'health-record')),
+    },
+  );
+  if (canOrder) {
+    dossierItems.push({
+      icon: Pill,
+      label: 'Commander en pharmacie',
+      onPress: () => router.push(pharmacyOrderNewHref(rolePrefix, patientId)),
+    });
+  }
 
   return (
-    <StackChromeScreen>
-      <Stack.Screen options={{ title: name, headerLargeTitle: false }} />
+    <StackChromeScreen
+      headerRight={
+        <HeaderAction label="Modifier" accessibilityLabel="Modifier la fiche patient" onPress={() => setEditOpen(true)} />
+      }
+    >
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <AppRefreshControl
-            refreshing={pullRefresh.refreshing}
-            onRefresh={pullRefresh.onRefresh}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
-        }
+        refreshControl={<AppRefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />}
       >
         <Cluster
           gap={spacing[3]}
           leading={
-            <ProfileAvatar
-              profileImageUrl={p.profile_image_url}
-              seed={p.id ?? name}
-              gender={p.gender}
-              size={avatarSize.md}
-              style={styles.avatar}
-            />
+            <ProfileAvatar profileImageUrl={p.profile_image_url} seed={p.id ?? name} gender={p.gender} size={avatarSize.md} />
           }
         >
           <View style={styles.heroText}>
-            <AppText style={styles.heroName}>{name}</AppText>
-            {age != null ? <AppText style={styles.heroMeta}>{age} ans</AppText> : null}
+            <AppText variant="title" accessibilityRole="header">
+              {name}
+            </AppText>
+            {age != null ? <AppText variant="secondary">{age} ans</AppText> : null}
           </View>
         </Cluster>
 
-        {contactActions.length > 0 ? (
-          <Row gap={spacing[1.5]}>
-            {contactActions.map(({ key, label, icon: Icon, primary, url }) => (
-              <View key={key} style={styles.buttonCell}>
-                <Button
-                  title={label}
-                  size="sm"
-                  variant={primary ? 'primary' : 'secondary'}
-                  fullWidth
-                  leftIcon={
-                    <Icon
-                      size={iconSize.xs}
-                      color={primary ? c.onPrimary : c.textLink}
-                      strokeWidth={2.5}
-                    />
-                  }
-                  onPress={() => openContact(url)}
-                />
-              </View>
-            ))}
-          </Row>
-        ) : null}
+        <View style={styles.actions}>
+          <Button
+            title="Créer un rendez-vous"
+            fullWidth
+            onPress={() => router.push(bookingNewHref(rolePrefix, { patient_id: patientId }))}
+          />
+          {contactActions.length > 0 ? (
+            <Row gap={spacing[2]} wrap>
+              {contactActions.map(({ key, label, icon: Icon, url }) => (
+                <View key={key} style={styles.buttonCell}>
+                  <Button
+                    title={label}
+                    size="sm"
+                    variant="secondary"
+                    leftIcon={<Icon size={iconSize.sm} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
+                    onPress={() => openContact(url)}
+                  />
+                </View>
+              ))}
+            </Row>
+          ) : null}
+        </View>
 
-        {infoRows.length > 0 ? (
-          <View style={styles.card}>
-            <AppText style={styles.cardKicker}>Fiche patient</AppText>
-            {infoRows.map((row, index) => (
-              <View key={row.label}>
-                {index > 0 ? <View style={styles.rowDivider} /> : null}
-                <InfoRow
-                  icon={row.icon}
-                  label={row.label}
-                  value={row.value}
-                  secondary={row.secondary}
-                />
-              </View>
-            ))}
+        {infoLines.length > 0 ? (
+          <View style={sectionStyles.section}>
+            <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
+              Informations
+            </AppText>
+            <Card padding="none">
+              {infoLines.map((line, index) => (
+                <Fragment key={line.label}>
+                  {index > 0 ? <View style={styles.rowDivider} /> : null}
+                  <View style={styles.infoRow}>
+                    <AppText variant="caption">{line.label}</AppText>
+                    <AppText variant="body">{line.value}</AppText>
+                    {line.secondary ? <AppText variant="secondary">{line.secondary}</AppText> : null}
+                  </View>
+                </Fragment>
+              ))}
+            </Card>
           </View>
         ) : null}
 
-        <View style={styles.card}>
-          <ProfileNavRow
-            icon={Pencil}
-            title="Modifier la fiche"
-            subtitle="Nom, téléphone, adresse, NIR…"
-            onPress={() => setEditOpen(true)}
-            iconColor={c.primary}
-            iconBg={c.primaryLight}
-          />
-        </View>
-
-        <View style={styles.card}>
-          <AppText style={styles.cardKicker}>Dossier</AppText>
-          <ProfileNavRow
-            icon={FolderOpen}
-            title="Documents"
-            subtitle={docsSubtitle}
-            onPress={() => router.push(`${rolePrefix}/patient/${id}/documents` as never)}
-          />
-          <View style={styles.rowDividerInset} />
-          {(user?.role === 'pro' || user?.role === 'nurse') ? (
-            <>
-              <ProfileNavRow
-                icon={FilePenLine}
-                title="Ordonnances"
-                subtitle="Historique et création"
-                onPress={() => router.push(`${rolePrefix}/patient/${id}/prescriptions` as never)}
-              />
-              <View style={styles.rowDividerInset} />
-            </>
-          ) : null}
-          <ProfileNavRow
-            icon={ClipboardList}
-            title="Historique"
-            subtitle={histSubtitle}
-            badge={histCount}
-            onPress={() => router.push(`${rolePrefix}/patient/${id}/history` as never)}
-            iconColor={c.success}
-            iconBg={c.successLight}
-          />
-          <View style={styles.rowDividerInset} />
-          <ProfileNavRow
-            icon={HeartPulse}
-            title="Carnet de santé"
-            subtitle="Données déclaratives · compléter ou corriger"
-            onPress={() => router.push(`${rolePrefix}/patient/${id}/health-record` as never)}
-            iconColor={c.primary}
-            iconBg={c.primaryLight}
-          />
-        </View>
-
-        <Button
-          title="Nouvelle commande pharmacie"
-          fullWidth
-          variant="outline"
-          onPress={() =>
-            router.push(`${rolePrefix}/commandes-pharmacie/new?patientId=${encodeURIComponent(id ?? '')}` as never)
-          }
-        />
-
-        <Button
-          title="Créer un rendez-vous"
-          fullWidth
-          onPress={() => router.push(`${rolePrefix}/appointments/new?patient_id=${id}` as never)}
-        />
+        <SettingsSection title="Dossier" items={dossierItems} />
 
         {canDelete ? (
-          <Button
-            title="Supprimer le patient"
-            variant="destructive"
-            fullWidth
-            onPress={() => setDeleteOpen(true)}
+          <SettingsSection
+            items={[
+              {
+                icon: Trash2,
+                label: 'Supprimer le patient',
+                destructive: true,
+                inlineAction: true,
+                onPress: () => setDeleteOpen(true),
+              },
+            ]}
           />
         ) : null}
       </ScrollView>
@@ -415,7 +323,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
 
       <StaffPatientEditSheet
         visible={editOpen}
-        patientId={id!}
+        patientId={patientId}
         onClose={() => setEditOpen(false)}
         onSaved={() => {
           void profileQ.refetch();
@@ -425,121 +333,45 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  screen: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-  },
-  errorWrap: {
-    minWidth: 0,
-    flex: 1,
-    justifyContent: 'center' as const,
-    paddingHorizontal: spacing[4],
-  },
-  content: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[8],
-    gap: spacing[4],
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  heroText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  heroName: {
-    ...font.heading,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-    letterSpacing: -0.3,
-  },
-  heroMeta: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  card: {
-    width: '100%' as const,
-    alignSelf: 'stretch' as const,
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    overflow: 'hidden' as const,
-  },
-  cardKicker: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3.5],
-    paddingBottom: spacing[2],
-  },
-  infoRow: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3.5],
-  },
-  infoIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-    marginTop: 1,
-  },
-  infoBody: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  infoLabel: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.4,
-  },
-  infoValue: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.4,
-  },
-  infoSecondary: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.4,
-  },
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: c.borderLight,
-    marginLeft: spacing[4] + 36 + spacing[3],
-  },
-  rowDividerInset: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: c.borderLight,
-    marginLeft: spacing[4] + 40 + spacing[3],
-  },
-  buttonCell: {
-    flex: 1,
-    minWidth: 0,
-  },
-};
+    screen: {
+      minWidth: 0,
+      flex: 1,
+      backgroundColor: c.background,
+    },
+    errorWrap: {
+      minWidth: 0,
+      flex: 1,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[4],
+    },
+    content: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[8],
+      gap: spacing[6],
+    },
+    heroText: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing[0.5],
+    },
+    actions: {
+      gap: spacing[3],
+    },
+    infoRow: {
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      gap: spacing[0.5],
+    },
+    rowDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+      marginLeft: spacing[4],
+    },
+    buttonCell: {
+      flexGrow: 1,
+    },
+  };
 }
-

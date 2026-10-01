@@ -32,16 +32,13 @@ export const palette = {
     500: '#22C9BE',
     600: brand.gradientEnd,
   },
-  canvas: {
-    base: '#F6F8F8',
-    light: '#FAFBFB',
-    muted: '#F0F4F4',
-  },
-  warm: {
-    50: '#F7F4EF',
-    100: '#F3F0EA',
-    150: '#EBE6DE',
-    200: '#E2DCD2',
+  /** Neutres chauds : fond d'app, puits d'icônes, traits. */
+  sand: {
+    100: '#F7F6F3',
+    200: '#EFEDE8',
+    300: '#ECE9E3',
+    400: '#E4E0D9',
+    500: '#D6D1C8',
   },
   slate: {
     50: '#F8FAFC',
@@ -108,22 +105,22 @@ export function buildAppColors(type: ColorblindType) {
   const cb = resolveSemantic(type);
 
   return {
-    /** Fond d'app unique (écrans, stacks, listes) — aligné sur le canvas web. */
-    background: palette.canvas.base,
+    /** Fond d'app unique (écrans, stacks, listes) — neutre légèrement chaud. */
+    background: palette.sand[100],
+    /** Cartes, sheets, barres. */
     surface: palette.white,
-    surfaceAlt: palette.canvas.muted,
-    surfaceSubtle: palette.brand[50],
-    bookingCanvas: palette.canvas.base,
-    bookingCanvasLight: palette.canvas.light,
+    /** Surface neutre en retrait : puits d'icônes, pistes de segments, squelettes, boutons `muted`. */
+    surfaceAlt: palette.sand[200],
 
     gradientStart: cb?.gradientStart ?? brand.gradientStart,
     gradientEnd: cb?.gradientEnd ?? brand.gradientEnd,
 
-    border: palette.slate[200],
+    /** Contour des contrôles (champs, boutons `outline`). */
+    border: palette.sand[500],
     /** Séparateurs internes (hairlines). */
-    borderLight: palette.slate[100],
-    /** Contour carte sur fond blanc. */
-    cardBorder: palette.slate[200],
+    borderLight: palette.sand[300],
+    /** Contour carte sur le fond d'app. */
+    cardBorder: palette.sand[400],
     borderFocus: cb?.borderFocus ?? brand.primary,
     borderError: cb?.error ?? palette.red[500],
 
@@ -152,34 +149,8 @@ export function buildAppColors(type: ColorblindType) {
     errorLight: cb?.errorLight ?? palette.red[50],
     errorMid: cb?.errorMid ?? palette.red[100],
 
-    statusPending: cb?.statusPending ?? {
-      bg: palette.amber[50],
-      text: palette.amber[700],
-      dot: palette.amber[500],
-    },
-    statusAccepted: cb?.statusAccepted ?? {
-      bg: palette.brand[50],
-      text: palette.brand[800],
-      dot: brand.primary,
-    },
-    statusCompleted: cb?.statusCompleted ?? {
-      bg: palette.green[50],
-      text: palette.green[700],
-      dot: palette.green[500],
-    },
-    statusCancelled: cb?.statusCancelled ?? {
-      bg: palette.red[50],
-      text: palette.red[700],
-      dot: palette.red[500],
-    },
-    statusNeutral: cb?.statusNeutral ?? {
-      bg: palette.slate[100],
-      text: palette.slate[600],
-      dot: palette.slate[400],
-    },
-
     star: cb?.star ?? palette.amber[600],
-    starFill: cb?.starFill ?? palette.amber[100],
+    starFill: cb?.starFill ?? palette.amber[500],
   };
 }
 

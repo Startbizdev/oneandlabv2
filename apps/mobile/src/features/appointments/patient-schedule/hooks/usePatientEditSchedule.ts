@@ -40,8 +40,8 @@ function initialAvailabilityFromAppointment(apt: Appointment): {
         type = 'custom';
         range = [av.range[0], av.range[1]];
       }
-    } catch {
-      /* default */
+    } catch (e) {
+      console.warn('[patient-schedule] invalid stored availability, using default range', apt.id, e);
     }
   } else if (apt.scheduled_at) {
     const h = new Date(apt.scheduled_at).getHours();

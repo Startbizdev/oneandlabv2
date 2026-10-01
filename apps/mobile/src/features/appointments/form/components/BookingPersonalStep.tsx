@@ -3,9 +3,12 @@ import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { useAuthStore } from '@/store/auth-store';
+import { useToast } from '@/providers/ToastProvider';
 import { normalizePatientGender } from '@/utils/patient-gender';
 import { STAFF_PATIENT_BOOKING_CONSENT_LABEL } from '@oneandlab/shared-constants';
-import { AppText, font, radius, spacing, useStyles, type Theme } from '@/theme';
+import { AppText, spacing, useStyles } from '@/theme';
+import { staffPatientHref } from '@/navigation/role-hrefs';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import type { useBookingWizard } from '../hooks/useBookingWizard';
 import { isPatientEmailOptionalForBookingRole } from '../utils/booking-wizard-role-rules';
 import { PERSONAL_DOC_FIELDS } from '../constants/appointment-document-fields';
@@ -28,7 +31,7 @@ interface Props {
   bw: ReturnType<typeof useBookingWizard>;
   mode: 'patient' | 'dashboard';
   role: string;
-  basePath: string;
+  basePath: RoleRoutePrefix;
   consentError: boolean;
   onAddRelative: () => void;
   onConsentMissing: () => void;
@@ -46,39 +49,27 @@ export function BookingPersonalStep({
 }: Props) {
   const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
+  const { show: toast } = useToast();
   const w = bw.wizard;
+  const staffPrefix = basePath === '/(nurse)' || basePath === '/(pro)' ? basePath : null;
   const toggleConsent = () => bw.setConsent(!bw.consent);
 
   return (
     <>
       {mode === 'patient' ? (
         <>
-          <AppText style={styles.sectionLabel}>Pour qui est ce rendez-vous ?</AppText>
-          <BookingRelativePills
-            selfLabel="Pour moi"
-            relatives={bw.relatives}
-            selectedId={bw.selectedRelativeId}
-            onSelect={bw.setSelectedRelativeId}
-            addLabel="Proche"
-            onAdd={onAddRelative}
-          />
-          {bw.selectedRelativeId ? (
-            <View style={styles.selfCard}>
-              <AppText style={styles.selfName}>
-                {[w.form.watch('first_name'), w.form.watch('last_name')].filter(Boolean).join(' ') || 'Proche'}
-              </AppText>
-              <AppText style={styles.selfDetail}>Rendez-vous pour un proche</AppText>
-            </View>
-          ) : null}
-          {!bw.selectedRelativeId && user ? (
-            <View style={styles.selfCard}>
-              <AppText style={styles.selfName}>
-                {user.first_name} {user.last_name}
-              </AppText>
-              <AppText style={styles.selfDetail}>{user.email}</AppText>
-            </View>
-          ) : null}
-          <View style={styles.identityBlock}>
+          <View style={styles.block}>
+            <AppText variant="headline" accessibilityRole="header">Pour qui est ce rendez-vous ?</AppText>
+            <BookingRelativePills
+              selfLabel={user?.first_name ? `Moi, ${user.first_name}` : 'Pour moi'}
+              relatives={bw.relatives}
+              selectedId={bw.selectedRelativeId}
+              onSelect={bw.setSelectedRelativeId}
+              addLabel="Ajouter un proche"
+              onAdd={onAddRelative}
+            />
+          </View>
+          <View style={styles.block}>
             <GenderSelect
               label="Genre"
               value={normalizePatientGender(w.form.watch('gender'))}
@@ -90,12 +81,8 @@ export function BookingPersonalStep({
             />
           </View>
           <WizardDocumentFields
-            title="Vos documents"
-            subtitle={
-              bw.selectedRelativeId
-                ? 'Documents du proche enregistrés sur votre compte'
-                : 'Vitale, mutuelle et attestation déjà enregistrés si présents'
-            }
+            title={bw.selectedRelativeId ? 'Cartes du proche' : 'Vos cartes'}
+            subtitle="Facultatif. Celles de votre dossier sont reprises."
             fields={PERSONAL_DOC_FIELDS}
             files={bw.personalFiles}
             profileDocs={bw.profileDocs}
@@ -117,7 +104,14 @@ export function BookingPersonalStep({
             onPatientModeChange={w.setPatientMode}
             selectedPatientId={w.selectedPatientId}
             onSelectPatient={w.onSelectPatient}
-            onAdoptLookupPatient={w.adoptLookupPatient}
+            onAdoptLookupPatient={async (match) => {
+              if (!bw.consent) {
+                toast('Confirmez d’abord le consentement du patient pour utiliser ce dossier.', { type: 'error' });
+                onConsentMissing();
+                return false;
+              }
+              return w.adoptLookupPatient(match);
+            }}
             firstName={w.form.watch('first_name')}
             lastName={w.form.watch('last_name')}
             email={w.form.watch('email')}
@@ -129,7 +123,7 @@ export function BookingPersonalStep({
           />
           {w.patientMode === 'existing' && w.selectedPatientId ? (
             <>
-              <AppText style={styles.sectionLabel}>Bénéficiaire du rendez-vous</AppText>
+              <AppText variant="headline" accessibilityRole="header">Bénéficiaire du rendez-vous</AppText>
               <BookingRelativePills
                 selfLabel="Titulaire"
                 relatives={bw.relatives}
@@ -138,6 +132,7 @@ export function BookingPersonalStep({
                 addLabel="Nouveau proche"
                 onAdd={() => {
                   if (!bw.consent) {
+                    toast('Confirmez d’abord le consentement du patient.', { type: 'error' });
                     onConsentMissing();
                     return;
                   }
@@ -146,15 +141,15 @@ export function BookingPersonalStep({
               />
             </>
           ) : null}
-          {bw.staffPatientUserId && (role === 'nurse' || role === 'pro') ? (
+          {bw.staffPatientUserId && staffPrefix ? (
             <WizardPatientDocumentsPanel
               patientUserId={bw.staffPatientUserId}
-              documentsRoute={`${basePath}/patient/${bw.staffPatientUserId}/documents`}
+              documentsHref={staffPatientHref(staffPrefix, bw.staffPatientUserId, 'documents')}
             />
           ) : w.patientMode === 'new' || w.selectedPatientId === NEW_PATIENT_ID ? (
             <WizardDocumentFields
-              title="Documents du patient"
-              subtitle="Vitale, mutuelle et attestation — enregistrés avec la fiche patient"
+              title="Cartes du patient"
+              subtitle="Facultatif. Enregistrées avec la fiche patient."
               fields={PERSONAL_DOC_FIELDS}
               files={bw.personalFiles}
               onChange={bw.setPersonalFile}
@@ -205,32 +200,9 @@ export function BookingPersonalStep({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-    sectionLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    selfCard: {
-      backgroundColor: c.surface,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.border,
-      padding: spacing[3],
-      gap: spacing[0.5],
-    },
-    selfName: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    selfDetail: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    identityBlock: { gap: spacing[3] },
+    block: { gap: spacing[3] },
     consentBlock: { gap: spacing[1] },
   };
 }

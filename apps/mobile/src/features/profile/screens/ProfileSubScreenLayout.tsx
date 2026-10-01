@@ -1,13 +1,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import { Button } from '@/components/ui/Button';
 import { FormScreen, FORM_ACTION_BAR_HEIGHT } from '@/components/layout/FormScreen';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { UnsavedChangesGuard } from '@/features/profile/components/UnsavedChangesGuard';
 import { spacing, useStyles, type Theme } from '@/theme';
@@ -29,7 +24,7 @@ interface Props {
   overlay?: ReactNode;
 }
 
-/** Écran secondaire profil : header glass flottant, formulaire scrollable, « Enregistrer » collé en bas. */
+/** Écran secondaire profil : formulaire scrollable, « Enregistrer » collé en bas. */
 export function ProfileSubScreenLayout({
   children,
   saveTitle = 'Enregistrer',
@@ -41,20 +36,14 @@ export function ProfileSubScreenLayout({
   overlay,
 }: Props) {
   const styles = useStyles(buildStyles);
-  const { bottom } = useSafeAreaInsets();
-  const sceneInsets = useTabSceneInsets();
-  const bottomInset = sceneInsets.insetBottom > 0 ? sceneInsets.insetBottom : Math.max(bottom, spacing[2]);
+  const { footerPadding: bottomInset } = useSceneBottomInset();
   const showSave = !hideSave && !!onSave;
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content, {
-    extraBottom: showSave ? FORM_ACTION_BAR_HEIGHT + bottomInset + spacing[4] : bottomInset + spacing[4],
-  });
   const tracksChanges = dirty !== undefined;
 
   return (
     <StackChromeScreen>
       <FormScreen
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
+        contentContainerStyle={[styles.content, !showSave && { paddingBottom: bottomInset + spacing[4] }]}
         keyboardShouldPersistTaps="handled"
         footer={
           showSave ? (

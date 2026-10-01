@@ -9,14 +9,6 @@ import { parseProfileAddress } from '@/features/profile/utils/parse-profile-addr
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 
-const YEARS_LABELS: Record<string, string> = {
-  '1': '1 an',
-  '3': '3 ans',
-  '5': '5 ans',
-  '10': '10 ans',
-  '10_plus': 'Plus de 10 ans',
-};
-
 export function useNurseProfileSummary() {
   const user = useAuthStore((s) => s.user);
 
@@ -55,20 +47,13 @@ export function useNurseProfileSummary() {
   const radius = zoneQ.data?.[0]?.radius_km;
 
   return {
-    isLoading: profileQ.isLoading,
-    coordinatesSubtitle: d
-      ? [d.first_name, d.last_name].filter(Boolean).join(' ') || 'À compléter'
-      : '—',
+    coordinatesSubtitle: d ? (addr?.label ?? 'Adresse à compléter') : '—',
     presentationSubtitle: d
       ? [
-          d.biography?.trim() ? 'Biographie renseignée' : 'Biographie à compléter',
-          d.years_experience
-            ? YEARS_LABELS[d.years_experience] ?? d.years_experience
-            : 'Expérience non renseignée',
-          d.is_public_profile_enabled ? 'Fiche publique active' : 'Fiche privée',
+          d.is_public_profile_enabled ? 'Fiche publique' : 'Fiche privée',
           d.is_accepting_appointments !== false && d.is_accepting_appointments !== 0
             ? 'RDV ouverts'
-            : 'Pause RDV',
+            : 'RDV en pause',
         ].join(' · ')
       : '—',
     qualificationsSubtitle:
@@ -80,6 +65,5 @@ export function useNurseProfileSummary() {
         ? `${enabledCare} soin${enabledCare > 1 ? 's' : ''} actif${enabledCare > 1 ? 's' : ''} sur ${prefs.length}`
         : 'Configurer vos soins',
     coverageSubtitle: radius != null ? `Rayon de ${radius} km` : addr?.label ? 'Adresse définie' : 'À configurer',
-    yearsLabel: d?.years_experience ? YEARS_LABELS[d.years_experience] ?? d.years_experience : null,
   };
 }

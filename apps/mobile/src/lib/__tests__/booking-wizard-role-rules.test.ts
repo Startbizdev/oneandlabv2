@@ -1,10 +1,10 @@
 import { bloodTestNeedsLabPreferenceStep, validateLabPreferenceBeforeSubmit } from '@oneandlab/shared-utils';
 import {
-  bookingAppointmentsListPath,
   isBloodTestOnlyBookingRole,
   isPatientEmailOptionalForBookingRole,
   skipsLabPreferenceStepForBookingRole,
 } from '../../features/appointments/form/utils/booking-wizard-role-rules';
+import { appointmentsListHref } from '../../navigation/role-hrefs';
 
 const blood = [{ type: 'blood_test' }];
 
@@ -45,8 +45,8 @@ describe('booking wizard role rules', () => {
   });
 
   it('fallback list route exists for each dashboard role', () => {
-    expect(bookingAppointmentsListPath('/(preleveur)', 'preleveur')).toBe('/(preleveur)');
-    expect(bookingAppointmentsListPath('/(pro)', 'pro')).toBe('/(pro)/appointments');
-    expect(bookingAppointmentsListPath('/(nurse)', 'nurse')).toBe('/(nurse)/appointments');
+    expect(appointmentsListHref('/(preleveur)')).toBe('/(preleveur)/(tabs)');
+    expect(appointmentsListHref('/(pro)')).toBe('/(pro)/(tabs)/appointments');
+    expect(appointmentsListHref('/(nurse)')).toBe('/(nurse)/(tabs)/appointments');
   });
 });

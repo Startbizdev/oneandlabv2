@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import {
-  buildBirthDateIso,
-  formatBirthDateFr,
-  parseBirthDateParts,
-} from '@oneandlab/shared-utils';
+import { buildBirthDateIso, parseBirthDateParts } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
 import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { Input } from '@/components/ui/Input';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { buildFieldStyles } from '@/components/ui/field-styles';
+import { spacing, AppText, useStyles } from '@/theme';
 
 interface Props {
   label?: string;
@@ -30,6 +27,7 @@ export function BirthDatePicker({
   disabled,
 }: Props) {
   const styles = useStyles(buildStyles);
+  const field = useStyles(buildFieldStyles);
   const wrapRef = useRef<View>(null);
   const scrollFocusedIntoView = useScrollFocusedFieldIntoView();
   const [dayText, setDayText] = useState('');
@@ -105,12 +103,11 @@ export function BirthDatePicker({
     scrollFocusedIntoView(wrapRef);
   }, [scrollFocusedIntoView]);
 
-  const summary = value ? formatBirthDateFr(value) : null;
   const displayError = error ?? localError ?? undefined;
 
   return (
     <View ref={wrapRef} collapsable={false} style={styles.wrap}>
-      <AppText style={styles.label}>{label}</AppText>
+      <AppText style={field.label}>{label}</AppText>
       <Row gap={spacing[2]} style={styles.row}>
         <View style={styles.field}>
           <Input
@@ -152,20 +149,14 @@ export function BirthDatePicker({
           />
         </View>
       </Row>
-      {summary ? <AppText style={styles.summary}>{summary}</AppText> : null}
-      {displayError ? <AppText style={styles.error}>{displayError}</AppText> : null}
+      {displayError ? <AppText style={field.error}>{displayError}</AppText> : null}
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
     wrap: { gap: spacing[2] },
-    label: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-    },
     row: {
       minWidth: 0,
     },
@@ -176,16 +167,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     fieldYear: {
       minWidth: 0,
       flex: 1.35,
-    },
-    summary: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-    },
-    error: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.error,
     },
   };
 }

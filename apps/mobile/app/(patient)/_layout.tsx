@@ -1,7 +1,6 @@
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { bookingWizardScreenOptions, onboardingScreenOptions, stackHeaderOptions } from '@/navigation/screen-options';
-import { StackSceneInsetLayout } from '@/navigation/StackSceneInsetLayout';
 import { useStyles, useTheme, type Theme } from '@/theme';
 
 export default function PatientLayout() {
@@ -10,13 +9,11 @@ export default function PatientLayout() {
 
   return (
     <View style={styles.stackHost}>
-      <StackSceneInsetLayout>
       <Stack screenOptions={stackHeaderOptions(theme)}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
         <Stack.Screen name="booking/new" options={bookingWizardScreenOptions(theme)} />
       </Stack>
-      </StackSceneInsetLayout>
     </View>
   );
 }

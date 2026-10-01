@@ -1,25 +1,17 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
-import React, { useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
-import Animated from 'react-native-reanimated';
+import React, { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Heart } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
-import {
-  EMPTY_PROCHE_IMAGE,
-  EMPTY_PROCHE_IMAGE_HEIGHT,
-  EMPTY_PROCHE_IMAGE_WIDTH,
-} from '@/constants/empty-state-images';
+import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 import { PatientRelativeFormSheet } from '@/features/patient-relatives/components/PatientRelativeFormSheet';
-import { scrollChildEntering } from '@/lib/platform/list-entering-animation';
 import {
   createPatientRelative,
-  deletePatientRelative,
   fetchPatientRelatives,
   relativeRelationshipType,
   type PatientRelative,
@@ -27,83 +19,80 @@ import {
 import { relationshipLabel } from '@/features/patient-relatives/constants/relationship-types';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { ageFromBirthDate } from '@oneandlab/shared-utils';
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  avatarSize,
+  font,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 function displayName(r: PatientRelative) {
   return `${r.first_name ?? ''} ${r.last_name ?? ''}`.trim() || r.id;
 }
 
-interface RelativeCardProps {
-  item: PatientRelative;
-  index: number;
-  onPress: () => void;
-  onLongPress: () => void;
+function relativeMeta(r: PatientRelative): string {
+  const rel = relationshipLabel(relativeRelationshipType(r)) || r.relationship;
+  const age = ageFromBirthDate(r.birth_date);
+  return [rel, age != null ? `${age} an${age > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
 }
 
-const RelativeCard = React.memo(function RelativeCard({
+const RelativeRow = React.memo(function RelativeRow({
   item,
-  index,
   onPress,
-  onLongPress,
-}: RelativeCardProps) {
+}: {
+  item: PatientRelative;
+  onPress: () => void;
+}) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const rel = relationshipLabel(relativeRelationshipType(item)) || item.relationship;
-  const entering = scrollChildEntering(index, 50, 300);
-  const Shell = entering ? Animated.View : View;
+  const name = displayName(item);
+  const meta = relativeMeta(item);
   return (
-    <Shell entering={entering}>
-      <Pressable onPress={onPress} onLongPress={onLongPress} style={[styles.card, elevation.xs]}>
-        <Cluster
-          gap={spacing[3]}
-          leading={
-            <ProfileAvatar
-              profileImageUrl={null}
-              seed={item.id ?? displayName(item)}
-              gender={item.gender}
-              size={iconSize['5xl']}
-              style={styles.avatar}
-            />
-          }
-        >
-          <View style={styles.info}>
-            <AppText style={styles.name}>{displayName(item)}</AppText>
-            {rel ? (
-              <Row gap={4} align="center" style={styles.relationPill}>
-                <Heart size={iconSize['3xs']} color={c.error} strokeWidth={2.5} fill={c.error} />
-                <AppText style={styles.relationText}>{rel}</AppText>
-              </Row>
-            ) : null}
-            {item.phone ? <AppText style={styles.meta}>{item.phone}</AppText> : null}
-            {item.email ? (
-              <AppText style={styles.meta} numberOfLines={1}>
-                {item.email}
-              </AppText>
-            ) : null}
-            {item.birth_date ? (
-              <AppText style={styles.birth}>Né(e) le {formatBirthDateFr(item.birth_date)}</AppText>
-            ) : null}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={meta ? `${name}, ${meta}` : name}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+    >
+      <ListRowShell
+        leading={
+          <ProfileAvatar
+            profileImageUrl={null}
+            seed={item.id ?? name}
+            gender={item.gender}
+            size={avatarSize.sm}
+          />
+        }
+        body={
+          <View style={styles.texts}>
+            <AppText style={styles.name}>{name}</AppText>
+            {meta ? <AppText variant="caption">{meta}</AppText> : null}
           </View>
-        </Cluster>
-      </Pressable>
-    </Shell>
+        }
+        trailing={
+          <ChevronRight size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+        }
+      />
+    </Pressable>
   );
 });
 
-export function PatientRelativesScreen({
-  createOpen,
-  onCreateOpenChange: setCreateOpen,
-}: {
-  createOpen: boolean;
-  onCreateOpenChange: (open: boolean) => void;
-}) {
+export function PatientRelativesScreen() {
   const styles = useStyles(buildStyles);
+  const insets = useSafeAreaInsets();
   const fabClearance = useScreenFabScrollClearance();
   const router = useRouter();
   const { show: toast } = useToast();
   const qc = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+
   const relativesQ = useQuery({
     queryKey: ['patient-relatives'],
     queryFn: async () => {
@@ -114,6 +103,7 @@ export function PatientRelativesScreen({
   });
 
   const items = relativesQ.data ?? [];
+  const hasRelatives = items.length > 0;
 
   const createMut = useMutation({
     mutationFn: createPatientRelative,
@@ -125,35 +115,13 @@ export function PatientRelativesScreen({
     onError: (e) => handleApiError(e, toast, 'createRelative'),
   });
 
-  const removeMut = useMutation({
-    mutationFn: deletePatientRelative,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['patient-relatives'] });
-      toast('Proche supprimé', { type: 'success' });
-    },
-    onError: (e) => handleApiError(e, toast, 'deleteRelative'),
-  });
-
-  const onDelete = useCallback(
-    (r: PatientRelative) => {
-      Alert.alert('Supprimer', `Supprimer ${displayName(r)} de vos proches ?`, [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Supprimer', style: 'destructive', onPress: () => removeMut.mutate(r.id) },
-      ]);
-    },
-    [removeMut],
-  );
+  const openCreate = useCallback(() => setCreateOpen(true), []);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: PatientRelative; index: number }) => (
-      <RelativeCard
-        item={item}
-        index={index}
-        onPress={() => router.push(`/(patient)/relatives/${item.id}` as never)}
-        onLongPress={() => onDelete(item)}
-      />
+    ({ item }: { item: PatientRelative }) => (
+      <RelativeRow item={item} onPress={() => router.push({ pathname: '/(patient)/relatives/[id]', params: { id: item.id } })} />
     ),
-    [onDelete, router],
+    [router],
   );
 
   return (
@@ -164,26 +132,27 @@ export function PatientRelativesScreen({
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        scrollPaddingOptions={{ extraBottom: fabClearance }}
-        skeletonHeight={80}
+        extraBottom={hasRelatives ? fabClearance + insets.bottom : 0}
+        skeletonHeight={72}
         skeletonCount={2}
-        ListHeaderComponent={
-          <AppText style={styles.subtitle}>
-            Touchez une fiche pour la modifier. Appui long pour la retirer.
-          </AppText>
-        }
-        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <EmptyState
-            title="Aucun proche pour le moment"
+            title="Aucun proche"
             description="Ajoutez un proche pour réserver à sa place."
-            imageSource={EMPTY_PROCHE_IMAGE}
-            imageWidth={EMPTY_PROCHE_IMAGE_WIDTH}
-            imageHeight={EMPTY_PROCHE_IMAGE_HEIGHT}
+            illustration="relatives"
+            actionLabel="Ajouter un proche"
+            onAction={openCreate}
           />
         }
       />
+
+      {hasRelatives ? (
+        <View style={[styles.fabZone, { bottom: insets.bottom }]} pointerEvents="box-none">
+          <ScreenFab onPress={openCreate} accessibilityLabel="Ajouter un proche" />
+        </View>
+      ) : null}
 
       <PatientRelativeFormSheet
         visible={createOpen}
@@ -195,66 +164,27 @@ export function PatientRelativesScreen({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  subtitle: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textTertiary,
-    marginBottom: spacing[2],
-  },
-  skeletons: {
-    paddingHorizontal: spacing[4],
-    gap: spacing[2],
-  },
-  list: {
-    minWidth: 0,
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[4],
-    flexGrow: 1,
-  },
-  card: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[4],
-  },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.full,
-    backgroundColor: c.errorLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  info: { gap: spacing[1] },
-  name: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  relationPill: {
-    alignSelf: 'flex-start' as const,
-  },
-  relationText: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-  },
-  meta: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-  },
-  birth: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-};
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    list: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[4],
+      paddingBottom: spacing[4],
+      flexGrow: 1,
+    },
+    separator: { height: spacing[2] },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      overflow: 'hidden' as const,
+    },
+    cardPressed: { backgroundColor: c.surfaceAlt },
+    texts: { gap: spacing[0.5] },
+    name: { ...text.body, ...font.semiBold, color: c.textPrimary },
+    fabZone: { ...StyleSheet.absoluteFillObject },
+  };
 }
-

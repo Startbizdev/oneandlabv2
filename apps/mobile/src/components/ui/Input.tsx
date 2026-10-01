@@ -2,8 +2,9 @@ import { useAppColors } from '@/theme/use-app-colors';
 import React, { useCallback, useState } from 'react';
 import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { useSheetTextInputComponent } from './sheet-keyboard-context';
+import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { buildFieldStyles, FIELD_MIN_HEIGHT } from './field-styles';
+import { useSheetTextInputComponent, useSheetTextInputRef } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
 const NUMERIC_KEYBOARDS = new Set([
@@ -12,6 +13,9 @@ const NUMERIC_KEYBOARDS = new Set([
   'decimal-pad',
   'ascii-capable-number-pad',
 ]);
+
+/** Android affiche la fin d'une valeur longue pré-remplie : hors focus, on montre son début. */
+const START_SELECTION = { start: 0, end: 0 };
 
 /** Pavé numérique : « Valider » natif Android ; barre iOS française (InputAccessoryView). */
 function resolveReturnKeyType(
@@ -55,8 +59,10 @@ function InputComponent(
 ) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const field = useStyles(buildFieldStyles);
   const [isFocused, setIsFocused] = useState(false);
   const TextField = useSheetTextInputComponent();
+  const textFieldRef = useSheetTextInputRef(ref);
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
   const isMultiline = Boolean(multiline);
 
@@ -102,7 +108,7 @@ function InputComponent(
   };
 
   const textFieldProps = {
-    ref: ref as never,
+    ref: textFieldRef,
     onFocus: handleFocus,
     onBlur: handleBlur,
     keyboardType,
@@ -117,30 +123,37 @@ function InputComponent(
     selectionColor: c.primary,
     cursorColor: c.primary,
     multiline,
+    selection: Platform.OS === 'android' && !isMultiline && !isFocused ? START_SELECTION : undefined,
     ...props,
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={field.wrapper}>
       {label ? (
-        <AppText style={[styles.label, isFocused && styles.labelFocused]}>{label}</AppText>
+        <AppText style={[field.label, isFocused && field.labelFocused]}>{label}</AppText>
       ) : null}
 
       {isMultiline ? (
-        <View style={[styles.container, styles.containerMultiline, borderStyle]}>
+        <View style={[field.container, styles.containerMultiline, borderStyle]}>
           {leftIcon ? <View style={styles.iconLeftMultiline}>{leftIcon}</View> : null}
           <TextField {...textFieldProps} style={fieldStyle} />
           {rightIcon ? <View style={styles.iconRightMultiline}>{rightIcon}</View> : null}
         </View>
       ) : (
-        <Row style={[styles.container, borderStyle]}>
+        <Row style={[field.container, styles.containerSingle, borderStyle]}>
           {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
           <TextField {...textFieldProps} style={fieldStyle} />
           {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
         </Row>
       )}
 
-      {error ? <AppText style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</AppText> : hint ? <AppText style={styles.hint}>{hint}</AppText> : null}
+      {error ? (
+        <AppText style={field.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          {error}
+        </AppText>
+      ) : hint ? (
+        <AppText style={field.hint}>{hint}</AppText>
+      ) : null}
     </View>
   );
 }
@@ -149,75 +162,46 @@ export const Input = React.memo(React.forwardRef(InputComponent));
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  wrapper: {
-    gap: spacing[1],
-  },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    letterSpacing: 0.3,
-    color: c.textSecondary,
-    marginBottom: 2,
-  },
-  labelFocused: {
-    color: c.primary,
-  },
-  container: {
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    minHeight: 52,
-    overflow: 'hidden' as const,
-  },
-  containerMultiline: {
-    minHeight: 120,
-  },
-  input: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    minHeight: 52,
-  },
-  inputMultiline: {
-    minHeight: 120,
-    textAlignVertical: 'top' as const,
-    paddingTop: spacing[3],
-  },
-  inputWithLeftIcon: {
-    paddingLeft: spacing[2],
-  },
-  inputWithRightIcon: {
-    paddingRight: spacing[2],
-  },
-  iconLeft: {
-    paddingLeft: spacing[4],
-  },
-  iconLeftMultiline: {
-    paddingLeft: spacing[4],
-    paddingTop: spacing[3],
-  },
-  iconRight: {
-    paddingRight: spacing[4],
-  },
-  iconRightMultiline: {
-    paddingRight: spacing[4],
-    paddingTop: spacing[3],
-  },
-  error: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.error,
-    letterSpacing: 0.1,
-  },
-  hint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-};
+    containerSingle: {
+      minHeight: FIELD_MIN_HEIGHT,
+    },
+    containerMultiline: {
+      minHeight: 120,
+    },
+    input: {
+      minWidth: 0,
+      flex: 1,
+      ...font.regular,
+      fontSize: fontSize.base,
+      color: c.textPrimary,
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      minHeight: FIELD_MIN_HEIGHT,
+    },
+    inputMultiline: {
+      minHeight: 120,
+      textAlignVertical: 'top' as const,
+      paddingTop: spacing[3],
+    },
+    inputWithLeftIcon: {
+      paddingLeft: spacing[2],
+    },
+    inputWithRightIcon: {
+      paddingRight: spacing[2],
+    },
+    iconLeft: {
+      paddingLeft: spacing[4],
+    },
+    iconLeftMultiline: {
+      paddingLeft: spacing[4],
+      paddingTop: spacing[3],
+    },
+    iconRight: {
+      paddingRight: spacing[2],
+    },
+    iconRightMultiline: {
+      paddingRight: spacing[4],
+      paddingTop: spacing[3],
+    },
+  };
 }

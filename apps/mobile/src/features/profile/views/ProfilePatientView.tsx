@@ -1,10 +1,6 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Mail } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
@@ -14,6 +10,7 @@ import { AddressAutocomplete } from '@/features/address/components/AddressAutoco
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { GenderSelect } from '@/features/auth/components/GenderSelect';
 import { NirInput } from '@/features/profile/components/NirInput';
+import { ProfileEmailField } from '@/features/profile/components/ProfileEmailField';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
 import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
@@ -27,11 +24,8 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { patientUiEmailLine } from '@/utils/patient-email-display';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function ProfilePatientView() {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -141,44 +135,28 @@ export function ProfilePatientView() {
       saving={save.isPending}
       dirty={dirty}
       overlay={
-        <BottomSheet visible={photosOpen} onClose={() => setPhotosOpen(false)} title="Photo de profil">
+        <SheetModal visible={photosOpen} onClose={() => setPhotosOpen(false)} title="Photo de profil">
           <ProfilePhotosSheetContent
             profileImageUrl={profileUrl}
             showCover={false}
             saving={savePhotos.isPending}
             onChangeProfile={onChangeProfilePhoto}
           />
-        </BottomSheet>
+        </SheetModal>
       }
     >
       <ProfileHero
-        firstName={firstName}
-        lastName={lastName}
-        email={emailShown || undefined}
-        role="patient"
+        name={`${firstName} ${lastName}`}
+        seed={user?.id}
         gender={gender || q.data?.gender}
         profileImageUrl={profileUrl}
         onEditPhotos={() => setPhotosOpen(true)}
       />
 
-      <ProfileSection title="Informations personnelles" Icon={FileText}>
+      <ProfileSection title="Informations personnelles">
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
         <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-        {emailShown ? (
-          <View>
-            <AppText style={styles.fieldLabel}>Email</AppText>
-            <Cluster
-              gap={spacing[2]}
-              leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
-              style={styles.emailRow}
-            >
-              <AppText style={styles.emailText}>{emailShown}</AppText>
-            </Cluster>
-            <AppText style={styles.fieldHint}>
-              L'email ne peut pas être modifié depuis l'application.
-            </AppText>
-          </View>
-        ) : null}
+        {emailShown ? <ProfileEmailField email={emailShown} /> : null}
         <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <NirInput
           value={nir}
@@ -202,35 +180,4 @@ export function ProfilePatientView() {
       <ProfileSecurityLinkRow />
     </ProfileSubScreenLayout>
   );
-}
-
-function buildStyles({ colors: c, fontSize }: Theme) {
-  return {
-  fieldLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  fieldHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    marginTop: spacing[1],
-  },
-  emailRow: {
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[3],
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surfaceAlt,
-  },
-  emailText: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-};
 }

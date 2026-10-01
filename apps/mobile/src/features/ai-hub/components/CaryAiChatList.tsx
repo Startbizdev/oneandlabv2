@@ -11,7 +11,6 @@ export type CaryAiChatListProps = {
   messages: PatientAiChatMessage[];
   contentContainerStyle: StyleProp<ViewStyle>;
   renderMessage: (item: PatientAiChatMessage) => ReactElement;
-  listHeader?: ReactElement | null;
   listFooter?: ReactElement | null;
   extraData?: string;
   onContentSizeChange?: (width: number, height: number) => void;
@@ -24,7 +23,7 @@ function ListSeparator({ styles }: { styles: ReturnType<typeof buildStyles> }) {
 /** Liste chronologique Cary IA — FlashList + scroll bas (sans inversion). */
 export const CaryAiChatList = forwardRef<FlashListRef<PatientAiChatMessage>, CaryAiChatListProps>(
   function CaryAiChatList(
-    { messages, contentContainerStyle, renderMessage, listHeader, listFooter, extraData, onContentSizeChange },
+    { messages, contentContainerStyle, renderMessage, listFooter, extraData, onContentSizeChange },
     ref,
   ) {
     const c = useAppColors();
@@ -46,7 +45,6 @@ export const CaryAiChatList = forwardRef<FlashListRef<PatientAiChatMessage>, Car
         drawDistance={320}
         extraData={extraData}
         ItemSeparatorComponent={() => <ListSeparator styles={styles} />}
-        ListHeaderComponent={listHeader ?? undefined}
         ListFooterComponent={listFooter ?? undefined}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

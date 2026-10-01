@@ -13,8 +13,20 @@ import {
   formatPassageTimeLabel,
   resolvePassageRouteListLabels,
 } from '../utils/passage-display';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
+
+const CHECK_SIZE = spacing[9];
 
 type Props = {
   stop: NurseTourStop;
@@ -56,7 +68,6 @@ export function PassageSimpleListRow({
         style={[
           cardStyles.card,
           styles.cardInner,
-          absent && styles.cardAbsent,
           {
             backgroundColor: absent
               ? hexToRgba(c.textTertiary, 0.08)
@@ -111,12 +122,12 @@ export function PassageSimpleListRow({
                 ]}
               >
                 {absent ? (
-                  <UserX size={iconSize.smMd} color={c.textTertiary} strokeWidth={2.3} />
+                  <UserX size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                 ) : (
                   <Check
-                    size={iconSize.mdSm}
+                    size={iconSize.md}
                     color={done ? c.textInverse : c.textTertiary}
-                    strokeWidth={2.5}
+                    strokeWidth={ICON_STROKE_WIDTH}
                     opacity={done ? 1 : 0.38}
                   />
                 )}
@@ -132,10 +143,7 @@ export function PassageSimpleListRow({
             accessibilityLabel={`Ouvrir le passage de ${stop.patient_name}`}
           >
             <Row gap={spacing[1.5]} align="center" wrap style={styles.nameRow}>
-              <AppText
-                style={[styles.name, styles.nameFlex, { color: done ? c.textSecondary : c.textPrimary }]}
-                numberOfLines={1}
-              >
+              <AppText style={[styles.name, styles.nameFlex, { color: done ? c.textSecondary : c.textPrimary }]}>
                 {stop.patient_name}
               </AppText>
               {isNext && !done && !absent ? (
@@ -149,7 +157,7 @@ export function PassageSimpleListRow({
             {scheduleMeta ? (
               <Row gap={spacing[2]} align="center" style={styles.metaRow}>
                 <View style={styles.metaIconWrap}>
-                  <Clock size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                  <Clock size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                 </View>
                 <AppText style={[styles.meta, { color: c.textTertiary }]}>{scheduleMeta}</AppText>
               </Row>
@@ -158,13 +166,13 @@ export function PassageSimpleListRow({
               <Row gap={spacing[2.5]} align="center" wrap style={styles.metaRow}>
                 {kmLabel ? (
                   <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
-                    <Route size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                    <Route size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                     <AppText style={[styles.metaInline, { color: c.textTertiary }]}>{kmLabel}</AppText>
                   </Row>
                 ) : null}
                 {driveMinLabel ? (
                   <Row gap={spacing[1]} align="center" style={styles.routeSegment}>
-                    <Car size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                    <Car size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
                     <AppText style={[styles.metaInline, { color: c.textTertiary }]}>{driveMinLabel}</AppText>
                   </Row>
                 ) : null}
@@ -181,7 +189,11 @@ export function PassageSimpleListRow({
               style={[styles.reorderBtn, index === 0 && styles.reorderDisabled]}
               accessibilityLabel="Monter"
             >
-              <ChevronUp size={iconSize.md} color={index === 0 ? c.textTertiary : c.textSecondary} />
+              <ChevronUp
+                size={iconSize.md}
+                color={index === 0 ? c.textTertiary : c.textSecondary}
+                strokeWidth={ICON_STROKE_WIDTH}
+              />
             </Pressable>
             <Pressable
               onPress={onMoveDown}
@@ -192,6 +204,7 @@ export function PassageSimpleListRow({
               <ChevronDown
                 size={iconSize.md}
                 color={index >= total - 1 ? c.textTertiary : c.textSecondary}
+                strokeWidth={ICON_STROKE_WIDTH}
               />
             </Pressable>
           </Row>
@@ -207,7 +220,6 @@ function buildStyles({ fontSize }: Theme) {
       paddingVertical: spacing[3],
       paddingHorizontal: spacing[3.5],
     },
-    cardAbsent: {},
     nameCol: { flex: 1, minWidth: 0, gap: spacing[0.5] },
     nameRow: { minWidth: 0, alignSelf: 'stretch' as const },
     nameFlex: { flexShrink: 1, minWidth: 0 },
@@ -235,7 +247,7 @@ function buildStyles({ fontSize }: Theme) {
       alignSelf: 'stretch' as const,
     },
     metaIconWrap: {
-      width: 18,
+      width: iconSize['2xs'],
       alignItems: 'center' as const,
       flexShrink: 0,
     },
@@ -245,15 +257,20 @@ function buildStyles({ fontSize }: Theme) {
       justifyContent: 'center' as const,
     },
     checkOuter: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: CHECK_SIZE,
+      height: CHECK_SIZE,
+      borderRadius: radius.full,
       borderWidth: StyleSheet.hairlineWidth * 2,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
     reorderRow: { marginTop: spacing[2], paddingTop: spacing[1] },
-    reorderBtn: { padding: spacing[1] },
+    reorderBtn: {
+      minWidth: MIN_TOUCH_TARGET,
+      minHeight: MIN_TOUCH_TARGET,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
     reorderDisabled: { opacity: 0.35 },
   };
 }

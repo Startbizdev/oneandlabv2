@@ -19,6 +19,9 @@ import { selectOnboardingSlides } from '../constants/onboarding-slides';
 import { radius, spacing, useLayoutMetrics, carouselHeight as computeCarouselHeight, AppText, useStyles, font, type Theme } from '@/theme';
 
 const PATIENT_BOOKING_HREF: Href = '/(patient)/(tabs)/book';
+const ILLUSTRATION_MAX_HEIGHT = 320;
+/** Part de la page laissée à l'illustration : le titre et l'aide restent visibles en grande police. */
+const ILLUSTRATION_HEIGHT_RATIO = 0.42;
 
 export function TutorialCarouselScreen() {
   const styles = useStyles(buildStyles);
@@ -34,6 +37,9 @@ export function TutorialCarouselScreen() {
   const [index, setIndex] = useState(0);
   const [slideHeight, setSlideHeight] = useState(() => computeCarouselHeight(layout.usableHeight));
   const [pushTarget, setPushTarget] = useState<Href | null>(null);
+  /** `FlatList` ne re-rend ses pages que si `extraData` change : hauteur mesurée et page active. */
+  const listExtraData = useMemo(() => ({ slideHeight, index }), [slideHeight, index]);
+  const illustrationHeight = Math.min(ILLUSTRATION_MAX_HEIGHT, Math.round(slideHeight * ILLUSTRATION_HEIGHT_RATIO));
 
   const isReplay = replay === '1' || replay === 'true';
   const isPatient = role === 'patient';
@@ -129,7 +135,7 @@ export function TutorialCarouselScreen() {
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Row align="center" justify="between" style={styles.topBar}>
-          <AppText numberOfLines={2} style={styles.kicker}>{kicker}</AppText>
+          <AppText style={styles.kicker}>{kicker}</AppText>
           <Button title="Passer" variant="ghost" onPress={() => void finish(home)} />
         </Row>
 
@@ -145,6 +151,7 @@ export function TutorialCarouselScreen() {
             ref={listRef}
             initialScrollIndex={index}
             data={slides}
+            extraData={listExtraData}
             keyExtractor={(item) => item.id}
             horizontal
             pagingEnabled
@@ -161,8 +168,8 @@ export function TutorialCarouselScreen() {
                 importantForAccessibility={slideIndex === index ? 'auto' : 'no-hide-descendants'}
               >
                 <View style={[styles.slideCenter, { maxWidth: layout.contentMaxWidth }]}>
-                  <View style={styles.illustration} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                    <TutorialIllustration illustration={item.illustration} />
+                  <View style={[styles.illustration, { height: illustrationHeight }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <TutorialIllustration illustration={item.illustration} role={config.role} />
                   </View>
                   <View style={styles.copy}>
                     <AppText accessibilityRole="header" style={styles.title}>{item.title}</AppText>
@@ -203,7 +210,7 @@ export function TutorialCarouselScreen() {
                   <Button title="Précédent" variant="ghost" fullWidth onPress={goPrev} />
                 </View>
                 <View style={styles.actionFlex}>
-                  <Button title="Aller à l’accueil" variant="ghost" fullWidth onPress={() => void finish(home)} />
+                  <Button title="Plus tard" variant="ghost" fullWidth onPress={() => void finish(home)} />
                 </View>
               </Row>
             </View>
@@ -211,7 +218,7 @@ export function TutorialCarouselScreen() {
             <Row gap={spacing[3]} style={styles.actions}>
               {index > 0 ? (
                 <View style={styles.actionFlex}>
-                  <Button title="Précédent" variant="outline" fullWidth onPress={goPrev} />
+                  <Button title="Précédent" variant="ghost" size="lg" fullWidth onPress={goPrev} />
                 </View>
               ) : null}
               <View style={styles.actionFlex}>

@@ -4,8 +4,9 @@ import type { UserRole } from '@oneandlab/shared-types';
 import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { PatientAiHeaderMenuButton } from '@/features/ai-hub/components/PatientAiHeaderMenuButton';
 import { CaryAiHubScreen } from '@/features/ai-hub/screens/CaryAiHubScreen';
-import { HeaderTitleText } from '@/navigation/HeaderTitle';
-import { StackGlassBackButton } from '@/navigation/StackGlassBackButton';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+
+const TITLE = 'Assistant Cary';
 
 type Props = {
   role: UserRole | string;
@@ -40,22 +41,26 @@ export function RoleAiHubRouteScreen({ role, showBackButton = false }: Props) {
     ],
   );
 
+  const menu = <PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />;
+  const hub = (
+    <CaryAiHubScreen
+      role={role}
+      historyOpen={historyOpen}
+      onHistoryOpenChange={setHistoryOpen}
+      init={init}
+    />
+  );
+
+  if (showBackButton) {
+    return (
+      <StackChromeScreen title={TITLE} headerRight={menu}>
+        {hub}
+      </StackChromeScreen>
+    );
+  }
   return (
-    <TabScreenFrame
-      title={<HeaderTitleText title="Assistant Cary" />}
-      headerLeft={showBackButton ? <StackGlassBackButton /> : undefined}
-      headerRight={<PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />}
-      headerVisual={showBackButton ? 'large' : undefined}
-      shellStyle={{
-    minWidth: 0, flex: 1 }}
-    >
-      <CaryAiHubScreen
-        role={role}
-        historyOpen={historyOpen}
-        onHistoryOpenChange={setHistoryOpen}
-        init={init}
-        includeTabBarInset={!showBackButton}
-      />
+    <TabScreenFrame title={TITLE} headerRight={menu}>
+      {hub}
     </TabScreenFrame>
   );
 }

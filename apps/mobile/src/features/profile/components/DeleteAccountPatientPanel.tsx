@@ -88,7 +88,7 @@ export function DeleteAccountPatientPanel() {
     <View style={styles.stack}>
       <DeleteAccountInfoCard title="Ce qui sera supprimé" items={DELETED_ITEMS} />
       <DeleteAccountInfoCard title="Ce qui est conservé" items={KEPT_ITEMS} />
-      <DeleteAccountInfoCard title="Suppression impossible en cas de :" items={BLOCKERS} tone="warning" />
+      <DeleteAccountInfoCard title="Suppression impossible en cas de" items={BLOCKERS} />
 
       <AppText style={styles.irreversible}>
         Cette action est définitive : votre compte ne pourra pas être récupéré.
@@ -115,14 +115,14 @@ export function DeleteAccountPatientPanel() {
             <Button
               title="Voir mes rendez-vous"
               variant="outline"
-              size="sm"
+              size="md"
               onPress={() => router.push('/(patient)/(tabs)/appointments')}
             />
             <Button
               title="Contacter le support"
               variant="ghost"
-              size="sm"
-              onPress={() => router.push('/profile/support' as never)}
+              size="md"
+              onPress={() => router.push('/profile/support')}
             />
           </View>
         </View>

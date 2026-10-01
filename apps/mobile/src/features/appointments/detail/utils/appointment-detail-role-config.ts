@@ -83,10 +83,3 @@ export function getAppointmentDetailRoleConfig(role: string): AppointmentDetailR
   if (role in CONFIG) return CONFIG[role as AppointmentDetailRole];
   return CONFIG.patient;
 }
-
-export function reschedulePathForRole(role: string, id: string): string | null {
-  if (role === 'nurse') return `/(nurse)/appointment/${id}/edit`;
-  if (role === 'pro') return `/(pro)/appointment/${id}/edit`;
-  if (role === 'preleveur') return `/(preleveur)/appointment/${id}/edit`;
-  return null;
-}

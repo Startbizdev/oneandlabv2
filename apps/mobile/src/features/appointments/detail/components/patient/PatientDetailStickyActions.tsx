@@ -30,7 +30,7 @@ export function PatientDetailStickyActions({ onOpenMessages, onEditSchedule }: P
             accessibilityLabel="Ouvrir la messagerie avec votre soignant"
             leftIcon={
               <MessageCircle
-                size={iconSize.mdSm}
+                size={iconSize.md}
                 color={onEditSchedule ? c.textLink : c.onPrimary}
                 strokeWidth={2.25}
               />
@@ -45,7 +45,7 @@ export function PatientDetailStickyActions({ onOpenMessages, onEditSchedule }: P
             fullWidth
             onPress={onEditSchedule}
             accessibilityLabel="Modifier la date et le créneau du rendez-vous"
-            leftIcon={<CalendarClock size={iconSize.mdSm} color={c.onPrimary} strokeWidth={2.25} />}
+            leftIcon={<CalendarClock size={iconSize.md} color={c.onPrimary} strokeWidth={2.25} />}
           />
         </View>
       ) : null}

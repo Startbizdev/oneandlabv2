@@ -113,8 +113,8 @@ export function useProfileAddressSync({
           qc.setQueryData(queryKeys.profile.user(profileId), res.data);
           await applyFromRaw((res.data as { address?: unknown }).address, profileId);
         }
-      } catch {
-        /* silencieux */
+      } catch (e) {
+        console.warn('[booking] profile address hydration failed', profileId, e);
       }
     },
     [applyFromRaw, qc],
@@ -135,8 +135,8 @@ export function useProfileAddressSync({
           await updatePatient(profileId, { address: body });
           void qc.invalidateQueries({ queryKey: queryKeys.patients.list() });
         }
-      } catch {
-        /* silencieux — le RDV garde la valeur locale */
+      } catch (e) {
+        console.warn('[booking] profile address not persisted, booking keeps local value', profileId, e);
       }
     },
     [getProfileId, isPatientSelf, fetchMe, qc],

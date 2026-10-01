@@ -3,9 +3,10 @@ import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
 import dayjs from 'dayjs';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { buildFieldStyles } from '@/components/ui/field-styles';
 
 interface Props {
   label?: string;
@@ -86,7 +87,7 @@ export function PrescriptionDatePicker({
         />
       ) : null}
 
-      <BottomSheet
+      <SheetModal
         visible={iosOpen}
         onClose={() => setIosOpen(false)}
         title={label}
@@ -105,24 +106,21 @@ export function PrescriptionDatePicker({
           }}
           style={styles.iosPicker}
         />
-      </BottomSheet>
+      </SheetModal>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles(theme: Theme) {
+  const { colors: c, fontSize } = theme;
+  const fieldStyles = buildFieldStyles(theme);
   return {
     wrap: { gap: spacing[1] },
-    label: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      marginBottom: spacing[0.5],
-    },
+    label: fieldStyles.label,
     field: {
       borderWidth: 1,
-      borderColor: c.borderLight,
-      borderRadius: 12,
+      borderColor: c.border,
+      borderRadius: radius.md,
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[3],
       backgroundColor: c.surface,

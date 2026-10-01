@@ -5,7 +5,7 @@ import {
   Star,
   type LucideIcon,
 } from 'lucide-react-native';
-import { DetailTabBar } from '@/components/ui/DetailTabBar';
+import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 
 const SEGMENT_ICONS: Record<string, LucideIcon> = {
   infos: ClipboardList,
@@ -26,12 +26,10 @@ interface Props {
   segments: DetailSegment[];
   active: string;
   onChange: (id: string) => void;
-  /** Onglets plus compacts (ex. prise en charge passage — 3 labels courts). */
-  compact?: boolean;
 }
 
-/** Onglets fiche RDV — délègue à `DetailTabBar` (pleine largeur, tokens design system). */
-export function DetailSegmentBar({ segments, active, onChange, compact }: Props) {
+/** Onglets fiche RDV : icône par défaut selon l'identifiant de section. */
+export function DetailSegmentBar({ segments, active, onChange }: Props) {
   const tabs = segments.map((s) => ({
     id: s.id,
     label: s.label,
@@ -40,11 +38,10 @@ export function DetailSegmentBar({ segments, active, onChange, compact }: Props)
   }));
 
   return (
-    <DetailTabBar
-      tabs={tabs}
+    <FullWidthSegmentBar
+      segments={tabs}
       value={active}
       onChange={onChange}
-      compact={compact}
       accessibilityLabel="Sections du rendez-vous"
     />
   );

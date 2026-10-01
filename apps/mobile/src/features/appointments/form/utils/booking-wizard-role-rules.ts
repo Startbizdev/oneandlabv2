@@ -14,8 +14,3 @@ export function isBloodTestOnlyBookingRole(role: string): boolean {
 export function skipsLabPreferenceStepForBookingRole(role: string): boolean {
   return role === 'preleveur';
 }
-
-/** Liste des RDV après création : l'onglet d'accueil préleveur est la liste (pas de route `/appointments`). */
-export function bookingAppointmentsListPath(basePath: string, role: string): string {
-  return role === 'preleveur' ? basePath : `${basePath}/appointments`;
-}

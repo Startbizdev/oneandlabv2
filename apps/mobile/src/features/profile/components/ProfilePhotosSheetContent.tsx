@@ -7,7 +7,7 @@ import { Camera, ImagePlus, Trash2, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -94,7 +94,7 @@ export function ProfilePhotosSheetContent({
                 <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <User size={iconSize.xl} color={c.primary} strokeWidth={1.75} />
+                  <User size={iconSize.xl} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                 </View>
               )}
             </View>
@@ -102,7 +102,7 @@ export function ProfilePhotosSheetContent({
               {picking === 'profile' ? (
                 <ActivityIndicator color={c.textInverse} size="small" />
               ) : (
-                <Camera size={iconSize.xs} color={c.textInverse} strokeWidth={2.5} />
+                <Camera size={iconSize.xs} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
               )}
             </View>
           </Pressable>
@@ -162,7 +162,7 @@ function PhotoActions({
           loading={loading}
           disabled={disabled}
           onPress={onPick}
-          leftIcon={<ImagePlus size={iconSize.mdSm} color={c.textInverse} strokeWidth={2.25} />}
+          leftIcon={<ImagePlus size={iconSize.md} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />}
         />
         {hasImage ? (
           <Button
@@ -172,7 +172,7 @@ function PhotoActions({
             size="md"
             disabled={disabled || loading}
             onPress={onRemove}
-            leftIcon={<Trash2 size={iconSize.sm} color={c.error} strokeWidth={2} />}
+            leftIcon={<Trash2 size={iconSize.sm} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />}
             style={styles.removeOutline}
           />
         ) : null}

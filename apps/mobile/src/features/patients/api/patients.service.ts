@@ -1,3 +1,4 @@
+import { buildPatientAdoptBody, type PatientLookupContact } from '@oneandlab/shared-api';
 import { api } from '@/api/client';
 import type { PatientRow } from './fetch-all-patients';
 
@@ -9,9 +10,9 @@ export async function createPatient(body: Record<string, unknown>) {
   return api.post<PatientRow>('/patients', body);
 }
 
-/** POST /patients/adopt — lien PPA après « Utiliser ce dossier ». */
-export async function adoptStaffPatient(patientId: string) {
-  return api.post<{ patient_id: string }>('/patients/adopt', { patient_id: patientId });
+/** POST /patients/adopt — lien PPA après « Utiliser ce dossier » : contact recherché + consentement du patient. */
+export async function adoptStaffPatient(patientId: string, contact: PatientLookupContact, consent: boolean) {
+  return api.post<{ patient_id: string }>('/patients/adopt', buildPatientAdoptBody(patientId, contact, consent));
 }
 
 /** Mise à jour fiche patient staff — route PUT /users/:id (pas /patients/:id). */

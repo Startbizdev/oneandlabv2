@@ -34,10 +34,6 @@ export function buildRdvListCardTypography({ colors: c, fontSize }: Theme) {
       lineHeight: lh(meta),
       color: c.textPrimary,
     },
-    careEmoji: {
-      fontSize: meta,
-      lineHeight: lh(meta),
-    },
     meta: {
       ...font.regular,
       fontSize: meta,

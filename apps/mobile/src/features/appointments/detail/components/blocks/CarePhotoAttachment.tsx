@@ -150,7 +150,7 @@ function CarePhotoPdfCard({
           </View>
         ) : failed ? (
           <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-            <ImageOff size={iconSize.mdLg} color={c.textTertiary} strokeWidth={1.75} />
+            <ImageOff size={iconSize.lg} color={c.textTertiary} strokeWidth={1.75} />
             <AppText style={styles.failText}>Document indisponible</AppText>
             <Row gap={4} align="center" style={styles.retryRow}>
               <RefreshCw size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />
@@ -160,7 +160,7 @@ function CarePhotoPdfCard({
         ) : (
           <View style={styles.pdfBody}>
             <View style={styles.pdfIconBox}>
-              <FileText size={iconSize['2xl']} color={c.primary} strokeWidth={1.75} />
+              <FileText size={iconSize.xl} color={c.primary} strokeWidth={1.75} />
             </View>
             <AppText style={styles.pdfName} numberOfLines={2}>
               {label}

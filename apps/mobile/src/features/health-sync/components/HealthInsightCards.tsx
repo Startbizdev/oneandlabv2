@@ -1,32 +1,33 @@
 import type { AppColors } from '@/theme/colors';
-import { useAppColors } from '@/theme/use-app-colors';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Lightbulb, TrendingDown, TrendingUp } from 'lucide-react-native';
-import { Stack } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { hexToRgba } from '@/theme/color-utils';
-import { layoutRowCenter } from '@/theme/layout-styles';
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  font,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 import type { HealthInsight } from '../utils/health-metric-stats';
 
 interface Props {
   insights: HealthInsight[];
 }
 
-function toneColors(tone: HealthInsight['tone'], c: AppColors) {
-  switch (tone) {
-    case 'positive':
-      return { bg: hexToRgba(c.success, 0.1), border: hexToRgba(c.success, 0.25), accent: c.success };
-    case 'attention':
-      return { bg: hexToRgba(c.warning, 0.12), border: hexToRgba(c.warning, 0.3), accent: c.warning };
-    default:
-      return { bg: c.surfaceAlt, border: c.borderLight, accent: c.primary };
-  }
+function toneColor(tone: HealthInsight['tone'], c: AppColors): string {
+  if (tone === 'positive') return c.success;
+  if (tone === 'attention') return c.warning;
+  return c.textSecondary;
 }
 
 function ToneIcon({ tone, color }: { tone: HealthInsight['tone']; color: string }) {
-  if (tone === 'positive') return <TrendingUp size={iconSize.sm} color={color} strokeWidth={2.25} />;
-  if (tone === 'attention') return <TrendingDown size={iconSize.sm} color={color} strokeWidth={2.25} />;
-  return <Lightbulb size={iconSize.sm} color={color} strokeWidth={2.25} />;
+  if (tone === 'positive') return <TrendingUp size={iconSize.md} color={color} strokeWidth={ICON_STROKE_WIDTH} />;
+  if (tone === 'attention') return <TrendingDown size={iconSize.md} color={color} strokeWidth={ICON_STROKE_WIDTH} />;
+  return <Lightbulb size={iconSize.md} color={color} strokeWidth={ICON_STROKE_WIDTH} />;
 }
 
 export function HealthInsightCards({ insights }: Props) {
@@ -36,60 +37,38 @@ export function HealthInsightCards({ insights }: Props) {
   if (insights.length === 0) return null;
 
   return (
-    <Stack gap={spacing[2]}>
-      <AppText style={styles.sectionTitle}>Pour vous</AppText>
-      {insights.map((item) => {
-        const tone = toneColors(item.tone, c);
-        return (
-          <View
-            key={item.id}
-            style={[
-              styles.card,
-              { backgroundColor: tone.bg, borderColor: tone.border },
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <ToneIcon tone={item.tone} color={tone.accent} />
-              <AppText style={styles.cardTitle}>{item.title}</AppText>
-            </View>
-            <AppText style={styles.cardBody}>{item.body}</AppText>
+    <View style={styles.wrap}>
+      <AppText variant="caption" style={styles.sectionTitle} accessibilityRole="header">
+        Pour vous
+      </AppText>
+      {insights.map((item) => (
+        <View key={item.id} style={styles.card}>
+          <ToneIcon tone={item.tone} color={toneColor(item.tone, c)} />
+          <View style={styles.texts}>
+            <AppText style={styles.cardTitle}>{item.title}</AppText>
+            <AppText variant="secondary">{item.body}</AppText>
           </View>
-        );
-      })}
-    </Stack>
+        </View>
+      ))}
+    </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-    sectionTitle: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase' as const,
-    },
+    wrap: { gap: spacing[2] },
+    sectionTitle: { ...font.semiBold, color: c.textSecondary, paddingHorizontal: spacing[1] },
     card: {
+      flexDirection: 'row' as const,
+      alignItems: 'flex-start' as const,
+      gap: spacing[3],
+      padding: spacing[4],
       borderRadius: radius.lg,
-      borderWidth: 1,
-      padding: spacing[3.5],
-      gap: spacing[1.5],
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
     },
-    cardHeader: {
-      ...layoutRowCenter(spacing[2]),
-    },
-    cardTitle: {
-      minWidth: 0,
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      flex: 1,
-    },
-    cardBody: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.5,
-    },
+    texts: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+    cardTitle: { ...text.body, ...font.semiBold, color: c.textPrimary },
   };
 }

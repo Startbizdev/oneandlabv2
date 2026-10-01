@@ -8,6 +8,8 @@ import {
 } from '@/features/appointments/form/utils/availability';
 import { Button } from '@/components/ui/Button';
 import { SheetModal } from '@/components/ui/SheetModal';
+import { handleApiError } from '@/lib/errors/handle-api-error';
+import { useToast } from '@/providers/ToastProvider';
 import { normalizeRescheduleDate } from '@/features/appointments/reschedule/utils/normalize-reschedule-date';
 import type { NurseTourStop } from '../api/nurse-tour.service';
 import { buildTourReschedulePayload } from '../utils/build-tour-reschedule-payload';
@@ -20,6 +22,7 @@ type Props = {
 };
 
 export function TourStopRescheduleSheet({ stop, visible, onClose, onConfirm }: Props) {
+  const { show: toast } = useToast();
   const initial = useMemo(() => {
     if (!stop) return null;
     const parsed = parseAvailabilityField(stop.availability);
@@ -58,6 +61,8 @@ export function TourStopRescheduleSheet({ stop, visible, onClose, onConfirm }: P
     try {
       await onConfirm(payload);
       onClose();
+    } catch (error) {
+      handleApiError(error, toast, 'tour-reschedule', 'Déplacement impossible');
     } finally {
       setSaving(false);
     }
@@ -75,8 +80,9 @@ export function TourStopRescheduleSheet({ stop, visible, onClose, onConfirm }: P
       subtitle={`${stop.patient_name} · ${dateLabel}`}
       footer={
         <Button
-          title={saving ? 'Enregistrement…' : 'Enregistrer le créneau'}
+          title="Enregistrer le créneau"
           onPress={() => void submit()}
+          loading={saving}
           disabled={!valid || saving}
           fullWidth
           size="lg"

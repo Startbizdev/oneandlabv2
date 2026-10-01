@@ -1,6 +1,7 @@
-import React, { Component, type ReactNode } from 'react';
+import React, { Component, useEffect, type ReactNode } from 'react';
 import { View } from 'react-native';
-import { AppText, font, useStyles, type Theme } from '@/theme';
+import * as SplashScreen from 'expo-splash-screen';
+import { AppText, font, spacing, useStyles, type Theme } from '@/theme';
 import { Button } from './ui/Button';
 
 interface Props {
@@ -13,6 +14,10 @@ interface State {
 
 function ErrorFallback({ onRetry }: { onRetry: () => void }) {
   const styles = useStyles(buildStyles);
+  // Le splash n'est masqué qu'après lecture de la session : une erreur avant ce moment le laisserait affiché.
+  useEffect(() => {
+    SplashScreen.hide();
+  }, []);
   return (
     <View style={styles.root}>
       <AppText style={styles.title}>Une erreur est survenue</AppText>
@@ -41,13 +46,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-function buildStyles({ colors: c, fontSize, space }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     root: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: space.xl,
+      padding: spacing[6],
       backgroundColor: c.background,
     },
     title: {
@@ -57,13 +62,13 @@ function buildStyles({ colors: c, fontSize, space }: Theme) {
       textAlign: 'center',
     },
     body: {
-      marginTop: space.sm,
+      marginTop: spacing[2],
       fontSize: fontSize.sm,
       color: c.textSecondary,
       textAlign: 'center',
     },
     action: {
-      marginTop: space.xl,
+      marginTop: spacing[6],
       width: '100%',
       maxWidth: 320,
     },

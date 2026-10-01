@@ -1,19 +1,20 @@
 import { Fragment, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { CalendarPlus } from 'lucide-react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Users } from 'lucide-react-native';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
-import { TabSceneScrollView } from '@/components/navigation/TabSceneScrollView';
+import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { SkeletonPatientList } from '@/components/ui/skeletons';
-import { Button } from '@/components/ui/Button';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
+import { SettingsRow } from '@/components/ui/SettingsRow';
 import { queryKeys } from '@/lib/query-keys';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { bookingNewHref } from '@/navigation/role-hrefs';
 import { fetchAllPatients } from '../api/fetch-all-patients';
 import { CreatePatientModal } from '../components/CreatePatientModal';
 import {
@@ -21,7 +22,8 @@ import {
   patientListSubtitle,
   patientPickerOptionFromRow,
 } from '../utils/patient-contact-display';
-import { iconSize, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, iconSize, radius, spacing, AppText, useStyles, type Theme } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
 
 interface Props {
   createOpen: boolean;
@@ -31,10 +33,12 @@ interface Props {
 /** Patients du préleveur : créés par lui ou assignés par son laboratoire (scope API `/patients`). */
 export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: setCreateOpen }: Props) {
   const styles = useStyles(buildStyles);
+  const c = useAppColors();
   const fabClearance = useScreenFabScrollClearance();
   const router = useRouter();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const hasQuery = search.trim().length > 0;
 
   const patientsQ = useQuery({
     queryKey: queryKeys.patients.list(),
@@ -50,18 +54,17 @@ export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: se
   }, [patientsQ.data, search]);
 
   const openBooking = (patientId: string) => {
-    router.push(`/(preleveur)/appointments/new?patient_id=${patientId}` as never);
+    router.push(bookingNewHref('/(preleveur)', { patient_id: patientId }));
   };
 
-  const headerLabel = search.trim()
+  const countLabel = hasQuery
     ? `${rows.length} résultat${rows.length > 1 ? 's' : ''}`
     : `${rows.length} patient${rows.length > 1 ? 's' : ''}`;
 
   return (
     <View style={styles.screen}>
-      <TabSceneScrollView
-        contentContainerStyle={styles.listContent}
-        scrollPaddingOptions={{ extraBottom: fabClearance }}
+      <SceneScrollView
+        contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
         refreshing={refreshing}
         onRefresh={onRefresh}
       >
@@ -69,62 +72,70 @@ export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: se
           embedded
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Nom, téléphone, email…"
+          searchPlaceholder="Nom, téléphone, e-mail…"
         />
 
         {patientsQ.isLoading ? (
           <SkeletonPatientList count={8} />
-        ) : patientsQ.isError ? (
+        ) : patientsQ.isError && !patientsQ.data ? (
           <View style={styles.emptyWrap}>
-            <EmptyState
-              Icon={Users}
-              title="Liste indisponible"
-              description={
-                patientsQ.error instanceof Error ? patientsQ.error.message : 'Impossible de charger vos patients.'
-              }
+            <ErrorState
+              title="Patients indisponibles"
+              error={patientsQ.error}
+              onRetry={() => void patientsQ.refetch()}
             />
-            <Button title="Réessayer" variant="outline" onPress={() => void patientsQ.refetch()} />
           </View>
         ) : rows.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <EmptyState
-              Icon={Users}
-              title={search.trim() ? 'Aucun résultat' : 'Aucun patient pour le moment'}
-              description={
-                search.trim()
-                  ? 'Essayez un autre nom ou numéro.'
-                  : 'Ajoutez un patient avec le bouton + ou demandez à votre laboratoire de vous en assigner.'
-              }
-            />
+            {hasQuery ? (
+              <EmptyState illustration="search" title="Aucun résultat" description="Essayez un autre nom ou numéro." />
+            ) : (
+              <EmptyState
+                illustration="patients"
+                title="Aucun patient"
+                description="Ajoutez un patient ou demandez à votre laboratoire de vous en assigner."
+                actionLabel="Ajouter un patient"
+                onAction={() => setCreateOpen(true)}
+              />
+            )}
           </View>
         ) : (
-          <View style={styles.listCard}>
-            <AppText style={styles.sectionKicker}>{headerLabel}</AppText>
-            {rows.map((p, index) => {
-              const age = p.birth_date ? ageFromBirthDate(p.birth_date) : null;
-              return (
-                <Fragment key={p.id}>
-                  {index > 0 ? <View style={styles.rowDivider} /> : null}
-                  <ProfileNavRow
-                    leading={
-                      <ProfileAvatar
-                        profileImageUrl={p.profile_image_url}
-                        seed={p.id}
-                        gender={p.gender}
-                        size={iconSize['4xl']}
-                      />
-                    }
-                    title={patientDisplayName(p)}
-                    titleSuffix={age != null ? ` · ${age} ans` : undefined}
-                    subtitle={patientListSubtitle(p) || 'Nouveau RDV prise de sang'}
-                    onPress={() => openBooking(p.id)}
-                  />
-                </Fragment>
-              );
-            })}
+          <View style={styles.listSection}>
+            <AppText variant="secondary" style={styles.count}>
+              {countLabel}
+            </AppText>
+            <View style={styles.listCard}>
+              {rows.map((p, index) => {
+                const age = p.birth_date ? ageFromBirthDate(p.birth_date) : null;
+                const subtitle = patientListSubtitle(p);
+                return (
+                  <Fragment key={p.id}>
+                    {index > 0 ? <View style={styles.rowDivider} /> : null}
+                    <SettingsRow
+                      leading={
+                        <ProfileAvatar
+                          profileImageUrl={p.profile_image_url}
+                          seed={p.id}
+                          gender={p.gender}
+                          size={iconSize['2xl']}
+                        />
+                      }
+                      label={patientDisplayName(p)}
+                      labelSuffix={age != null ? ` · ${age} ans` : undefined}
+                      description={subtitle || undefined}
+                      accessibilityHint="Créer un rendez-vous pour ce patient"
+                      trailing={
+                        <CalendarPlus size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
+                      }
+                      onPress={() => openBooking(p.id)}
+                    />
+                  </Fragment>
+                );
+              })}
+            </View>
           </View>
         )}
-      </TabSceneScrollView>
+      </SceneScrollView>
       <CreatePatientModal
         visible={createOpen}
         detectDuplicates={false}
@@ -138,7 +149,7 @@ export function PreleveurPatientsListScreen({ createOpen, onCreateOpenChange: se
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     screen: {
       minWidth: 0,
@@ -149,38 +160,32 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       minWidth: 0,
       paddingHorizontal: spacing[4],
       paddingTop: spacing[2],
-      paddingBottom: spacing[4],
       flexGrow: 1,
+    },
+    listSection: {
+      gap: spacing[2],
+    },
+    count: {
+      paddingHorizontal: spacing[1],
     },
     listCard: {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
+      borderRadius: radius.lg,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.cardBorder,
       overflow: 'hidden' as const,
     },
-    sectionKicker: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      letterSpacing: 0.6,
-      textTransform: 'uppercase' as const,
-      paddingHorizontal: spacing[4],
-      paddingTop: spacing[3.5],
-      paddingBottom: spacing[2],
-    },
     rowDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: c.borderLight,
-      marginLeft: spacing[4] + 40 + spacing[3],
+      marginLeft: spacing[4] + iconSize['2xl'] + spacing[3],
     },
     emptyWrap: {
       minWidth: 0,
       flexGrow: 1,
       justifyContent: 'center' as const,
-      gap: spacing[3],
       paddingVertical: spacing[6],
     },
   };

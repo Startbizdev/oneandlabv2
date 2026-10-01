@@ -1,12 +1,12 @@
 import { PrescriptionsScreen } from '@/features/prescriptions/screens/PrescriptionsScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function ProPrescriptions() {
   return (
-    <TitledTabScreenFrame
+    <TabScreenFrame
       title="Prescriptions"
     >
       <PrescriptionsScreen roleBase="pro" rolePrefix="/(pro)" />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

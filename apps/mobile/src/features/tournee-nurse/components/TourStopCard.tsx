@@ -8,7 +8,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useAppColors } from '@/theme/use-app-colors';
 import { lh } from '@/theme/typography';
 import { hexToRgba } from '@/theme/color-utils';
-import { radius, spacing, iconSize, AppText, useStyles, font, elevation, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, elevation, type Theme } from '@/theme';
 import type { NavAppPref } from '../api/nurse-tour.service';
 import { buildTourNavigationUrl, openTourNavigation } from '../utils/tour-navigation';
 
@@ -103,18 +103,18 @@ export function TourStopCard({
                 profileImageUrl={stop.profile_image_url}
                 seed={stop.patient_id ?? stop.patient_name}
                 gender={stop.patient_gender}
-                size={iconSize['4xl']}
+                size={iconSize['2xl']}
                 style={[styles.avatar, { borderColor: c.borderLight }]}
               />
             }
           >
             <Stack gap={spacing[1]} style={styles.headText}>
-              <AppText style={styles.name} numberOfLines={2}>
+              <AppText style={styles.name}>
                 {stop.patient_name}
               </AppText>
               {timeLabel ? (
                 <Row gap={spacing[1.5]} align="center">
-                  <Clock size={iconSize['2xs']} color={c.primaryDark} strokeWidth={2.5} />
+                  <Clock size={iconSize['2xs']} color={c.primaryDark} strokeWidth={ICON_STROKE_WIDTH} />
                   <AppText style={styles.time}>{timeLabel}</AppText>
                 </Row>
               ) : null}
@@ -125,14 +125,14 @@ export function TourStopCard({
           {stop.address_line ? (
             <Row gap={spacing[2]} align="start" style={styles.addressRow}>
               <View style={styles.metaIconWrap}>
-                <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={2.5} />
+                <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
               </View>
               <Stack gap={spacing[0.5]} style={styles.addressStack}>
-                <AppText style={styles.address} numberOfLines={2}>
+                <AppText style={styles.address}>
                   {stop.address_line}
                 </AppText>
                 {stop.address_complement ? (
-                  <AppText style={styles.complement} numberOfLines={2}>
+                  <AppText style={styles.complement}>
                     {stop.address_complement}
                   </AppText>
                 ) : null}
@@ -154,7 +154,7 @@ export function TourStopCard({
                 variant="secondary"
                 fullWidth
                 disabled={!canNavigate}
-                leftIcon={<Navigation size={iconSize.xs} color={c.textLink} strokeWidth={2.5} />}
+                leftIcon={<Navigation size={iconSize.xs} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />}
                 onPress={() => void openNav()}
                 accessibilityLabel={`Itinéraire vers ${stop.patient_name}`}
               />
@@ -165,7 +165,7 @@ export function TourStopCard({
                   title="Appeler"
                   variant="secondary"
                   fullWidth
-                  leftIcon={<Phone size={iconSize.xs} color={c.textLink} strokeWidth={2.5} />}
+                  leftIcon={<Phone size={iconSize.xs} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />}
                   onPress={call}
                   accessibilityLabel={`Appeler ${stop.patient_name}`}
                 />
@@ -178,7 +178,7 @@ export function TourStopCard({
               variant="primary"
               fullWidth
               loading={marking}
-              leftIcon={<Check size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />}
+              leftIcon={<Check size={iconSize.xs} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
               onPress={() => void markDone()}
               accessibilityLabel={`Marquer le passage de ${stop.patient_name} comme effectué`}
             />
@@ -214,8 +214,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...font.semiBold,
       fontSize: fontSize.xs,
       color: c.primaryDark,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase' as const,
     },
     avatar: { borderWidth: StyleSheet.hairlineWidth },
     headText: { flex: 1, minWidth: 0 },
@@ -235,8 +233,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     addressRow: { minWidth: 0 },
     metaIconWrap: {
-      width: 18,
-      paddingTop: 2,
+      width: iconSize.sm,
+      paddingTop: spacing[0.5],
       alignItems: 'center' as const,
       flexShrink: 0,
     },

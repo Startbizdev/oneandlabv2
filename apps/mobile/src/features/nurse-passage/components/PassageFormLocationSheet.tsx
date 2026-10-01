@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
@@ -13,7 +13,8 @@ import { useProfileAddressSync } from '@/features/appointments/form/hooks/usePro
 import { hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { passagePatientQueryKey } from '../hooks/use-passage-patient';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -43,6 +44,7 @@ export function PassageFormLocationSheet({
   const { show: toast } = useToast();
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
+  const userId = user?.id ?? null;
 
   const [draftAtHome, setDraftAtHome] = useState(atHome);
   const [patientAddress, setPatientAddress] = useState<AddressPayload | null>(null);
@@ -78,6 +80,18 @@ export function PassageFormLocationSheet({
     [patientAddressRaw],
   );
 
+  /** Dernières valeurs lues par l'effet d'ouverture sans le relancer : `fetchMe` régénère `user` et les callbacks de synchro. */
+  const openSyncRef = useRef({
+    patientAddressRaw,
+    applyPatientRaw: patientSync.applyFromRaw,
+    loadNurseAddress: nurseSync.loadProfileAddress,
+  });
+  openSyncRef.current = {
+    patientAddressRaw,
+    applyPatientRaw: patientSync.applyFromRaw,
+    loadNurseAddress: nurseSync.loadProfileAddress,
+  };
+
   const openedRef = useRef(false);
   const lastPatientKeyRef = useRef('');
   const nurseLoadedRef = useRef(false);
@@ -100,16 +114,14 @@ export function PassageFormLocationSheet({
     const patientChanged = lastPatientKeyRef.current !== patientAddressKey;
     if (justOpened || patientChanged) {
       lastPatientKeyRef.current = patientAddressKey;
-      void patientSync.applyFromRaw(patientAddressRaw);
+      void openSyncRef.current.applyPatientRaw(openSyncRef.current.patientAddressRaw);
     }
 
-    if (justOpened && user?.id && !nurseLoadedRef.current) {
+    if (justOpened && userId && !nurseLoadedRef.current) {
       nurseLoadedRef.current = true;
-      void nurseSync.loadProfileAddress(user.id);
+      void openSyncRef.current.loadNurseAddress(userId);
     }
-    // Ne pas dépendre de user.address : fetchMe le met à jour et relançait applyFromRaw en boucle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, atHome, patientAddressKey, patientId, user?.id]);
+  }, [visible, atHome, patientAddressKey, patientId, userId]);
 
   const handleValidate = () => {
     const activeAddress = draftAtHome ? patientAddress : nurseAddress;
@@ -123,18 +135,18 @@ export function PassageFormLocationSheet({
       return;
     }
     onConfirm(draftAtHome);
-    void qc.invalidateQueries({ queryKey: ['passage-patient', patientId] });
+    void qc.invalidateQueries({ queryKey: passagePatientQueryKey(patientId) });
     void fetchMe();
     onClose();
   };
 
   const handleClose = () => {
-    void qc.invalidateQueries({ queryKey: ['passage-patient', patientId] });
+    void qc.invalidateQueries({ queryKey: passagePatientQueryKey(patientId) });
     onClose();
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={handleClose}
       title="Lieu du passage"
@@ -161,7 +173,7 @@ export function PassageFormLocationSheet({
                   <AppText style={[styles.label, { color: c.textPrimary }]}>{opt.label}</AppText>
                   <AppText style={[styles.hint, { color: c.textSecondary }]}>{opt.hint}</AppText>
                 </View>
-                {selected ? <Check size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} /> : null}
+                {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
               </Pressable>
             );
           })}
@@ -195,7 +207,7 @@ export function PassageFormLocationSheet({
           )}
         </View>
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

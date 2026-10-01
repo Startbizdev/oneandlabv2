@@ -1,27 +1,10 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useRef, useState } from 'react';
-import { Image, Modal, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  Easing,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { Image, Modal, View } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { hexToRgba, palette, radius, spacing, AppText, useLayoutMetrics, responsiveValue, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useLayoutMetrics, responsiveValue, useStyles, type Theme } from '@/theme';
 
 const LOGO = require('../../../../../../assets/logo-cary.png');
-
-const STATUS_LINES = [
-  'Préparation du rendez-vous…',
-  'Confirmation de votre prise en charge…',
-  'Synchronisation de votre planning…',
-  'Finalisation en cours…',
-] as const;
 
 interface Props {
   visible: boolean;
@@ -31,16 +14,12 @@ interface Props {
 }
 
 export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: Props) {
-  const c = useAppColors();
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
-  const taglineMaxWidth = responsiveValue(layout, { compact: 280, default: 300, wide: 360 });
-  const progressMaxWidth = responsiveValue(layout, { compact: 280, default: 320, wide: layout.contentMaxWidth });
+  const progressMaxWidth = responsiveValue(layout, { compact: 280, default: 320, wide: 360 });
   const progress = useSharedValue(0);
-  const logoScale = useSharedValue(1);
   const onFinishRef = useRef(onFinish);
   const finishedRef = useRef(false);
-  const [statusIndex, setStatusIndex] = useState(0);
 
   useEffect(() => {
     onFinishRef.current = onFinish;
@@ -49,9 +28,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
   useEffect(() => {
     if (!visible) {
       progress.value = 0;
-      logoScale.value = 1;
       finishedRef.current = false;
-      setStatusIndex(0);
       return;
     }
 
@@ -61,24 +38,7 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
       duration: 4200,
       easing: Easing.out(Easing.cubic),
     });
-
-    logoScale.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false,
-    );
-  }, [visible, logoScale, progress]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const timer = setInterval(() => {
-      setStatusIndex((i) => (i + 1) % STATUS_LINES.length);
-    }, 1800);
-    return () => clearInterval(timer);
-  }, [visible]);
+  }, [visible, progress]);
 
   useEffect(() => {
     if (!visible || !complete) return;
@@ -108,139 +68,57 @@ export function OfferAcceptPreparationOverlay({ visible, complete, onFinish }: P
     width: `${Math.max(4, progress.value * 100)}%`,
   }));
 
-  const logoAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-  }));
-
   if (!visible) return null;
 
   return (
     <Modal visible animationType="fade" presentationStyle="fullScreen" statusBarTranslucent>
-      <View style={styles.root}>
-        <LinearGradient
-          colors={[c.primaryLight, c.background, c.surfaceSubtle]}
-          locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.glowTop} pointerEvents="none" />
-        <View style={styles.glowBottom} pointerEvents="none" />
-
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-          <View style={styles.content}>
-            <Animated.View style={[styles.logoWrap, logoAnimStyle]}>
-              <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="Cary" />
-            </Animated.View>
-
-            <AppText style={styles.title}>Préparation du rendez-vous</AppText>
-            <AppText style={styles.subtitle}>{STATUS_LINES[statusIndex]}</AppText>
-            <AppText style={[styles.tagline, { maxWidth: taglineMaxWidth }]}>Votre espace Cary se met à jour pour accueillir ce nouveau soin.</AppText>
-
-            <View style={[styles.progressBlock, { maxWidth: progressMaxWidth }]}>
-              <View style={styles.progressTrack}>
-                <Animated.View style={[styles.progressFillWrap, barFillStyle]}>
-                  <LinearGradient
-                    colors={[c.gradientStart, c.gradientEnd]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.progressFill}
-                  />
-                </Animated.View>
-              </View>
-            </View>
+      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+        <View style={styles.content} accessibilityRole="progressbar" accessibilityLabel="Confirmation du rendez-vous">
+          <Image source={LOGO} style={styles.logo} resizeMode="contain" accessibilityLabel="Cary" />
+          <AppText variant="title" style={styles.title}>
+            Confirmation du rendez-vous
+          </AppText>
+          <View style={[styles.progressTrack, { maxWidth: progressMaxWidth }]}>
+            <Animated.View style={[styles.progressFill, barFillStyle]} />
           </View>
-        </SafeAreaView>
-      </View>
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, scale }: Theme) {
   return {
-  root: {
-    minWidth: 0,
-    flex: 1,
-    backgroundColor: c.background,
-  },
-  glowTop: {
-    position: 'absolute' as const,
-    top: -80,
-    right: -40,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: hexToRgba(palette.cyan[600], 0.14),
-  },
-  glowBottom: {
-    position: 'absolute' as const,
-    bottom: -60,
-    left: -30,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: hexToRgba(palette.teal[600], 0.1),
-  },
-  safe: {
-    minWidth: 0,
-    flex: 1,
-  },
-  content: {
-    minWidth: 0,
-    flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingHorizontal: spacing[6],
-    gap: spacing[3],
-  },
-  logoWrap: {
-    marginBottom: spacing[2],
-  },
-  logo: {
-    width: 140,
-    height: 44,
-  },
-  title: {
-    ...font.heading,
-    fontSize: fontSize['2xl'],
-    color: c.textPrimary,
-    textAlign: 'center' as const,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.primaryDark,
-    textAlign: 'center' as const,
-  },
-  tagline: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    textAlign: 'center' as const,
-    lineHeight: fontSize.sm * 1.55,
-  },
-  progressBlock: {
-    width: '100%' as const,
-    marginTop: spacing[4],
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: c.surfaceAlt,
-    overflow: 'hidden' as const,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-  },
-  progressFillWrap: {
-    height: '100%' as const,
-    minWidth: 8,
-    borderRadius: radius.full,
-    overflow: 'hidden' as const,
-  },
-  progressFill: {
-    minWidth: 0,
-    flex: 1,
-    borderRadius: radius.full,
-  },
-};
+    root: {
+      flex: 1,
+      backgroundColor: c.background,
+    },
+    content: {
+      minWidth: 0,
+      flex: 1,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      paddingHorizontal: spacing[6],
+      gap: spacing[5],
+    },
+    logo: {
+      width: scale(140),
+      height: scale(44),
+    },
+    title: {
+      textAlign: 'center' as const,
+    },
+    progressTrack: {
+      width: '100%' as const,
+      height: spacing[1.5],
+      borderRadius: radius.full,
+      backgroundColor: c.surfaceAlt,
+      overflow: 'hidden' as const,
+    },
+    progressFill: {
+      height: '100%' as const,
+      borderRadius: radius.full,
+      backgroundColor: c.primary,
+    },
+  };
 }
-

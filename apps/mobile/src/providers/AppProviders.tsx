@@ -9,6 +9,7 @@ import { ToastProvider } from './ToastProvider';
 import { ThemeProvider } from '@/theme/ThemeProvider';
 import { ExpoRouterThemeProvider } from './ExpoRouterThemeProvider';
 import { SheetKeyboardAccessory } from '@/components/ui/sheet-keyboard-accessory';
+import { ActionSheetHost } from '@/components/ui/ActionSheet';
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -23,6 +24,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 <BottomSheetModalProvider>
                   <SheetKeyboardAccessory />
                   {children}
+                  <ActionSheetHost />
                 </BottomSheetModalProvider>
               </ToastProvider>
             </ExpoRouterThemeProvider>

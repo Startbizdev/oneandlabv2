@@ -1,8 +1,4 @@
 export const HEALTH_RECORD_EMPTY_LABEL = 'Non renseigné';
-export const HEALTH_RECORD_OPTIONAL_BADGE = 'Optionnel';
-/** @deprecated Utiliser HEALTH_RECORD_OPTIONAL_BADGE */
-export const HEALTH_RECORD_EMPTY_HINT = HEALTH_RECORD_OPTIONAL_BADGE;
-
 const ENUM_LABELS: Record<string, string> = {
   yes: 'Oui',
   no: 'Non',

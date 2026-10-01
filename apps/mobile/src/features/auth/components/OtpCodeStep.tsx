@@ -5,7 +5,7 @@ import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useResendCountdown } from '@/features/auth/hooks/use-resend-countdown';
-import { AppText, font, iconSize, spacing, useAppColors, useStyles, type Theme } from '@/theme';
+import { AppText, font, ICON_STROKE_WIDTH, iconSize, spacing, useAppColors, useStyles, type Theme } from '@/theme';
 
 const OTP_LENGTH = 6;
 
@@ -65,7 +65,7 @@ export const OtpCodeStep = forwardRef<TextInput, Props>(function OtpCodeStep(
         maxLength={OTP_LENGTH}
         onSubmitEditing={() => onSubmit(value)}
         placeholder="000000"
-        hint="Le code est valable 5 minutes. Pensez à vérifier vos courriers indésirables."
+        hint="Valable 5 minutes. Pensez à vérifier vos spams."
       />
       <Button title={submitLabel} loading={loading} onPress={() => onSubmit(value)} fullWidth size="lg" />
       <Button
@@ -85,7 +85,7 @@ export const OtpCodeStep = forwardRef<TextInput, Props>(function OtpCodeStep(
         style={styles.linkBtn}
       >
         <Row gap={spacing[2]} align="center" justify="center">
-          <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+          <ArrowLeft size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
           <AppText style={styles.linkText}>Changer d&apos;e-mail</AppText>
         </Row>
       </Pressable>

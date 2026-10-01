@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus, type LucideIcon } from 'lucide-react-native';
 import { SCREEN_FAB_DIAMETER } from '@/components/navigation/nav-chrome-tokens';
-import { elevation, spacing, iconSize, useStyles } from '@/theme';
+import { elevation, spacing, iconSize, useStyles, ICON_STROKE_WIDTH } from '@/theme';
 
 interface ScreenFabProps {
   onPress: () => void;
@@ -48,7 +48,7 @@ export function ScreenFab({ onPress, accessibilityLabel, Icon = Plus }: ScreenFa
           pressed && styles.pressed,
         ]}
       >
-        <Icon size={iconSize['2xlSm']} color={c.textInverse} strokeWidth={2.5} />
+        <Icon size={iconSize.lg} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
     </View>
   );

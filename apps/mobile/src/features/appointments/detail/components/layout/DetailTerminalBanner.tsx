@@ -1,58 +1,50 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { CalendarX, CircleCheck, Ban, TimerOff } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type { AppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
-const ICONS: Record<string, LucideIcon> = {
+const ICONS: Record<AppointmentSidebarTerminalEmpty['icon'], LucideIcon> = {
   'calendar-x': CalendarX,
   'circle-check': CircleCheck,
   ban: Ban,
   'timer-off': TimerOff,
 };
 
+/** État final du RDV (annulé, terminé…) : une ligne, l'absence d'actions se voit d'elle-même. */
 export function DetailTerminalBanner({ terminal }: { terminal: AppointmentSidebarTerminalEmpty }) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  const Icon = ICONS[terminal.icon];
 
-  const Icon = ICONS[terminal.icon] ?? CircleCheck;
   return (
-    <Cluster
-      gap={spacing[2]}
-      align="start"
-      style={styles.wrap}
-      leading={<Icon size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
-    >
-      <AppText style={styles.text}>
-        <AppText style={styles.title}>{terminal.title}</AppText>
-        <AppText style={styles.desc}> · {terminal.description}</AppText>
-      </AppText>
-    </Cluster>
+    <View style={styles.wrap} accessibilityRole="summary">
+      <Icon size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+      <AppText style={styles.title}>{terminal.title}</AppText>
+    </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  wrap: {
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2.5],
-    borderRadius: radius.lg,
-    backgroundColor: c.surfaceAlt,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-  },
-  text: {},
-  title: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textPrimary,
-  },
-  desc: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-  },
-};
+    wrap: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[3],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      borderRadius: radius.lg,
+      backgroundColor: c.surfaceAlt,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+    },
+    title: {
+      flex: 1,
+      minWidth: 0,
+      ...text.body,
+      ...font.medium,
+      color: c.textPrimary,
+    },
+  };
 }

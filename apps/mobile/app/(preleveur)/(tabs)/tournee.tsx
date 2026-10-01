@@ -1,10 +1,10 @@
 import { TourneeScreen } from '@/features/tournee/screens/TourneeScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function PreleveurTournee() {
   return (
-    <TitledTabScreenFrame title="Tournée">
+    <TabScreenFrame title="Tournée">
       <TourneeScreen />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

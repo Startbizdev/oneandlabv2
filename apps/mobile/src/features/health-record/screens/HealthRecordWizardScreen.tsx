@@ -9,13 +9,21 @@ import { getErrorMessage } from '@/lib/errors/handle-api-error';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackContentTopInset, useStackScrollConfig, STACK_SCENE_CONTENT_TOP_GAP } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { Row } from '@/components/layout/primitives';
-import { HealthRecordSectionEmoji } from '../components/HealthRecordSectionEmoji';
+import { HealthRecordSectionIcon } from '../components/HealthRecordSectionIcon';
 import { HealthRecordQuestionStep } from '../components/HealthRecordQuestionStep';
 import { useHealthRecordWizard } from '../hooks/use-health-record-wizard';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { ArrowLeft } from 'lucide-react-native';
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  type Theme,
+} from '@/theme';
 
 function normalizeRouteParam(value?: string | string[]): string | undefined {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -26,6 +34,7 @@ function normalizeRouteParam(value?: string | string[]): string | undefined {
 }
 
 export function HealthRecordWizardScreen() {
+  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const [failedAnswer, setFailedAnswer] = useState<{ key: string; value: unknown; error: unknown } | null>(null);
@@ -33,15 +42,11 @@ export function HealthRecordWizardScreen() {
   const sectionId = normalizeRouteParam(section);
   const questionKey = normalizeRouteParam(question);
   const wizard = useHealthRecordWizard(sectionId, questionKey);
-  const scrollConfig = useStackScrollConfig(styles.content, {
-    extraTop: STACK_SCENE_CONTENT_TOP_GAP,
-  });
-  const contentTopInset = useStackContentTopInset();
 
   if (wizard.loading) {
     return (
       <StackChromeScreen>
-        <View style={[styles.loading, { paddingTop: contentTopInset }]}>
+        <View style={[styles.loading, { paddingTop: spacing[3] }]}>
           <SkeletonList count={3} />
         </View>
       </StackChromeScreen>
@@ -51,7 +56,7 @@ export function HealthRecordWizardScreen() {
   if (wizard.error) {
     return (
       <StackChromeScreen>
-        <View style={[styles.errorWrap, { paddingTop: contentTopInset }]}>
+        <View style={[styles.errorWrap, { paddingTop: spacing[3] }]}>
           <ErrorState
             title="Carnet indisponible"
             error={wizard.error}
@@ -66,16 +71,17 @@ export function HealthRecordWizardScreen() {
     const sectionEdit = wizard.isSectionEdit;
     return (
       <StackChromeScreen>
-        <View style={[styles.errorWrap, { paddingTop: contentTopInset }]}>
+        <View style={[styles.errorWrap, { paddingTop: spacing[3] }]}>
           <EmptyState
-            title={sectionEdit ? 'Section indisponible' : 'Carnet à jour'}
+            illustration={sectionEdit ? 'health-record' : 'success'}
+            title={sectionEdit ? 'Aucune question ici' : 'Carnet à jour'}
             description={
               sectionEdit
-                ? 'Cette section ne contient pas de questions pour votre profil.'
-                : 'Toutes les informations essentielles sont renseignées.'
+                ? 'Cette section ne concerne pas votre profil.'
+                : 'Les informations essentielles sont renseignées.'
             }
-            actionLabel="Retour au récap"
-            onAction={() => router.replace('/(patient)/health-record' as never)}
+            actionLabel="Voir mon carnet"
+            onAction={() => router.replace('/(patient)/health-record')}
           />
         </View>
       </StackChromeScreen>
@@ -84,7 +90,7 @@ export function HealthRecordWizardScreen() {
 
   const current = wizard.current;
   const isLast = wizard.stepIndex >= wizard.questions.length - 1;
-  const goToRecap = () => router.replace('/(patient)/health-record' as never);
+  const goToRecap = () => router.replace('/(patient)/health-record');
 
   const submit = async (key: string, value: unknown) => {
     setFailedAnswer(null);
@@ -99,21 +105,17 @@ export function HealthRecordWizardScreen() {
   return (
     <StackChromeScreen>
       <FormScreen
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {wizard.sectionLabel ? (
-          <Row gap={spacing[2]} align="center" style={styles.sectionRow}>
-            {wizard.sectionId ? (
-              <HealthRecordSectionEmoji sectionId={wizard.sectionId} size="lg" />
-            ) : null}
-            <AppText style={styles.section}>{wizard.sectionLabel}</AppText>
-          </Row>
-        ) : null}
-        <AppText style={styles.step}>
-          Question {wizard.stepIndex + 1} / {wizard.questions.length}
-        </AppText>
+        <Row gap={spacing[2]} align="center" style={styles.sectionRow}>
+          {wizard.sectionId ? <HealthRecordSectionIcon sectionId={wizard.sectionId} /> : null}
+          <AppText variant="caption" style={styles.section}>
+            {[wizard.sectionLabel, `Question ${wizard.stepIndex + 1} sur ${wizard.questions.length}`]
+              .filter(Boolean)
+              .join(' · ')}
+          </AppText>
+        </Row>
         <View
           style={styles.progressTrack}
           accessibilityRole="progressbar"
@@ -121,11 +123,18 @@ export function HealthRecordWizardScreen() {
         >
           <View style={[styles.progressFill, { width: `${Math.round(wizard.progress * 100)}%` }]} />
         </View>
+        {wizard.stepIndex === 0 ? (
+          <AppText variant="caption" style={styles.optionalHint}>
+            Toutes les questions sont facultatives.
+          </AppText>
+        ) : null}
 
         {failedAnswer && failedAnswer.key === current.key ? (
           <View style={styles.saveError} accessibilityRole="alert" accessibilityLiveRegion="polite">
-            <AppText style={styles.saveErrorTitle}>Réponse non enregistrée</AppText>
-            <AppText style={styles.saveErrorText}>
+            <AppText variant="headline" style={styles.saveErrorTitle}>
+              Réponse non enregistrée
+            </AppText>
+            <AppText variant="secondary">
               {getErrorMessage(failedAnswer.error, 'Vérifiez votre connexion puis réessayez.')}
             </AppText>
             <Button
@@ -155,8 +164,9 @@ export function HealthRecordWizardScreen() {
 
         {wizard.stepIndex > 0 ? (
           <Button
-            title="Retour"
+            title="Question précédente"
             variant="ghost"
+            leftIcon={<ArrowLeft size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
             onPress={() => {
               setFailedAnswer(null);
               wizard.goBack();
@@ -170,32 +180,14 @@ export function HealthRecordWizardScreen() {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    loading: {
-    minWidth: 0, flex: 1, padding: spacing[4] },
-    errorWrap: {
-    minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
-    content: { paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
-    sectionRow: {
-      marginBottom: spacing[1],
-    },
-    section: {
-      flex: 1,
-      minWidth: 0,
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.6,
-      marginBottom: spacing[1],
-    },
-    step: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      marginBottom: spacing[2],
-    },
+    loading: { minWidth: 0, flex: 1, padding: spacing[4] },
+    errorWrap: { minWidth: 0, flex: 1, padding: spacing[4], justifyContent: 'center' as const },
+    content: { paddingTop: spacing[3], paddingHorizontal: spacing[4], paddingBottom: spacing[8] },
+    sectionRow: { marginBottom: spacing[2] },
+    section: { flex: 1, minWidth: 0, color: c.textSecondary },
+    optionalHint: { color: c.textSecondary, marginTop: -spacing[3], marginBottom: spacing[5] },
     progressTrack: {
       height: 4,
       borderRadius: radius.full,
@@ -215,16 +207,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderRadius: radius.md,
       backgroundColor: c.errorLight,
     },
-    saveErrorTitle: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.error,
-    },
-    saveErrorText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-    },
+    saveErrorTitle: { color: c.error },
     backBtn: { marginTop: spacing[4] },
   };
 }

@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, iconSize, AppText, useStyles, font, ICON_STROKE_WIDTH, type Theme } from '@/theme';
 
 export type DetailEntityRowProps = {
   /** Petit libellé au-dessus du titre (ex. « Infirmier(e) »). */
@@ -69,7 +69,7 @@ export function DetailEntityRow({
                     title={action.label}
                     variant="muted"
                     size="sm"
-                    leftIcon={<Icon size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
+                    leftIcon={<Icon size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
                     onPress={action.onPress}
                   />
                 );
@@ -79,7 +79,7 @@ export function DetailEntityRow({
                   title="Profil"
                   variant="muted"
                   size="sm"
-                  leftIcon={<User size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
+                  leftIcon={<User size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
                   onPress={onProfilePress}
                   accessibilityLabel={
                     profileAccessibilityLabel ?? `Voir le profil de ${title}`
@@ -92,16 +92,16 @@ export function DetailEntityRow({
       >
         <View style={styles.text}>
           {eyebrow ? (
-            <AppText style={styles.eyebrow} numberOfLines={1}>
+            <AppText style={styles.eyebrow}>
               {eyebrow}
             </AppText>
           ) : null}
-          <AppText style={styles.title} numberOfLines={1}>
+          <AppText style={styles.title}>
             {title}
           </AppText>
           {belowTitle}
           {subtitle ? (
-            <AppText style={styles.subtitle} numberOfLines={1}>
+            <AppText style={styles.subtitle}>
               {subtitle}
             </AppText>
           ) : null}

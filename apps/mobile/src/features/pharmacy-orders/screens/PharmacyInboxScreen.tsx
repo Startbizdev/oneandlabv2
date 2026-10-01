@@ -4,7 +4,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-nativ
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, History, Inbox } from 'lucide-react-native';
+import { Clock, History } from 'lucide-react-native';
 import {
   countPharmacyOrdersBySegment,
   filterPharmacyOrdersBySegment,
@@ -17,8 +17,6 @@ import { PharmacyOrderCard } from '../components/PharmacyOrderCard';
 import { fetchPharmacyOrders } from '../api/pharmacy-orders.service';
 import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
@@ -32,7 +30,6 @@ export function PharmacyInboxScreen() {
   const router = useRouter();
   const focused = useIsFocused();
   const appActive = useAppActive();
-  const scrollConfig = useStackScrollConfig(styles.content);
   const [segment, setSegment] = useState<PharmacyOrderListSegment>('active');
 
   const ordersQ = useQuery({
@@ -49,7 +46,7 @@ export function PharmacyInboxScreen() {
   const { refreshing, onRefresh } = useManualRefresh(() => ordersQ.refetch());
 
   const openOrder = useCallback(
-    (id: string) => router.push(`/(pro)/commandes-recues/${id}` as never),
+    (id: string) => router.push({ pathname: '/(pro)/commandes-recues/[id]', params: { id } }),
     [router],
   );
 
@@ -60,18 +57,12 @@ export function PharmacyInboxScreen() {
     [orders, segment],
   );
 
-  const emptyTitle =
-    segment === 'active' ? 'Aucune commande en cours' : 'Aucune commande dans l’historique';
-  const emptyDescription =
-    segment === 'active'
-      ? 'Les nouvelles commandes adressées à votre officine apparaîtront ici.'
-      : 'Les commandes terminées, refusées ou annulées apparaîtront ici.';
+  const emptyTitle = segment === 'active' ? 'Aucune commande à traiter' : 'Aucune commande passée';
 
   return (
     <StackChromeScreen>
       <ScrollView
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.segmentWrap}>
@@ -94,7 +85,11 @@ export function PharmacyInboxScreen() {
             onRetry={() => void ordersQ.refetch()}
           />
         ) : filteredOrders.length === 0 ? (
-          <EmptyState Icon={Inbox} title={emptyTitle} description={emptyDescription} />
+          <EmptyState
+            illustration="pharmacy"
+            title={emptyTitle}
+            {...(segment === 'active' ? { description: 'Les commandes adressées à votre officine arrivent ici.' } : {})}
+          />
         ) : (
           <View style={styles.list}>
             {filteredOrders.map((order) => (

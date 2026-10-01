@@ -17,7 +17,7 @@ export function SkeletonKvRow({
   const styles = useStyles(buildStyles);
   return (
     <View style={[styles.kvRow, style]}>
-      <Skeleton height={10} width={labelWidth} borderRadius={radius.xs} />
+      <Skeleton height={10} width={labelWidth} borderRadius={radius.sm} />
       <Skeleton height={18} width={valueWidth} borderRadius={radius.sm} />
     </View>
   );
@@ -43,18 +43,16 @@ export function SkeletonRdvCarePlaceholder({ count = 3 }: { count?: number }) {
 
 /** Carte « Informations du rendez-vous » — structure réelle de la section. */
 export function SkeletonRdvInfoCard({
-  edgeToEdge = false,
   carePlaceholderCount = 0,
   showContactButtons = true,
 }: {
-  edgeToEdge?: boolean;
   carePlaceholderCount?: number;
   showContactButtons?: boolean;
 }) {
   const section = useRdvDetailSectionStyles();
   const styles = useStyles(buildStyles);
   return (
-    <View style={[section.card, edgeToEdge && section.cardEdge]}>
+    <View style={section.card}>
       <View style={section.sectionRow}>
         <SkeletonKvRow labelWidth="22%" valueWidth="92%" />
       </View>
@@ -104,7 +102,7 @@ export function SkeletonEntityRow({ showDivider = false }: { showDivider?: boole
     <View style={[styles.entityRow, showDivider && styles.entityDivider]}>
       <Skeleton height={36} width={36} borderRadius={radius.full} />
       <View style={styles.entityText}>
-        <Skeleton height={9} width="40%" borderRadius={radius.xs} />
+        <Skeleton height={9} width="40%" borderRadius={radius.sm} />
         <Skeleton height={14} width="72%" borderRadius={radius.sm} />
       </View>
       <Skeleton height={28} width={72} borderRadius={radius.sm} />
@@ -131,7 +129,7 @@ export function SkeletonDetailActionRow({ destructive = false }: { destructive?:
       <Skeleton height={40} width={40} borderRadius={radius.md} />
       <View style={styles.actionText}>
         <Skeleton height={16} width="55%" borderRadius={radius.sm} />
-        <Skeleton height={12} width="72%" borderRadius={radius.xs} />
+        <Skeleton height={12} width="72%" borderRadius={radius.sm} />
       </View>
     </View>
   );
@@ -183,9 +181,9 @@ export function SkeletonPatientListRow({ showDivider = true }: { showDivider?: b
         <Skeleton height={44} width={44} borderRadius={radius.full} />
         <View style={styles.patientInfo}>
           <Skeleton height={15} width="62%" borderRadius={radius.sm} />
-          <Skeleton height={12} width="48%" borderRadius={radius.xs} style={styles.patientSub} />
+          <Skeleton height={12} width="48%" borderRadius={radius.sm} style={styles.patientSub} />
         </View>
-        <Skeleton height={20} width={12} borderRadius={radius.xs} />
+        <Skeleton height={20} width={12} borderRadius={radius.sm} />
       </View>
       {showDivider ? <View style={styles.patientSep} /> : null}
     </View>
@@ -217,7 +215,7 @@ export function SkeletonStaffAppointmentDetail({
   return (
     <SkeletonScreen>
       <SkeletonSegmentBar segments={segmentCount} />
-      <SkeletonRdvInfoCard edgeToEdge carePlaceholderCount={3} />
+      <SkeletonRdvInfoCard carePlaceholderCount={3} />
       {showAssignees ? <SkeletonAssigneeCard rows={2} /> : null}
       {showActions ? <SkeletonDetailActionsCard count={3} /> : null}
     </SkeletonScreen>
@@ -234,7 +232,7 @@ export function SkeletonPatientAppointmentDetail({
   return (
     <SkeletonScreen>
       <SkeletonSegmentBar segments={segmentCount} />
-      <SkeletonRdvInfoCard edgeToEdge carePlaceholderCount={2} showContactButtons />
+      <SkeletonRdvInfoCard carePlaceholderCount={2} showContactButtons />
       <SkeletonAssigneeCard rows={3} />
       <SkeletonDetailActionsCard count={2} />
       <Skeleton height={88} borderRadius={radius.xl} />
@@ -251,7 +249,7 @@ export function SkeletonProfileScreen({ cards = 2 }: { cards?: number }) {
         <Skeleton height={56} width={56} borderRadius={radius.full} />
         <View style={styles.profileHeroText}>
           <Skeleton height={20} width="55%" borderRadius={radius.sm} />
-          <Skeleton height={14} width="30%" borderRadius={radius.xs} />
+          <Skeleton height={14} width="30%" borderRadius={radius.sm} />
         </View>
       </View>
       {Array.from({ length: cards }).map((_, i) => (
@@ -351,7 +349,7 @@ function buildStyles({ colors: c }: Theme) {
     gap: spacing[1],
     padding: spacing[0.5],
     borderRadius: radius.lg,
-    backgroundColor: c.surfaceSubtle,
+    backgroundColor: c.surfaceAlt,
   },
   segmentItem: {
     flex: 1,
@@ -446,7 +444,7 @@ function buildStyles({ colors: c }: Theme) {
   careSelectionRoot: {
     minWidth: 0,
     flex: 1,
-    backgroundColor: c.bookingCanvas,
+    backgroundColor: c.background,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[4],
     gap: spacing[4],

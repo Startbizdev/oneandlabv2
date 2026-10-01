@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { CalendarDays, List } from 'lucide-react-native';
-import {
-  TabSceneInsetTopOverride,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
 import { CalendarScreen } from '@/features/calendar/screens/CalendarScreen';
 import { NurseAppointmentsListScreen } from '@/features/nurse/screens/NurseAppointmentsListScreen';
@@ -20,28 +16,25 @@ const AGENDA_SEGMENTS: FullWidthSegment<AgendaView>[] = [
 /** Onglet Agenda infirmier : liste des rendez-vous ou calendrier mensuel. */
 export function NurseAgendaScreen() {
   const styles = useStyles(buildStyles);
-  const { insetTop } = useTabSceneInsets();
   const [view, setView] = useState<AgendaView>('list');
 
   return (
     <View style={styles.root}>
-      <View style={[styles.segmentHost, { paddingTop: insetTop + spacing[2] }]}>
+      <View style={styles.segmentHost}>
         <FullWidthSegmentBar segments={AGENDA_SEGMENTS} value={view} onChange={setView} />
       </View>
-      <TabSceneInsetTopOverride insetTop={0}>
-        <View style={styles.body}>
-          {view === 'list' ? (
-            <NurseAppointmentsListScreen />
-          ) : (
-            <CalendarScreen
-              title="Calendrier"
-              baseFilters={{ limit: 200 }}
-              detailPathPrefix="/(nurse)/appointment"
-              nurseCalendar
-            />
-          )}
-        </View>
-      </TabSceneInsetTopOverride>
+      <View style={styles.body}>
+        {view === 'list' ? (
+          <NurseAppointmentsListScreen />
+        ) : (
+          <CalendarScreen
+            title="Calendrier"
+            baseFilters={{ limit: 200 }}
+            rolePrefix="/(nurse)"
+            nurseCalendar
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -56,6 +49,7 @@ function buildStyles({ colors: c }: Theme) {
     segmentHost: {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
+      paddingTop: spacing[2],
       paddingHorizontal: spacing[4],
       paddingBottom: spacing[2],
     },

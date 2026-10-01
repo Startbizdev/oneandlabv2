@@ -6,7 +6,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { MiniDateCalendar, miniDateCalendarOuterSize } from '@/components/ui/MiniDateCalendar';
 import { formatMiniDateCalendarParts } from '@/utils/mini-date-calendar-parts';
-import { H_PADDING, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { formatCountBadge } from '@/components/navigation/CountBadge';
+import { ICON_STROKE_WIDTH, H_PADDING, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
 
 type Props = {
@@ -34,8 +35,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
   const styles = useStyles(buildCellStyles);
   const a11y = formatMiniDateCalendarParts(iso)?.accessibilityLabel ?? iso;
   /** Primary uniquement sur le jour sélectionné — aujourd'hui redevient neutre si non actif. */
-  const variant = active ? 'brand' : 'apple';
-  const muted = !active;
+  const variant = active ? 'brand' : 'neutral';
 
   return (
     <Pressable
@@ -52,7 +52,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
         pressed && styles.cellPressed,
       ]}
     >
-      <View style={[styles.calendarWrap, muted && styles.calendarMuted]}>
+      <View style={styles.calendarWrap}>
         <MiniDateCalendar date={iso} size={CALENDAR_SIZE} variant={variant} accessibilityHidden />
         {count > 0 ? (
           <View
@@ -63,7 +63,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
             ]}
           >
             <AppText style={[styles.countText, { color: c.textInverse }]} maxFontSizeMultiplier={1.2}>
-              {count > 99 ? '99+' : count}
+              {formatCountBadge(count)}
             </AppText>
           </View>
         ) : null}
@@ -121,7 +121,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
           pressed && styles.navBtnPressed,
         ]}
       >
-        <ChevronLeft size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2.4} />
+        <ChevronLeft size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
 
       <ScrollView
@@ -153,7 +153,7 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
           pressed && styles.navBtnPressed,
         ]}
       >
-        <ChevronRight size={iconSize.mdSm} color={c.textSecondary} strokeWidth={2.4} />
+        <ChevronRight size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
     </View>
   );
@@ -170,8 +170,8 @@ function buildStyles() {
       marginBottom: spacing[3],
     },
     navBtn: {
-      width: 34,
-      height: 34,
+      width: spacing[9],
+      height: spacing[9],
       flexShrink: 0,
       borderRadius: radius.md,
       borderWidth: StyleSheet.hairlineWidth,
@@ -218,7 +218,6 @@ function buildCellStyles({ colors: c, fontSize }: Theme) {
       width: CALENDAR_PX,
       position: 'relative' as const,
     },
-    calendarMuted: { opacity: 0.78 },
     /** Pastille coin haut-droit — alignement identique aux badges header. */
     countBadge: {
       position: 'absolute' as const,

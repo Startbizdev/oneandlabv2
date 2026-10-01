@@ -60,30 +60,26 @@ export function resolveAppointmentDetail(
 
 export function appointmentDetailBlockedCopy(
   block: AppointmentDetailBlock | null,
-): { emoji: string; title: string; description: string } {
+): { title: string; description: string } {
   if (block === APPOINTMENT_ALREADY_ACCEPTED) {
     return {
-      emoji: '😔',
       title: 'Rendez-vous inaccessible',
       description: 'Ce rendez-vous a déjà été accepté par un autre professionnel.',
     };
   }
   if (block === APPOINTMENT_UNAVAILABLE) {
     return {
-      emoji: '🚫',
       title: 'Rendez-vous annulé',
       description: 'Ce rendez-vous a été annulé et n’est plus disponible.',
     };
   }
   if (block === APPOINTMENT_ACCESS_DENIED) {
     return {
-      emoji: '🔒',
       title: 'Accès refusé',
       description: 'Ce rendez-vous ne vous est pas accessible.',
     };
   }
   return {
-    emoji: '😕',
     title: 'Rendez-vous inaccessible',
     description: 'Impossible d’ouvrir ce rendez-vous.',
   };

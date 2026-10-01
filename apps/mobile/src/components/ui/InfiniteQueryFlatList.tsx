@@ -16,7 +16,7 @@ import {
 
 } from 'react-native';
 
-import { FlashList, type FlashListRef, type ListRenderItem } from '@shopify/flash-list';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 
 import type { UseInfiniteQueryResult } from '@tanstack/react-query';
 
@@ -36,29 +36,24 @@ import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 
-import {
-
-  buildTabSceneScrollConfig,
-
-  spreadTabSceneScrollProps,
-
-  useTabSceneInsets,
-
-} from '@/components/navigation/liquid-glass-header-inset';
-
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { spacing, useStyles } from '@/theme';
 
 
 
+/** FlashList (iOS) et le corps mappé Android ne partagent que `item` et `index`. */
+export type InfiniteListRenderItem<Item> = (info: { item: Item; index: number }) => ReactElement | null;
+
 type Props<TPage, Item> = Omit<
 
   FlatListProps<Item>,
 
-  'data' | 'refreshControl' | 'ListHeaderComponent' | 'onEndReached'
+  'data' | 'refreshControl' | 'ListHeaderComponent' | 'onEndReached' | 'renderItem'
 
 > & {
+
+  renderItem: InfiniteListRenderItem<Item>;
 
   query: Pick<
 
@@ -83,9 +78,6 @@ type Props<TPage, Item> = Omit<
 
   header?: ReactNode;
 
-  /** Le `header` inclut déjà `paddingTop` (inset header glass) — ne pas le réappliquer sur la liste. */
-  reserveTopInsetInHeader?: boolean;
-
   skeletonCount?: number;
 
   skeletonHeight?: number;
@@ -102,9 +94,9 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   items,
 
-  header,
+  renderItem,
 
-  reserveTopInsetInHeader = false,
+  header,
 
   ListHeaderComponent,
 
@@ -125,8 +117,6 @@ export function InfiniteQueryFlatList<TPage, Item>({
   const c = useAppColors();
 
   const styles = useStyles(buildStyles);
-
-  const sceneInsets = useTabSceneInsets();
 
   const flashListRef = useRef<FlashListRef<Item>>(null);
 
@@ -152,8 +142,6 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
   const {
 
-    renderItem,
-
     keyExtractor,
 
     ItemSeparatorComponent,
@@ -166,12 +154,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
 
 
-  const scrollInsets = reserveTopInsetInHeader && header != null
-    ? { ...sceneInsets, insetTop: 0 }
-    : sceneInsets;
-
-  const scrollConfig = buildTabSceneScrollConfig(scrollInsets, contentContainerStyle);
-
+  const contentStyle = [styles.listContent, contentContainerStyle];
 
 
   if (query.isPending && !query.data) {
@@ -182,20 +165,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
         {header}
 
-        <View
-
-          style={[
-
-            styles.skeleton,
-
-            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
-
-            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
-
-          ]}
-
-        >
-
+        <View style={styles.skeleton}>
           <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
 
         </View>
@@ -210,13 +180,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
     return (
       <View style={styles.root} collapsable={false}>
         {header}
-        <View
-          style={[
-            styles.errorWrap,
-            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
-            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
-          ]}
-        >
+        <View style={styles.errorWrap}>
           <ErrorState error={query.error} onRetry={() => void query.refetch()} />
         </View>
       </View>
@@ -268,9 +232,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
           scrollRef={scrollRef}
 
-          contentContainerStyle={[styles.listContent, contentContainerStyle]}
-
-          omitTopInset={reserveTopInsetInHeader && header != null}
+          contentContainerStyle={contentStyle}
 
           refreshing={refreshing}
 
@@ -310,19 +272,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
 
 
-  const refreshControl = (
-
-    <AppRefreshControl
-
-      refreshing={refreshing}
-
-      onRefresh={onRefresh}
-
-      progressViewOffset={scrollConfig.refreshProgressOffset}
-
-    />
-
-  );
+  const refreshControl = <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />;
 
 
 
@@ -340,7 +290,7 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
         data={items}
 
-        renderItem={renderItem as unknown as ListRenderItem<Item>}
+        renderItem={renderItem}
 
         keyExtractor={keyExtractor}
 
@@ -350,11 +300,11 @@ export function InfiniteQueryFlatList<TPage, Item>({
 
         ListEmptyComponent={ListEmptyComponent}
 
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentInsetAdjustmentBehavior="automatic"
 
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
 
-        contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
+        contentContainerStyle={contentStyle}
 
         refreshControl={refreshControl}
 

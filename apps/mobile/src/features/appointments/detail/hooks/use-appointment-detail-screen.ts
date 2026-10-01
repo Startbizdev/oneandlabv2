@@ -1,11 +1,10 @@
 import { createElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { canCancelAppointment } from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
-import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
@@ -17,8 +16,7 @@ import {
   resolveAppointmentDetail,
 } from '../../hooks/appointment-detail-result';
 import { useAppointmentBatch } from './use-appointment-batch';
-import { fetchMedicalDocuments } from '../api/appointment-detail.service';
-import { useShareForNurse } from './use-appointment-detail-extras';
+import { medicalDocumentsQueryOptions } from './use-appointment-detail-extras';
 import { getAppointmentDetailRoleConfig } from '../utils/appointment-detail-role-config';
 import { filterListDocuments } from '../utils/document-labels';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
@@ -44,8 +42,6 @@ export function useAppointmentDetailScreen(
   id: string | undefined,
   viewerId?: string | null,
 ) {
-  const navigation = useNavigation();
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const config = getAppointmentDetailRoleConfig(role);
   const focused = useIsFocused();
@@ -74,7 +70,8 @@ export function useAppointmentDetailScreen(
   const patientProfileQ = useQuery({
     queryKey: queryKeys.patients.detail(patientId ?? ''),
     queryFn: async () => {
-      const res = await fetchPatientProfile(patientId!);
+      if (!patientId) return null;
+      const res = await fetchPatientProfile(patientId);
       if (!res.success) return null;
       return res.data ?? null;
     },
@@ -98,15 +95,8 @@ export function useAppointmentDetailScreen(
     } as Appointment;
   }, [primary, patientProfileQ.data]);
 
-  /** Pas de prefetch : GET share-for-nurse ne doit pas être appelé à l’ouverture (effet de bord historique côté API). */
-  const shareQ = useShareForNurse(id, false);
-
   const docQueries = useQueries({
-    queries: batchIds.map((bid) => ({
-      queryKey: queryKeys.documents.medical(bid),
-      queryFn: async () => (await fetchMedicalDocuments(bid)).data ?? [],
-      enabled: Boolean(bid),
-    })),
+    queries: batchIds.map(medicalDocumentsQueryOptions),
   });
 
   const allDocuments = useMemo(() => {
@@ -180,45 +170,6 @@ export function useAppointmentDetailScreen(
     siblingsLoading ||
     docQueries.some((q) => q.isRefetching);
 
-  const handleHeaderBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-    if (role === 'patient') {
-      router.replace('/(patient)/(tabs)/appointments' as never);
-    }
-  }, [navigation, role, router]);
-
-  useEffect(() => {
-    const title = primary
-      ? appointmentPatientHeaderTitle(primary, batchSorted.length)
-      : 'Rendez-vous';
-    const displayStatus = primary
-      ? effectiveAppointmentStatus(primary, { role, viewerId })
-      : undefined;
-    const status = displayStatus ?? primary?.status;
-    const showBack = navigation.canGoBack() || role === 'patient';
-    navigation.setOptions({
-      headerTitle: primary
-        ? () => createElement(RdvDetailNavTitle, { title, status })
-        : title,
-      headerLeft: showBack
-        ? () => createElement(HeaderBackButton, { onPress: handleHeaderBack })
-        : undefined,
-      headerRight: undefined,
-      headerTitleAlign: 'left',
-    });
-  }, [
-    navigation,
-    primary,
-    batchSorted.length,
-    primary?.status,
-    role,
-    viewerId,
-    handleHeaderBack,
-  ]);
-
   const headerTitleNode = useMemo(() => {
     if (!primary) return 'Rendez-vous';
     const title = appointmentPatientHeaderTitle(primary, batchSorted.length);
@@ -257,7 +208,6 @@ export function useAppointmentDetailScreen(
     docsLoading,
     docsError,
     retryDocs,
-    shareQ,
     isLoading:
       detailQ.isPending && detailQ.data === undefined && !detailQ.isError && !detailBlock,
     detailBlock,

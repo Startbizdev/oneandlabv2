@@ -4,7 +4,7 @@ import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-nativ
 import { FlashList, type ListRenderItem } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FilePenLine, History, PlusCircle } from 'lucide-react-native';
+import { History, PlusCircle } from 'lucide-react-native';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -40,12 +40,8 @@ import { fetchUser } from '@/features/profile/api/profile.service';
 import { resolvePrescriptionKindForRole } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
 import { prescriptionGenerationEnabled } from '../utils/prescription-access';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
-import { elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 type WorkspaceTab = 'create' | 'history';
 
@@ -80,8 +76,6 @@ export function PrescriptionWorkspaceScreen({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, embedded ? styles.embeddedContent : styles.content);
   const prescriptionKind = resolvePrescriptionKindForRole(roleBase === 'nurse' ? 'nurse' : 'pro');
   const router = useRouter();
   const qc = useQueryClient();
@@ -102,11 +96,12 @@ export function PrescriptionWorkspaceScreen({
   const afterSignatureSaveRef = useRef<(() => void) | null>(null);
 
   const user = useAuthStore((s) => s.user);
+  const userId = user?.id ?? '';
   const accessBlocked = !prescriptionGenerationEnabled(user);
   const profileQ = useQuery({
-    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
-    enabled: !!user?.id,
+    queryKey: queryKeys.profile.fullUser(userId),
+    queryFn: async () => (await fetchUser(userId, 'full')).data,
+    enabled: !!userId,
   });
 
   const handleOpenSignatureSheet = useCallback((options?: OpenPrescriptionSignatureOptions) => {
@@ -198,22 +193,23 @@ export function PrescriptionWorkspaceScreen({
     if (mode === 'standalone') setAppointmentId('');
   };
 
-  const renderHistoryItem: ListRenderItem<ProPrescriptionRow> = ({ item, index }) => (
-    <PrescriptionHistoryCard
-      row={item}
-      showPatient={!fixedPatientId}
-      topBorder={index > 0}
-      downloading={downloadingId === item.id}
-      onDownload={() => void downloadRow(item.id, item.file_name)}
-      onPreview={() => void previewRow(item.id, item.file_name)}
-      previewing={previewingId === item.id}
-      onOpenAppointment={
-        item.appointment_id
-          ? () => router.push(`${rolePrefix}/appointment/${item.appointment_id}` as never)
-          : undefined
-      }
-    />
-  );
+  const renderHistoryItem: ListRenderItem<ProPrescriptionRow> = ({ item, index }) => {
+    const appointmentId = item.appointment_id;
+    return (
+      <PrescriptionHistoryCard
+        row={item}
+        showPatient={!fixedPatientId}
+        topBorder={index > 0}
+        downloading={downloadingId === item.id}
+        onDownload={() => void downloadRow(item.id, item.file_name)}
+        onPreview={() => void previewRow(item.id, item.file_name)}
+        previewing={previewingId === item.id}
+        onOpenAppointment={
+          appointmentId ? () => router.push(appointmentDetailHref(rolePrefix, appointmentId)) : undefined
+        }
+      />
+    );
+  };
 
   const historyFooter =
     historyQ.isFetchingNextPage ? (
@@ -234,8 +230,14 @@ export function PrescriptionWorkspaceScreen({
       ) : null}
 
       {tab === 'create' || forPassageDraft ? (
-        <View style={[styles.section, elevation.xs]}>
-          {!fixedPatientId ? (
+        <View style={styles.section}>
+          {!fixedPatientId && patientsQ.isError && patientOptions.length === 0 ? (
+            <ErrorState
+              title="Patients indisponibles"
+              error={patientsQ.error}
+              onRetry={() => void patientsQ.refetch()}
+            />
+          ) : !fixedPatientId ? (
             <PrescriptionPatientSelectField
               patients={patientOptions}
               selectedId={patientId}
@@ -255,11 +257,8 @@ export function PrescriptionWorkspaceScreen({
 
           {effectivePatientId && forPassageDraft ? (
             <View style={styles.composerWrap}>
-              <AppText style={styles.passageDraftTitle}>Ordonnance du passage</AppText>
-              <AppText style={styles.passageDraftHint}>
-                Rédigez et générez l’ordonnance ici. Elle sera automatiquement ajoutée aux
-                documents du passage dès que vous enregistrez la prise en charge.
-              </AppText>
+              <AppText variant="headline">Ordonnance du passage</AppText>
+              <AppText variant="secondary">Ajoutée aux documents à l’enregistrement du passage.</AppText>
               <PrescriptionComposer
                 patientId={effectivePatientId}
                 appointmentId={null}
@@ -278,11 +277,11 @@ export function PrescriptionWorkspaceScreen({
 
           {effectivePatientId && lockedToAppointment ? (
             <View style={[styles.composerWrap, styles.composerWrapFlush]}>
-              <AppText style={styles.passageDraftTitle}>Ordonnance du passage</AppText>
-              <AppText style={styles.passageDraftHint}>
+              <AppText variant="headline">Ordonnance du passage</AppText>
+              <AppText variant="secondary">
                 {docsQ.data?.some((d) => d.document_type === 'ordonnance')
-                  ? 'Une ordonnance est déjà rattachée à ce rendez-vous. Vous pouvez en générer une nouvelle si besoin.'
-                  : 'Générez l’ordonnance ici — elle sera automatiquement rattachée à ce rendez-vous.'}
+                  ? 'Une ordonnance est déjà rattachée à ce rendez-vous.'
+                  : 'Rattachée automatiquement à ce rendez-vous.'}
               </AppText>
               <PrescriptionComposer
                 patientId={effectivePatientId}
@@ -357,11 +356,7 @@ export function PrescriptionWorkspaceScreen({
               onRetry={() => void historyQ.refetch()}
             />
           ) : historyRows.length === 0 ? (
-            <EmptyState
-              Icon={FilePenLine}
-              title="Aucune ordonnance pour le moment"
-              description="Les ordonnances enregistrées apparaîtront ici."
-            />
+            <EmptyState illustration="prescriptions" title="Aucune ordonnance" />
           ) : (
             <FlashList
               data={historyRows}
@@ -386,9 +381,9 @@ export function PrescriptionWorkspaceScreen({
     return (
       <View style={embedded ? styles.embeddedContainer : styles.container}>
         <EmptyState
-          Icon={FilePenLine}
-          title="Génération d'ordonnances désactivée"
-          description="La création d'ordonnances n'est pas activée pour votre compte. Contactez l'administration Cary."
+          illustration="prescriptions"
+          title="Ordonnances non activées"
+          description="Contactez l’équipe Cary pour activer la création d’ordonnances."
         />
       </View>
     );
@@ -401,13 +396,11 @@ export function PrescriptionWorkspaceScreen({
       ) : (
         <KeyboardScrollView
           style={styles.scroll}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={embedded ? styles.embeddedContent : styles.content}
           refreshControl={
             <RefreshControl
               refreshing={historyQ.isRefetching && tab === 'history'}
               onRefresh={() => void refreshAll()}
-              progressViewOffset={scrollConfig.refreshProgressOffset}
             />
           }
         >
@@ -437,7 +430,7 @@ export function PrescriptionWorkspaceScreen({
         />
       ) : null}
 
-      {user?.id ? (
+      {userId ? (
         <PrescriptionSignatureSheet
           visible={signatureSheetOpen}
           onClose={() => {
@@ -445,7 +438,7 @@ export function PrescriptionWorkspaceScreen({
             setSignaturePendingGenerate(false);
             afterSignatureSaveRef.current = null;
           }}
-          userId={user.id}
+          userId={userId}
           initialPng={profileQ.data?.prescription_signature_png}
           pendingGenerate={signaturePendingGenerate}
           onSaved={() => {
@@ -458,7 +451,7 @@ export function PrescriptionWorkspaceScreen({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     embeddedContainer: { minWidth: 0, width: '100%' as const },
@@ -473,14 +466,13 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       width: '100%' as const,
     },
     section: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      padding: spacing[4],
       gap: spacing[4],
     },
     historySection: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       padding: spacing[3],
       gap: spacing[2],
     },
@@ -495,17 +487,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       marginTop: 0,
       paddingTop: 0,
       borderTopWidth: 0,
-    },
-    passageDraftTitle: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    passageDraftHint: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
     },
     listFooter: {
       paddingVertical: spacing[3],

@@ -6,22 +6,18 @@ import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { PlanLimitsBanner } from '@/features/nurse/components/PlanLimitsBanner';
 import { NurseDemandesOfferCard } from '@/features/nurse/components/NurseDemandesOfferCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
-import { offerPreviewFromListRow } from '@/utils/appointment-batch';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
 import { useAppointmentsList } from '@/features/appointments/hooks/use-appointments-list';
-import { useToast } from '@/providers/ToastProvider';
 import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/hooks/use-nurse-demandes-badge';
-import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
+import { useOpenIncomingOffer } from '@/features/nurse/hooks/use-open-incoming-offer';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useAuthStore } from '@/store/auth-store';
-import { EMPTY_DEMANDE_IMAGE, EMPTY_DEMANDE_IMAGE_HEIGHT, EMPTY_DEMANDE_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { spacing, useStyles, type Theme } from '@/theme';
 
 export function NurseDemandesScreen() {
   const styles = useStyles(buildStyles);
 
   const user = useAuthStore((s) => s.user);
-  const { show: toast } = useToast();
 
   const query = useAppointmentsList(NURSE_DEMANDES_LIST_FILTERS);
   const { data, refetch } = query;
@@ -45,35 +41,19 @@ export function NurseDemandesScreen() {
     [incoming],
   );
 
-  useAppForegroundRefetch(() => {
+  const refetchList = useCallback(() => {
     void refetch();
-  });
+  }, [refetch]);
 
-  const openIncomingOffer = useOfferQueueStore((s) => s.openIncomingOffer);
+  useAppForegroundRefetch(refetchList);
+
+  const openOffer = useOpenIncomingOffer(refetchList);
 
   const renderItem = useCallback(
     ({ item: row, index }: { item: AppointmentListRow; index: number }) => (
-      <NurseDemandesOfferCard
-        row={row}
-        index={index}
-        onPress={(apt) => {
-          if (!apt?.id || !user?.id) return;
-          const preview = offerPreviewFromListRow(row);
-          void openIncomingOffer(apt.id, 'nurse', user.id, preview).then((result) => {
-            if (result.ok) return;
-            if (result.reason === 'already_accepted') {
-              toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
-            } else if (result.reason === 'unavailable') {
-              toast('Cette demande n’est plus disponible.', { type: 'info' });
-            } else if (result.reason === 'network') {
-              toast('Connexion instable — réessayez.', { type: 'error' });
-            }
-            void refetch();
-          });
-        }}
-      />
+      <NurseDemandesOfferCard row={row} index={index} onPress={(apt) => openOffer(row, apt)} />
     ),
-    [openIncomingOffer, refetch, toast, user?.id],
+    [openOffer],
   );
 
   const ListHeader = useCallback(
@@ -99,11 +79,9 @@ export function NurseDemandesScreen() {
         skeletonHeight={168}
         ListEmptyComponent={
           <EmptyState
-            title="Aucune demande pour le moment"
-            description="Les nouvelles propositions de soins apparaîtront ici."
-            imageSource={EMPTY_DEMANDE_IMAGE}
-            imageWidth={EMPTY_DEMANDE_IMAGE_WIDTH}
-            imageHeight={EMPTY_DEMANDE_IMAGE_HEIGHT}
+            title="Aucune demande"
+            description="Les nouvelles demandes de soins apparaîtront ici."
+            illustration="requests"
           />
         }
       />
@@ -113,13 +91,14 @@ export function NurseDemandesScreen() {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  listContent: {
-    minWidth: 0,
-    paddingHorizontal: spacing[4],
-    paddingBottom: spacing[8],
-    flexGrow: 1,
-  },
-  listHeader: { marginBottom: spacing[2] },
-};
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    listContent: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[4],
+      paddingBottom: spacing[8],
+      flexGrow: 1,
+    },
+    listHeader: { marginBottom: spacing[3] },
+  };
 }

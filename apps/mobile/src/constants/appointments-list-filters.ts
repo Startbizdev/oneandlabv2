@@ -52,13 +52,3 @@ export const PRO_STATUS_OPTIONS: Array<{ label: string; value: ProStatusFilter }
   { label: 'En cours', value: 'active' },
   { label: 'Terminés', value: 'done' },
 ];
-
-/** Préleveur — missions. */
-export type PreleveurStatusFilter = 'all' | 'pending' | 'confirmed' | 'done';
-
-export const PRELEVEUR_STATUS_OPTIONS: Array<{ label: string; value: PreleveurStatusFilter }> = [
-  { label: 'Tous', value: 'all' },
-  { label: 'À traiter', value: 'pending' },
-  { label: 'Confirmées', value: 'confirmed' },
-  { label: 'Terminées', value: 'done' },
-];

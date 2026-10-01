@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { LoginFlow, type LoginFlowMeta } from '@/features/auth/components/LoginFlow';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -18,18 +18,16 @@ function sheetTitle({ step }: LoginFlowMeta): string {
   return step === 'forgot' || step === 'forgot-sent' ? 'Mot de passe oublié' : 'Connexion';
 }
 
-function sheetSubtitle({ step, email }: LoginFlowMeta): string {
+function sheetSubtitle({ step, email }: LoginFlowMeta): string | undefined {
   switch (step) {
     case 'password':
-      return email ? `Mot de passe du compte ${email}` : 'Entrez votre mot de passe Cary';
+      return email || undefined;
     case 'otp':
-      return email ? `Code envoyé à ${email}` : 'Saisissez le code reçu par e-mail';
-    case 'forgot':
-      return 'Nous vous enverrons les instructions';
+      return email ? `Code envoyé à ${email}` : undefined;
     case 'forgot-sent':
       return 'Consultez votre boîte e-mail';
     default:
-      return 'Saisissez votre e-mail pour continuer';
+      return undefined;
   }
 }
 
@@ -51,7 +49,7 @@ export function LoginBottomSheet({
   const showRegister = onRegisterPress && meta.step === 'email';
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={handleClose}
       title={sheetTitle(meta)}
@@ -61,18 +59,17 @@ export function LoginBottomSheet({
         <LoginFlow onSuccess={onSuccess} onEmailNotFound={onEmailNotFound} onMetaChange={setMeta} />
         {showRegister ? (
           <Pressable onPress={onRegisterPress} style={styles.registerLink} accessibilityRole="button">
-            <AppText style={styles.registerText}>
-              Pas encore de compte ?{' '}
-              <AppText style={styles.registerAccent}>Créer un compte</AppText>
+            <AppText variant="secondary" style={styles.registerText}>
+              Pas encore de compte ? <AppText style={styles.registerAccent}>Créer un compte</AppText>
             </AppText>
           </Pressable>
         ) : null}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     content: {
       width: '100%' as const,
@@ -83,15 +80,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
-    registerText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      textAlign: 'center' as const,
-    },
-    registerAccent: {
-      ...font.bold,
-      color: c.primary,
-    },
+    registerText: { textAlign: 'center' as const },
+    registerAccent: { ...font.semiBold, color: c.textLink },
   };
 }

@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
+import { ScrollView } from 'react-native';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { webPageHref } from '@/features/legal/utils/web-page-href';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ExternalLink,
@@ -14,14 +10,13 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
-  Lock,
   MapPin,
 } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
-import { ProfileNavCard } from '@/features/profile/components/ProfileNavCard';
-import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import { ProfileSecurityLinkRow } from '@/features/profile/components/ProfileSecurityLinkRow';
 import { ProfilePrescriptionSignatureSection } from '@/features/profile/components/ProfilePrescriptionSignatureSection';
 import { useNurseProfileSummary } from '@/features/profile/hooks/use-nurse-profile-summary';
 import { fetchUser, updateProfileImages } from '@/features/profile/api/profile.service';
@@ -29,13 +24,10 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { nursePublicProfilePath } from '@/features/profile/utils/nurse-public-profile';
-import { spacing, useStyles, type Theme } from '@/theme';
-import { useAppColors } from '@/theme/use-app-colors';
+import { spacing, useStyles } from '@/theme';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
 
 export function ProfileNurseHubView() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   const router = useRouter();
@@ -44,8 +36,6 @@ export function ProfileNurseHubView() {
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const summary = useNurseProfileSummary();
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.scroll);
 
   const [photosOpen, setPhotosOpen] = useState(false);
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
@@ -75,7 +65,7 @@ export function ProfileNurseHubView() {
     }, [qc, user?.id]),
   );
 
-  const push = useCallback((path: string) => router.push(path as never), [router]);
+  const push = useCallback((href: Href) => router.push(href), [router]);
 
   const savePhotos = useMutation({
     mutationFn: (body: { profile_image_url: string | null; cover_image_url: string | null }) =>
@@ -107,10 +97,7 @@ export function ProfileNurseHubView() {
   const publicSlug = profileQ.data?.public_slug?.trim() ?? '';
 
   const openPublicProfile = useCallback(() => {
-    const path = nursePublicProfilePath(publicSlug);
-    push(
-      `/(nurse)/web?path=${encodeURIComponent(path)}&title=${encodeURIComponent('Mon profil public')}` as never,
-    );
+    push(webPageHref('/(nurse)', { kind: 'nurse-profile', slug: publicSlug }));
   }, [publicSlug, push]);
 
   if (profileQ.isLoading || profileQ.isError || !profileQ.data) return <ProfileLoadState loading={profileQ.isLoading || !user?.id} refreshing={profileQ.isFetching} error={profileQ.error} onRetry={() => void profileQ.refetch()} />;
@@ -118,15 +105,13 @@ export function ProfileNurseHubView() {
   return (
     <StackChromeScreen>
       <ScrollView
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
+        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
         <ProfileHero
-          firstName={user?.first_name ?? ''}
-          lastName={user?.last_name ?? ''}
-          email={user?.email}
-          role="nurse"
+          name={`${user?.first_name ?? ''} ${user?.last_name ?? ''}`}
+          seed={user?.id}
+          subtitle={user?.email}
           gender={profileQ.data?.gender}
           profileImageUrl={profileUrl ?? user?.profile_image_url}
           coverImageUrl={coverUrl}
@@ -134,63 +119,44 @@ export function ProfileNurseHubView() {
           onEditPhotos={() => setPhotosOpen(true)}
         />
 
-        <ProfileNavCard title="Mon profil">
-          <ProfileNavRow
-            icon={FileText}
-            title="Coordonnées"
-            subtitle={summary.coordinatesSubtitle}
-            onPress={() => push('/profile/nurse/coordinates')}
-          />
-          <View style={styles.divider} />
-          <ProfileNavRow
-            icon={Globe}
-            title="Présentation"
-            subtitle={summary.presentationSubtitle}
-            onPress={() => push('/profile/nurse/presentation')}
-            iconColor={c.success}
-            iconBg={c.successLight}
-          />
-          <View style={styles.divider} />
-          <ProfileNavRow
-            icon={GraduationCap}
-            title="Diplômes et formations"
-            subtitle={summary.qualificationsSubtitle}
-            onPress={() => push('/profile/nurse/qualifications')}
-            iconColor={c.warning}
-            iconBg={c.warningLight}
-          />
-          <View style={styles.divider} />
-          <ProfileNavRow
-            icon={HeartPulse}
-            title="Types de soins"
-            subtitle={summary.careTypesSubtitle}
-            onPress={() => push('/profile/nurse/care-types')}
-            iconColor={c.error}
-            iconBg={c.errorLight}
-          />
-          <View style={styles.divider} />
-          <ProfileNavRow
-            icon={MapPin}
-            title="Zone de couverture"
-            subtitle={summary.coverageSubtitle}
-            onPress={() => push('/profile/nurse/coverage')}
-            iconColor={c.primary}
-            iconBg={c.primaryLight}
-          />
-          {publicSlug ? (
-            <>
-              <View style={styles.divider} />
-              <ProfileNavRow
-                icon={ExternalLink}
-                title="Voir mon profil public"
-                subtitle={nursePublicProfilePath(publicSlug)}
-                onPress={openPublicProfile}
-                iconColor={c.primaryDark}
-                iconBg={c.primaryLight}
-              />
-            </>
-          ) : null}
-        </ProfileNavCard>
+        <SettingsSection
+          title="Mon profil"
+          items={[
+            {
+              icon: FileText,
+              label: 'Coordonnées',
+              description: summary.coordinatesSubtitle,
+              onPress: () => push('/profile/nurse/coordinates'),
+            },
+            {
+              icon: Globe,
+              label: 'Présentation',
+              description: summary.presentationSubtitle,
+              onPress: () => push('/profile/nurse/presentation'),
+            },
+            {
+              icon: GraduationCap,
+              label: 'Diplômes et formations',
+              description: summary.qualificationsSubtitle,
+              onPress: () => push('/profile/nurse/qualifications'),
+            },
+            {
+              icon: HeartPulse,
+              label: 'Types de soins',
+              description: summary.careTypesSubtitle,
+              onPress: () => push('/profile/nurse/care-types'),
+            },
+            {
+              icon: MapPin,
+              label: 'Zone de couverture',
+              description: summary.coverageSubtitle,
+              onPress: () => push('/profile/nurse/coverage'),
+            },
+            ...(publicSlug
+              ? [{ icon: ExternalLink, label: 'Voir mon profil public', onPress: openPublicProfile }]
+              : []),
+          ]}
+        />
 
         {user?.id ? (
           <ProfilePrescriptionSignatureSection
@@ -199,23 +165,13 @@ export function ProfileNurseHubView() {
           />
         ) : null}
 
-        <ProfileNavCard title="Compte">
-          <ProfileNavRow
-            icon={Lock}
-            title="Mot de passe et connexion"
-            subtitle="Créer ou modifier votre mot de passe · biométrie"
-            onPress={() => push('/profile/security')}
-            iconColor={c.primary}
-            iconBg={c.primaryLight}
-          />
-        </ProfileNavCard>
+        <ProfileSecurityLinkRow />
       </ScrollView>
 
-      <BottomSheet
+      <SheetModal
         visible={photosOpen}
         onClose={() => setPhotosOpen(false)}
         title="Photos"
-        subtitle="Personnalisez votre fiche publique"
         contentStyle={styles.sheetBody}
       >
         <ProfilePhotosSheetContent
@@ -226,26 +182,21 @@ export function ProfileNurseHubView() {
           onChangeProfile={onChangeProfilePhoto}
           onChangeCover={onChangeCoverPhoto}
         />
-      </BottomSheet>
+      </SheetModal>
     </StackChromeScreen>
   );
 }
 
-function buildStyles({ colors: c }: Theme) {
+function buildStyles() {
   return {
-  scroll: {
-    padding: spacing[4],
-    gap: spacing[4],
-    paddingBottom: spacing[12],
-  },
-  divider: {
-    height: 1,
-    backgroundColor: c.borderLight,
-    marginLeft: spacing[4] + 40 + spacing[3],
-  },
-  sheetBody: {
-    paddingTop: spacing[2],
-    paddingBottom: spacing[6],
-  },
-};
+    scroll: {
+      padding: spacing[4],
+      gap: spacing[6],
+      paddingBottom: spacing[12],
+    },
+    sheetBody: {
+      paddingTop: spacing[2],
+      paddingBottom: spacing[6],
+    },
+  };
 }

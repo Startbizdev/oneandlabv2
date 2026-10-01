@@ -1,10 +1,9 @@
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
-import { useCallback, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import { useToast } from '@/providers/ToastProvider';
+import { AppText, MIN_TOUCH_TARGET, radius, spacing, useStyles, font, type Theme } from '@/theme';
 import { buildAiDraftRecapBullets } from '../utils/build-ai-draft-recap-bullets';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
 import {
@@ -17,77 +16,79 @@ interface Props {
   confirming?: boolean;
   canConfirm?: boolean;
   onConfirm: (draft: AiAppointmentDraft) => void;
-  onReplaceDocument?: (docType: string) => void;
 }
 
-/** Récap RDV — liste à puces dans la bulle assistant. */
-export function CaryAiBookingRecapCard({
-  draft,
-  confirming,
-  canConfirm = false,
-  onConfirm,
-}: Props) {
+/** Récapitulatif de la demande de RDV préparée par Cary : libellé / valeur, puis validation. */
+export function CaryAiBookingRecapCard({ draft, confirming, canConfirm = false, onConfirm }: Props) {
   const styles = useStyles(buildStyles);
-  const bullets = useMemo(() => buildAiDraftRecapBullets(draft), [draft]);
+  const { show: toast } = useToast();
+  const rows = useMemo(() => buildAiDraftRecapBullets(draft), [draft]);
   const [preview, setPreview] = useState<{ uri: string; fileName?: string } | null>(null);
 
-  const openDoc = useCallback(async (medicalDocumentId: string, fileName?: string | null) => {
-    let uri = await getCachedMedicalDocumentUri(medicalDocumentId, fileName ?? undefined);
-    if (!uri) {
-      const cached = await cacheMedicalDocument(medicalDocumentId, fileName ?? undefined);
-      uri = cached.localUri ?? null;
-    }
-    if (uri) {
-      setPreview({ uri, fileName: fileName ?? undefined });
-    }
-  }, []);
+  const openDoc = useCallback(
+    async (medicalDocumentId: string, fileName?: string | null) => {
+      let uri = await getCachedMedicalDocumentUri(medicalDocumentId, fileName ?? undefined);
+      if (!uri) {
+        const cached = await cacheMedicalDocument(medicalDocumentId, fileName ?? undefined);
+        uri = cached.localUri ?? null;
+      }
+      if (uri) {
+        setPreview({ uri, fileName: fileName ?? undefined });
+      } else {
+        toast('Aperçu indisponible pour le moment.', { type: 'error' });
+      }
+    },
+    [toast],
+  );
 
   return (
     <>
-      <View style={styles.block}>
-        <AppText style={styles.title}>Récapitulatif</AppText>
-        <View style={styles.list}>
-          {bullets.map((row, index) => {
-            const isDoc = Boolean(row.medicalDocumentId);
-            const valueNode = isDoc ? (
-              <Pressable
-                onPress={() => void openDoc(row.medicalDocumentId!, row.value)}
-                accessibilityRole="button"
-                accessibilityLabel={`Aperçu ${row.value}`}
-              >
-                <AppText style={[styles.value, styles.link]}>{row.value}</AppText>
-              </Pressable>
-            ) : (
-              <AppText style={styles.value}>{row.value}</AppText>
-            );
-
-            return (
-              <Row key={`${row.label}-${index}`} align="start" gap={spacing[2]} style={styles.row}>
-                <AppText style={styles.bullet}>•</AppText>
-                <View style={styles.rowBody}>
-                  <AppText style={styles.label}>{row.label}</AppText>
-                  {valueNode}
-                </View>
-              </Row>
-            );
-          })}
-        </View>
+      <View style={styles.card}>
+        <AppText variant="headline" style={styles.title}>
+          Récapitulatif
+        </AppText>
+        {rows.map((row, index) => {
+          const docId = row.medicalDocumentId;
+          return (
+            <Fragment key={`${row.label}-${index}`}>
+              <View style={styles.divider} />
+              <View style={styles.row}>
+                <AppText variant="caption">{row.label}</AppText>
+                {docId ? (
+                  <Pressable
+                    onPress={() => void openDoc(docId, row.value)}
+                    style={styles.docLink}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Aperçu ${row.value}`}
+                  >
+                    <AppText variant="body" style={styles.link}>
+                      {row.value}
+                    </AppText>
+                  </Pressable>
+                ) : (
+                  <AppText variant="body">{row.value}</AppText>
+                )}
+              </View>
+            </Fragment>
+          );
+        })}
 
         {draft.missing_fields?.length && canConfirm ? (
-          <AppText style={styles.hint}>À compléter : {draft.missing_fields.join(', ')}</AppText>
+          <AppText variant="caption" style={styles.hint}>
+            À compléter : {draft.missing_fields.join(', ')}
+          </AppText>
         ) : null}
 
         {canConfirm ? (
-          <Row align="center" justify="end" gap={spacing[2]} style={styles.footer}>
+          <View style={styles.footer}>
             <Button
-              title={confirming ? '…' : 'Valider'}
+              title="Valider"
               onPress={() => onConfirm(draft)}
               disabled={confirming}
               loading={confirming}
-              variant="primary"
-              size="sm"
+              fullWidth
             />
-          </Row>
+          </View>
         ) : null}
       </View>
 
@@ -101,61 +102,31 @@ export function CaryAiBookingRecapCard({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    block: {
+    card: {
       minWidth: 0,
-      gap: spacing[1.5],
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      paddingVertical: spacing[3],
     },
-    title: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.3),
-      color: c.textPrimary,
-    },
-    list: {
-      gap: spacing[1.5],
+    title: { paddingHorizontal: spacing[4], paddingBottom: spacing[2] },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: spacing[4],
+      backgroundColor: c.borderLight,
     },
     row: {
       minWidth: 0,
-    },
-    bullet: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.35),
-      color: c.primary,
-      width: 12,
-      flexShrink: 0,
-    },
-    rowBody: {
-      flex: 1,
-      minWidth: 0,
       gap: spacing[0.5],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[2.5],
     },
-    label: {
-      ...font.medium,
-      fontSize: fontSize['2xs'],
-      lineHeight: lh(fontSize['2xs'], 1.3),
-      color: c.textTertiary,
-    },
-    value: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: lh(fontSize.sm, 1.35),
-      color: c.textPrimary,
-    },
-    link: {
-      color: c.primary,
-      textDecorationLine: 'underline' as const,
-    },
-    hint: {
-      ...font.regular,
-      fontSize: fontSize['2xs'],
-      lineHeight: lh(fontSize['2xs'], 1.35),
-      color: c.textTertiary,
-    },
-    footer: {
-      marginTop: spacing[0.5],
-    },
+    docLink: { minHeight: MIN_TOUCH_TARGET - spacing[3], justifyContent: 'center' as const },
+    link: { ...font.medium, color: c.primary, textDecorationLine: 'underline' as const },
+    hint: { paddingHorizontal: spacing[4], paddingTop: spacing[2] },
+    footer: { paddingHorizontal: spacing[4], paddingTop: spacing[3] },
   };
 }

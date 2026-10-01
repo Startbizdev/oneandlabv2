@@ -14,7 +14,7 @@ import {
   resolveAppointmentMapCoords,
 } from '../utils/appointment-address-display';
 import { useRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   apt: Appointment;
@@ -68,7 +68,7 @@ export function RdvAddressFieldRow({
         rowIndex > 0 && section.rowBorder,
       ]}
     >
-      <AppText style={styles.label}>Adresse</AppText>
+      <AppText style={section.fieldLabel}>Adresse</AppText>
       {pending ? (
         <Skeleton height={18} width="88%" borderRadius={radius.sm} />
       ) : (
@@ -78,12 +78,12 @@ export function RdvAddressFieldRow({
             <AppText style={styles.complement}>Complément : {complement}</AppText>
           ) : null}
           {showMapActions && line ? (
-            <Row gap={4} align="center" style={styles.mapActions}>
+            <Row gap={spacing[1]} align="center" style={styles.mapActions}>
               <Button
                 title="Carte"
                 variant="muted"
                 size="sm"
-                leftIcon={<Map size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<Map size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
                 onPress={openGoogleMaps}
               />
               {navigation.canNavigate ? (
@@ -92,7 +92,7 @@ export function RdvAddressFieldRow({
                   variant="muted"
                   size="sm"
                   leftIcon={
-                    <Navigation size={iconSize['2xs']} color={c.textSecondary} strokeWidth={2.25} />
+                    <Navigation size={iconSize['2xs']} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
                   }
                   onPress={() => void navigation.open()}
                   accessibilityLabel={`Itinéraire ${navigation.appLabel}`}
@@ -106,27 +106,19 @@ export function RdvAddressFieldRow({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, fontSize, text }: Theme) {
   return {
   row: {
     gap: spacing[1],
-  },
-  label: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.4,
   },
   valueBlock: {
     gap: spacing[1],
   },
   value: {
     minWidth: 0,
-    ...font.semiBold,
-    fontSize: fontSize.base,
+    ...text.body,
+    ...font.medium,
     color: c.textPrimary,
-    lineHeight: fontSize.base * 1.4,
     flexShrink: 1,
   },
   complement: {

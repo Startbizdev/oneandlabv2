@@ -16,6 +16,22 @@ export function appointmentTypeLabel(type?: string | null): string {
   return type;
 }
 
+/** « Prise de sang · Bilan · RDV du 3 mars 2026 » — contexte du soin noté. */
+export function reviewAppointmentContext(review: {
+  appointment_type?: string | null;
+  category_name?: string | null;
+  appointment_scheduled_at?: string | null;
+}): string {
+  const aptDate = formatReviewDate(review.appointment_scheduled_at);
+  return [
+    appointmentTypeLabel(review.appointment_type),
+    review.category_name,
+    aptDate ? `RDV du ${aptDate}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 export function reviewerDisplayName(review: {
   reviewer_name?: string;
   patient_first_name?: string;

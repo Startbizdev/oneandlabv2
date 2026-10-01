@@ -8,6 +8,9 @@ export interface PreleveurTourStop {
   position: number;
   visit_status: string;
   patient_name: string;
+  patient_id?: string | null;
+  patient_gender?: string | null;
+  profile_image_url?: string | null;
   status: string;
   scheduled_at?: string | null;
   availability?: unknown;

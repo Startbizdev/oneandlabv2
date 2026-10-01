@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
-import { iconSize } from '@/theme';
+import { iconSize, ICON_STROKE_WIDTH } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { formatNir, maskNir, normalizeNir } from '@/features/profile/utils/nir';
 
@@ -44,7 +44,7 @@ export function NirInput({ value, onChange, error }: Props) {
             accessibilityRole="button"
             accessibilityLabel={plain ? 'Masquer le numéro de sécurité sociale' : 'Afficher le numéro de sécurité sociale'}
           >
-            <Icon size={iconSize.sm} color={c.textSecondary} strokeWidth={2} />
+            <Icon size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
           </Pressable>
         ) : undefined
       }

@@ -1,10 +1,10 @@
-import { CarePictogram } from '@/components/ui/CarePictogram';
+import { CareIcon } from '@/features/categories/components/CareIcon';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import { Check, Plus } from 'lucide-react-native';
 import {
   isCareCategoryWithoutBookingOptions,
@@ -15,7 +15,6 @@ import type { CareCategory } from '@/features/categories/api/categories.service'
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
   buildCareFilterTabs,
-  careListHeading,
   filterCategoriesByTab,
   isAutreCareCategory,
   sortCareCategoriesWithAutreLast,
@@ -26,12 +25,8 @@ import { CareCategoryFilterBar } from './CareCategoryFilterBar';
 import { CareServiceQuickOptionsSheet } from './CareServiceQuickOptionsSheet';
 import { SelectedServicesDetailSheet } from './SelectedServicesDetailSheet';
 import { useToast } from '@/providers/ToastProvider';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 const H_PAD = spacing[4];
 /** Hauteur pill CTA flottant (étape 1). */
@@ -43,14 +38,13 @@ interface Props {
   bloodCategories: CareCategory[];
   allCategories: CareCategory[];
   selectedServices: SelectedServiceInput[];
-  onlyCategoryOptionsFor: (cat: CareCategory) => boolean;
   onQuickAdd: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
   onRemove: (serviceId: string) => void;
   onContinue: () => void;
   onEnsureCategoryReady?: (cat: CareCategory) => Promise<CareCategory>;
   formDataByService?: Record<string, BookingServiceFormSlice | undefined>;
   loading?: boolean;
-  /** Phases stables du parcours (la sélection des soins est la première). */
+  /** Étapes du parcours pour la sélection courante (la sélection des soins est la première). */
   phases: readonly string[];
 }
 
@@ -79,18 +73,11 @@ function CareListTile({
       style={({ pressed }) => [styles.tileHit, pressed && styles.tilePressed]}
     >
       <Row gap={spacing[3]} align="center" style={[styles.tile, selected ? styles.tileSelected : styles.tileDefault]}>
-        <View style={styles.careSymbol} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <CarePictogram label={cat.name} type={cat.type} icon={cat.icon} imageUrl={cat.image_url} size={iconSize.lg} color={c.textLink} />
-        </View>
+        <CareIcon care={cat} variant="well" />
 
         <View style={styles.tileCopy}>
-          <AppText
-            style={[styles.tileLabel, selected && styles.tileLabelSelected]}
-            numberOfLines={2}
-          >
-            {cat.label}
-          </AppText>
-          {hint ? <AppText style={styles.tileHint}>{hint}</AppText> : null}
+          <AppText style={styles.tileLabel}>{cat.label}</AppText>
+          {hint ? <AppText variant="caption" style={styles.tileHint}>{hint}</AppText> : null}
         </View>
 
         <View
@@ -101,9 +88,9 @@ function CareListTile({
           pointerEvents="none"
         >
           {selected ? (
-            <Check size={iconSize.mdSm} color={c.onPrimary} strokeWidth={2} />
+            <Check size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
           ) : (
-            <Plus size={iconSize.mdSm} color={c.textLink} strokeWidth={2} />
+            <Plus size={iconSize.md} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />
           )}
         </View>
       </Row>
@@ -116,7 +103,6 @@ export function CareSelectionStep({
   bloodCategories,
   allCategories,
   selectedServices,
-  onlyCategoryOptionsFor,
   onQuickAdd,
   onRemove,
   onContinue,
@@ -128,9 +114,8 @@ export function CareSelectionStep({
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
-  const insets = useSafeAreaInsets();
+  const { footerPadding } = useSceneBottomInset();
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
-  const [modalOnlyOpts, setModalOnlyOpts] = useState(false);
   /** Invalide les `ensureCategoryReady` en cours après fermeture ou nouveau tap. */
   const optionsSheetSessionRef = useRef(0);
   const [filterTab, setFilterTab] = useState('all');
@@ -181,20 +166,10 @@ export function CareSelectionStep({
   const selectionCount = selectedServices.length;
   const hasSelection = selectionCount > 0;
 
-  const sceneInsets = useTabSceneInsets();
-  const floatingCtaBottom =
-    sceneInsets.insetBottom > 0
-      ? sceneInsets.insetBottom + spacing[3]
-      : Math.max(insets.bottom, spacing[2]) + spacing[3];
+  const floatingCtaBottom = footerPadding + spacing[3];
   const scrollBottomPad = hasSelection
-    ? PREMIUM_CTA_HEIGHT +
-      spacing[4] +
-      (sceneInsets.insetBottom > 0 ? spacing[3] : floatingCtaBottom)
+    ? PREMIUM_CTA_HEIGHT + spacing[4] + floatingCtaBottom
     : spacing[3];
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, [
-    styles.listContent,
-    { paddingBottom: scrollBottomPad },
-  ]);
 
   const isSelected = useCallback(
     (catId: string) => selectedServices.some((s) => s.id === catId),
@@ -210,24 +185,15 @@ export function CareSelectionStep({
 
       const session = ++optionsSheetSessionRef.current;
 
-      const skipOptionsSheet = isCareCategoryWithoutBookingOptions(cat);
-      const quickAddWithoutSheet =
-        skipOptionsSheet ||
-        (onlyCategoryOptionsFor(cat) && (cat.options?.length ?? 0) === 0);
-
-      if (!quickAddWithoutSheet) {
+      if (!isCareCategoryWithoutBookingOptions(cat)) {
         setModalCat(cat);
-        setModalOnlyOpts(onlyCategoryOptionsFor(cat));
       }
 
       try {
         const ready = onEnsureCategoryReady ? await onEnsureCategoryReady(cat) : cat;
         if (session !== optionsSheetSessionRef.current) return;
 
-        const skipReady = isCareCategoryWithoutBookingOptions(ready);
-        const addonOnly = onlyCategoryOptionsFor(ready);
-        const optsLen = ready.options?.length ?? 0;
-        if (skipReady || (addonOnly && optsLen === 0)) {
+        if (isCareCategoryWithoutBookingOptions(ready)) {
           setModalCat(null);
           onQuickAdd({
             service: {
@@ -247,7 +213,6 @@ export function CareSelectionStep({
           return;
         }
         setModalCat(ready);
-        setModalOnlyOpts(addonOnly);
       } catch (e) {
         if (session !== optionsSheetSessionRef.current) return;
         const msg = e instanceof Error ? e.message : String(e);
@@ -259,7 +224,6 @@ export function CareSelectionStep({
       isSelected,
       onQuickAdd,
       onRemove,
-      onlyCategoryOptionsFor,
       onEnsureCategoryReady,
       resetFilterAfterAdd,
       toast,
@@ -273,7 +237,7 @@ export function CareSelectionStep({
           current={1}
           total={phases.length}
           phases={phases}
-          label="Choix des soins"
+          label={phases[0]}
         />
 
         {filterTabs.length > 0 ? (
@@ -284,43 +248,38 @@ export function CareSelectionStep({
           />
         ) : null}
 
-        <Row gap={spacing[3]} align="start" justify="between">
-          <View style={styles.metaCopy}>
-            <AppText style={styles.metaTitle}>{careListHeading(filterTab, filterTabs)}</AppText>
-            <AppText style={styles.metaSubtitle}>
-              {hasSelection
-                ? `${selectionCount} sélectionné${selectionCount > 1 ? 's' : ''} — touchez à nouveau pour retirer`
-                : 'Ajoutez vos soins, puis choisissez le lieu et les dates.'}
-            </AppText>
-          </View>
-          <Row gap={spacing[1]} align="baseline" style={styles.metaCountPill}>
-            <AppText style={styles.metaCount}>{displayList.length}</AppText>
-            <AppText style={styles.metaCountLabel}>
-              {displayList.length > 1 ? 'soins' : 'soin'}
-            </AppText>
-          </Row>
-        </Row>
+        {hasSelection ? (
+          <AppText variant="secondary" style={styles.metaCopy}>
+            Touchez un soin coché pour le retirer.
+          </AppText>
+        ) : null}
       </View>
     ),
     [
-      displayList.length,
       filterTab,
       filterTabs,
       hasSelection,
       phases,
-      selectionCount,
       styles,
     ],
   );
 
   const listBody = useMemo(() => {
     if (gridItems.length === 0) {
-      return (
-        <AppText style={styles.emptyList}>
-          {filterTab === 'all'
-            ? 'Aucun soin disponible pour le moment.'
-            : 'Aucun soin dans cette catégorie.'}
-        </AppText>
+      return filterTab === 'all' ? (
+        <EmptyState
+          illustration="booking"
+          title="Aucun soin disponible"
+          description="Revenez un peu plus tard."
+        />
+      ) : (
+        <EmptyState
+          illustration="search"
+          title="Aucun soin ici"
+          description="Choisissez une autre catégorie."
+          actionLabel="Voir tous les soins"
+          onAction={() => setFilterTab('all')}
+        />
       );
     }
     return (
@@ -341,7 +300,9 @@ export function CareSelectionStep({
     if (autreItems.length === 0) return null;
     return (
       <View style={styles.autreBlock}>
-        <AppText style={styles.autreKicker}>Besoin d’un autre soin ?</AppText>
+        <AppText variant="caption" style={styles.autreKicker} accessibilityRole="header">
+          Besoin d’un autre soin ?
+        </AppText>
         {autreItems.map((cat) => (
           <CareListTile
             key={cat.id}
@@ -360,8 +321,7 @@ export function CareSelectionStep({
       <View style={styles.root}>
         <ScrollView
           style={styles.listScroll}
-          contentContainerStyle={scrollConfig.contentContainerStyle}
-          {...spreadTabSceneScrollProps(scrollConfig)}
+          contentContainerStyle={[styles.listContent, { paddingBottom: scrollBottomPad }]}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -391,7 +351,7 @@ export function CareSelectionStep({
         visible={modalCat != null}
         category={modalCat}
         categories={allCategories}
-        onlyCategoryOptions={modalOnlyOpts}
+        onlyCategoryOptions={false}
         onClose={closeOptionsSheet}
         onConfirm={(payload) => {
           optionsSheetSessionRef.current += 1;
@@ -414,7 +374,7 @@ export function CareSelectionStep({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
   root: {
     minWidth: 0,
@@ -444,41 +404,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     marginBottom: spacing[4],
   },
   metaCopy: {
-    flex: 1,
     minWidth: 0,
-    gap: spacing[1],
-  },
-  metaTitle: {
-    ...font.heading,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-    letterSpacing: -0.35,
-    lineHeight: fontSize.lg * 1.15,
-  },
-  metaSubtitle: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.4,
-  },
-  metaCountPill: {
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: spacing[1.5],
-    borderRadius: radius.full,
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
-    flexShrink: 0,
-  },
-  metaCount: {
-    ...font.bold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  metaCountLabel: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
   },
   list: {
     gap: LIST_GAP,
@@ -488,26 +414,24 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     width: '100%' as const,
   },
   tilePressed: {
-    opacity: 0.94,
-    transform: [{ scale: 0.985 }],
+    opacity: 0.85,
   },
   tile: {
     minWidth: 0,
     width: '100%' as const,
-    minHeight: 80,
+    minHeight: 64,
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3.5],
+    paddingVertical: spacing[3],
     borderRadius: radius.lg,
+    borderWidth: 1.5,
     overflow: 'hidden' as const,
   },
   tileDefault: {
-    borderWidth: 1,
-    borderColor: c.border,
+    borderColor: c.cardBorder,
     backgroundColor: c.surface,
   },
   tileSelected: {
-    borderWidth: 1,
-    borderColor: c.primaryDark,
+    borderColor: c.primary,
     backgroundColor: c.primaryLight,
   },
   tileCopy: {
@@ -517,20 +441,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     justifyContent: 'center' as const,
   },
   tileLabel: {
-    ...font.bold,
-    fontSize: fontSize.base,
+    ...text.body,
+    ...font.semiBold,
     color: c.textPrimary,
-    letterSpacing: -0.2,
-    lineHeight: fontSize.base * 1.25,
-  },
-  tileLabelSelected: {
-    color: c.primaryDark,
   },
   tileHint: {
-    ...font.regular,
-    fontSize: fontSize.sm,
     color: c.textSecondary,
-    lineHeight: fontSize.sm * 1.35,
   },
   tileAction: {
     width: 36,
@@ -541,21 +457,11 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     flexShrink: 0,
   },
   tileActionIdle: {
-    backgroundColor: c.primaryLight,
     borderWidth: 1.5,
-    borderColor: c.primaryMid,
+    borderColor: c.border,
   },
   tileActionSelected: {
     backgroundColor: c.primary,
-  },
-  careSymbol: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: c.surfaceAlt,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
   },
   autreBlock: {
     marginTop: spacing[4],
@@ -565,17 +471,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderTopColor: c.borderLight,
   },
   autreKicker: {
-    ...font.bold,
-    fontSize: fontSize.sm,
+    ...font.semiBold,
     color: c.textSecondary,
-    letterSpacing: 0.2,
-  },
-  emptyList: {
-    ...font.regular,
-    fontSize: fontSize.base,
-    color: c.textTertiary,
-    textAlign: 'center' as const,
-    paddingVertical: spacing[10],
   },
 };
 }

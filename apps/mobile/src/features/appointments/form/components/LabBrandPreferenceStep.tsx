@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Row } from '@/components/layout/primitives';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
+import { ChoiceCard } from '@/components/ui/ChoiceCard';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { fetchPublicLabBrands } from '@/features/appointments/api/lab-brands.service';
 import { queryKeys } from '@/lib/query-keys';
-import { useAppColors } from '@/theme/use-app-colors';
 import { radius, spacing, AppText, font, useStyles, type Theme } from '@/theme';
 
 type Props = {
@@ -22,7 +23,6 @@ export function LabBrandPreferenceStep({
   onBrandChange,
   validationError,
 }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const selectedMode = mode || 'platform_match';
 
@@ -33,124 +33,113 @@ export function LabBrandPreferenceStep({
 
   return (
     <View style={styles.root}>
-      <AppText style={styles.lead}>
-        Indiquez comment vous souhaitez être pris en charge pour votre prélèvement.
-      </AppText>
-
-      <Pressable
-        style={[styles.option, selectedMode === 'platform_match' && styles.optionSelected]}
-        onPress={() => onModeChange('platform_match')}
-      >
-        <AppText style={styles.optionTitle}>Cary me met en relation</AppText>
-        <AppText style={styles.optionHint}>
-          Nous proposons votre demande aux laboratoires Cary disponibles près de chez vous.
-        </AppText>
-      </Pressable>
-
-      <Pressable
-        style={[styles.option, selectedMode === 'brand_choice' && styles.optionSelected]}
-        onPress={() => onModeChange('brand_choice')}
-      >
-        <AppText style={styles.optionTitle}>Choisissez votre labo</AppText>
-        <AppText style={styles.optionHint}>
-          Sélectionnez un réseau (Biogroup, Cerballiance, etc.). Notre équipe vous contactera.
-        </AppText>
-      </Pressable>
+      <View style={styles.choices} accessibilityRole="radiogroup" accessibilityLabel="Choix du laboratoire">
+        <ChoiceCard
+          title="Cary me met en relation"
+          description="Votre demande est proposée aux laboratoires disponibles près de chez vous."
+          selected={selectedMode === 'platform_match'}
+          onPress={() => onModeChange('platform_match')}
+        />
+        <ChoiceCard
+          title="Je choisis mon laboratoire"
+          description="Biogroup, Cerballiance… Notre équipe vous contactera."
+          selected={selectedMode === 'brand_choice'}
+          onPress={() => onModeChange('brand_choice')}
+        />
+      </View>
 
       {selectedMode === 'brand_choice' ? (
-        <View style={styles.gridWrap}>
-          {brandsQ.isLoading ? (
-            <AppText style={styles.muted}>Chargement des laboratoires…</AppText>
-          ) : brandsQ.isError ? (
-            <AppText style={[styles.muted, { color: c.error }]}>Impossible de charger les laboratoires.</AppText>
-          ) : (
-            <Row wrap gap={spacing[2]}>
-              {(brandsQ.data ?? []).map((brand) => {
-                const selected = brandId === brand.id;
-                return (
-                  <Pressable
-                    key={brand.id}
-                    style={[styles.brandCard, selected && styles.brandCardSelected]}
-                    onPress={() => onBrandChange(brand.id)}
-                  >
-                    {brand.logo_url ? (
-                      <Image
-                        source={{ uri: brand.logo_url }}
-                        style={styles.logo}
-                        resizeMode="contain"
-                        accessibilityLabel={brand.name}
-                      />
-                    ) : (
-                      <View style={styles.logoFallback}>
-                        <AppText style={styles.logoFallbackText}>{brand.name.slice(0, 2).toUpperCase()}</AppText>
-                      </View>
-                    )}
-                    <AppText style={styles.brandName} numberOfLines={2}>
-                      {brand.name}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </Row>
-          )}
-        </View>
+        brandsQ.isLoading ? (
+          <SkeletonList count={2} />
+        ) : brandsQ.isError ? (
+          <ErrorState
+            error={brandsQ.error}
+            title="Laboratoires indisponibles"
+            onRetry={() => void brandsQ.refetch()}
+          />
+        ) : (
+          <View style={styles.brandGrid} accessibilityRole="radiogroup" accessibilityLabel="Réseaux de laboratoires">
+            {(brandsQ.data ?? []).map((brand) => {
+              const selected = brandId === brand.id;
+              return (
+                <Pressable
+                  key={brand.id}
+                  style={({ pressed }) => [
+                    styles.brandCard,
+                    selected && styles.brandCardSelected,
+                    pressed && styles.brandCardPressed,
+                  ]}
+                  onPress={() => onBrandChange(brand.id)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={brand.name}
+                >
+                  {brand.logo_url ? (
+                    <Image source={{ uri: brand.logo_url }} style={styles.logo} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.logoFallback}>
+                      <AppText style={styles.logoFallbackText}>{brand.name.slice(0, 2).toUpperCase()}</AppText>
+                    </View>
+                  )}
+                  <AppText variant="caption" style={styles.brandName}>
+                    {brand.name}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        )
       ) : null}
 
-      {validationError ? <AppText style={[styles.error, { color: c.error }]}>{validationError}</AppText> : null}
+      {validationError ? (
+        <AppText variant="body" accessibilityRole="alert" style={styles.error}>
+          {validationError}
+        </AppText>
+      ) : null}
     </View>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    root: { gap: spacing[3], paddingBottom: spacing[6] },
-    lead: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
-    option: {
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: radius.lg,
-      padding: spacing[3],
-      backgroundColor: c.surface,
-      gap: spacing[1],
+    root: { gap: spacing[4], paddingBottom: spacing[6] },
+    choices: { gap: spacing[3] },
+    brandGrid: {
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: spacing[2],
     },
-    optionSelected: {
-      borderColor: c.primary,
-      backgroundColor: c.primaryLight,
-    },
-    optionTitle: { ...font.medium, fontSize: fontSize.base, color: c.textPrimary },
-    optionHint: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary, lineHeight: 20 },
-    gridWrap: { marginTop: spacing[2] },
     brandCard: {
-      width: '30%',
+      width: '30%' as const,
       minWidth: 96,
+      minHeight: 96,
       flexGrow: 1,
-      alignItems: 'center',
-      gap: spacing[1],
-      padding: spacing[2],
-      borderWidth: 1,
-      borderColor: c.border,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: spacing[1.5],
+      padding: spacing[3],
+      borderWidth: 1.5,
+      borderColor: c.cardBorder,
       borderRadius: radius.lg,
       backgroundColor: c.surface,
     },
     brandCardSelected: { borderColor: c.primary, backgroundColor: c.primaryLight },
+    brandCardPressed: { opacity: 0.85 },
     logo: { width: 56, height: 40, borderRadius: radius.md },
     logoFallback: {
       width: 40,
       height: 40,
       borderRadius: radius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
       backgroundColor: c.surfaceAlt,
     },
     logoFallbackText: { ...font.semiBold, fontSize: fontSize.xs, color: c.textSecondary },
     brandName: {
-      ...font.medium,
-      fontSize: fontSize.xs,
+      ...font.semiBold,
       color: c.textPrimary,
-      textAlign: 'center',
-      lineHeight: 16,
+      textAlign: 'center' as const,
     },
-    muted: { ...font.regular, fontSize: fontSize.sm, color: c.textSecondary },
-    error: { ...font.medium, fontSize: fontSize.sm, marginTop: spacing[2] },
-  } satisfies Parameters<typeof StyleSheet.create>[0];
+    error: { color: c.error },
+  };
 }

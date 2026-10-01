@@ -1,7 +1,7 @@
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { buildSettingsStyles } from '@/components/ui/SettingsRow';
-import { elevation, iconSize, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { iconSize, radius, spacing, AppText, useStyles, font, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
 export type SettingsChoiceOption<T extends string> = {
@@ -32,26 +32,26 @@ export function SettingsChoiceGroup<T extends string>({ title, caption, options,
           {title}
         </AppText>
       ) : null}
-      <View style={[settings.sectionCard, elevation.xs]} accessibilityRole="radiogroup" accessibilityLabel={caption}>
+      <View style={settings.sectionCard} accessibilityRole="radiogroup" accessibilityLabel={caption}>
         <AppText style={styles.caption}>{caption}</AppText>
         {options.map((opt) => {
           const active = opt.value === selected;
           return (
             <View key={opt.value}>
-              <View style={settings.divider} />
+              <View style={styles.divider} />
               <Pressable
                 onPress={() => onSelect(opt.value)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: active }}
                 accessibilityLabel={opt.description ? `${opt.label}, ${opt.description}` : opt.label}
-                style={({ pressed }) => [settings.row, styles.choiceRow, pressed && styles.pressed]}
+                style={({ pressed }) => [settings.row, styles.choiceRow, pressed && settings.pressed]}
               >
                 <View style={[settings.texts, styles.choiceTexts]}>
                   <AppText style={settings.label}>{opt.label}</AppText>
-                  {opt.description ? <AppText style={settings.description}>{opt.description}</AppText> : null}
+                  {opt.description ? <AppText variant="caption">{opt.description}</AppText> : null}
                 </View>
                 <View style={[styles.radio, active && styles.radioActive]}>
-                  {active ? <Check size={iconSize.xs} color={c.onPrimary} strokeWidth={3} /> : null}
+                  {active ? <Check size={iconSize.xs} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
                 </View>
               </Pressable>
             </View>
@@ -62,11 +62,11 @@ export function SettingsChoiceGroup<T extends string>({ title, caption, options,
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
     caption: {
+      ...text.secondary,
       ...font.medium,
-      fontSize: fontSize.sm,
       color: c.textSecondary,
       paddingHorizontal: spacing[4],
       paddingVertical: spacing[3],
@@ -76,12 +76,16 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       alignItems: 'center' as const,
       justifyContent: 'space-between' as const,
       gap: spacing[3],
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: spacing[4],
+      backgroundColor: c.borderLight,
     },
     choiceTexts: {
       flex: 1,
-    },
-    pressed: {
-      backgroundColor: c.surfaceAlt,
     },
     radio: {
       width: 24,

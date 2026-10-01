@@ -1,4 +1,3 @@
-import { CarePictogram } from '@/components/ui/CarePictogram';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { SkeletonRdvCarePlaceholder } from '@/components/ui/skeletons';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
+import { CareIcon } from '@/features/categories/components/CareIcon';
 import { RdvAddressFieldRow } from '../RdvAddressFieldRow';
 import {
   buildRdvBaseRows,
@@ -20,13 +20,12 @@ import {
   resolveAppointmentDetailAddressLine,
 } from '../../utils/appointment-address-display';
 import { buildPatientContactButtons } from '@/utils/contact-actions';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { useRdvDetailSectionStyles } from './rdv-detail-section-styles';
 
 interface Props {
   apt: Appointment;
   viewer?: AuthUser | null;
-  edgeToEdge?: boolean;
   /** @deprecated Préférer `batch` pour les lots. */
   omitCareFields?: boolean;
   /** Actes liés : soins regroupés dans cette carte (même UX que RDV simple). */
@@ -86,20 +85,22 @@ function InfoRow({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   if (row.kind === 'address') return null;
+  const continuesPrevious = row.kind !== 'identity' && !row.label;
 
   return (
     <View
       style={[
         section.sectionRow,
         styles.infoRow,
-        index > 0 && section.rowBorder,
+        index > 0 && !continuesPrevious && section.rowBorder,
+        continuesPrevious && styles.continuationRow,
       ]}
     >
       {row.kind === 'identity' ? (
         <>
-          <AppText style={styles.label}>{row.identityLabel ?? 'Patient'}</AppText>
+          <AppText style={section.fieldLabel}>{row.identityLabel ?? 'Patient'}</AppText>
           <View style={styles.identityBlock}>
-            <Row gap={spacing[2.5]} align="center">
+            <Row gap={spacing[3]} align="center">
               <ProfileAvatar
                 profileImageUrl={row.profileImageUrl}
                 seed={
@@ -107,7 +108,7 @@ function InfoRow({
                   [row.firstName, row.lastName].filter((p) => p && p !== '—').join(' ')
                 }
                 gender={row.gender}
-                size={iconSize['4xl']}
+                size={iconSize['2xl']}
               />
               <AppText style={styles.value}>
                 {[row.firstName, row.lastName].filter(Boolean).join(' ')}
@@ -118,7 +119,7 @@ function InfoRow({
                 title={viewPatientProfileLabel ?? 'Voir le profil'}
                 variant="muted"
                 size="sm"
-                leftIcon={<User size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
+                leftIcon={<User size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
                 onPress={onViewPatientProfile}
                 style={styles.profileButton}
                 accessibilityLabel={
@@ -131,11 +132,9 @@ function InfoRow({
         </>
       ) : (
         <>
-          <AppText style={styles.label}>{row.label}</AppText>
-          <Row align="start" wrap gap={6}>
-            {row.emoji ? (
-              <CarePictogram label={String(row.value)} icon={row.careIcon} type={row.careType} imageUrl={row.careImage} />
-            ) : null}
+          {continuesPrevious ? null : <AppText style={section.fieldLabel}>{row.label}</AppText>}
+          <Row align="center" gap={spacing[1.5]}>
+            {row.care ? <CareIcon care={row.care} /> : null}
             <AppText style={[styles.value, row.strikethrough && styles.valueMuted]}>
               {row.value}
             </AppText>
@@ -149,7 +148,6 @@ function InfoRow({
 export function RdvAppointmentInfoSection({
   apt,
   viewer,
-  edgeToEdge = false,
   omitCareFields = false,
   batch,
   batchLoading = false,
@@ -190,8 +188,8 @@ export function RdvAppointmentInfoSection({
   );
 
   const contactButtons = useMemo(
-    () => buildPatientContactButtons(c, apt, viewer),
-    [c, apt, viewer],
+    () => buildPatientContactButtons(apt, viewer),
+    [apt, viewer],
   );
 
   const needsCare = expectsCareRows(apt, omitCareFields, batch);
@@ -213,7 +211,7 @@ export function RdvAppointmentInfoSection({
   let rowIndex = addressRowVisible ? 1 : 0;
 
   return (
-    <View style={[section.card, edgeToEdge && section.cardEdge]}>
+    <View style={section.card}>
       <View>
         {addressRowVisible ? (
           <RdvAddressFieldRow
@@ -275,7 +273,7 @@ export function RdvAppointmentInfoSection({
               rowIndex > 0 && section.rowBorder,
             ]}
           >
-            <Row gap={spacing[1.5]}>
+            <Row gap={spacing[1.5]} wrap>
               {contactButtons.map((btn) => {
                 const Icon = CONTACT_ICONS[btn.icon];
                 return (
@@ -283,10 +281,9 @@ export function RdvAppointmentInfoSection({
                     <Button
                       title={btn.label}
                       size="sm"
-                      variant="primary"
-                      leftIcon={<Icon size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />}
+                      variant="secondary"
+                      leftIcon={<Icon size={iconSize.sm} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />}
                       onPress={btn.onPress}
-                      style={{ backgroundColor: btn.color, width: '100%' as const }}
                     />
                   </View>
                 );
@@ -299,10 +296,13 @@ export function RdvAppointmentInfoSection({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
   infoRow: {
     gap: spacing[1],
+  },
+  continuationRow: {
+    paddingTop: 0,
   },
   identityBlock: {
     gap: spacing[2],
@@ -314,27 +314,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     paddingVertical: spacing[3],
   },
   buttonCell: {
-    flex: 1,
-    minWidth: 0,
-  },
-  label: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.4,
-  },
-  valueEmoji: {
-    fontSize: fontSize.lg,
-    lineHeight: 24,
+    flexGrow: 1,
   },
   value: {
     minWidth: 0,
     flexShrink: 1,
-    ...font.semiBold,
-    fontSize: fontSize.base,
+    ...text.body,
+    ...font.medium,
     color: c.textPrimary,
-    lineHeight: fontSize.base * 1.35,
   },
   valueMuted: {
     textDecorationLine: 'line-through' as const,

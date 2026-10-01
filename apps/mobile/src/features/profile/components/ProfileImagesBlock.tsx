@@ -5,7 +5,7 @@ import { Cluster, Row } from '@/components/layout/primitives';
 import { Camera, ImagePlus, Trash2, Upload, User } from 'lucide-react-native';
 import { usePickProfileImage } from '@/features/profile/hooks/use-pick-profile-image';
 import { resolveProfileImageUrl } from '@/lib/images/profile-image-url';
-import { elevation, hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { elevation, hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 
 interface Props {
   profileImageUrl: string | null;
@@ -55,14 +55,14 @@ export function ProfileImagesBlock({
             <Image source={{ uri: profileSrc }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <User size={iconSize['3xl']} color={c.textTertiary} strokeWidth={1.75} />
+              <User size={iconSize.xl} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
             </View>
           )}
           <View style={styles.avatarOverlay}>
             {picking === 'profile' ? (
               <ActivityIndicator color={c.textInverse} size="small" />
             ) : (
-              <Camera size={iconSize.mdLg} color={c.textInverse} strokeWidth={2} />
+              <Camera size={iconSize.lg} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
             )}
           </View>
         </Pressable>
@@ -74,7 +74,7 @@ export function ProfileImagesBlock({
             style={styles.actionBtn}
           >
             <Row gap={spacing[2]} align="center">
-              <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
+              <Upload size={iconSize.xs} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
               <AppText style={styles.actionLabel}>{profileSrc ? 'Changer' : 'Ajouter'}</AppText>
             </Row>
           </Pressable>
@@ -85,7 +85,7 @@ export function ProfileImagesBlock({
               style={[styles.actionBtn, styles.actionBtnDanger]}
             >
               <Row gap={spacing[2]} align="center">
-                <Trash2 size={iconSize.xs} color={c.error} strokeWidth={2} />
+                <Trash2 size={iconSize.xs} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />
                 <AppText style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</AppText>
               </Row>
             </Pressable>
@@ -106,7 +106,7 @@ export function ProfileImagesBlock({
               <Image source={{ uri: coverSrc }} style={styles.coverImage} resizeMode="cover" />
             ) : (
               <View style={styles.coverPlaceholder}>
-                <ImagePlus size={iconSize.xl} color={c.textTertiary} strokeWidth={1.75} />
+                <ImagePlus size={iconSize.xl} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
               </View>
             )}
             {picking === 'cover' ? (
@@ -118,7 +118,7 @@ export function ProfileImagesBlock({
           <Row wrap gap={spacing[2]} style={styles.coverActions}>
             <Pressable onPress={() => handlePick('cover')} disabled={busy} style={styles.actionBtn}>
               <Row gap={spacing[2]} align="center">
-                <Upload size={iconSize.xs} color={c.primary} strokeWidth={2} />
+                <Upload size={iconSize.xs} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                 <AppText style={styles.actionLabel}>{coverSrc ? 'Changer' : 'Ajouter'}</AppText>
               </Row>
             </Pressable>
@@ -129,7 +129,7 @@ export function ProfileImagesBlock({
                 style={[styles.actionBtn, styles.actionBtnDanger]}
               >
                 <Row gap={spacing[2]} align="center">
-                  <Trash2 size={iconSize.xs} color={c.error} strokeWidth={2} />
+                  <Trash2 size={iconSize.xs} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />
                   <AppText style={[styles.actionLabel, styles.actionLabelDanger]}>Supprimer</AppText>
                 </Row>
               </Pressable>

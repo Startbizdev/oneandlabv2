@@ -1,8 +1,5 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Pressable, View } from 'react-native';
-import { CalendarDays } from 'lucide-react-native';
-import { radius, spacing, iconSize, useStyles, type Theme } from '@/theme';
-import { HEADER_ACTION_MARGIN_RIGHT } from '@/navigation/HeaderActionButton';
+import { CalendarPlus } from 'lucide-react-native';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 
 type Props = {
   onPress: () => void;
@@ -11,44 +8,12 @@ type Props = {
 
 /** Ajoute la tournée du jour au calendrier du téléphone. */
 export function TourCalendarExportAction({ onPress, loading }: Props) {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
-
   return (
-    <View style={styles.wrap}>
-      <Pressable
-        onPress={onPress}
-        disabled={loading}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel="Ajouter la tournée au calendrier"
-        style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color={c.primary} />
-        ) : (
-          <CalendarDays size={iconSize.mdSm} color={c.primary} strokeWidth={2.2} />
-        )}
-      </Pressable>
-    </View>
+    <HeaderAction
+      icon={CalendarPlus}
+      accessibilityLabel="Ajouter la tournée au calendrier"
+      onPress={onPress}
+      loading={loading}
+    />
   );
-}
-
-function buildStyles({ colors: c }: Theme) {
-  return {
-    wrap: {
-      paddingRight: spacing[1],
-    },
-    btn: {
-      width: 44,
-      height: 44,
-      borderRadius: radius.lg,
-      backgroundColor: c.primaryLight,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    btnPressed: { opacity: 0.88 },
-  };
 }

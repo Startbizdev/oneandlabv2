@@ -1,11 +1,11 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, runOnJS } from 'react-native-reanimated';
+import { runOnJS } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
 import { appointmentDayFrance, calendarDayKeyFromParts } from '@oneandlab/shared-utils';
 import { useQuery } from '@tanstack/react-query';
@@ -14,21 +14,16 @@ import { queryKeys } from '@/lib/query-keys';
 import { fetchCalendarAppointments } from '@/features/appointments/api/appointments.service';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
-import type { AppointmentListRow } from '@/utils/appointment-batch';
-import {
-  appointmentCalendarDayKey,
-} from '@/utils/appointment-calendar-day-key';
+import { appointmentCalendarDayKey } from '@/utils/appointment-calendar-day-key';
+import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { EmptyState } from '@/components/ui/EmptyState';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { IconActionButton } from '@/components/ui/IconActionButton';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { DayAppointmentsSheet } from '@/components/ui/DayAppointmentsSheet';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import {
   CALENDAR_STATUS_OPTIONS,
   CALENDAR_TYPE_OPTIONS,
@@ -37,8 +32,7 @@ import {
 } from '@/constants/calendar-filters';
 import { NURSE_TAB_OPTIONS, type NurseListTab } from '@/constants/appointments-list-filters';
 import {
-  elevation,
-  hexToRgba,
+  ICON_STROKE_WIDTH,
   radius,
   spacing,
   iconSize,
@@ -51,25 +45,32 @@ import {
 } from '@/theme';
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const DOT_SIZE = spacing[1];
 
 /** Aligné web `CalendarPage.vue` — inclut les RDV en attente. */
-const NURSE_CALENDAR_STATUSES =
-  'pending,confirmed,inProgress,completed,canceled,refused';
+const NURSE_CALENDAR_STATUSES = 'pending,confirmed,inProgress,completed,canceled,refused';
 
 interface Props {
+  /** Nom accessible de l'écran (lecteur d'écran). */
   title: string;
   baseFilters?: AppointmentListFilters;
-  detailPathPrefix: string;
+  rolePrefix: CalendarRolePrefix;
   /** Calendrier infirmier : Mes soins / Bilans + filtres avancés */
   nurseCalendar?: boolean;
-  /** Cartes liste RDV (même rendu que l’onglet Rendez-vous). */
-  listRole?: 'nurse' | 'pro' | 'preleveur';
 }
 
-function listRoleFromDetailPrefix(prefix: string): 'nurse' | 'pro' | 'preleveur' {
-  if (prefix.includes('nurse')) return 'nurse';
-  if (prefix.includes('preleveur')) return 'preleveur';
-  return 'pro';
+type CalendarRolePrefix = Exclude<RoleRoutePrefix, '/(patient)'>;
+
+/** Cartes liste RDV (même rendu que l'onglet Rendez-vous). */
+function listRoleFromPrefix(prefix: CalendarRolePrefix): 'nurse' | 'pro' | 'preleveur' {
+  switch (prefix) {
+    case '/(nurse)':
+      return 'nurse';
+    case '/(pro)':
+      return 'pro';
+    case '/(preleveur)':
+      return 'preleveur';
+  }
 }
 
 function monthMatrix(year: number, month: number) {
@@ -87,22 +88,18 @@ function monthMatrix(year: number, month: number) {
   return cells;
 }
 
+/** Calendrier mensuel : taper un jour affiche ses rendez-vous juste en dessous. */
 export function CalendarScreen({
+  title,
   baseFilters,
-  detailPathPrefix,
+  rolePrefix,
   nurseCalendar = false,
-  listRole: listRoleProp,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.content);
-  const listRole = listRoleProp ?? listRoleFromDetailPrefix(detailPathPrefix);
+  const listRole = listRoleFromPrefix(rolePrefix);
   const layout = useLayoutMetrics();
   const router = useRouter();
-  const scrollRef = useRef<ScrollView>(null);
-  const dayListAnchorY = useRef(0);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [cursor, setCursor] = useState(dayjs());
   const [selectedDay, setSelectedDay] = useState(dayjs().format('YYYY-MM-DD'));
@@ -112,9 +109,7 @@ export function CalendarScreen({
   const [search, setSearch] = useState('');
   const rangeFrom = cursor.startOf('month').format('YYYY-MM-DD');
   const rangeTo = cursor.endOf('month').format('YYYY-MM-DD');
-  const apiStatus = nurseCalendar
-    ? statusFilter || NURSE_CALENDAR_STATUSES
-    : statusFilter || undefined;
+  const apiStatus = nurseCalendar ? statusFilter || NURSE_CALENDAR_STATUSES : statusFilter || undefined;
   const calendarFilters: AppointmentListFilters = {
     ...baseFilters,
     ...(nurseCalendar ? { nurse_tab: nurseTab } : {}),
@@ -135,8 +130,9 @@ export function CalendarScreen({
     for (const a of listQ.data ?? []) {
       const key = appointmentCalendarDayKey(a);
       if (!key) continue;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(a);
+      const bucket = map.get(key);
+      if (bucket) bucket.push(a);
+      else map.set(key, [a]);
     }
     return map;
   }, [listQ.data]);
@@ -181,31 +177,22 @@ export function CalendarScreen({
   }, [nurseCalendar, nurseTab, statusFilter, typeFilter]);
 
   const advancedCount =
-    (nurseCalendar && nurseTab !== 'soins' ? 1 : 0) +
-    (statusFilter ? 1 : 0) +
-    (typeFilter ? 1 : 0);
+    (nurseCalendar && nurseTab !== 'soins' ? 1 : 0) + (statusFilter ? 1 : 0) + (typeFilter ? 1 : 0);
 
-  const goPrevMonth = useCallback(() => {
-    setCursor((c) => {
-      const next = c.subtract(1, 'month');
-      const monthKey = next.format('YYYY-MM');
-      if (!selectedDay.startsWith(monthKey)) {
-        setSelectedDay(next.format('YYYY-MM-DD'));
-      }
-      return next;
-    });
-  }, [selectedDay]);
-
-  const goNextMonth = useCallback(() => {
-    setCursor((c) => {
-      const next = c.add(1, 'month');
-      const monthKey = next.format('YYYY-MM');
-      if (!selectedDay.startsWith(monthKey)) {
-        setSelectedDay(next.format('YYYY-MM-DD'));
-      }
-      return next;
-    });
-  }, [selectedDay]);
+  const shiftMonth = useCallback(
+    (delta: 1 | -1) => {
+      setCursor((prev) => {
+        const next = prev.add(delta, 'month');
+        if (!selectedDay.startsWith(next.format('YYYY-MM'))) {
+          setSelectedDay(next.format('YYYY-MM-DD'));
+        }
+        return next;
+      });
+    },
+    [selectedDay],
+  );
+  const goPrevMonth = useCallback(() => shiftMonth(-1), [shiftMonth]);
+  const goNextMonth = useCallback(() => shiftMonth(1), [shiftMonth]);
 
   const monthSwipeGesture = useMemo(
     () =>
@@ -222,102 +209,61 @@ export function CalendarScreen({
     [goNextMonth, goPrevMonth],
   );
 
-  const openDaySheet = useCallback(
-    (dayKey: string) => {
-      setSelectedDay(dayKey);
-      setSheetOpen(true);
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollTo({
-          y: Math.max(0, dayListAnchorY.current - spacing[2]),
-          animated: true,
-        });
-      });
-    },
-    [],
-  );
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
-
-  const renderDayItem = useCallback(
-    (row: AppointmentListRow, index: number) => (
-      <AppointmentListRowCard
-        row={row}
-        index={index}
-        role={listRole}
-        onPress={(apt) => {
-          closeSheet();
-          router.push(`${detailPathPrefix}/${apt.id}` as never);
-        }}
-      />
-    ),
-    [router, detailPathPrefix, closeSheet, listRole],
-  );
-
-  const dayRowKey = useCallback(
-    (row: AppointmentListRow) => (row.kind === 'batch' ? row.key : row.appointment.id),
-    [],
-  );
+  const selectedLabel = capitalizeFrench(dayjs(selectedDay).format('dddd D MMMM'));
+  const countLabel =
+    dayDisplayRows.length === 0
+      ? null
+      : `${dayDisplayRows.length} rendez-vous`;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityLabel={title}>
       <ScrollView
-        ref={scrollRef}
         style={styles.scroll}
         collapsable={false}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={Platform.OS === 'android'}
-        {...spreadTabSceneScrollProps(scrollConfig)}
-        contentContainerStyle={scrollConfig.contentContainerStyle}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.primary}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
       >
-        <Animated.View entering={FadeInDown.duration(280).springify()}>
-          <AppointmentsListFilterBar
-            embedded
-            search={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Patient, soin…"
-            onOpenFilters={() => setFilterSheetOpen(true)}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-        </Animated.View>
+        <AppointmentsListFilterBar
+          embedded
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Patient, soin…"
+          onOpenFilters={() => setFilterSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
 
         <GestureDetector gesture={monthSwipeGesture}>
-          <Animated.View style={styles.calendarSwipeArea}>
-            <Animated.View entering={FadeInDown.delay(40).duration(280).springify()}>
-              <Row justify="between" align="center" style={[styles.monthNav, elevation.xs]}>
-                <Pressable onPress={goPrevMonth} style={styles.navBtn} hitSlop={8}>
-                  <ChevronLeft size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} />
-                </Pressable>
-                <AppText style={styles.monthLabel}>{cursor.format('MMMM YYYY')}</AppText>
-                <Pressable onPress={goNextMonth} style={styles.navBtn} hitSlop={8}>
-                  <ChevronRight size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} />
-                </Pressable>
-              </Row>
-            </Animated.View>
+          <View style={styles.calendarSwipeArea}>
+            <Row justify="between" align="center">
+              <IconActionButton label="Mois précédent" onPress={goPrevMonth}>
+                <ChevronLeft size={iconSize.md} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+              </IconActionButton>
+              <AppText variant="headline" style={styles.monthLabel} accessibilityRole="header">
+                {capitalizeFrench(cursor.format('MMMM YYYY'))}
+              </AppText>
+              <IconActionButton label="Mois suivant" onPress={goNextMonth}>
+                <ChevronRight size={iconSize.md} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+              </IconActionButton>
+            </Row>
 
-            <Animated.View entering={FadeInDown.delay(60).duration(280).springify()}>
-              <Row gap={spacing[1]}>
+            <Row gap={spacing[1]}>
               {WEEKDAYS.map((d, i) => (
                 <View key={i} style={[styles.weekCell, { width: cellSize }]}>
-                  <AppText style={styles.weekLabel}>{d}</AppText>
+                  <AppText variant="caption" compact style={styles.weekLabel}>
+                    {d}
+                  </AppText>
                 </View>
               ))}
-              </Row>
-            </Animated.View>
+            </Row>
 
-            <Animated.View entering={FadeInDown.delay(100).duration(280).springify()}>
-              <Row wrap gap={spacing[1]}>
+            <Row wrap gap={spacing[1]}>
               {cells.map((day, idx) => {
                 if (!day) {
-                  return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize + 8 }} />;
+                  return <View key={`empty-${idx}`} style={{ width: cellSize, height: cellSize }} />;
                 }
                 const key = calendarDayKeyFromParts(day.year(), day.month() + 1, day.date());
                 const count = byDay.get(key)?.length ?? 0;
@@ -326,99 +272,75 @@ export function CalendarScreen({
                 return (
                   <Pressable
                     key={key}
-                    onPress={() => openDaySheet(key)}
-                    style={[
-                      styles.dayCell,
-                      { width: cellSize, height: cellSize + 8 },
-                      isSelected && styles.dayCellSelected,
-                      !isSelected && isToday && styles.dayCellToday,
-                      !isSelected && count > 0 && styles.dayCellHasEvents,
-                    ]}
+                    onPress={() => setSelectedDay(key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${day.format('dddd D MMMM')}${count > 0 ? `, ${count} rendez-vous` : ''}`}
+                    style={[styles.dayCell, { width: cellSize, height: cellSize }]}
                   >
-                    <AppText
+                    <View
                       style={[
-                        styles.dayNum,
-                        isSelected && styles.dayNumSelected,
-                        !isSelected && isToday && styles.dayNumToday,
+                        styles.dayDisc,
+                        isSelected && styles.dayDiscSelected,
+                        !isSelected && isToday && styles.dayDiscToday,
                       ]}
                     >
-                      {day.format('D')}
-                    </AppText>
-                    {count > 0 ? (
-                      <Row gap={2}>
-                        {Array.from({ length: Math.min(count, 3) }).map((_, di) => (
-                          <View key={di} style={[styles.dot, isSelected && styles.dotWhite]} />
-                        ))}
-                      </Row>
-                    ) : (
-                      <View style={styles.dotPlaceholder} />
-                    )}
+                      <AppText
+                        compact
+                        style={[
+                          styles.dayNum,
+                          isSelected && styles.dayNumSelected,
+                          !isSelected && isToday && styles.dayNumToday,
+                        ]}
+                      >
+                        {day.format('D')}
+                      </AppText>
+                    </View>
+                    <View style={[styles.dot, count > 0 && !isSelected ? styles.dotVisible : null]} />
                   </Pressable>
                 );
               })}
-              </Row>
-            </Animated.View>
-          </Animated.View>
+            </Row>
+          </View>
         </GestureDetector>
 
-        <Animated.View entering={FadeInDown.delay(160).duration(280).springify()}>
-          <Pressable onPress={() => openDaySheet(selectedDay)} disabled={listQ.isPending || listQ.isError} style={styles.daySummary}>
-            <Cluster
-              gap={spacing[2]}
-              leading={<Calendar size={iconSize.xs} color={c.primary} strokeWidth={2} />}
-              actions={<ChevronRight size={iconSize.xs} color={c.primary} strokeWidth={2.5} />}
-            >
-              <AppText style={styles.daySummaryText} numberOfLines={1}>
-                {dayjs(selectedDay).format('dddd D MMMM')} · {listQ.isPending ? 'Chargement…' : listQ.isError ? 'Indisponible' : `${dayDisplayRows.length} RDV`}
-              </AppText>
-            </Cluster>
-          </Pressable>
-        </Animated.View>
-
-        <View
-          onLayout={(e) => {
-            dayListAnchorY.current = e.nativeEvent.layout.y;
-          }}
-          style={styles.dayListSection}
-        >
-          {listQ.isPending ? (
-            <ActivityIndicator color={c.primary} accessibilityLabel="Chargement du calendrier" />
-          ) : listQ.isError ? (
-            <EmptyState title="Calendrier indisponible" description="Les rendez-vous n’ont pas pu être chargés." actionLabel="Réessayer" onAction={() => { void listQ.refetch(); }} />
-          ) : dayDisplayRows.length === 0 ? (
-            <EmptyState
-              title="Rien ce jour-là"
-              imageSource={EMPTY_RDV_IMAGE}
-              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            />
-          ) : (
-            <View style={styles.dayList}>
-              {dayDisplayRows.map((row, index) => (
-                <View key={dayRowKey(row)}>{renderDayItem(row, index)}</View>
-              ))}
-            </View>
-          )}
+        <View style={styles.dayHeader}>
+          <AppText variant="headline">
+            {selectedLabel}
+          </AppText>
+          {countLabel && !listQ.isPending && !listQ.isError ? (
+            <AppText variant="secondary">{countLabel}</AppText>
+          ) : null}
         </View>
-      </ScrollView>
 
-      <DayAppointmentsSheet
-        visible={sheetOpen}
-        title={dayjs(selectedDay).format('dddd D MMMM YYYY')}
-        subtitle={`${dayDisplayRows.length} rendez-vous`}
-        data={dayDisplayRows}
-        keyExtractor={dayRowKey}
-        renderItem={renderDayItem}
-        onClose={closeSheet}
-        empty={
-          <EmptyState
-            title="Rien ce jour-là"
-            imageSource={EMPTY_RDV_IMAGE}
-            imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-            imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
+        {listQ.isPending ? (
+          <ActivityIndicator color={c.primary} accessibilityLabel="Chargement du calendrier" />
+        ) : listQ.isError ? (
+          <ErrorState
+            error={listQ.error}
+            title="Calendrier indisponible"
+            onRetry={() => {
+              void listQ.refetch();
+            }}
           />
-        }
-      />
+        ) : dayDisplayRows.length === 0 ? (
+          <EmptyState illustration="calendar" title="Aucun rendez-vous ce jour" />
+        ) : (
+          <View style={styles.dayList}>
+            {dayDisplayRows.map((row, index) => (
+              <AppointmentListRowCard
+                key={row.kind === 'batch' ? row.key : row.appointment.id}
+                row={row}
+                index={index}
+                role={listRole}
+                onPress={(apt) => {
+                  router.push(appointmentDetailHref(rolePrefix, apt.id));
+                }}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       <CalendarFilterSheet
         visible={filterSheetOpen}
@@ -437,103 +359,72 @@ export function CalendarScreen({
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  scroll: { minWidth: 0, flex: 1 },
-  content: {
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[2],
-    paddingBottom: spacing[10],
-    gap: spacing[3],
-  },
-  calendarSwipeArea: {
-    gap: spacing[3],
-  },
-  monthNav: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-  },
-  navBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  monthLabel: {
-    ...font.bold,
-    fontSize: fontSize.md,
-    color: c.textPrimary,
-    letterSpacing: -0.3,
-    textTransform: 'capitalize' as const,
-  },
-  weekCell: { alignItems: 'center' as const, paddingBottom: spacing[1] },
-  weekLabel: {
-    ...font.bold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-  },
-  dayCell: {
-    borderRadius: radius.md,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 2,
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-  },
-  dayCellSelected: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  dayCellToday: {
-    borderColor: c.primary,
-    borderWidth: 1.5,
-  },
-  dayCellHasEvents: {
-    backgroundColor: c.primaryLight,
-    borderColor: c.primaryMid,
-  },
-  dayNum: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textPrimary,
-  },
-  dayNumSelected: { color: c.textInverse },
-  dayNumToday: { color: c.primary },
-  dotPlaceholder: { height: 4 },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: c.primary,
-  },
-  dotWhite: { backgroundColor: hexToRgba(c.textInverse, 0.75) },
-  daySummary: {
-    backgroundColor: c.primaryLight,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.primaryMid,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-  },
-  daySummaryText: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.primary,
-    textTransform: 'capitalize' as const,
-  },
-  dayListSection: {
-    gap: spacing[2],
-  },
-  dayList: {
-    gap: spacing[2],
-  },
-};
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    scroll: { minWidth: 0, flex: 1 },
+    content: {
+      paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
+      paddingBottom: spacing[10],
+      gap: spacing[4],
+    },
+    calendarSwipeArea: {
+      gap: spacing[2],
+    },
+    monthLabel: {
+      ...font.headingSemiBold,
+      flexShrink: 1,
+      textAlign: 'center' as const,
+    },
+    weekCell: { alignItems: 'center' as const },
+    weekLabel: {
+      color: c.textTertiary,
+    },
+    dayCell: {
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: spacing[0.5],
+    },
+    dayDisc: {
+      minWidth: spacing[8],
+      height: spacing[8],
+      paddingHorizontal: spacing[1],
+      borderRadius: radius.full,
+      // Bordure toujours présente : sans elle, Android perd l'arrondi quand la sélection change le fond.
+      borderWidth: 1,
+      borderColor: 'transparent',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    dayDiscSelected: {
+      backgroundColor: c.primary,
+    },
+    dayDiscToday: {
+      borderWidth: 1,
+      borderColor: c.primary,
+    },
+    dayNum: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.textPrimary,
+    },
+    dayNumSelected: { ...font.semiBold, color: c.textInverse },
+    dayNumToday: { ...font.semiBold, color: c.primary },
+    dot: {
+      width: DOT_SIZE,
+      height: DOT_SIZE,
+      borderRadius: radius.full,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    dotVisible: {
+      backgroundColor: c.primary,
+    },
+    dayHeader: {
+      gap: spacing[0.5],
+      paddingTop: spacing[2],
+    },
+    dayList: {
+      gap: spacing[2],
+    },
+  };
 }

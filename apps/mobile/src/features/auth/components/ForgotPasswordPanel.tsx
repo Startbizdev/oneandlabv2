@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/providers/ToastProvider';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
 import { webAppUrl } from '@/config/env';
 
 interface Props {
@@ -34,7 +34,7 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
   const backLink = (
     <Pressable onPress={onBack} accessibilityRole="button" style={styles.linkBtn}>
       <Row gap={spacing[2]} align="center" justify="center">
-        <ArrowLeft size={iconSize.xs} color={c.textSecondary} strokeWidth={2} />
+        <ArrowLeft size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         <AppText style={styles.backText}>Retour à la connexion</AppText>
       </Row>
     </Pressable>
@@ -43,9 +43,8 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
   if (sent) {
     return (
       <View style={styles.wrap}>
-        <AppText style={[styles.body, { color: c.textSecondary }]}>
-          Si un compte existe, vous recevrez un email avec un lien et un code pour choisir un nouveau mot de
-          passe.
+        <AppText variant="secondary">
+          Si un compte existe, vous recevrez un e-mail pour choisir un nouveau mot de passe.
         </AppText>
         {CAN_OPEN_MAIL_INBOX ? (
           <Button title="Ouvrir ma messagerie" variant="outline" onPress={() => openUrl('message:')} fullWidth />
@@ -55,7 +54,7 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
           accessibilityRole="link"
           style={styles.linkBtn}
         >
-          <AppText style={[styles.link, { color: c.primary }]}>Réinitialiser sur le web</AppText>
+          <AppText style={styles.link}>Réinitialiser sur le web</AppText>
         </Pressable>
         {backLink}
       </View>
@@ -65,7 +64,7 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
   return (
     <View style={styles.wrap}>
       <Input
-        label="Email"
+        label="Adresse e-mail"
         value={email}
         onChangeText={onEmailChange}
         keyboardType="email-address"
@@ -82,9 +81,8 @@ export function ForgotPasswordPanel({ email, onEmailChange, sent, loading, onSub
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     wrap: { gap: spacing[3] },
-    body: { ...font.regular, fontSize: fontSize.sm, lineHeight: fontSize.sm * 1.45 },
     linkBtn: { minHeight: 44, justifyContent: 'center' as const },
-    link: { textAlign: 'center' as const, ...font.semiBold, fontSize: fontSize.sm },
+    link: { textAlign: 'center' as const, ...font.semiBold, fontSize: fontSize.sm, color: c.textLink },
     backText: {
       ...font.medium,
       fontSize: fontSize.sm,

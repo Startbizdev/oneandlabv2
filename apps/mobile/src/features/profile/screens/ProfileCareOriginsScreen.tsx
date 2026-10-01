@@ -1,13 +1,16 @@
+import { Fragment } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { View } from 'react-native';
-import { Users } from 'lucide-react-native';
+import { ROLE_LABELS } from '@oneandlab/shared-constants';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { buildSettingsStyles } from '@/components/ui/SettingsRow';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 import {
   careOriginsQueryKey,
   fetchCareOrigins,
@@ -17,6 +20,7 @@ import {
 import { ProfileSubScreenLayout } from './ProfileSubScreenLayout';
 
 export function ProfileCareOriginsScreen() {
+  const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
   const queryClient = useQueryClient();
   const { show: toast } = useToast();
@@ -44,12 +48,8 @@ export function ProfileCareOriginsScreen() {
 
   return (
     <ProfileSubScreenLayout hideSave>
-      <AppText style={styles.lead}>
-        Choisissez les professionnels affichés comme donneurs de soins et proposés à l’avenir.
-      </AppText>
-
       {query.isLoading ? (
-        <SkeletonList count={3} itemHeight={72} />
+        <SkeletonList count={3} itemHeight={64} />
       ) : query.isError && !query.data ? (
         <ErrorState
           title="Donneurs de soins indisponibles"
@@ -58,71 +58,58 @@ export function ProfileCareOriginsScreen() {
         />
       ) : rows.length === 0 ? (
         <EmptyState
-          Icon={Users}
+          illustration="patients"
           title="Aucun donneur de soins"
           description="Les professionnels qui vous prennent en charge apparaîtront ici."
         />
       ) : (
-        rows.map((item) => {
-          const visible = !item.hidden_by_patient;
-          const role = item.emploi || 'Professionnel de santé';
-          return (
-            <View key={item.id} style={styles.row}>
-              <View style={styles.texts}>
-                <AppText style={styles.name}>{item.display_name}</AppText>
-                <AppText style={styles.role}>{role}</AppText>
-                <AppText style={styles.status}>{visible ? 'Affiché' : 'Masqué'}</AppText>
-              </View>
-              <ToggleSwitch
-                value={visible}
-                onValueChange={(next) => update.mutate({ id: item.id, hidden: !next })}
-                accessibilityLabel={`Afficher ${item.display_name}, ${role}`}
-              />
-            </View>
-          );
-        })
+        <View style={settings.section}>
+          <View style={settings.sectionCard}>
+            {rows.map((item, index) => {
+              const role =
+                item.emploi?.trim() ||
+                (item.role && item.role !== 'pro' ? ROLE_LABELS[item.role] : null) ||
+                'Professionnel de santé';
+              return (
+                <Fragment key={item.id}>
+                  {index > 0 ? <View style={styles.divider} /> : null}
+                  <ListRowShell
+                    style={settings.row}
+                    body={
+                      <View style={settings.texts}>
+                        <AppText style={settings.label}>{item.display_name}</AppText>
+                        <AppText variant="caption">{role}</AppText>
+                      </View>
+                    }
+                    trailing={
+                      <ToggleSwitch
+                        value={!item.hidden_by_patient}
+                        onValueChange={(next) => update.mutate({ id: item.id, hidden: !next })}
+                        accessibilityLabel={`Afficher ${item.display_name}, ${role}`}
+                      />
+                    }
+                  />
+                </Fragment>
+              );
+            })}
+          </View>
+          <AppText variant="caption" style={styles.footer}>
+            Les professionnels activés sont affichés comme donneurs de soins et proposés à l’avenir.
+          </AppText>
+        </View>
       )}
     </ProfileSubScreenLayout>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles(theme: Theme) {
   return {
-    lead: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
+    divider: {
+      ...buildSettingsStyles(theme).divider,
+      marginLeft: spacing[4],
     },
-    row: {
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      gap: spacing[3],
-      padding: spacing[4],
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      borderRadius: radius.md,
-      backgroundColor: c.surface,
-    },
-    texts: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing[0.5],
-    },
-    name: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    role: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    status: {
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
+    footer: {
+      paddingHorizontal: spacing[1],
     },
   };
 }

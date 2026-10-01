@@ -1,23 +1,24 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { hexToRgba } from '@/theme/color-utils';
-import type { StaffHubPatientItem, StaffHubSearchItem } from '@oneandlab/shared-types';
-import { Button } from '@/components/ui/Button';
+import { UserPlus } from 'lucide-react-native';
+import type { StaffHubPatientItem } from '@oneandlab/shared-types';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { StackKeyboardScrollView } from '@/components/navigation/StackKeyboardScrollView';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
 import { fetchStaffPatientHubSearch } from '@/features/patients/api/staff-hub-search.service';
 import { CreatePatientModal } from '@/features/patients/components/CreatePatientModal';
 import { StaffPatientHubListRow } from '@/features/patients/components/StaffPatientHubListRow';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { queryKeys } from '@/lib/query-keys';
-import { H_PADDING, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Users } from 'lucide-react-native';
+import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
+import { H_PADDING, spacing, AppText, useStyles } from '@/theme';
 
 function paramString(v: string | string[] | undefined): string {
   const raw = Array.isArray(v) ? v[0] : v;
@@ -25,7 +26,6 @@ function paramString(v: string | string[] | undefined): string {
 }
 
 export function PassagePatientPickScreen() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -34,14 +34,10 @@ export function PassagePatientPickScreen() {
   }>();
   const startDate = paramString(params.start_date) || new Date().toISOString().slice(0, 10);
   const mode = paramString(params.mode) === 'recurring' ? 'recurring' : 'single_day';
-  const isRecurring = mode === 'recurring';
-
-  const modeHint = useMemo(() => {
-    const dateLabel = dayjs(startDate).format('dddd D MMMM');
-    return isRecurring
-      ? 'Planification récurrente — modifiable à l’étape suivante'
-      : `Passage prévu le ${dateLabel} — tout est modifiable à l’étape suivante`;
-  }, [isRecurring, startDate]);
+  const context =
+    mode === 'recurring'
+      ? 'Passages récurrents'
+      : `Passage du ${capitalizeFrench(dayjs(startDate).format('dddd D MMMM'))}`;
 
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,7 +50,7 @@ export function PassagePatientPickScreen() {
       if (!res.success) throw new Error(res.error ?? 'Recherche impossible');
       return (res.data?.items ?? []).filter(
         (item): item is StaffHubPatientItem => item.kind === 'patient',
-      ) as StaffHubSearchItem[];
+      );
     },
     staleTime: 15_000,
   });
@@ -64,7 +60,7 @@ export function PassagePatientPickScreen() {
       router.push({
         pathname: '/(nurse)/passage/new',
         params: { patient_id: patientId, start_date: startDate, mode },
-      } as never);
+      });
     },
     [mode, router, startDate],
   );
@@ -77,94 +73,56 @@ export function PassagePatientPickScreen() {
     [goToForm],
   );
 
+  const patients = hubQ.data ?? [];
+
   return (
-    <StackChromeScreen title="Choisir un patient">
+    <StackChromeScreen
+      headerRight={
+        <HeaderAction icon={UserPlus} accessibilityLabel="Nouveau patient" onPress={() => setCreateOpen(true)} />
+      }
+    >
       <StackKeyboardScrollView contentContainerStyle={styles.scroll}>
-        <View
-          style={[
-            styles.modeBanner,
-            {
-              backgroundColor: isRecurring ? hexToRgba(c.primary, 0.08) : c.surfaceAlt,
-              borderColor: isRecurring ? c.primary : c.border,
-            },
-          ]}
-        >
-          <AppText style={[styles.modeBannerText, { color: isRecurring ? c.primaryDark : c.textSecondary }]}>
-            {modeHint}
-          </AppText>
-        </View>
+        <AppText variant="secondary" style={styles.context}>
+          {context}
+        </AppText>
         <AppointmentsListFilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Rechercher un patient…"
+          searchPlaceholder="Rechercher un patient"
         />
-        <View style={styles.createRow}>
-          <Button title="Nouveau patient" variant="secondary" onPress={() => setCreateOpen(true)} />
-        </View>
 
         {hubQ.isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={c.primary} />
+          <View style={styles.list}>
+            <SkeletonList count={4} itemHeight={64} gap={spacing[2]} />
           </View>
-        ) : (hubQ.data?.length ?? 0) === 0 ? (
+        ) : hubQ.isError && !hubQ.data ? (
+          <ErrorState title="Patients indisponibles" error={hubQ.error} onRetry={() => void hubQ.refetch()} />
+        ) : patients.length === 0 ? (
           <EmptyState
-            Icon={Users}
+            illustration="patients"
             title="Aucun patient"
-            description="Créez un patient ou modifiez votre recherche."
+            description={search.trim() ? 'Modifiez votre recherche ou créez le patient.' : undefined}
             actionLabel="Nouveau patient"
             onAction={() => setCreateOpen(true)}
           />
         ) : (
           <View style={styles.list}>
-            <AppText style={[styles.hint, { color: c.textTertiary }]}>
-              Sélectionnez le patient pour ce passage
-            </AppText>
-            {hubQ.data?.map((item) =>
-              item.kind === 'patient' ? (
-                <StaffPatientHubListRow
-                  key={item.patient_id}
-                  item={item}
-                  onPress={() => goToForm(item.patient_id)}
-                />
-              ) : null,
-            )}
+            {patients.map((item) => (
+              <StaffPatientHubListRow key={item.patient_id} item={item} onPress={() => goToForm(item.patient_id)} />
+            ))}
           </View>
         )}
       </StackKeyboardScrollView>
 
-      <CreatePatientModal
-        visible={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={onCreated}
-      />
+      <CreatePatientModal visible={createOpen} onClose={() => setCreateOpen(false)} onCreated={onCreated} />
     </StackChromeScreen>
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles() {
   return {
     scroll: { paddingBottom: spacing[10] },
-    modeBanner: {
-      marginHorizontal: H_PADDING,
-      marginBottom: spacing[3],
-      borderWidth: 1,
-      borderRadius: radius.lg,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2.5],
-    },
-    modeBannerText: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      lineHeight: fontSize.sm * 1.4,
-    },
-    centered: { paddingVertical: spacing[10], alignItems: 'center' as const },
-    createRow: { paddingHorizontal: H_PADDING, marginBottom: spacing[3] },
+    context: { paddingHorizontal: H_PADDING, marginBottom: spacing[2] },
     list: { paddingHorizontal: H_PADDING, gap: spacing[1] },
-    hint: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      marginBottom: spacing[2],
-      paddingHorizontal: H_PADDING,
-    },
   };
 }

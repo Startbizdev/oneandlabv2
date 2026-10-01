@@ -2,7 +2,7 @@
 
 import React, { type ReactElement, type ReactNode, useRef } from 'react';
 
-import { FlatList, Platform, ScrollView, type FlatListProps, View } from 'react-native';
+import { FlatList, Platform, ScrollView, StyleSheet, type FlatListProps, type ViewStyle, View } from 'react-native';
 
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 
@@ -21,16 +21,6 @@ import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 
 import { useQueryListUi } from '@/lib/hooks/use-query-list-ui';
-
-import {
-
-  buildTabSceneScrollConfig,
-
-  spreadTabSceneScrollProps,
-
-  useTabSceneInsets,
-
-} from '@/components/navigation/liquid-glass-header-inset';
 
 import { spacing, useStyles } from '@/theme';
 
@@ -68,7 +58,8 @@ type Props<T, Item> = Omit<
 
   skeletonGap?: number;
 
-  scrollPaddingOptions?: { extraTop?: number; extraBottom?: number };
+  /** Espace ajouté sous le dernier élément (ex. bouton flottant). */
+  extraBottom?: number;
 
 };
 
@@ -90,7 +81,7 @@ export function QueryFlatList<T, Item>({
 
   skeletonGap = 12,
 
-  scrollPaddingOptions,
+  extraBottom = 0,
 
   contentContainerStyle,
 
@@ -99,8 +90,6 @@ export function QueryFlatList<T, Item>({
 }: Props<T, Item>) {
 
   const styles = useStyles(buildStyles);
-
-  const sceneInsets = useTabSceneInsets();
 
   const flatListRef = useRef<FlatList<Item>>(null);
 
@@ -112,7 +101,10 @@ export function QueryFlatList<T, Item>({
 
   useScrollToTopOnPop(Platform.OS === 'android' ? scrollRef : flatListRef);
 
-  const scrollConfig = buildTabSceneScrollConfig(sceneInsets, contentContainerStyle, scrollPaddingOptions);
+  const flatContent: ViewStyle = StyleSheet.flatten([styles.listContent, contentContainerStyle]);
+  const basePaddingBottom = typeof flatContent.paddingBottom === 'number' ? flatContent.paddingBottom : 0;
+  const contentStyle =
+    extraBottom > 0 ? { ...flatContent, paddingBottom: basePaddingBottom + extraBottom } : flatContent;
 
 
 
@@ -130,20 +122,7 @@ export function QueryFlatList<T, Item>({
 
         {header}
 
-        <View
-
-          style={[
-
-            styles.skeleton,
-
-            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
-
-            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
-
-          ]}
-
-        >
-
+        <View style={styles.skeleton}>
           <SkeletonList count={skeletonCount} itemHeight={skeletonHeight} gap={skeletonGap} />
 
         </View>
@@ -158,13 +137,7 @@ export function QueryFlatList<T, Item>({
     return (
       <View style={styles.root} collapsable={false}>
         {header}
-        <View
-          style={[
-            styles.errorWrap,
-            sceneInsets.insetTop > 0 && { paddingTop: sceneInsets.insetTop },
-            sceneInsets.insetBottom > 0 && { paddingBottom: sceneInsets.insetBottom },
-          ]}
-        >
+        <View style={styles.errorWrap}>
           <ErrorState error={query.error} onRetry={() => void query.refetch()} />
         </View>
       </View>
@@ -185,7 +158,7 @@ export function QueryFlatList<T, Item>({
 
           scrollRef={scrollRef}
 
-          contentContainerStyle={[styles.listContent, contentContainerStyle]}
+          contentContainerStyle={contentStyle}
 
           refreshing={refreshing}
 
@@ -241,23 +214,11 @@ export function QueryFlatList<T, Item>({
 
         ListHeaderComponent={ListHeaderComponent}
 
-        {...spreadTabSceneScrollProps(scrollConfig)}
+        contentInsetAdjustmentBehavior="automatic"
 
-        contentContainerStyle={[styles.listContent, scrollConfig.contentContainerStyle]}
+        contentContainerStyle={contentStyle}
 
-        refreshControl={
-
-          <AppRefreshControl
-
-            refreshing={refreshing}
-
-            onRefresh={onRefresh}
-
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-
-          />
-
-        }
+        refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
 
       />
 

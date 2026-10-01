@@ -4,11 +4,11 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 type Props = {
   visible: boolean;
@@ -46,7 +46,7 @@ export function PassageFormDurationSheet({
   }, [visible, duration, customDuration]);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Durée du passage"
@@ -78,7 +78,7 @@ export function PassageFormDurationSheet({
               ]}
             >
               <AppText style={[styles.label, { color: c.textPrimary }]}>{opt.label}</AppText>
-              {selected ? <Check size={iconSize.mdSm} color={c.primary} strokeWidth={2.5} /> : null}
+              {selected ? <Check size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} /> : null}
             </Pressable>
           );
         })}
@@ -91,7 +91,7 @@ export function PassageFormDurationSheet({
           />
         ) : null}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

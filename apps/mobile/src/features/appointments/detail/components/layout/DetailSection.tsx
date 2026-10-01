@@ -1,86 +1,49 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
-import { Cluster } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { LucideIcon } from 'lucide-react-native';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 interface Props {
   title?: string;
-  Icon?: LucideIcon;
   children: ReactNode;
-  /** Sans carte (contenu directement sur fond écran) */
-  plain?: boolean;
   /** Liste dense (lignes contact / assignés). */
   compact?: boolean;
 }
 
-export function DetailSection({
-  title, Icon, children, plain, compact }: Props) {
-  const c = useAppColors();
+/** Section de la fiche RDV : même carte que `Card`, titre `headline` facultatif. */
+export function DetailSection({ title, children, compact }: Props) {
   const styles = useStyles(buildStyles);
   return (
-    <View style={[styles.wrap, plain && styles.plain, compact && styles.compact]}>
+    <View style={[styles.wrap, compact && styles.compact]}>
       {title ? (
-        <Cluster
-          gap={spacing[2]}
-          align="center"
-          leading={
-            Icon ? (
-              <View style={styles.iconWrap}>
-                <Icon size={iconSize.xs} color={c.primary} strokeWidth={2} />
-              </View>
-            ) : undefined
-          }
-        >
-          <AppText style={styles.title}>{title}</AppText>
-        </Cluster>
+        <AppText variant="headline" accessibilityRole="header">
+          {title}
+        </AppText>
       ) : null}
       <View style={[styles.body, compact && styles.bodyCompact]}>{children}</View>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  wrap: {
-    backgroundColor: c.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    padding: spacing[4],
-    gap: spacing[3],
-  },
-  plain: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-  },
-  compact: {
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-    gap: 0,
-  },
-  bodyCompact: {
-    gap: 0,
-  },
-  iconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.sm,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  title: {
-    ...font.bold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  body: {
-    gap: spacing[2],
-  },
-};
+    wrap: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      padding: spacing[4],
+      gap: spacing[3],
+    },
+    compact: {
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[4],
+      gap: 0,
+    },
+    body: {
+      gap: spacing[2],
+    },
+    bodyCompact: {
+      gap: 0,
+    },
+  };
 }
-

@@ -61,7 +61,7 @@ export function CarePhotoImage({
         </View>
       ) : failed || !uri ? (
         <Pressable style={styles.center} onPress={retry} accessibilityRole="button">
-          <ImageOff size={iconSize.mdLg} color={c.textTertiary} strokeWidth={1.75} />
+          <ImageOff size={iconSize.lg} color={c.textTertiary} strokeWidth={1.75} />
           <AppText style={styles.failText}>Photo indisponible</AppText>
           <Row gap={4} align="center" style={styles.retryRow}>
             <RefreshCw size={iconSize['2xs']} color={c.primary} strokeWidth={2.5} />

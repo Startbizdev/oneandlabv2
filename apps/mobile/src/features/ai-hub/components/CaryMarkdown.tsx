@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AppText, font, lh, useTheme } from '@/theme';
+import { AppText, font, lh, spacing, useTheme } from '@/theme';
 import { Row } from '@/components/layout/primitives';
 import { View, type TextStyle } from 'react-native';
 
@@ -118,15 +118,7 @@ function renderLine(line: string, style: TextStyle, key: string) {
 }
 
 /** Texte assistant aéré — paragraphes, titres, listes à puces. */
-export function CaryMarkdown({
-  text,
-  style,
-  inverse,
-}: {
-  text: string;
-  style?: TextStyle;
-  inverse?: boolean;
-}) {
+export function CaryMarkdown({ text, style }: { text: string; style?: TextStyle }) {
   const { colors: c, fontSize } = useTheme();
   const blocks = parseMessageBlocks(text ?? '');
 
@@ -134,7 +126,7 @@ export function CaryMarkdown({
     ...font.regular,
     fontSize: fontSize.base,
     lineHeight: lh(fontSize.base, 1.55),
-    ...(inverse ? { color: c.textInverse } : null),
+    color: c.textPrimary,
     ...style,
   };
 
@@ -149,7 +141,7 @@ export function CaryMarkdown({
   }
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: spacing[3] }}>
       {blocks.map((block, blockIndex) => {
         if (block.type === 'heading') {
           return (
@@ -161,12 +153,11 @@ export function CaryMarkdown({
 
         if (block.type === 'list') {
           return (
-            <View key={`list-${blockIndex}`} style={{ gap: 8, paddingLeft: 2 }}>
+            <View key={`list-${blockIndex}`} style={{ gap: spacing[2] }}>
               {block.items.map((item, itemIndex) => (
-                <Row key={`li-${blockIndex}-${itemIndex}`} gap={8} align="start" style={{ minWidth: 0 }}>
-                  <AppText style={[baseStyle, { lineHeight: lh(fontSize.base, 1.55), marginTop: 1 }]}>{'•'}</AppText>
-                  <AppText style={[baseStyle, {
-    minWidth: 0, flex: 1 }]}>
+                <Row key={`li-${blockIndex}-${itemIndex}`} gap={spacing[2]} align="start" style={{ minWidth: 0 }}>
+                  <AppText style={baseStyle}>{'•'}</AppText>
+                  <AppText style={[baseStyle, { minWidth: 0, flex: 1 }]}>
                     {renderInlineBold(stripStrayMarkdown(item), baseStyle)}
                   </AppText>
                 </Row>
@@ -180,7 +171,7 @@ export function CaryMarkdown({
         }
 
         return (
-          <View key={`p-${blockIndex}`} style={{ gap: 6 }}>
+          <View key={`p-${blockIndex}`} style={{ gap: spacing[1.5] }}>
             {block.lines.map((line, lineIndex) => renderLine(line, baseStyle, `p-${blockIndex}-l-${lineIndex}`))}
           </View>
         );

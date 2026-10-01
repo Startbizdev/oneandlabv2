@@ -1,16 +1,15 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Activity, CheckCircle2, HeartPulse, RefreshCw, Unplug } from 'lucide-react-native';
 import { Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { hexToRgba } from '@/theme/color-utils';
+import { IconActionButton } from '@/components/ui/IconActionButton';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import {
   formatHealthSyncRelative,
   getHealthPlatformUiConfig,
 } from '../utils/health-platform-config';
-import { layoutRowCenter } from '@/theme/layout-styles';
 import type { HealthMetricStat } from '../utils/health-metric-stats';
 
 interface Props {
@@ -39,33 +38,30 @@ export function HealthSyncStatusCard({
   const styles = useStyles(buildStyles);
   const platform = getHealthPlatformUiConfig();
 
+  const withHaptic = (action: () => void) => () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    action();
+  };
+
   return (
-    <View
-      style={[
-        styles.card,
-        compact && styles.cardCompact,
-        connected && { borderColor: hexToRgba(c.success, 0.35), backgroundColor: hexToRgba(c.success, 0.04) },
-      ]}
-    >
+    <View style={[styles.card, compact && styles.cardCompact]}>
       <Row gap={spacing[3]} align="start">
         <View style={[styles.iconWrap, { backgroundColor: platform.iconBg }]}>
-          <HeartPulse size={compact ? 18 : 22} color={platform.iconColor} strokeWidth={2.25} />
+          <HeartPulse size={iconSize.md} color={platform.iconColor} strokeWidth={ICON_STROKE_WIDTH} />
         </View>
 
         <Stack gap={spacing[2]} style={styles.body}>
           <Row gap={spacing[2]} align="center" style={styles.titleRow}>
-            <AppText style={[styles.title, compact && styles.titleCompact]} numberOfLines={1}>
-              {platform.name}
-            </AppText>
+            <AppText style={styles.title}>{platform.name}</AppText>
             {connected ? (
-              <View style={[styles.badge, { backgroundColor: hexToRgba(c.success, 0.14) }]}>
-                <CheckCircle2 size={iconSize['2xs']} color={c.success} strokeWidth={2.5} />
-                <AppText style={[styles.badgeText, { color: c.success }]}>Connecté</AppText>
-              </View>
+              <Row gap={spacing[1]} align="center">
+                <CheckCircle2 size={iconSize.xs} color={c.success} strokeWidth={ICON_STROKE_WIDTH} />
+                <AppText style={styles.connectedText}>Connecté</AppText>
+              </Row>
             ) : null}
           </Row>
 
-          <AppText style={styles.subtitle}>
+          <AppText variant="caption">
             {connected
               ? `${formatHealthSyncRelative(lastSyncAt)} · ${platform.connectedSubtitle}`
               : platform.disconnectedSubtitle}
@@ -74,25 +70,19 @@ export function HealthSyncStatusCard({
           {connected && stats.length > 0 ? (
             <Row gap={spacing[2]} style={styles.statsRow}>
               {stats.slice(0, 3).map((stat) => (
-                <View key={stat.type} style={[styles.statTile, { backgroundColor: c.surface }]}>
-                  <AppText style={styles.statLabel} numberOfLines={1}>
-                    {stat.label}
-                  </AppText>
+                <View key={stat.type} style={styles.statTile}>
+                  <AppText variant="caption">{stat.label}</AppText>
                   <AppText style={styles.statValue}>
                     {stat.value}
                     <AppText style={styles.statUnit}> {stat.unit}</AppText>
                   </AppText>
-                  {stat.hint ? (
-                    <AppText style={styles.statHint} numberOfLines={1}>
-                      {stat.hint}
-                    </AppText>
-                  ) : null}
+                  {stat.hint ? <AppText variant="caption">{stat.hint}</AppText> : null}
                 </View>
               ))}
             </Row>
           ) : null}
 
-          <Row gap={spacing[2]} style={styles.actions}>
+          <Row gap={spacing[2]} align="center">
             {connected ? (
               <>
                 <View style={styles.actionFlex}>
@@ -102,35 +92,22 @@ export function HealthSyncStatusCard({
                     fullWidth
                     loading={syncing}
                     leftIcon={
-                      syncing ? undefined : <RefreshCw size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />
+                      syncing ? undefined : (
+                        <RefreshCw size={iconSize.sm} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+                      )
                     }
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      (onSync ?? onConnect)();
-                    }}
+                    onPress={withHaptic(onSync ?? onConnect)}
                   />
                 </View>
                 {onDisconnect ? (
-                  <Pressable
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      onDisconnect();
-                    }}
+                  <IconActionButton
+                    label={`Déconnecter ${platform.name}`}
+                    variant="muted"
                     disabled={syncing}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Déconnecter ${platform.name}`}
-                    style={({ pressed }) => [
-                      styles.disconnectBtn,
-                      { borderColor: c.borderLight, backgroundColor: c.surface },
-                      pressed && styles.disconnectBtnPressed,
-                    ]}
+                    onPress={withHaptic(onDisconnect)}
                   >
-                    {syncing ? (
-                      <ActivityIndicator size="small" color={c.textTertiary} />
-                    ) : (
-                      <Unplug size={iconSize.sm} color={c.textSecondary} strokeWidth={2.25} />
-                    )}
-                  </Pressable>
+                    <Unplug size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+                  </IconActionButton>
                 ) : null}
               </>
             ) : (
@@ -141,12 +118,11 @@ export function HealthSyncStatusCard({
                   fullWidth
                   loading={syncing}
                   leftIcon={
-                    syncing ? undefined : <Activity size={iconSize.xs} color={c.onPrimary} strokeWidth={2.5} />
+                    syncing ? undefined : (
+                      <Activity size={iconSize.sm} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+                    )
                   }
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onConnect();
-                  }}
+                  onPress={withHaptic(onConnect)}
                 />
               </View>
             )}
@@ -161,23 +137,18 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     card: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       padding: spacing[4],
-      ...Platform.select({
-        ios: { borderCurve: 'continuous' as const },
-        default: {},
-      }),
-      ...elevation.xs,
     },
     cardCompact: {
-      padding: spacing[3.5],
+      padding: spacing[3],
     },
     iconWrap: {
-      width: 48,
-      height: 48,
-      borderRadius: radius.lg,
+      width: 40,
+      height: 40,
+      borderRadius: radius.md,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       flexShrink: 0,
@@ -191,30 +162,15 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     },
     title: {
       minWidth: 0,
-      ...font.bold,
+      flexShrink: 1,
+      ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
-      letterSpacing: -0.2,
-      flexShrink: 1,
     },
-    titleCompact: {
-      fontSize: fontSize.sm,
-    },
-    badge: {
-      ...layoutRowCenter(spacing[1]),
-      paddingHorizontal: spacing[2],
-      paddingVertical: spacing[0.5],
-      borderRadius: radius.full,
-    },
-    badgeText: {
+    connectedText: {
       ...font.semiBold,
       fontSize: fontSize.xs,
-    },
-    subtitle: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.55,
+      color: c.success,
     },
     statsRow: {
       flexWrap: 'wrap' as const,
@@ -222,53 +178,25 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     statTile: {
       flex: 1,
       minWidth: 88,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      paddingHorizontal: spacing[2.5],
+      borderRadius: radius.md,
+      backgroundColor: c.surfaceAlt,
+      paddingHorizontal: spacing[3],
       paddingVertical: spacing[2],
       gap: spacing[0.5],
-    },
-    statLabel: {
-      ...font.medium,
-      fontSize: fontSize['2xs'],
-      color: c.textTertiary,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.4,
     },
     statValue: {
       ...font.heading,
       fontSize: fontSize.lg,
       color: c.textPrimary,
-      letterSpacing: -0.3,
     },
     statUnit: {
       ...font.medium,
       fontSize: fontSize.xs,
       color: c.textTertiary,
     },
-    statHint: {
-      ...font.regular,
-      fontSize: fontSize['2xs'],
-      color: c.textTertiary,
-    },
-    actions: {
-      alignItems: 'center' as const,
-    },
     actionFlex: {
       flex: 1,
       minWidth: 0,
-    },
-    disconnectBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    disconnectBtnPressed: {
-      opacity: 0.85,
     },
   };
 }

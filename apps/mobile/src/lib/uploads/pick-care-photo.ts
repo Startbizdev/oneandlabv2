@@ -1,8 +1,9 @@
-import { ActionSheetIOS, Alert, Platform } from 'react-native';
+import { Camera, FileUp, ImageIcon, type LucideIcon } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { assertUploadSize } from './prepare-upload-file';
 import { inspectMedDocFile, logMedDoc } from './medical-doc-file-debug';
+import { showActionSheet } from '@/components/ui/ActionSheet';
 
 export type CarePhotoPickSource = 'camera' | 'library' | 'file';
 
@@ -129,33 +130,15 @@ async function pickFromFiles(): Promise<CarePhotoPickResult | null> {
   return { uri: asset.uri, fileName, mimeType };
 }
 
-function chooseSource(): Promise<CarePhotoPickSource | null> {
-  return new Promise((resolve) => {
-    const select = (index: number) => {
-      if (index === 0) resolve('camera');
-      else if (index === 1) resolve('library');
-      else if (index === 2) resolve('file');
-      else resolve(null);
-    };
+const SOURCES: readonly { source: CarePhotoPickSource; label: string; icon: LucideIcon }[] = [
+  { source: 'camera', label: 'Appareil photo', icon: Camera },
+  { source: 'library', label: 'Galerie', icon: ImageIcon },
+  { source: 'file', label: 'Fichier', icon: FileUp },
+];
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Appareil photo', 'Galerie', 'Fichier', 'Annuler'],
-          cancelButtonIndex: 3,
-        },
-        select,
-      );
-      return;
-    }
-
-    Alert.alert('Ajouter un fichier', undefined, [
-      { text: 'Appareil photo', onPress: () => resolve('camera') },
-      { text: 'Galerie', onPress: () => resolve('library') },
-      { text: 'Fichier', onPress: () => resolve('file') },
-      { text: 'Annuler', style: 'cancel', onPress: () => resolve(null) },
-    ]);
-  });
+async function chooseSource(): Promise<CarePhotoPickSource | null> {
+  const index = await showActionSheet('Ajouter un fichier', SOURCES);
+  return index === null ? null : (SOURCES[index]?.source ?? null);
 }
 
 /** Image ou PDF : appareil, galerie ou fichier (max 25 Mo). */
@@ -173,12 +156,6 @@ export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
   const source = await chooseSource();
   if (!source) return null;
   return pickCarePhotoFromSource(source);
-}
-
-/** @deprecated Préférer `pickCarePhoto()` pour récupérer aussi le MIME. */
-export async function pickCarePhotoUri(): Promise<string | null> {
-  const picked = await pickCarePhoto();
-  return picked?.uri ?? null;
 }
 
 export function carePhotoPickErrorMessage(err: unknown): string {

@@ -17,11 +17,22 @@ import {
   BottomSheetModal,
   BottomSheetView,
   type BottomSheetBackdropProps,
+  type BottomSheetScrollViewMethods,
 } from '@gorhom/bottom-sheet';
 import { BottomSheetKeyboardAwareScrollView } from './BottomSheetKeyboardAwareScrollView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  elevation,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  type Theme,
+} from '@/theme';
 import { SheetKeyboardProvider } from './sheet-keyboard-context';
 import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from './sheet-keyboard-accessory';
 import { FormScrollContext, useFormScrollProviderValue } from '@/components/layout/form-scroll-context';
@@ -81,7 +92,7 @@ export function SheetModal({
   const styles = useStyles(buildStyles);
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
-  const formScroll = useFormScrollProviderValue();
+  const formScroll = useFormScrollProviderValue<BottomSheetScrollViewMethods>();
   const { height: windowHeight } = useWindowDimensions();
   const maxDynamicContentSize = windowHeight * MAX_HEIGHT_RATIO;
   const useFixedSnap = snapPoints != null && snapPoints.length > 0;
@@ -151,12 +162,14 @@ export function SheetModal({
         <Row gap={spacing[2]} style={styles.header}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={iconSize.mdLg} color={c.primary} strokeWidth={2.5} />
+              <ChevronLeft size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
             </Pressable>
           ) : null}
           <View style={styles.headerText}>
-            <AppText style={styles.title}>{title}</AppText>
-            {subtitle ? <AppText style={styles.subtitle}>{subtitle}</AppText> : null}
+            <AppText variant="headline" accessibilityRole="header">
+              {title}
+            </AppText>
+            {subtitle ? <AppText variant="secondary">{subtitle}</AppText> : null}
           </View>
         </Row>
       </View>
@@ -188,7 +201,7 @@ export function SheetModal({
     </BottomSheetView>
   ) : (
     <BottomSheetKeyboardAwareScrollView
-      ref={formScroll.scrollRef as never}
+      ref={formScroll.scrollRef}
       bottomOffset={keyboardBottomOffset}
       extraKeyboardSpace={accessoryLift + spacing[4]}
       keyboardShouldPersistTaps="handled"
@@ -234,7 +247,7 @@ export function SheetModal({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     sheetBackground: {
       backgroundColor: c.surface,
@@ -264,8 +277,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderBottomColor: c.borderLight,
     },
     backBtn: {
-      width: 44,
-      height: 44,
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
@@ -273,18 +286,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       flex: 1,
       minWidth: 0,
       gap: spacing[1],
-    },
-    title: {
-      ...font.bold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
-      lineHeight: fontSize.md * 1.25,
-    },
-    subtitle: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.4,
     },
     body: {
       padding: spacing[4],

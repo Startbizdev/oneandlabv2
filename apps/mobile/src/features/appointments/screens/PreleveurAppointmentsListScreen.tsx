@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -24,8 +24,8 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { AppointmentListSectionHeader } from '@/features/appointments/components/AppointmentListSectionHeader';
 import { appointmentAddressLine } from '@/utils/appointment-display';
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 
 const CONFIRMED_STATUSES = new Set(['confirmed', 'inprogress', 'in_progress', 'on_the_way']);
 
@@ -41,7 +41,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
   );
 }
 
-/** Même logique que Tournée — RDV blood_test assignés à ce préleveur, statuts confirmés actifs. */
+/** Même règle que la tournée : prises de sang assignées à ce préleveur, statuts actifs. */
 function isAssignedConfirmed(apt: Appointment, userId: string | undefined): boolean {
   if (!userId) return false;
   if (String(apt.type ?? '') !== 'blood_test') return false;
@@ -50,12 +50,12 @@ function isAssignedConfirmed(apt: Appointment, userId: string | undefined): bool
 }
 
 interface Props {
-  detailPathPrefix: string;
   bookHref?: Href;
   bookLabel?: string;
 }
 
-export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bookLabel }: Props) {
+/** Missions du préleveur : demandes du laboratoire à traiter, puis missions confirmées. */
+export function PreleveurAppointmentsListScreen({ bookHref, bookLabel }: Props) {
   const styles = useStyles(buildStyles);
 
   const router = useRouter();
@@ -94,6 +94,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
 
   const pendingRequestsError =
     pendingRequestsQuery.isError && !pendingRequestsQuery.data ? pendingRequestsQuery.error : null;
+  const hasPendingSection = pendingRequestsError != null || pendingRequestRows.length > 0;
 
   useAppForegroundRefetch(() => {
     void refetch();
@@ -102,9 +103,9 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
 
   const openAppointment = useCallback(
     (apt: Appointment) => {
-      router.push(`${detailPathPrefix}/${apt.id}` as never);
+      router.push(appointmentDetailHref('/(preleveur)', apt.id));
     },
-    [detailPathPrefix, router],
+    [router],
   );
 
   const renderItem = useCallback(
@@ -117,44 +118,43 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
     [openAppointment],
   );
 
-  const onSearchQueryChange = useCallback((value: string) => {
-    setSearch(value);
-  }, []);
-
   const listHeader = useMemo(
     () => (
       <View style={styles.scrollHeader}>
         <AppointmentsListSearchHost
           embedded
           followedByBookCta={bookHref != null}
-          onQueryChange={onSearchQueryChange}
+          onQueryChange={setSearch}
           searchPlaceholder="Nom, adresse, soin…"
         />
         {bookHref != null ? (
           <AppointmentsBookCta href={bookHref} {...(bookLabel != null ? { label: bookLabel } : {})} />
         ) : null}
-        {pendingRequestsError ? (
+        {hasPendingSection ? (
           <View style={styles.pendingSection}>
-            <AppText style={styles.sectionTitle}>Demandes en attente de votre labo</AppText>
-            <ErrorState
-              error={pendingRequestsError}
-              title="Demandes indisponibles"
-              onRetry={() => void refetchPendingRequests()}
-            />
-          </View>
-        ) : pendingRequestRows.length > 0 ? (
-          <View style={styles.pendingSection}>
-            <AppText style={styles.sectionTitle}>Demandes en attente de votre labo</AppText>
-            {pendingRequestRows.map((row, index) => (
-              <AppointmentListRowCard
-                key={row.kind === 'batch' ? row.key : row.appointment.id}
-                row={row}
-                index={index}
-                role="preleveur"
-                onPress={openAppointment}
+            <AppText variant="headline" style={styles.sectionTitle}>
+              À traiter
+            </AppText>
+            {pendingRequestsError ? (
+              <ErrorState
+                error={pendingRequestsError}
+                title="Demandes indisponibles"
+                onRetry={() => void refetchPendingRequests()}
               />
-            ))}
-            <AppText style={styles.sectionTitle}>Missions confirmées</AppText>
+            ) : (
+              pendingRequestRows.map((row, index) => (
+                <AppointmentListRowCard
+                  key={row.kind === 'batch' ? row.key : row.appointment.id}
+                  row={row}
+                  index={index}
+                  role="preleveur"
+                  onPress={openAppointment}
+                />
+              ))
+            )}
+            <AppText variant="headline" style={styles.sectionTitle}>
+              Missions confirmées
+            </AppText>
           </View>
         ) : null}
       </View>
@@ -162,7 +162,7 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
     [
       bookHref,
       bookLabel,
-      onSearchQueryChange,
+      hasPendingSection,
       openAppointment,
       pendingRequestRows,
       pendingRequestsError,
@@ -184,52 +184,49 @@ export function PreleveurAppointmentsListScreen({ detailPathPrefix, bookHref, bo
         showsVerticalScrollIndicator={false}
         skeletonHeight={116}
         ListEmptyComponent={
-          !query.isPending ? (
+          query.isPending ? null : search.trim() ? (
+            <EmptyState illustration="search" title="Aucun résultat" description="Essayez un autre nom ou adresse." />
+          ) : hasPendingSection ? (
+            <AppText variant="secondary" style={styles.inlineEmpty}>
+              Aucune mission confirmée pour le moment.
+            </AppText>
+          ) : (
             <EmptyState
-              imageSource={EMPTY_RDV_IMAGE}
-              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-              title="Aucun prélèvement pour le moment"
-              description="Vos missions confirmées apparaîtront ici."
+              illustration="appointments"
+              title="Aucune mission"
+              description="Vos prélèvements confirmés apparaîtront ici."
             />
-          ) : null
+          )
         }
       />
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  container: { minWidth: 0, flex: 1, backgroundColor: c.background },
-  listContent: {
-    minWidth: 0,
-    paddingHorizontal: spacing[4],
-    paddingTop: 0,
-    paddingBottom: spacing[8],
-    flexGrow: 1,
-  },
-  scrollHeader: {
-    marginTop: 0,
-    alignSelf: 'stretch' as const,
-    width: '100%' as const,
-  },
-  pendingSection: {
-    gap: spacing[3],
-    marginBottom: spacing[3],
-  },
-  sectionTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
-    paddingHorizontal: spacing[1],
-    marginTop: spacing[3],
-  },
-  listHeaderComponent: {
-    paddingTop: 0,
-    marginTop: 0,
-  },
-};
+    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    listContent: {
+      minWidth: 0,
+      paddingHorizontal: spacing[4],
+      paddingBottom: spacing[8],
+      flexGrow: 1,
+    },
+    scrollHeader: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+    },
+    pendingSection: {
+      gap: spacing[3],
+      marginBottom: spacing[3],
+    },
+    sectionTitle: {
+      paddingHorizontal: spacing[1],
+      marginTop: spacing[3],
+    },
+    inlineEmpty: {
+      paddingHorizontal: spacing[1],
+      paddingVertical: spacing[2],
+    },
+  };
 }

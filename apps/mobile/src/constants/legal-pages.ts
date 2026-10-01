@@ -26,3 +26,7 @@ export const LEGAL_PAGES: LegalPageDef[] = [
     description: 'CGV et conditions de service',
   },
 ];
+
+export function legalPageBySlug(slug: string | undefined): LegalPageDef | undefined {
+  return slug ? LEGAL_PAGES.find((page) => page.slug === slug) : undefined;
+}

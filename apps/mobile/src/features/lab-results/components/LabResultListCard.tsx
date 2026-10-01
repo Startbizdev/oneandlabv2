@@ -1,14 +1,14 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Cluster, Row } from '@/components/layout/primitives';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight, FlaskConical } from 'lucide-react-native';
 import type { LabResultListItem } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { Row } from '@/components/layout/primitives';
+import { Button } from '@/components/ui/Button';
+import { ListRowShell } from '@/components/ui/ListRowShell';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useAppColors, useStyles, font, type Theme } from '@/theme';
 
 dayjs.locale('fr');
 
@@ -19,32 +19,19 @@ function patientName(item: LabResultListItem): string {
   return n || 'Patient';
 }
 
-function formatTime(iso?: string | null): string {
-  if (!iso) return '';
-  const d = dayjs(iso);
-  return d.isValid() ? d.format('D MMM') : '';
+function resultTitle(item: LabResultListItem, role: RoleMode): string {
+  if (role !== 'patient') return patientName(item);
+  return item.category_name?.trim() || 'Résultats d’analyses';
 }
 
-function formatBody(item: LabResultListItem, role: RoleMode): string {
-  const lines: string[] = [];
-  if (role !== 'patient') {
-    lines.push(patientName(item));
-  }
-  if (item.category_name?.trim()) {
-    lines.push(item.category_name.trim());
-  }
-  const rdv = item.appointment_scheduled_at;
-  if (rdv) {
-    const d = dayjs(rdv);
-    if (d.isValid()) {
-      lines.push(`RDV ${d.format('dddd D MMMM YYYY')}`);
-    }
-  }
-  const file = item.file_name?.trim();
-  if (file) {
-    lines.push(file);
-  }
-  return lines.join(' · ') || 'Document PDF';
+function resultMeta(item: LabResultListItem, role: RoleMode): string {
+  const parts: string[] = [];
+  if (role !== 'patient' && item.category_name?.trim()) parts.push(item.category_name.trim());
+  const shared = item.created_at ? dayjs(item.created_at) : null;
+  if (shared?.isValid()) parts.push(`Reçu le ${shared.format('D MMMM YYYY')}`);
+  const rdv = item.appointment_scheduled_at ? dayjs(item.appointment_scheduled_at) : null;
+  if (rdv?.isValid()) parts.push(`Visite du ${rdv.format('D MMMM')}`);
+  return parts.join(' · ');
 }
 
 interface Props {
@@ -56,7 +43,6 @@ interface Props {
   onAskCary?: () => void;
 }
 
-/** Carte résultat labo — même layout row que NotificationCard (flex + minWidth:0). */
 export const LabResultListCard = React.memo(function LabResultListCard({
   item,
   role,
@@ -67,133 +53,79 @@ export const LabResultListCard = React.memo(function LabResultListCard({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-
-  const time = formatTime(item.created_at ?? item.appointment_scheduled_at);
-  const body = formatBody(item, role);
+  const title = resultTitle(item, role);
+  const meta = resultMeta(item, role);
 
   return (
-    <Pressable
-      onPress={() => {
-        if (opening) return;
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onOpenDocument();
-      }}
-      onLongPress={
-        onAskCary
-          ? () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onAskCary();
-            }
-          : undefined
-      }
-      disabled={opening}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      accessibilityRole="button"
-      accessibilityLabel={`Ouvrir les résultats d’analyses. ${body}`}
-    >
-      <Cluster
-        gap={spacing[3]}
-        style={styles.row}
-        leading={
-          <View style={styles.iconBox}>
-            <FlaskConical size={iconSize.mdSm} color={c.primary} strokeWidth={2} />
-          </View>
-        }
-        actions={
-          <Pressable
-            onPress={onOpenAppointment}
-            hitSlop={10}
-            style={styles.chevron}
-            accessibilityRole="button"
-            accessibilityLabel="Voir le rendez-vous"
-          >
-            <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />
-          </Pressable>
-        }
+    <View style={styles.card}>
+      <Pressable
+        onPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onOpenDocument();
+        }}
+        disabled={opening}
+        style={({ pressed }) => (pressed ? styles.pressed : null)}
+        accessibilityRole="button"
+        accessibilityLabel={`Ouvrir le document. ${title}${meta ? `, ${meta}` : ''}`}
+        accessibilityState={{ busy: opening }}
       >
-        <View style={styles.content}>
-          <Row align="start">
-            <View style={styles.titleWrap}>
-              <AppText style={styles.title} numberOfLines={2}>
-                Résultats d&apos;analyses
-              </AppText>
+        <ListRowShell
+          leading={
+            <View style={styles.iconBox}>
+              <FlaskConical size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             </View>
-            {time ? <AppText style={styles.time}>{time}</AppText> : null}
-          </Row>
-          <AppText style={styles.body} numberOfLines={3}>
-            {body}
-          </AppText>
-        </View>
-      </Cluster>
-    </Pressable>
+          }
+          body={
+            <View style={styles.texts}>
+              <AppText style={styles.title}>{title}</AppText>
+              {meta ? <AppText variant="caption">{meta}</AppText> : null}
+            </View>
+          }
+          trailing={
+            opening ? (
+              <ActivityIndicator color={c.primary} accessibilityLabel="Ouverture du document" />
+            ) : (
+              <ChevronRight size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+            )
+          }
+        />
+      </Pressable>
+      <Row gap={spacing[2]} style={styles.footer}>
+        <Button title="Voir la visite" variant="ghost" size="sm" onPress={onOpenAppointment} />
+        {onAskCary ? (
+          <Button title="Demander à Cary" variant="ghost" size="sm" onPress={onAskCary} />
+        ) : null}
+      </Row>
+    </View>
   );
 });
 
-const ICON = 40;
-const CHEVRON = 16;
-
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  card: {
-    alignSelf: 'stretch' as const,
-    backgroundColor: c.surface,
-    borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.cardBorder,
-    overflow: 'hidden' as const,
-  },
-  cardPressed: {
-    opacity: 0.88,
-  },
-  row: {
-    paddingVertical: spacing[3.5],
-    paddingHorizontal: spacing[4],
-  },
-  iconBox: {
-    width: ICON,
-    height: ICON,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    marginRight: spacing[3],
-    flexShrink: 0,
-  },
-  content: {
-    marginRight: spacing[2],
-  },
-  titleWrap: {
-    flex: 1,
-    minWidth: 0,
-    marginRight: spacing[2],
-  },
-  title: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    letterSpacing: -0.15,
-  },
-  time: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: 14,
-    flexShrink: 0,
-    paddingTop: 1,
-  },
-  body: {
-    marginTop: spacing[1],
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.5,
-  },
-  chevron: {
-    width: CHEVRON,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-};
+    card: {
+      alignSelf: 'stretch' as const,
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      overflow: 'hidden' as const,
+    },
+    pressed: { backgroundColor: c.surfaceAlt },
+    iconBox: {
+      width: spacing[10],
+      height: spacing[10],
+      borderRadius: radius.md,
+      backgroundColor: c.surfaceAlt,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    texts: { gap: spacing[0.5] },
+    title: { ...text.body, ...font.semiBold, color: c.textPrimary },
+    footer: {
+      flexWrap: 'wrap' as const,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+      paddingHorizontal: spacing[2],
+    },
+  };
 }
-

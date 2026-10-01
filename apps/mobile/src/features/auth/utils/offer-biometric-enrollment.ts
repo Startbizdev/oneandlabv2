@@ -1,13 +1,32 @@
-import { Alert } from 'react-native';
+import { create } from 'zustand';
 import type { AuthUser } from '@oneandlab/shared-types';
 import { isTutorialRole } from '@oneandlab/onboarding';
 import {
-  enableBiometricLogin,
   getBiometricLabel,
   isBiometricEnabledForUser,
   isBiometricHardwareReady,
 } from '@/lib/biometric-auth';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
+
+export type BiometricOffer = {
+  token: string;
+  user: AuthUser;
+  label: string;
+  onDone: () => void;
+  onError?: (message: string) => void;
+};
+
+/**
+ * Proposition en attente, affichée par `BiometricEnrollmentOfferHost` (monté à la racine) :
+ * l'écran appelant est remplacé par l'accueil du rôle dès que la session existe.
+ */
+export const useBiometricOfferStore = create<{
+  offer: BiometricOffer | null;
+  setOffer: (offer: BiometricOffer | null) => void;
+}>((set) => ({
+  offer: null,
+  setOffer: (offer) => set({ offer }),
+}));
 
 /** Propose d’activer Face ID / Touch ID / l’empreinte après une connexion réussie. */
 export async function offerBiometricEnrollment(
@@ -26,30 +45,7 @@ export async function offerBiometricEnrollment(
   }
 
   const label = await getBiometricLabel();
-
-  Alert.alert(
-    `Activer ${label} ?`,
-    'Reconnectez-vous en un instant, sans code email, pour ce compte sur cet appareil.',
-    [
-      { text: 'Plus tard', style: 'cancel', onPress: onDone },
-      {
-        text: 'Activer',
-        onPress: () => {
-          void (async () => {
-            const result = await enableBiometricLogin(token, user);
-            if (result.ok) {
-              onDone();
-              return;
-            }
-            if (!result.cancelled && result.message) {
-              onError?.(result.message);
-            }
-            onDone();
-          })();
-        },
-      },
-    ],
-  );
+  useBiometricOfferStore.getState().setOffer({ token, user, label, onDone, onError });
 }
 
 /**

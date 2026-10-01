@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { PassagePlanningSection } from './PassagePlanningSection';
 import type { PassagePlanningFormState } from '../utils/passage-planning';
@@ -30,7 +30,7 @@ export function PassageFormPlanningSheet({
   const count = previewPassageCount(draft, nursingItems);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Planification"
@@ -51,6 +51,6 @@ export function PassageFormPlanningSheet({
         onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
         passageCount={count}
       />
-    </BottomSheet>
+    </SheetModal>
   );
 }

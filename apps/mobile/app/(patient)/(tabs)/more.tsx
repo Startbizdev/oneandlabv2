@@ -1,19 +1,19 @@
-import { useRouter } from 'expo-router';
-import { Activity, FileText, Heart, Pill, Star, Users } from 'lucide-react-native';
+import { useRouter, type Href } from 'expo-router';
+import { Activity, FileText, Heart, Pill, ShieldCheck, Star, Users } from 'lucide-react-native';
 import { HealthRecordProgressRing } from '@/features/health-record/components/HealthRecordProgressRing';
 import { useHealthRecordCompletion } from '@/features/health-record/hooks/use-health-record-completion';
 import { RoleMoreTabScreen } from '@/features/profile/screens/RoleMoreTabScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function PatientMore() {
   const router = useRouter();
   const healthRecord = useHealthRecordCompletion();
   const hrPercent = healthRecord.data?.percent;
 
-  const nav = (href: string) => router.navigate(href as never);
+  const nav = (href: Href) => router.navigate(href);
 
   return (
-    <TitledTabScreenFrame title="Compte">
+    <TabScreenFrame title="Compte">
       <RoleMoreTabScreen
         roleLabel="Patient"
         legalHref="/(patient)/informations-legales"
@@ -25,47 +25,33 @@ export default function PatientMore() {
                 icon: Heart,
                 label: 'Mon carnet de santé',
                 onPress: () => nav('/(patient)/health-record'),
-                iconAccent: 'heart',
                 trailing:
                   hrPercent != null && hrPercent < 100 ? (
                     <HealthRecordProgressRing percent={hrPercent} variant="mini" />
                   ) : undefined,
               },
+              { icon: FileText, label: 'Mes documents', onPress: () => nav('/profile/documents') },
+              { icon: Pill, label: 'Mes traitements', onPress: () => nav('/(patient)/traitements') },
+              { icon: Activity, label: 'Mes données santé', onPress: () => nav('/(patient)/health-data') },
+            ],
+          },
+          {
+            title: 'Mon entourage',
+            items: [{ icon: Users, label: 'Mes proches', onPress: () => nav('/(patient)/relatives') }],
+          },
+          {
+            title: 'Mes soignants',
+            items: [
               {
-                icon: FileText,
-                label: 'Mes documents',
-                onPress: () => nav('/profile/documents'),
-                iconAccent: 'teal',
+                icon: ShieldCheck,
+                label: 'Mes donneurs de soins',
+                onPress: () => nav('/profile/care-origins'),
               },
-              {
-                icon: Pill,
-                label: 'Mes traitements',
-                onPress: () => nav('/(patient)/traitements'),
-                iconAccent: 'teal',
-              },
-              {
-                icon: Activity,
-                label: 'Mes données santé',
-                onPress: () => nav('/(patient)/health-data'),
-                iconAccent: 'teal',
-              },
-              {
-                icon: Users,
-                label: 'Mes proches',
-                description: 'Réserver pour un membre de votre famille',
-                onPress: () => nav('/(patient)/relatives'),
-                iconAccent: 'teal',
-              },
-              {
-                icon: Star,
-                label: 'Mes avis',
-                onPress: () => nav('/(patient)/reviews'),
-                iconAccent: 'warning',
-              },
+              { icon: Star, label: 'Mes avis', onPress: () => nav('/(patient)/reviews') },
             ],
           },
         ]}
       />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

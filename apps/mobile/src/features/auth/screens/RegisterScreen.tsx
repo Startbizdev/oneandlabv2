@@ -30,7 +30,7 @@ import {
 import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { LOGIN_HREF, getRoleHome } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollmentAfterLogin } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
@@ -127,7 +127,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
         const payload = buildRegistrationRequestPayload(payloadInput);
         const res = await submitRegistrationRequest(payload);
         if (!res.success) throw new Error(res.error ?? "Impossible d'envoyer la demande");
-        router.replace(`/(auth)/register/merci?type=${payload.role}` as never);
+        router.replace({ pathname: '/(auth)/register/merci', params: { type: payload.role } });
       }
     } catch (e) {
       toast('Erreur', { message: (e as Error).message, type: 'error' });
@@ -205,7 +205,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     <FormScreen contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.form}>
           <Input
-            label="Email"
+            label="Adresse e-mail"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -270,7 +270,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           />
 
           <Pressable
-            onPress={() => router.replace({ pathname: '/(auth)/welcome', params: { login: '1' } })}
+            onPress={() => router.replace(LOGIN_HREF)}
             accessibilityRole="button"
             style={styles.loginLink}
           >

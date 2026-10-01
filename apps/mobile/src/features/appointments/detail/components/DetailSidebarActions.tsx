@@ -1,13 +1,11 @@
-import { Alert, Linking, Share } from 'react-native';
+import { Alert, Share } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
   CalendarPlus,
-  MessageSquare,
-  Navigation,
   RefreshCcw,
   Share2,
-  Smile,
+  Sparkles,
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
@@ -21,10 +19,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { updateAppointment } from '../../api/appointments.service';
-import {
-  releaseAndFetchShareForNurse,
-  type ShareForNurseData,
-} from '../api/appointment-detail.service';
+import { releaseAndFetchShareForNurse } from '../api/appointment-detail.service';
 import { buildNurseShareMessage } from '../utils/nurse-share-message';
 import {
   appointmentSidebarCardVisible,
@@ -35,20 +30,11 @@ import {
   nurseCanRescheduleOrCancel,
 } from '@/utils/effective-appointment-status';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
-import { useAppointmentNavigation } from '../hooks/use-appointment-navigation';
 import {
   DetailActionList,
   type DetailActionItem,
 } from './layout/DetailActionList';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
-
-function patientPhone(apt: Appointment): string | null {
-  const ext = apt as Appointment & {
-    relative?: { phone?: string };
-    form_data?: { phone?: string };
-  };
-  return ext.relative?.phone?.trim() || ext.form_data?.phone?.trim() || null;
-}
 
 interface Props {
   role: string;
@@ -56,9 +42,6 @@ interface Props {
   apt: Appointment;
   onReschedule: () => void;
   onCancel: () => void;
-  edgeToEdge?: boolean;
-  shareData?: ShareForNurseData | null;
-  shareLoading?: boolean;
   onShareDone?: () => void;
 }
 
@@ -68,15 +51,11 @@ export function DetailSidebarActions({
   apt,
   onReschedule,
   onCancel,
-  edgeToEdge = false,
-  shareData,
-  shareLoading = false,
   onShareDone,
 }: Props) {
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
-  const navigation = useAppointmentNavigation(apt);
   const status = effectiveAppointmentStatus(apt, { role, viewerId });
   const terminal = getAppointmentSidebarTerminalEmpty(status);
 
@@ -87,31 +66,24 @@ export function DetailSidebarActions({
       void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
       void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
       void qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] });
-      toast('Demande redispatchée', { type: 'success' });
+      toast('Rendez-vous proposé à d’autres professionnels', { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'redispatch'),
   });
 
   const shareMut = useMutation({
     mutationFn: async () => {
-      let data = shareData ?? null;
-      if (!buildNurseShareMessage(data)) {
-        const res = await releaseAndFetchShareForNurse(apt.id);
-        if (!res.success || !res.data) {
-          throw new Error(res.error ?? 'Impossible de préparer le partage.');
-        }
-        data = res.data;
+      const res = await releaseAndFetchShareForNurse(apt.id);
+      if (!res.success || !res.data) {
+        throw new Error(res.error ?? 'Impossible de préparer le partage.');
       }
-      const message = buildNurseShareMessage(data);
+      const message = buildNurseShareMessage(res.data);
       if (!message) throw new Error('Impossible de préparer le partage.');
       await Share.share({ message });
-      return data;
+      return res.data;
     },
     onSuccess: (data) => {
-      void qc.invalidateQueries({
-        queryKey: ['appointments', 'share-for-nurse', apt.id],
-      });
-      if (data?.repended) onShareDone?.();
+      if (data.repended) onShareDone?.();
     },
     onError: (e) => handleApiError(e, toast, 'partage'),
   });
@@ -142,23 +114,56 @@ export function DetailSidebarActions({
 
   const confirmRedispatch = () => {
     Alert.alert(
-      'Redispatcher ce rendez-vous ?',
+      'Céder ce rendez-vous ?',
       'Le rendez-vous repassera en attente pour être proposé à d’autres professionnels.',
       [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Redispatcher', onPress: () => redispatchMut.mutate() },
+        { text: 'Garder', style: 'cancel' },
+        { text: 'Céder', onPress: () => redispatchMut.mutate() },
       ],
     );
   };
 
   const actions: DetailActionItem[] = [];
 
+  if (showRescheduleNurse || showRescheduleOther) {
+    actions.push({
+      key: 'reschedule',
+      label: 'Reprendre le rendez-vous',
+      hint: 'Nouveau créneau ou nouvelle demande',
+      icon: CalendarPlus,
+      tone: 'primary',
+      onPress: onReschedule,
+    });
+  }
+
+  if (showShareNursing) {
+    actions.push({
+      key: 'share',
+      label: 'Partager à un confrère',
+      icon: Share2,
+      tone: 'neutral',
+      loading: shareMut.isPending,
+      onPress: () => shareMut.mutate(),
+    });
+  }
+
+  if (showRedispatchNonNursing || showRedispatchInNursingBlock) {
+    actions.push({
+      key: 'redispatch',
+      label: 'Céder le rendez-vous',
+      hint: 'Le proposer à d’autres professionnels',
+      icon: RefreshCcw,
+      tone: 'caution',
+      loading: redispatchMut.isPending,
+      onPress: confirmRedispatch,
+    });
+  }
+
   if (role === 'patient' || role === 'pro' || role === 'nurse') {
     actions.push({
       key: 'ask-cary',
       label: 'Demander à Cary',
-      hint: 'Assistant IA — contexte de ce RDV',
-      icon: Smile,
+      icon: Sparkles,
       tone: 'neutral',
       onPress: () => {
         router.push(
@@ -167,66 +172,9 @@ export function DetailSidebarActions({
             appointment_id: apt.id,
             patient_id: apt.patient_id ?? undefined,
             initial_message: 'Parle-moi de ce rendez-vous et aide-moi à le préparer.',
-          }) as never,
+          }),
         );
       },
-    });
-  }
-
-  if (showRescheduleNurse || showRescheduleOther) {
-    actions.push({
-      key: 'reschedule',
-      label: role === 'nurse' ? 'Reprendre le RDV' : 'Reprendre pour ce patient',
-      hint: 'Modifier la date ou le créneau',
-      icon: CalendarPlus,
-      tone: 'primary',
-      onPress: onReschedule,
-    });
-  }
-
-  if (role === 'preleveur' && active && patientPhone(apt)) {
-    actions.push({
-      key: 'message',
-      label: 'Envoyer un message',
-      hint: 'Contacter le patient par SMS',
-      icon: MessageSquare,
-      tone: 'neutral',
-      onPress: () => void Linking.openURL(`sms:${patientPhone(apt)}`),
-    });
-  }
-
-  if (role === 'preleveur' && active && apt.address && navigation.canNavigate) {
-    actions.push({
-      key: 'navigation',
-      label: `Itinéraire ${navigation.appLabel}`,
-      hint: 'Ouvrir la navigation',
-      icon: Navigation,
-      tone: 'neutral',
-      onPress: () => void navigation.open(),
-    });
-  }
-
-  if (showRedispatchNonNursing || showRedispatchInNursingBlock) {
-    actions.push({
-      key: 'redispatch',
-      label: 'Redispatcher',
-      hint: 'Proposer à d’autres professionnels',
-      icon: RefreshCcw,
-      tone: 'caution',
-      loading: redispatchMut.isPending,
-      onPress: confirmRedispatch,
-    });
-  }
-
-  if (showShareNursing) {
-    actions.push({
-      key: 'share',
-      label: 'Partager le rendez-vous',
-      hint: 'Lien token pour un confrère infirmier',
-      icon: Share2,
-      tone: 'neutral',
-      loading: shareMut.isPending || shareLoading,
-      onPress: () => shareMut.mutate(),
     });
   }
 
@@ -234,7 +182,6 @@ export function DetailSidebarActions({
     actions.push({
       key: 'cancel',
       label: 'Annuler le rendez-vous',
-      hint: 'Action irréversible',
       icon: XCircle,
       tone: 'destructive',
       onPress: onCancel,
@@ -244,5 +191,5 @@ export function DetailSidebarActions({
 
   if (!actions.length) return null;
 
-  return <DetailActionList actions={actions} edgeToEdge={edgeToEdge} />;
+  return <DetailActionList actions={actions} />;
 }

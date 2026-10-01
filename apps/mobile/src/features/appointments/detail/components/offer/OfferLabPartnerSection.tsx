@@ -1,21 +1,15 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { FlaskConical } from 'lucide-react-native';
-import { Row } from '@/components/layout/primitives';
 import { AssigneeProfileRow } from '../AssigneeProfileRow';
 import { ProviderPublicProfileSheet } from '@/features/profile/components/ProviderPublicProfileSheet';
 import type { OfferLabPartner } from '../../utils/offer-appointment-display';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, type Theme } from '@/theme';
 
 interface Props {
   lab: OfferLabPartner;
 }
 
-export function OfferLabPartnerSection({
-  lab }: Props) {
-  const c = useAppColors();
+export function OfferLabPartnerSection({ lab }: Props) {
   const styles = useStyles(buildStyles);
   const [sheetOpen, setSheetOpen] = useState(false);
   const slug = lab.publicSlug?.trim();
@@ -23,13 +17,7 @@ export function OfferLabPartnerSection({
   return (
     <>
       <View style={styles.wrap}>
-        <Row align="center" gap={spacing[2]} style={styles.head}>
-          <FlaskConical size={iconSize.xs} color={c.primary} strokeWidth={2} />
-          <AppText style={styles.headTitle}>Laboratoire associé</AppText>
-        </Row>
-        <AppText style={styles.hint}>
-          Ce laboratoire a déjà accepté la prise en charge sur ce rendez-vous.
-        </AppText>
+        <AppText variant="caption">Laboratoire déjà engagé sur ce rendez-vous</AppText>
         <AssigneeProfileRow
           title={lab.roleLabel ?? 'Laboratoire'}
           name={lab.displayName}
@@ -52,30 +40,15 @@ export function OfferLabPartnerSection({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  wrap: {
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: c.primaryMid,
-    backgroundColor: c.primaryLight,
-    padding: spacing[4],
-    gap: spacing[2],
-  },
-  head: {
-    minWidth: 0,
-  },
-  headTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.primary,
-  },
-  hint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    lineHeight: fontSize.xs * 1.45,
-  },
-};
+    wrap: {
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      padding: spacing[4],
+      gap: spacing[2],
+    },
+  };
 }
-

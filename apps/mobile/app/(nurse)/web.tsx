@@ -1,20 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { AppWebViewScreen } from '@/components/web/AppWebViewScreen';
+import { WebPageScreen } from '@/features/legal/screens/WebPageScreen';
 
 export default function NurseWeb() {
-  const { path, title, auth } = useLocalSearchParams<{
-    path?: string;
-    title?: string;
-    auth?: string;
-  }>();
-
-  const webPath = path ? decodeURIComponent(path) : '/';
-
-  return (
-    <AppWebViewScreen
-      path={webPath}
-      title={title ? decodeURIComponent(title) : 'Cary'}
-      requireAuth={auth === '1'}
-    />
-  );
+  return <WebPageScreen />;
 }

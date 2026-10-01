@@ -1,10 +1,11 @@
-import { CarePictogram } from '@/components/ui/CarePictogram';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
 import {
   buildCareTileOrbColorMap,
   resolveRdvCareTagColors,
 } from '@/features/appointments/form/utils/booking-care-catalog';
+import { CareIcon } from '@/features/categories/components/CareIcon';
+import { careSourceFromCatalog } from '@/features/categories/utils/care-source';
 import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import {
@@ -36,7 +37,7 @@ import {
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
 import { OfferLabPartnerSection } from './OfferLabPartnerSection';
-import { radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
 
 interface Props {
   primary: Appointment;
@@ -57,14 +58,14 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
 
   return (
     <View style={tagStyles.careTagsBlock}>
-      <Row wrap align="center" gap={5} style={tagStyles.careTagsWrap}>
+      <Row wrap align="center" gap={spacing[1.5]} style={tagStyles.careTagsWrap}>
         {lines.map((line, idx) => {
           const tagColors = resolveRdvCareTagColors(line, primaryType, categories, theme, orbColorMap);
           return (
             <Row
               key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
               align="center"
-              gap={4}
+              gap={spacing[1]}
               style={[
                 tagStyles.careTag,
                 {
@@ -73,10 +74,14 @@ function OfferCareTagsBlock({ batch }: { batch: Appointment[] }) {
                 },
               ]}
             >
-              <CarePictogram icon={categories.find((c) => c.id === line.category_id)?.icon ?? line.category_icon} imageUrl={categories.find((c) => c.id === line.category_id)?.image_url ?? line.category_image_url} label={line.label} type={primaryType} />
-              <AppText style={tagStyles.careTagLabel} numberOfLines={1}>
-                {line.label}
-              </AppText>
+              <CareIcon
+                care={careSourceFromCatalog(
+                  { categoryId: line.category_id, name: line.label },
+                  primaryType,
+                  categories,
+                )}
+              />
+              <AppText style={tagStyles.careTagLabel}>{line.label}</AppText>
             </Row>
           );
         })}
@@ -138,7 +143,7 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
       {notes ? (
         <View style={styles.notesBlock}>
           <Row align="center" gap={spacing[2]} style={styles.notesHead}>
-            <MessageSquare size={iconSize.xs} color={c.textTertiary} strokeWidth={2} />
+            <MessageSquare size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
             <AppText style={styles.notesLabel}>Message</AppText>
           </Row>
           <AppText style={styles.notesText}>{notes}</AppText>
@@ -178,22 +183,21 @@ function buildCareTagStyles(t: Theme) {
     careTag: {
       minWidth: 0,
       maxWidth: '100%' as const,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[1],
       borderRadius: radius.full,
       borderWidth: StyleSheet.hairlineWidth,
     },
-    careTagEmoji: type.careEmoji,
-    careTagLabel: type.careTag,
+    careTagLabel: { ...type.careTag, flexShrink: 1 },
   };
 }
 
-function buildCardStyles({ colors: c, fontSize }: Theme) {
+function buildCardStyles({ colors: c, text }: Theme) {
   return {
     card: {
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       backgroundColor: c.surface,
       overflow: 'hidden' as const,
     },
@@ -209,22 +213,18 @@ function buildCardStyles({ colors: c, fontSize }: Theme) {
       minWidth: 0,
     },
     notesLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      letterSpacing: 0.4,
-      textTransform: 'uppercase' as const,
+      ...text.caption,
+      ...font.medium,
+      color: c.textTertiary,
     },
     notesText: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textSecondary,
-      lineHeight: fontSize.xs * 1.45,
+      ...text.secondary,
+      color: c.textPrimary,
     },
   };
 }
 
-function buildPreviewStyles({ colors: c }: Theme) {
+function buildPreviewStyles() {
   return {
     wrap: { gap: spacing[3] },
   };

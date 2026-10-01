@@ -15,7 +15,7 @@ export async function postAppointmentConversationAttachment(
   body?: string,
 ) {
   const fd = new FormData();
-  fd.append('file', { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
+  fd.append('file', { uri: file.uri, name: file.name, type: file.type });
   if (body?.trim()) fd.append('body', body.trim());
   return api.post(`/appointments/${appointmentId}/conversation`, fd);
 }

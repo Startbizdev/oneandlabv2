@@ -1,21 +1,25 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Linking, ScrollView, View } from 'react-native';
+import { Fragment } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Mail, Phone, User } from 'lucide-react-native';
+import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { Card } from '@/components/ui/Card';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { buildSettingsStyles } from '@/components/ui/SettingsRow';
 import { queryKeys } from '@/lib/query-keys';
+import { useToast } from '@/providers/ToastProvider';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { parseProfileAddress } from '@/features/profile/utils/parse-profile-address';
 import { personDisplayName } from '../utils/order-display';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackScrollConfig } from '@/navigation/use-stack-scroll-config';
-import { spreadTabSceneScrollProps } from '@/components/navigation/liquid-glass-header-inset';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
 import { Cluster, Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, avatarSize, AppText, useStyles, type Theme } from '@/theme';
+
+const INTERNAL_EMAIL_SUFFIX = '@patients.internal.local';
 
 function roleLabel(role?: string | null, emploi?: string | null): string {
   if (emploi?.trim()) return emploi.trim();
@@ -24,12 +28,14 @@ function roleLabel(role?: string | null, emploi?: string | null): string {
   return 'Professionnel';
 }
 
+/** Fiche contact du professionnel demandeur, vue par l'officine. */
 export function PharmacyPartyContactScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const userId = String(id ?? '');
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const scrollConfig = useStackScrollConfig(styles.content);
+  const sectionStyles = useStyles(buildSettingsStyles);
+  const { show: toast } = useToast();
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(userId),
@@ -42,79 +48,108 @@ export function PharmacyPartyContactScreen() {
   });
 
   const profile = profileQ.data;
-  const name = personDisplayName(profile?.first_name, profile?.last_name, 'Professionnel');
-  const address = parseProfileAddress(profile?.address);
-  const phone = profile?.phone?.trim() || '';
-  const email = profile?.email?.trim() || '';
+
+  if (profileQ.isLoading) {
+    return (
+      <StackChromeScreen>
+        <ActivityIndicator style={styles.loader} color={c.primary} />
+      </StackChromeScreen>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <StackChromeScreen>
+        <View style={styles.errorWrap}>
+          <ErrorState title="Fiche indisponible" error={profileQ.error} onRetry={() => void profileQ.refetch()} />
+        </View>
+      </StackChromeScreen>
+    );
+  }
+
+  const name = personDisplayName(profile.first_name, profile.last_name, 'Professionnel');
+  const address = parseProfileAddress(profile.address);
+  const phone = profile.phone?.trim() || '';
+  const rawEmail = profile.email?.trim() || '';
+  const email = rawEmail && !rawEmail.endsWith(INTERNAL_EMAIL_SUFFIX) ? rawEmail : '';
   const phoneActions = buildPhoneContactActions(phone);
 
+  const lines: Array<{ label: string; value: string }> = [];
+  if (phone) lines.push({ label: 'Téléphone', value: phone });
+  if (email) lines.push({ label: 'E-mail', value: email });
+  if (address?.label) lines.push({ label: 'Adresse', value: address.label });
+
+  const openEmail = () => {
+    Linking.openURL(`mailto:${email}`).catch((error: unknown) => {
+      if (__DEV__) console.warn('[pharmacy-contact] ouverture e-mail impossible', error);
+      toast('Action indisponible sur cet appareil', { type: 'error' });
+    });
+  };
+
   return (
-    <StackChromeScreen title={name}>
-      <ScrollView
-        contentContainerStyle={scrollConfig.contentContainerStyle}
-        {...spreadTabSceneScrollProps(scrollConfig)}
-      >
-        {profileQ.isError ? (
-          <EmptyState
-            Icon={User}
-            title="Fiche indisponible"
-            description={profileQ.error instanceof Error ? profileQ.error.message : 'Réessayez plus tard.'}
-            actionLabel="Réessayer"
-            onAction={() => void profileQ.refetch()}
-          />
-        ) : profile ? (
-          <View style={styles.card}>
-            <Cluster
-              gap={spacing[3]}
-              leading={
-                <ProfileAvatar
-                  profileImageUrl={profile.profile_image_url}
-                  seed={profile.id ?? name}
-                  size={avatarSize.md}
-                />
-              }
-            >
-              <View style={styles.heroText}>
-                <AppText style={styles.name}>{name}</AppText>
-                <AppText style={styles.meta}>{roleLabel(profile.role, profile.emploi)}</AppText>
-              </View>
-            </Cluster>
+    <StackChromeScreen>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Cluster
+          gap={spacing[3]}
+          leading={<ProfileAvatar profileImageUrl={profile.profile_image_url} seed={profile.id ?? name} size={avatarSize.md} />}
+        >
+          <View style={styles.heroText}>
+            <AppText variant="title" accessibilityRole="header">
+              {name}
+            </AppText>
+            <AppText variant="secondary">{roleLabel(profile.role, profile.emploi)}</AppText>
+          </View>
+        </Cluster>
 
-            {phone ? (
-              <AppText style={styles.line}>Téléphone : {phone}</AppText>
-            ) : null}
-            {email && !email.endsWith('@patients.internal.local') ? (
-              <AppText style={styles.line}>E-mail : {email}</AppText>
-            ) : null}
-            {address?.label ? (
-              <AppText style={styles.line}>Adresse : {address.label}</AppText>
-            ) : null}
-
-            <Row gap={spacing[2]} wrap>
-              {phoneActions.map((action) => (
+        {phoneActions.length > 0 || email ? (
+          <Row gap={spacing[2]} wrap>
+            {phoneActions.map((action) => (
+              <View key={action.key} style={styles.flexCell}>
                 <Button
-                  key={action.key}
                   title={action.label}
                   size="sm"
-                  variant={action.key === 'phone' ? 'primary' : 'outline'}
+                  variant="secondary"
                   leftIcon={
-                    action.icon === 'phone'
-                      ? <Phone size={iconSize.xs} color={action.key === 'phone' ? c.textInverse : c.primary} />
-                      : <Mail size={iconSize.xs} color={c.primary} />
+                    action.icon === 'phone' ? (
+                      <Phone size={iconSize.sm} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+                    ) : (
+                      <MessageCircle size={iconSize.sm} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+                    )
                   }
                   onPress={action.onPress}
                 />
-              ))}
-              {email && !email.endsWith('@patients.internal.local') ? (
+              </View>
+            ))}
+            {email ? (
+              <View style={styles.flexCell}>
                 <Button
                   title="E-mail"
                   size="sm"
-                  variant="outline"
-                  leftIcon={<Mail size={iconSize.xs} color={c.primary} />}
-                  onPress={() => void Linking.openURL(`mailto:${email}`)}
+                  variant="secondary"
+                  leftIcon={<Mail size={iconSize.sm} color={c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
+                  onPress={openEmail}
                 />
-              ) : null}
-            </Row>
+              </View>
+            ) : null}
+          </Row>
+        ) : null}
+
+        {lines.length > 0 ? (
+          <View style={sectionStyles.section}>
+            <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
+              Coordonnées
+            </AppText>
+            <Card>
+              {lines.map((line, index) => (
+                <Fragment key={line.label}>
+                  {index > 0 ? <View style={styles.divider} /> : null}
+                  <View style={styles.lineRow}>
+                    <AppText variant="caption">{line.label}</AppText>
+                    <AppText variant="body">{line.value}</AppText>
+                  </View>
+                </Fragment>
+              ))}
+            </Card>
           </View>
         ) : null}
       </ScrollView>
@@ -122,36 +157,27 @@ export function PharmacyPartyContactScreen() {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     content: {
       paddingHorizontal: spacing[4],
+      paddingTop: spacing[2],
       paddingBottom: spacing[6],
+      gap: spacing[6],
     },
-    card: {
-      gap: spacing[3],
-      padding: spacing[4],
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.border,
-      backgroundColor: c.surface,
+    loader: { marginTop: spacing[10] },
+    errorWrap: { flex: 1, paddingTop: spacing[3] },
+    heroText: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+    flexCell: { flexGrow: 1 },
+    lineRow: {
+      paddingHorizontal: spacing[4],
+      paddingVertical: spacing[3],
+      gap: spacing[0.5],
     },
-    heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
-    name: {
-      ...font.headingSemiBold,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-    },
-    meta: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.primaryDark,
-    },
-    line: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: c.borderLight,
+      marginLeft: spacing[4],
     },
   };
 }

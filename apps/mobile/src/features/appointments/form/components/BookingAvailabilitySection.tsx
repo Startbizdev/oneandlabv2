@@ -1,9 +1,7 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import { useEffect, useMemo } from 'react';
-import { Platform, Pressable, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
-import { Clock, FastForward, Sun } from 'lucide-react-native';
+import { View } from 'react-native';
+import { ChoiceCard } from '@/components/ui/ChoiceCard';
+import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
 import {
   PATIENT_VIP_FEE_LABEL,
   PATIENT_VIP_MAX_HOUR,
@@ -19,8 +17,7 @@ import type { AvailabilityType, UrgentTimingMode } from '../utils/availability';
 import { VipScheduledTimePicker } from './VipScheduledTimePicker';
 import { vipStoreLabel } from '../utils/booking-wizard-titles';
 import { BookingLegalLinks } from './BookingLegalLinks';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { lh } from '@/theme/typography';
+import { spacing, AppText, useStyles } from '@/theme';
 
 interface Props {
   scheduledAt: string;
@@ -39,11 +36,11 @@ interface Props {
   onUrgentTimingMode?: (m: UrgentTimingMode) => void;
 }
 
-const BASE_TABS = [
-  { id: 'all_day' as const, label: 'Toute la journée', icon: Sun },
-  { id: 'custom' as const, label: 'Créneau horaire', icon: Clock },
+const BASE_TABS: FullWidthSegment<AvailabilityType>[] = [
+  { id: 'all_day', label: 'Toute la journée' },
+  { id: 'custom', label: 'Créneau horaire' },
 ];
-const VIP_TAB = { id: 'urgent' as const, label: 'Prioritaire', icon: Clock };
+const VIP_TAB: FullWidthSegment<AvailabilityType> = { id: 'urgent', label: 'Prioritaire' };
 const VIP_LEGAL_SLUGS = ['cgv', 'confidentialite'] as const;
 
 export function BookingAvailabilitySection({
@@ -62,7 +59,6 @@ export function BookingAvailabilitySection({
   onUrgentMinute,
   onUrgentTimingMode,
 }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const maxHour = availabilityMaxHour(serviceType);
   const minHour = useMemo(
@@ -81,47 +77,18 @@ export function BookingAvailabilitySection({
 
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.label}>Disponibilité</AppText>
+      <AppText variant="headline" accessibilityRole="header">À quelle heure ?</AppText>
 
-      <Row gap={spacing[1]} style={styles.segmentShell}>
-        {tabs.map((tab) => {
-          const on = availabilityType === tab.id;
-          const Icon = tab.icon;
-          return (
-            <Pressable
-              key={tab.id}
-              accessibilityRole="radio"
-              accessibilityLabel={tab.label}
-              accessibilityState={{ checked: on }}
-              onPress={() => onAvailabilityType(tab.id)}
-              style={[
-                styles.segment,
-                on && styles.segmentActive,
-              ]}
-            >
-              <View style={styles.segmentContent}>
-                <Icon
-                  size={iconSize.xs}
-                  color={on ? c.primaryDark : c.textTertiary}
-                  strokeWidth={2.2}
-                />
-                <AppText
-                  style={[
-                    styles.segmentLabel,
-                    on && styles.segmentLabelActive,
-                  ]}
-                  numberOfLines={2}
-                >
-                  {tab.label}
-                </AppText>
-              </View>
-            </Pressable>
-          );
-        })}
-      </Row>
+      <FullWidthSegmentBar
+        segments={tabs}
+        value={availabilityType}
+        onChange={onAvailabilityType}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Moment de passage"
+      />
 
       {availabilityType === 'custom' && minHour >= maxHour ? (
-        <AppText>Aucun créneau restant aujourd’hui (heure de Paris). Choisissez une autre date.</AppText>
+        <AppText variant="secondary">Plus de créneau aujourd’hui. Choisissez un autre jour.</AppText>
       ) : availabilityType === 'custom' ? (
         <BookingTimeRangeSlider
           min={minHour}
@@ -133,44 +100,28 @@ export function BookingAvailabilitySection({
 
       {availabilityType === 'urgent' && showVipTab ? (
         <View style={styles.vipCard}>
-          <Row gap={spacing[2]} align="start">
-            <View style={styles.vipIconWrap}>
-              <Clock size={iconSize.mdSm} color={c.primaryDark} strokeWidth={2.2} />
-            </View>
-            <View style={styles.vipTextWrap}>
-              <AppText style={styles.vipTitle}>Horaire prioritaire · {vipFeeLabel}</AppText>
-              <AppText style={styles.vipDesc}>
-                Demande prioritaire entre {PATIENT_VIP_MIN_HOUR}h et {PATIENT_VIP_MAX_HOUR}h. Le supplément est réglé via {vipStoreLabel()} au moment de réserver. La prise en charge reste à confirmer par le professionnel.
-              </AppText>
-            </View>
-          </Row>
+          <View style={styles.vipTextWrap}>
+            <AppText variant="headline">Supplément {vipFeeLabel}</AppText>
+            <AppText variant="secondary">
+              Entre {PATIENT_VIP_MIN_HOUR}h et {PATIENT_VIP_MAX_HOUR}h, réglé via {vipStoreLabel()} à la réservation. Le professionnel doit encore confirmer.
+            </AppText>
+          </View>
           <BookingLegalLinks slugs={VIP_LEGAL_SLUGS} />
 
-          <AppText style={styles.vipWhenLabel}>Quand ?</AppText>
-          <Row gap={spacing[2]}>
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityLabel="Le plus vite possible"
-              accessibilityState={{ checked: urgentTimingMode === 'asap' }}
+          <View style={styles.vipModes} accessibilityRole="radiogroup">
+            <ChoiceCard
+              title="Le plus vite possible"
+              description="Dans la journée choisie."
+              selected={urgentTimingMode === 'asap'}
               onPress={() => onUrgentTimingMode?.('asap')}
-              style={[styles.vipModeBtn, urgentTimingMode === 'asap' && styles.vipModeBtnActive]}
-            >
-              <FastForward size={iconSize.mdSm} color={c.primaryDark} strokeWidth={2.2} />
-              <AppText style={styles.vipModeTitle}>Le plus vite possible</AppText>
-              <AppText style={styles.vipModeSub}>Priorisation pour le jour choisi</AppText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityLabel="Heure précise"
-              accessibilityState={{ checked: urgentTimingMode === 'scheduled' }}
+            />
+            <ChoiceCard
+              title="À une heure précise"
+              description="Par pas de 15 minutes."
+              selected={urgentTimingMode === 'scheduled'}
               onPress={() => onUrgentTimingMode?.('scheduled')}
-              style={[styles.vipModeBtn, urgentTimingMode === 'scheduled' && styles.vipModeBtnActive]}
-            >
-              <Clock size={iconSize.mdSm} color={c.primaryDark} strokeWidth={2.2} />
-              <AppText style={styles.vipModeTitle}>Heure précise</AppText>
-              <AppText style={styles.vipModeSub}>Par pas de 15 min</AppText>
-            </Pressable>
-          </Row>
+            />
+          </View>
 
           {urgentTimingMode === 'scheduled' ? (
             <VipScheduledTimePicker
@@ -186,112 +137,17 @@ export function BookingAvailabilitySection({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  wrap: { gap: spacing[2] },
-  label: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  segmentShell: {
-    padding: spacing[0.5],
-    borderRadius: radius.lg,
-    backgroundColor: c.surfaceSubtle,
-  },
-  segment: {
-    minWidth: 0,
-    flex: 1,
-    minHeight: 64,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing[1],
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  segmentActive: {
-    backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.primaryMid,
-  },
-  segmentContent: {
-    gap: spacing[1],
-    alignItems: 'center' as const,
-    minWidth: 0,
-    width: '100%' as const,
-  },
-  segmentLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    lineHeight: lh(fontSize.xs, 1.3),
-    textAlign: 'center' as const,
-    color: c.textTertiary,
-    ...(Platform.OS === 'android'
-      ? { includeFontPadding: false, textAlignVertical: 'center' as const }
-      : null),
-  },
-  segmentLabelActive: {
-    color: c.primaryDark,
-  },
-  vipCard: {
-    gap: spacing[3],
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    padding: spacing[3],
-  },
-  vipIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: c.surfaceSubtle,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  vipTextWrap: {
-    minWidth: 0, flex: 1, gap: spacing[1] },
-  vipTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  vipDesc: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    lineHeight: lh(fontSize.xs, 1.4),
-    color: c.textSecondary,
-  },
-  vipWhenLabel: {
-    ...font.medium,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-  },
-  vipModeBtn: {
-    minWidth: 0,
-    flex: 1,
-    gap: spacing[1],
-    alignItems: 'center' as const,
-    padding: spacing[2.5],
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surfaceSubtle,
-  },
-  vipModeBtnActive: {
-    borderColor: c.primaryMid,
-    backgroundColor: c.surface,
-  },
-  vipModeTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textPrimary,
-    textAlign: 'center' as const,
-  },
-  vipModeSub: {
-    ...font.regular,
-    fontSize: fontSize['2xs'],
-    color: c.textTertiary,
-    textAlign: 'center' as const,
-  },
-};
+    wrap: { gap: spacing[2] },
+    vipCard: {
+      gap: spacing[3],
+      marginTop: spacing[2],
+    },
+    vipTextWrap: {
+      minWidth: 0,
+      gap: spacing[1],
+    },
+    vipModes: { gap: spacing[2] },
+  };
 }

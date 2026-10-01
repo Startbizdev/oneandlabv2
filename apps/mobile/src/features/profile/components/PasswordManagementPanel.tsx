@@ -1,18 +1,17 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
-import { Lock } from 'lucide-react-native';
+import { View } from 'react-native';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
+import { buildSettingsStyles } from '@/components/ui/SettingsRow';
 import { forgotPassword, updatePassword } from '@/features/auth/api/auth.service';
+import { getErrorMessage } from '@/lib/errors/handle-api-error';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { validatePasswordStrength, passwordsMatch } from '@oneandlab/shared-utils';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles } from '@/theme';
 
 export function PasswordManagementPanel() {
-  const c = useAppColors();
+  const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -23,6 +22,8 @@ export function PasswordManagementPanel() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
+  const canSave = Boolean(newPassword && confirmPassword && (!hasPassword || currentPassword));
 
   async function onSave() {
     const check = validatePasswordStrength(newPassword, user?.email);
@@ -48,10 +49,10 @@ export function PasswordManagementPanel() {
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        toast(res.error ?? 'Erreur', { type: 'error' });
+        toast(res.error ?? 'Mot de passe non enregistré', { type: 'error' });
       }
     } catch (e) {
-      toast((e as Error).message, { type: 'error' });
+      toast(getErrorMessage(e), { type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -59,84 +60,72 @@ export function PasswordManagementPanel() {
 
   async function onForgot() {
     if (!user?.email) return;
+    setSendingReset(true);
     try {
-      await forgotPassword(user.email);
-      toast('Email envoyé', { message: 'Consultez votre boîte de réception.', type: 'success' });
+      const res = await forgotPassword(user.email);
+      if (!res.success) {
+        toast(res.error ?? 'Envoi impossible. Réessayez.', { type: 'error' });
+        return;
+      }
+      toast('E-mail envoyé', { message: 'Consultez votre boîte de réception.', type: 'success' });
     } catch (e) {
-      toast((e as Error).message, { type: 'error' });
+      toast(getErrorMessage(e), { type: 'error' });
+    } finally {
+      setSendingReset(false);
     }
   }
 
   return (
-    <View style={[styles.card, elevation.xs]}>
-      <Cluster
-        gap={spacing[3]}
-        align="start"
-        leading={
-          <View style={[styles.iconWrap, { backgroundColor: c.primaryLight }]}>
-            <Lock size={iconSize.md} color={c.primary} strokeWidth={2.25} />
-          </View>
-        }
-        style={styles.header}
-      >
-        <View style={styles.headerText}>
-          <AppText style={[styles.title, { color: c.textPrimary }]}>Mot de passe</AppText>
-          <AppText style={[styles.sub, { color: c.textSecondary }]}>
-            Facultatif — le code email reste disponible
-          </AppText>
-        </View>
-      </Cluster>
-      {hasPassword ? (
-        <PasswordInput label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} />
-      ) : null}
-      <PasswordInput
-        label={hasPassword ? 'Nouveau mot de passe' : 'Mot de passe'}
-        value={newPassword}
-        onChangeText={setNewPassword}
-        autoComplete="new-password"
-        textContentType="newPassword"
-      />
-      <PasswordInput
-        label="Confirmation"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        autoComplete="new-password"
-        textContentType="newPassword"
-      />
-      <Button
-        title={hasPassword ? 'Mettre à jour' : 'Enregistrer'}
-        loading={loading}
-        onPress={() => void onSave()}
-        fullWidth
-      />
-      {hasPassword ? (
-        <Button title="Envoyer un email de réinitialisation" variant="ghost" onPress={() => void onForgot()} />
-      ) : null}
+    <View style={settings.section}>
+      <AppText style={settings.sectionTitle} accessibilityRole="header">
+        Mot de passe
+      </AppText>
+      <View style={[settings.sectionCard, styles.card]}>
+        {hasPassword ? null : (
+          <AppText variant="caption">Facultatif : vous pouvez toujours vous connecter avec un code reçu par e-mail.</AppText>
+        )}
+        {hasPassword ? (
+          <PasswordInput label="Mot de passe actuel" value={currentPassword} onChangeText={setCurrentPassword} />
+        ) : null}
+        <PasswordInput
+          label={hasPassword ? 'Nouveau mot de passe' : 'Mot de passe'}
+          value={newPassword}
+          onChangeText={setNewPassword}
+          autoComplete="new-password"
+          textContentType="newPassword"
+        />
+        <PasswordInput
+          label="Confirmation"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          autoComplete="new-password"
+          textContentType="newPassword"
+        />
+        <Button
+          title={hasPassword ? 'Mettre à jour' : 'Enregistrer'}
+          loading={loading}
+          disabled={!canSave}
+          onPress={() => void onSave()}
+          fullWidth
+        />
+        {hasPassword ? (
+          <Button
+            title="Recevoir un lien de réinitialisation"
+            variant="ghost"
+            loading={sendingReset}
+            onPress={() => void onForgot()}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
     card: {
-      backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.borderLight,
       padding: spacing[4],
       gap: spacing[3],
     },
-    header: {},
-    iconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: radius.lg,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    headerText: { gap: spacing[0.5] },
-    title: { ...font.semiBold, fontSize: fontSize.base },
-    sub: { ...font.regular, fontSize: fontSize.xs, lineHeight: fontSize.xs * 1.4 },
   };
 }
-

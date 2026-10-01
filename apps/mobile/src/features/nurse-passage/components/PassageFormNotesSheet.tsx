@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { spacing, useStyles } from '@/theme';
@@ -21,7 +21,7 @@ export function PassageFormNotesSheet({ visible, notes, onClose, onConfirm }: Pr
   }, [visible, notes]);
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Note"
@@ -45,7 +45,7 @@ export function PassageFormNotesSheet({ visible, notes, onClose, onConfirm }: Pr
           numberOfLines={5}
         />
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

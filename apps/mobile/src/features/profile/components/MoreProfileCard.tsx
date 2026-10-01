@@ -1,193 +1,93 @@
-import { hexToRgba } from '@/theme/color-utils';
-import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { useQuery } from '@tanstack/react-query';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useAuthStore } from '@/store/auth-store';
-import { fetchUser } from '@/features/profile/api/profile.service';
+import { ListRowShell } from '@/components/ui/ListRowShell';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { fetchUser } from '@/features/profile/api/profile.service';
 import { queryKeys } from '@/lib/query-keys';
-import { elevation, radius, spacing, iconSize, avatarSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { useAuthStore } from '@/store/auth-store';
+import {
+  AppText,
+  ICON_STROKE_WIDTH,
+  avatarSize,
+  iconSize,
+  radius,
+  spacing,
+  useAppColors,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 
 interface Props {
   roleLabel: string;
   onPress: () => void;
-  /** Sous-titre optionnel (ex. e-mail pro). */
-  subtitle?: string;
-  delay?: number;
 }
 
-/** Carte profil premium pour les onglets « Plus » — photo / logo si disponible. */
-export function MoreProfileCard({ roleLabel, onPress, subtitle, delay = 80 }: Props) {
+/** En-tête des onglets « Plus » : identité du compte, ouvre « Mon profil ». */
+export function MoreProfileCard({ roleLabel, onPress }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const user = useAuthStore((s) => s.user);
 
   const profileQ = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
-    queryFn: async () => {
-      const res = await fetchUser(user!.id);
-      return res.data;
-    },
+    queryFn: async () => (await fetchUser(user!.id)).data,
     enabled: Boolean(user?.id),
     staleTime: 60_000,
   });
 
-  const rawImage =
-    profileQ.data?.profile_image_url ??
-    user?.profile_image_url ??
-    user?.avatar ??
-    null;
-  const name =
-    `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || 'Mon compte';
-  const avatarSeed = user?.id ?? name;
+  const image = profileQ.data?.profile_image_url ?? user?.profile_image_url ?? user?.avatar ?? null;
+  const name = `${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || 'Mon compte';
 
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(400).springify()}>
-      <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onPress();
-        }}
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed, elevation.sm]}
-        accessibilityRole="button"
-        accessibilityLabel={subtitle ? `${name}, ${roleLabel}, ${subtitle}` : `${name}, ${roleLabel}`}
-        accessibilityHint="Ouvre votre profil"
-      >
-        <LinearGradient
-          colors={[c.primaryLight, c.surface]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          <View style={styles.accent} />
-          <Cluster
-            gap={spacing[3.5]}
-            leading={
-              <ProfileAvatar
-                profileImageUrl={rawImage}
-                seed={avatarSeed}
-                gender={profileQ.data?.gender}
-                size={avatarSize.md}
-                style={styles.avatarRing}
-              />
-            }
-            actions={
-              <View style={styles.chevronWrap}>
-                <ChevronRight size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
-              </View>
-            }
-            style={styles.row}
-          >
-            <View style={styles.info}>
-              <AppText style={styles.name} numberOfLines={1}>
-                {name}
-              </AppText>
-              <View style={styles.rolePill}>
-                <AppText style={styles.roleText}>{roleLabel}</AppText>
-              </View>
-              {subtitle ? (
-                <AppText style={styles.subtitle} numberOfLines={1}>
-                  {subtitle}
-                </AppText>
-              ) : null}
-            </View>
-          </Cluster>
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${roleLabel}`}
+      accessibilityHint="Ouvre votre profil"
+    >
+      <ListRowShell
+        style={styles.row}
+        leading={
+          <ProfileAvatar
+            profileImageUrl={image}
+            seed={user?.id ?? name}
+            gender={profileQ.data?.gender}
+            size={avatarSize.md}
+          />
+        }
+        body={
+          <View style={styles.texts}>
+            <AppText style={styles.name}>{name}</AppText>
+            <AppText variant="secondary">{roleLabel}</AppText>
+          </View>
+        }
+        trailing={
+          <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+        }
+      />
+    </Pressable>
   );
 }
 
-const AVATAR = 58;
-
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  card: {
-    borderRadius: radius['2xl'],
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.cardBorder,
-    overflow: 'hidden' as const,
-    backgroundColor: c.surface,
-  },
-  cardPressed: {
-    opacity: 0.92,
-  },
-  gradient: {
-    padding: spacing[4],
-    position: 'relative' as const,
-  },
-  accent: {
-    position: 'absolute' as const,
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
-    backgroundColor: c.primary,
-    borderTopLeftRadius: radius['2xl'],
-    borderBottomLeftRadius: radius['2xl'],
-  },
-  row: {
-    paddingLeft: spacing[1],
-  },
-  avatarRing: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: AVATAR / 2,
-    borderWidth: 2.5,
-    borderColor: c.surface,
-    backgroundColor: c.primaryLight,
-    overflow: 'hidden' as const,
-    shadowColor: c.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-    flexShrink: 0,
-  },
-  info: {
-    gap: spacing[1],
-  },
-  name: {
-    ...font.heading,
-    fontSize: fontSize.lg,
-    color: c.textPrimary,
-    letterSpacing: -0.35,
-  },
-  rolePill: {
-    alignSelf: 'flex-start' as const,
-    paddingHorizontal: spacing[2.5],
-    paddingVertical: 3,
-    borderRadius: radius.full,
-    backgroundColor: hexToRgba(c.primary, 0.1),
-    borderWidth: 1,
-    borderColor: hexToRgba(c.primary, 0.18),
-  },
-  roleText: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.primaryDark,
-    letterSpacing: 0.2,
-  },
-  subtitle: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textSecondary,
-    marginTop: 2,
-  },
-  chevronWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: c.surfaceAlt,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-};
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      overflow: 'hidden' as const,
+    },
+    pressed: { backgroundColor: c.surfaceAlt },
+    row: { paddingVertical: spacing[4] },
+    texts: { gap: spacing[0.5] },
+    name: {
+      ...font.heading,
+      fontSize: fontSize.lg,
+      color: c.textPrimary,
+    },
+  };
 }
-

@@ -4,6 +4,7 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isBloodTestAppointment, isNursingAppointment } from '@oneandlab/shared-utils';
 import {
   appointmentAssigneeGender,
+  appointmentBeneficiaryAvatarMeta,
   appointmentBeneficiaryGender,
   beneficiaryDisplayName,
   beneficiaryFirstName,
@@ -43,6 +44,8 @@ export type RdvMaquetteCounterparty = {
   /** Rôle affiché en puce (ex. Infirmier(e), Préleveur). */
   subtitle: string;
   profileImageUrl?: string | null;
+  /** Identifiant de la personne : même avatar généré sur tous les écrans. */
+  avatarSeed?: string | null;
   gender?: string | null;
   /** Assignation en cours — pas d’avatar, libellé animé. */
   assignmentPending?: boolean;
@@ -171,6 +174,7 @@ function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty {
       name: assigneeDisplayName(display, 'Infirmier(ère)'),
       subtitle: 'Infirmier(e)',
       profileImageUrl: apt.assigned_nurse_profile_image_url as string | null | undefined,
+      avatarSeed: apt.assigned_nurse_id,
       gender: appointmentAssigneeGender(apt, 'nurse'),
       reviewSummary: assigneeReviewFromPrefix(apt, 'assigned_nurse'),
       showRating: true,
@@ -183,6 +187,7 @@ function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty {
         name: assigneeDisplayName(preleveur, 'Préleveur'),
         subtitle: 'Préleveur',
         profileImageUrl: apt.assigned_to_profile_image_url as string | null | undefined,
+        avatarSeed: apt.assigned_to,
         gender: appointmentAssigneeGender(apt, 'preleveur'),
         reviewSummary: bloodTestPreleveurReviewSummary(apt),
         showRating: true,
@@ -194,6 +199,7 @@ function assigneeForPatientView(apt: AptExt): RdvMaquetteCounterparty {
         name: assigneeDisplayName(lab, 'Laboratoire'),
         subtitle: 'Laboratoire',
         profileImageUrl: apt.assigned_lab_profile_image_url as string | null | undefined,
+        avatarSeed: typeof apt.assigned_lab_id === 'string' ? apt.assigned_lab_id : null,
         gender: appointmentAssigneeGender(apt, 'lab'),
         reviewSummary: assigneeReviewFromPrefix(apt, 'assigned_lab'),
         showRating: true,
@@ -224,6 +230,7 @@ function patientForProView(apt: Appointment): RdvMaquetteCounterparty {
     subtitle: '',
     profileImageUrl:
       (ext.beneficiary_profile_image_url as string | null | undefined) ?? null,
+    avatarSeed: appointmentBeneficiaryAvatarMeta(apt).seed,
     gender: appointmentBeneficiaryGender(apt),
     showRating: false,
   };

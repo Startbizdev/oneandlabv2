@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Clock, X } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { SkeletonList } from '@/components/ui/skeletons';
 import {
@@ -27,13 +27,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-
-interface Props {
-  detailPathPrefix: string;
-}
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, type Theme } from '@/theme';
 
 function rowFromAppointment(apt: Appointment): AppointmentListRow {
   const siblings = (apt.batch_siblings ?? []) as Appointment[];
@@ -47,8 +44,8 @@ function rowFromAppointment(apt: Appointment): AppointmentListRow {
   return { kind: 'batch', key, appointments: all };
 }
 
-export function OfferAppointmentModal({
-  detailPathPrefix }: Props) {
+/** Offres entrantes : réservées à l'infirmier, la fiche ouverte après acceptation est la sienne. */
+export function OfferAppointmentModal() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
@@ -109,12 +106,6 @@ export function OfferAppointmentModal({
     return batchLotSummaryLabel(batchSorted);
   }, [batchSorted, isMultiBatch, selected]);
 
-  const subtitle = useMemo(() => {
-    if (isMultiBatch && batchSorted.length > 1) {
-      return `${batchSorted.length} soins dans ce lot — une seule acceptation pour tout le lot.`;
-    }
-    return 'Acceptez rapidement avant qu’un autre professionnel ne le prenne.';
-  }, [batchSorted.length, isMultiBatch]);
 
   /** Fermeture backdrop / swipe — snooze puis file suivante. */
   const dismissOffer = useCallback(() => {
@@ -225,8 +216,9 @@ export function OfferAppointmentModal({
         qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
         qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT }),
       ]);
-    } catch {
-      /* Navigation quand même — cache optimiste déjà à jour. */
+    } catch (prefetchError) {
+      // Navigation maintenue : le cache optimiste porte déjà le statut confirmé.
+      console.warn('[offer] préchargement après acceptation incomplet', prefetchError);
     }
 
     const minOverlayMs = 1400;
@@ -259,11 +251,10 @@ export function OfferAppointmentModal({
       return;
     }
 
-    const href = `${detailPathPrefix}/${aptId}` as const;
     InteractionManager.runAfterInteractions(() => {
-      router.push(href as never);
+      router.push(appointmentDetailHref('/(nurse)', aptId));
     });
-  }, [batchCount, closeModal, detailPathPrefix, router, selected?.id, toast, user?.id, user?.role]);
+  }, [batchCount, closeModal, router, selected?.id, toast, user?.id, user?.role]);
 
   if (!preparing && (!visible || !selected || !row)) {
     return null;
@@ -275,8 +266,8 @@ export function OfferAppointmentModal({
     <View style={styles.footer}>
       <AppText style={styles.refuseText}>
         {batchCount > 1
-          ? 'Refuser ce lot ? Ces soins ne vous seront plus proposés.'
-          : 'Refuser cette offre ? Elle ne vous sera plus proposée.'}
+          ? 'Ces soins ne vous seront plus proposés.'
+          : 'Cette demande ne vous sera plus proposée.'}
       </AppText>
       <Button
         title="Confirmer le refus"
@@ -300,7 +291,7 @@ export function OfferAppointmentModal({
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
         loading={loading}
         disabled={!termsAccepted || refusing}
-        leftIcon={<Check size={iconSize.sm} color={c.onPrimary} strokeWidth={2.5} />}
+        leftIcon={<Check size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
         onPress={() => void handleAccept()}
         fullWidth
         size="lg"
@@ -311,7 +302,7 @@ export function OfferAppointmentModal({
             title="Plus tard"
             variant="outline"
             disabled={busy}
-            leftIcon={<Clock size={iconSize.sm} color={c.textLink} strokeWidth={2} />}
+            leftIcon={<Clock size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
             onPress={() => void deferOffer()}
             fullWidth
           />
@@ -321,7 +312,7 @@ export function OfferAppointmentModal({
             title="Refuser"
             variant="dangerOutline"
             disabled={busy}
-            leftIcon={<X size={iconSize.sm} color={c.error} strokeWidth={2} />}
+            leftIcon={<X size={iconSize.md} color={c.error} strokeWidth={ICON_STROKE_WIDTH} />}
             onPress={() => setConfirmRefuse(true)}
             fullWidth
           />
@@ -332,41 +323,33 @@ export function OfferAppointmentModal({
 
   return (
     <>
-      {!preparing ? (
-        <BottomSheet
+      {!preparing && selected ? (
+        <SheetModal
           visible={visible}
-          presentKey={selected ? `${selected.id}:${presentNonce}` : 'closed'}
+          presentKey={`${selected.id}:${presentNonce}`}
           onClose={dismissOffer}
-          title="Nouveau rendez-vous"
-          subtitle={subtitle}
+          title={confirmRefuse ? 'Refuser la demande ?' : 'Nouvelle demande'}
+          subtitle={lotLabel || undefined}
         >
-          {lotLabel ? (
-            <View style={styles.lotPill}>
-              <AppText style={styles.lotPillText}>{lotLabel}</AppText>
-            </View>
-          ) : null}
           {siblingsLoading ? (
-            <View style={styles.loading}>
-              <SkeletonList count={2} itemHeight={100} gap={12} />
-            </View>
+            <SkeletonList count={2} itemHeight={100} gap={spacing[3]} />
           ) : (
-            <OfferAppointmentPreviewBody primary={selected!} batch={batchSorted} />
+            <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
           )}
           {showTerms ? (
-            <Row align="start" gap={spacing[3]} style={styles.termsRow}>
+            <Row align="center" gap={spacing[3]} style={styles.termsRow}>
               <ToggleSwitch
                 value={termsAccepted}
                 onValueChange={setTermsAccepted}
-                accessibilityLabel="Accepter la prise en charge et la confidentialité du patient"
+                accessibilityLabel="Je m’engage à prendre en charge ce patient et à respecter sa confidentialité"
               />
               <AppText style={styles.termsText}>
-                J’accepte la prise en charge et m’engage à respecter la confidentialité du patient.
-                Cet engagement est mémorisé sur cet appareil pour votre compte.
+                Je m’engage à prendre en charge ce patient et à respecter sa confidentialité.
               </AppText>
             </Row>
           ) : null}
           {footer}
-        </BottomSheet>
+        </SheetModal>
       ) : null}
       <OfferAcceptPreparationOverlay
         visible={preparing}
@@ -377,24 +360,8 @@ export function OfferAppointmentModal({
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
-  lotPill: {
-    alignSelf: 'flex-start' as const,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    borderRadius: 12,
-    backgroundColor: c.primaryLight,
-    borderWidth: 1,
-    borderColor: c.primaryMid,
-    marginBottom: spacing[2],
-  },
-  lotPillText: {
-    ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.primary,
-  },
-  loading: { gap: spacing[2] },
   termsRow: {
     minWidth: 0,
     marginTop: spacing[2],
@@ -403,18 +370,14 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     flex: 1,
     flexShrink: 1,
     minWidth: 0,
-    ...font.regular,
-    fontSize: fontSize.sm,
+    ...text.secondary,
     color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.45,
   },
   footer: { gap: spacing[2] },
   footerSlot: { flex: 1, minWidth: 0 },
   refuseText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
+    ...text.body,
     color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.45,
   },
 };
 }

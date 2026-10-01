@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
-import { getNotificationsPath } from '@/navigation/notifications-route';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { useNavigationReady } from '@/navigation/use-navigation-ready';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { offerLinkAppointmentId } from '@/features/navigation/utils/offer-link';
 
 /**
  * Deep links — aligné dashboard.vue (openAppointment, shareToken, alreadyAccepted).
@@ -19,39 +20,27 @@ export function useDeepLinks() {
     if (!navigationReady) return;
     function handle(url: string) {
       if (!canNavigate()) return;
-      const parsed = Linking.parse(url);
-      const path = parsed.path ?? '';
-      const q = parsed.queryParams ?? {};
+      const q = Linking.parse(url).queryParams ?? {};
 
-      const openAppointment = q.openAppointment ?? q.appointment_id;
-      if (openAppointment && typeof openAppointment === 'string') {
+      const openAppointment = offerLinkAppointmentId(q);
+      if (openAppointment) {
         const shareToken = typeof q.shareToken === 'string' ? q.shareToken : null;
         if (shareToken) {
           useOfferQueueStore.getState().setShareToken(shareToken);
         }
         if (role === 'nurse' && userId) {
           void useOfferQueueStore.getState().openIncomingOffer(openAppointment, 'nurse', userId);
-          router.replace('/(nurse)/(tabs)/demandes' as never);
+          router.replace('/(nurse)/(tabs)/demandes');
           return;
         }
         if (role === 'preleveur') {
-          router.push(`/(preleveur)/appointment/${openAppointment}` as never);
+          const extra: Record<string, string> = q.alreadyAccepted === '1' ? { alreadyAccepted: '1' } : {};
+          router.push(appointmentDetailHref('/(preleveur)', openAppointment, extra));
           return;
         }
         if (role === 'pro') {
-          router.push(`/(pro)/appointment/${openAppointment}` as never);
+          router.push(appointmentDetailHref('/(pro)', openAppointment));
         }
-        return;
-      }
-
-      if (q.alreadyAccepted === '1' && role === 'preleveur' && openAppointment) {
-        router.push(
-          `/(preleveur)/appointment/${openAppointment}?alreadyAccepted=1` as never,
-        );
-      }
-
-      if (path.includes('notifications')) {
-        router.push(getNotificationsPath(role));
       }
     }
 

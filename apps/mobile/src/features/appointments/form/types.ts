@@ -24,32 +24,6 @@ export type ServiceFormSlice = {
   files?: Record<string, LocalFileRef>;
 };
 
-export type AppointmentFormValues = {
-  patient_id?: string;
-  is_new_patient: boolean;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  gender: string;
-  birth_date: string;
-  address: AddressPayload | null;
-  address_complement?: string;
-  type: string;
-  category_id: string;
-  scheduled_at: string;
-  availability_type: 'all_day' | 'custom';
-  availability_range: [number, number];
-  blood_test_type?: string;
-  duration_days?: string;
-  custom_days?: number;
-  frequency?: string;
-  preferred_nurse_gender?: string;
-  notes?: string;
-  care_options?: Record<string, unknown>;
-  files: Record<string, LocalFileRef | undefined>;
-};
-
 export type WizardFormState = {
   patient_id?: string;
   is_new_patient: boolean;

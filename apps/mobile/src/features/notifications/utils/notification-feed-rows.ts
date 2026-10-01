@@ -3,7 +3,7 @@ import { parisInstantParts, parseParisWallClock } from '@/utils/paris-datetime';
 
 export type NotificationFeedRow =
   | { kind: 'header'; key: string; title: string }
-  | { kind: 'item'; key: string; item: AppNotification };
+  | { kind: 'item'; key: string; item: AppNotification; first: boolean; last: boolean };
 
 type DayGroup = 'today' | 'yesterday' | 'earlier';
 
@@ -30,6 +30,7 @@ function dayGroup(item: AppNotification, todayYmd: string | null, yesterdayYmd: 
 /**
  * Regroupe le fil (déjà trié du plus récent au plus ancien par le backend) en
  * « Aujourd’hui », « Hier », « Plus tôt » — jours calculés en Europe/Paris.
+ * `first` / `last` situent chaque notification dans son groupe (liste groupée).
  */
 export function buildNotificationFeedRows(
   items: AppNotification[],
@@ -37,16 +38,17 @@ export function buildNotificationFeedRows(
 ): NotificationFeedRow[] {
   const todayYmd = parisYmd(nowMs);
   const yesterdayYmd = parisYmd(nowMs - DAY_MS);
+  const groups = items.map((item) => dayGroup(item, todayYmd, yesterdayYmd));
   const rows: NotificationFeedRow[] = [];
-  let current: DayGroup | null = null;
 
-  for (const item of items) {
-    const group = dayGroup(item, todayYmd, yesterdayYmd);
-    if (group !== current) {
+  items.forEach((item, index) => {
+    const group = groups[index];
+    const first = group !== groups[index - 1];
+    if (first) {
       rows.push({ kind: 'header', key: `header-${group}`, title: GROUP_TITLES[group] });
-      current = group;
     }
-    rows.push({ kind: 'item', key: item.id, item });
-  }
+    const last = group !== groups[index + 1];
+    rows.push({ kind: 'item', key: item.id, item, first, last });
+  });
   return rows;
 }

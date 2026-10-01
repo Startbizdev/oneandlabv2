@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -18,7 +18,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { COLORBLIND_TYPE_OPTIONS, type ActiveColorblindType } from '@/theme/colorblind-types';
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 import { SettingsChoiceGroup } from '../components/SettingsChoiceGroup';
 import { usePushPermissionStatus } from '../hooks/use-push-permission-status';
@@ -60,7 +60,7 @@ export function AppSettingsScreen() {
       : isExpoGo
         ? 'Notifications push complètes avec un build de développement'
         : pushActive
-          ? 'Rappels de rendez-vous, messages et résultats sur cet appareil'
+          ? 'Rappels, messages et résultats sur cet appareil'
           : 'Désactivées sur cet appareil';
 
   const enablePush = async () => {
@@ -123,31 +123,23 @@ export function AppSettingsScreen() {
   };
 
   const onColorblindToggle = (next: boolean) => {
-    if (next === colorblindMode) return;
-    setColorblindMode(next);
-    toast(next ? 'Couleurs accessibles activées' : 'Couleurs standard restaurées', {
-      message: next
-        ? 'L’interface se met à jour dans toute l’application.'
-        : 'La palette Cary d’origine est rétablie.',
-      type: 'info',
-    });
+    if (next !== colorblindMode) setColorblindMode(next);
   };
 
   const onTypeSelect = (type: ActiveColorblindType) => {
-    if (type === colorblindType) return;
-    setColorblindType(type);
-    const label = COLORBLIND_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
-    toast(`Profil ${label}`, { message: 'Palette adaptée appliquée.', type: 'info' });
+    if (type !== colorblindType) setColorblindType(type);
   };
 
   const onTextScaleSelect = (scale: TextScale) => {
-    if (scale === textScale) return;
-    setTextScale(scale);
-    toast(scale === 'large' ? 'Texte agrandi activé' : 'Taille de texte standard', {
-      message: 'L’interface se met à jour dans toute l’application.',
-      type: 'info',
-    });
+    if (scale !== textScale) setTextScale(scale);
   };
+
+  const swatches = [
+    { label: 'Succès', color: c.success, bg: c.successLight },
+    { label: 'Erreur', color: c.error, bg: c.errorLight },
+    { label: 'Alerte', color: c.warning, bg: c.warningLight },
+    { label: 'Action', color: c.primary, bg: c.primaryLight },
+  ];
 
   return (
     <ProfileSubScreenLayout hideSave>
@@ -169,10 +161,9 @@ export function AppSettingsScreen() {
           },
           {
             icon: Settings,
-            label: 'Ouvrir les réglages de l’appareil',
-            description: 'Autorisation, sons et badges des notifications',
+            label: 'Réglages de l’appareil',
+            description: 'Autorisation, sons et badges',
             onPress: openNotificationSettings,
-            iconAccent: 'settings',
           },
         ]}
       />
@@ -191,7 +182,7 @@ export function AppSettingsScreen() {
           {
             icon: Eye,
             label: 'Couleurs accessibles',
-            description: 'Adapte les teintes de l’app si certaines couleurs se ressemblent',
+            description: 'Pour distinguer les couleurs qui se ressemblent',
             trailing: (
               <ToggleSwitch
                 value={colorblindMode}
@@ -204,35 +195,25 @@ export function AppSettingsScreen() {
       />
 
       {colorblindMode ? (
-        <SettingsChoiceGroup
-          caption="Quelles couleurs confondez-vous le plus ?"
-          options={COLORBLIND_CHOICES}
-          selected={colorblindType}
-          onSelect={onTypeSelect}
-        />
+        <>
+          <SettingsChoiceGroup
+            caption="Quelles couleurs confondez-vous le plus ?"
+            options={COLORBLIND_CHOICES}
+            selected={colorblindType}
+            onSelect={onTypeSelect}
+          />
+          <View style={styles.preview} accessibilityLabel="Aperçu des couleurs de statut">
+            <AppText variant="caption">Aperçu</AppText>
+            <Row wrap gap={spacing[2]}>
+              {swatches.map((s) => (
+                <View key={s.label} style={[styles.swatch, { backgroundColor: s.bg }]}>
+                  <AppText style={[styles.swatchLabel, { color: s.color }]}>{s.label}</AppText>
+                </View>
+              ))}
+            </Row>
+          </View>
+        </>
       ) : null}
-
-      <View style={[styles.previewCard, elevation.xs]}>
-        <AppText style={styles.previewTitle}>Aperçu des couleurs de statut</AppText>
-        <Row wrap gap={spacing[2]}>
-          <View style={[styles.swatch, { backgroundColor: c.successLight }]}>
-            <AppText style={[styles.swatchLabel, { color: c.success }]}>Succès</AppText>
-          </View>
-          <View style={[styles.swatch, { backgroundColor: c.errorLight }]}>
-            <AppText style={[styles.swatchLabel, { color: c.error }]}>Erreur</AppText>
-          </View>
-          <View style={[styles.swatch, { backgroundColor: c.warningLight }]}>
-            <AppText style={[styles.swatchLabel, { color: c.warning }]}>Alerte</AppText>
-          </View>
-          <View style={[styles.swatch, { backgroundColor: c.primaryLight }]}>
-            <AppText style={[styles.swatchLabel, { color: c.primary }]}>Primaire</AppText>
-          </View>
-        </Row>
-        <AppText style={styles.infoText}>
-          Chaque statut reste aussi décrit par un libellé texte : la couleur n’est qu’un complément
-          visuel.
-        </AppText>
-      </View>
 
       <SettingsSection
         title="À propos"
@@ -241,7 +222,6 @@ export function AppSettingsScreen() {
             icon: Info,
             label: 'Version de l’application',
             value: meta.buildNumber !== '—' ? `${meta.appVersion} (${meta.buildNumber})` : meta.appVersion,
-            iconAccent: 'muted',
           },
         ]}
       />
@@ -249,36 +229,24 @@ export function AppSettingsScreen() {
   );
 }
 
-function buildStyles({ colors: c, fontSize, scale }: Theme) {
+function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    previewCard: {
+    preview: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
-      borderColor: c.borderLight,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
       padding: spacing[4],
-      gap: spacing[3],
-    },
-    previewTitle: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
+      gap: spacing[2],
     },
     swatch: {
       paddingHorizontal: spacing[3],
       paddingVertical: spacing[2],
       borderRadius: radius.md,
-      minWidth: 88,
     },
     swatchLabel: {
       ...font.semiBold,
       fontSize: fontSize.xs,
-    },
-    infoText: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      lineHeight: scale(20),
-      color: c.textSecondary,
     },
   };
 }

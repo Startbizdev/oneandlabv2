@@ -8,14 +8,15 @@ import {
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, ExternalLink, FileText, Globe, Mail, Share2 } from 'lucide-react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Camera, ExternalLink, Globe, Share2 } from 'lucide-react-native';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState';
 import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
+import { ProfileEmailField } from '@/features/profile/components/ProfileEmailField';
 import { ProfileHero } from '@/features/profile/components/ProfileHero';
 import { ProEmploiSelect } from '@/features/auth/components/ProEmploiSelect';
 import { ProfilePhotosSheetContent } from '@/features/profile/components/ProfilePhotosSheetContent';
@@ -26,6 +27,8 @@ import { ProfileToggleRow } from '@/features/profile/components/ProfileToggleRow
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { fetchUser, updateProfileImages, updateUser } from '@/features/profile/api/profile.service';
 import { generateProPublicSlug } from '@/features/profile/utils/generate-public-slug';
+import { proPublicProfilePath } from '@/features/profile/utils/pro-public-profile';
+import { webAppUrl } from '@/config/env';
 import {
   parseProfileSocialLinks,
   serializeProfileSocialLinks,
@@ -34,7 +37,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles } from '@/theme';
 
 export function ProfileProView() {
   const c = useAppColors();
@@ -165,11 +168,10 @@ export function ProfileProView() {
       saving={save.isPending}
       dirty={dirty}
       overlay={
-        <BottomSheet
+        <SheetModal
           visible={photosOpen}
           onClose={() => setPhotosOpen(false)}
           title="Photos"
-          subtitle="Photo affichée sur votre compte"
           contentStyle={styles.sheetBody}
         >
           <ProfilePhotosSheetContent
@@ -180,14 +182,12 @@ export function ProfileProView() {
             onChangeProfile={onChangeProfilePhoto}
             onChangeCover={onChangeCoverPhoto}
           />
-        </BottomSheet>
+        </SheetModal>
       }
     >
         <ProfileHero
-          firstName={firstName}
-          lastName={lastName}
-          email={user?.email}
-          role="pro"
+          name={`${firstName} ${lastName}`}
+          seed={user?.id}
           gender={q.data?.gender}
           profileImageUrl={profileUrl}
           coverImageUrl={coverUrl}
@@ -195,20 +195,10 @@ export function ProfileProView() {
           onEditPhotos={() => setPhotosOpen(true)}
         />
 
-        <ProfileSection title="Coordonnées" description="Informations de votre compte Cary" Icon={FileText}>
+        <ProfileSection title="Coordonnées">
           <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
           <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-          <View>
-            <AppText style={styles.fieldLabel}>Email</AppText>
-            <Cluster
-              gap={spacing[2]}
-              leading={<Mail size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
-              style={styles.emailRow}
-            >
-              <AppText style={styles.emailText}>{user?.email ?? '—'}</AppText>
-            </Cluster>
-            <AppText style={styles.fieldHint}>L'email ne peut pas être modifié depuis l'application.</AppText>
-          </View>
+          <ProfileEmailField email={user?.email} />
           <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <ProEmploiSelect value={emploi} onChange={setEmploi} label="Profession (emploi)" />
           <Input
@@ -226,27 +216,17 @@ export function ProfileProView() {
           />
         </ProfileSection>
 
-        <ProfileSection
-          title="Présentation"
-          description="Quelques lignes sur votre activité ou votre cabinet (facultatif)"
-          Icon={FileText}
-        >
-          <Input
+        <ProfileSection title="Présentation">
+          <Textarea
             label="Texte de présentation"
             value={biography}
             onChangeText={setBiography}
-            multiline
-            numberOfLines={5}
-            style={{ minHeight: 120, textAlignVertical: 'top' as const }}
             placeholder="Ex. Médecin généraliste, consultations sur rendez-vous…"
+            hint="Facultatif."
           />
         </ProfileSection>
 
-        <ProfileSection
-          title="Site web et réseaux"
-          description="Liens optionnels (cabinet, LinkedIn, etc.)"
-          Icon={Globe}
-        >
+        <ProfileSection title="Site web et réseaux">
           <Input
             label="Site internet"
             value={websiteUrl}
@@ -254,7 +234,7 @@ export function ProfileProView() {
             autoCapitalize="none"
             keyboardType="url"
             placeholder="https://…"
-            leftIcon={<Globe size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+            leftIcon={<Globe size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
           />
           <Input
             label="Facebook"
@@ -263,7 +243,7 @@ export function ProfileProView() {
             autoCapitalize="none"
             keyboardType="url"
             placeholder="URL de la page"
-            leftIcon={<Share2 size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+            leftIcon={<Share2 size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
           />
           <Input
             label="LinkedIn"
@@ -272,7 +252,7 @@ export function ProfileProView() {
             autoCapitalize="none"
             keyboardType="url"
             placeholder="URL du profil"
-            leftIcon={<ExternalLink size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+            leftIcon={<ExternalLink size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
           />
           <Input
             label="Instagram"
@@ -281,15 +261,11 @@ export function ProfileProView() {
             autoCapitalize="none"
             keyboardType="url"
             placeholder="URL du profil"
-            leftIcon={<Camera size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+            leftIcon={<Camera size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
           />
         </ProfileSection>
 
-        <ProfileSection
-          title="Fiche publique"
-          description="Rendez votre profil visible sur Cary pour recevoir des rendez-vous"
-          Icon={Globe}
-        >
+        <ProfileSection title="Fiche publique">
           <View style={styles.toggleCard}>
             <ProfileToggleRow
               label="Profil public"
@@ -310,7 +286,9 @@ export function ProfileProView() {
               }}
             />
             {publicEnabled && publicSlug ? (
-              <AppText style={styles.slugText}>cary.fr/professionnel/{publicSlug}</AppText>
+              <AppText variant="caption" selectable>
+                {webAppUrl(proPublicProfilePath(publicSlug)).replace(/^https?:\/\//, '')}
+              </AppText>
             ) : null}
           </View>
         </ProfileSection>
@@ -327,46 +305,14 @@ export function ProfileProView() {
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  sheetBody: {
-    paddingTop: spacing[2],
-    paddingBottom: spacing[6],
-  },
-  fieldLabel: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-  },
-  fieldHint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    marginTop: spacing[1],
-  },
-  emailRow: {
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[3],
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surfaceAlt,
-  },
-  emailText: {
-    minWidth: 0,
-    flex: 1,
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  toggleCard: {
-    gap: spacing[1],
-  },
-  slugText: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    paddingHorizontal: spacing[2],
-  },
-};
+    sheetBody: {
+      paddingTop: spacing[2],
+      paddingBottom: spacing[6],
+    },
+    toggleCard: {
+      gap: spacing[2],
+    },
+  };
 }

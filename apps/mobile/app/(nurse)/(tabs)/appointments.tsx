@@ -1,10 +1,10 @@
 import { NurseAgendaScreen } from '@/features/nurse/screens/NurseAgendaScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function NurseAgendaTab() {
   return (
-    <TitledTabScreenFrame title="Agenda">
+    <TabScreenFrame title="Agenda">
       <NurseAgendaScreen />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

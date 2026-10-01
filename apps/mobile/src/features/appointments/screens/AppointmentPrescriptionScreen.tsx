@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
-import { StackScrollView } from '@/components/navigation/StackScrollView';
+import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useAuthStore } from '@/store/auth-store';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
@@ -12,7 +11,7 @@ import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatie
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
 import { PrescriptionSection } from '../detail/components/PrescriptionSection';
-import { fetchMedicalDocuments } from '../detail/api/appointment-detail.service';
+import { medicalDocumentsQueryOptions } from '../detail/hooks/use-appointment-detail-extras';
 import { useAppointmentDetail } from '../hooks/use-appointment-detail';
 import {
   appointmentDetailBlockReason,
@@ -29,6 +28,7 @@ interface Props {
 export function AppointmentPrescriptionScreen({ role }: Props) {
   const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
+  const appointmentId = String(id ?? '');
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -37,15 +37,8 @@ export function AppointmentPrescriptionScreen({ role }: Props) {
   const detailBlock = appointmentDetailBlockReason(detailQ.data);
   const apt = resolveAppointmentDetail(detailQ.data);
 
-  const docsQ = useQuery({
-    queryKey: ['appointments', 'medical-documents', id] as const,
-    queryFn: async () => {
-      const res = await fetchMedicalDocuments(id!);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Chargement impossible');
-      return res.data;
-    },
-    enabled: Boolean(id && apt),
-  });
+  const docsOptions = medicalDocumentsQueryOptions(appointmentId);
+  const docsQ = useQuery({ ...docsOptions, enabled: docsOptions.enabled && Boolean(apt) });
 
   const title = appointmentPrescriptionTitle(role);
   const canPrescribe =
@@ -103,17 +96,17 @@ export function AppointmentPrescriptionScreen({ role }: Props) {
   return (
     <>
       <StackChromeScreen title={title}>
-        <StackScrollView contentContainerStyle={styles.content}>
+        <SceneScrollView contentContainerStyle={styles.content}>
           <PrescriptionSection
             embedded
-            appointmentId={id!}
+            appointmentId={appointmentId}
             patientId={apt.patient_id}
             role={role}
             documents={docsQ.data ?? []}
             onDocumentsChanged={refreshDocs}
             onEditPatient={() => setEditPatientOpen(true)}
           />
-        </StackScrollView>
+        </SceneScrollView>
       </StackChromeScreen>
 
       <StaffPatientEditSheet

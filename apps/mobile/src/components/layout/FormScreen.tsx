@@ -2,8 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { forwardRef } from 'react';
 import type { ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTabSceneInsetBottom } from '@/components/navigation/liquid-glass-header-inset';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
 import { KeyboardScrollView } from './KeyboardScrollView';
 import { ScreenActionLayout } from './ScreenActionLayout';
 import { spacing, useStyles, type Theme } from '@/theme';
@@ -32,10 +31,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const bg = backgroundColor ?? c.background;
-  const { bottom } = useSafeAreaInsets();
-  const tabSceneBottom = useTabSceneInsetBottom();
-  const footerInset =
-    tabSceneBottom > 0 ? tabSceneBottom : Math.max(bottom, spacing[2]);
+  const { footerPadding: footerInset, tabBarHeight } = useSceneBottomInset();
   const footerPad = footer
     ? FORM_ACTION_BAR_HEIGHT + footerInset + spacing[2]
     : 0;
@@ -44,7 +40,7 @@ export const FormScreen = forwardRef<ScrollView, Props>(function FormScreen(
     <ScreenActionLayout
       footer={
         footer ? (
-          <KeyboardStickyView offset={{ closed: 0, opened: footerInset }}>
+          <KeyboardStickyView offset={{ closed: 0, opened: tabBarHeight + footerInset }}>
             {footer}
           </KeyboardStickyView>
         ) : undefined

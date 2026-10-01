@@ -1,12 +1,12 @@
 import { NurseDemandesScreen } from '@/features/nurse/screens/NurseDemandesScreen';
-import { TitledTabScreenFrame } from '@/navigation/tab-screen-frames';
+import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 
 export default function NurseDemandes() {
   return (
-    <TitledTabScreenFrame
+    <TabScreenFrame
       title="Mes demandes"
     >
       <NurseDemandesScreen />
-    </TitledTabScreenFrame>
+    </TabScreenFrame>
   );
 }

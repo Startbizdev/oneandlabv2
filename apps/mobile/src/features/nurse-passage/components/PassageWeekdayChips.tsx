@@ -2,7 +2,7 @@ import { layoutRowWrap } from '@/theme/layout-styles';
 import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { MIN_TOUCH_TARGET, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 /** ISO weekday 1 = lundi … 7 = dimanche */
 const WEEKDAYS: { iso: number; label: string }[] = [
@@ -66,7 +66,7 @@ function buildStyles({ fontSize }: Theme) {
       ...layoutRowWrap(spacing[2]),
     },
     chip: {
-      minWidth: 44,
+      minWidth: MIN_TOUCH_TARGET,
       paddingHorizontal: spacing[2.5],
       paddingVertical: spacing[2],
       borderRadius: radius.full,

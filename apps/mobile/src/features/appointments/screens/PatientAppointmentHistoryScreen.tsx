@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
@@ -24,6 +23,8 @@ import {
 } from '@/utils/appointment-list-sections';
 import { AppointmentListSectionHeader } from '../components/AppointmentListSectionHeader';
 import { PatientPaginationBar } from '../detail/components/patient/PatientPaginationBar';
+import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { spacing, useStyles, type Theme } from '@/theme';
 
 const PAGE_SIZE = 8;
@@ -86,7 +87,7 @@ export function PatientAppointmentHistoryScreen() {
           row={item}
           index={index}
           role="patient"
-          onPress={(apt) => router.push(`/(patient)/appointment/${apt.id}` as never)}
+          onPress={(apt) => router.push(appointmentDetailHref('/(patient)', apt.id))}
         />
       ),
     [router],
@@ -108,26 +109,35 @@ export function PatientAppointmentHistoryScreen() {
 
   if (detailQ.isError && !primary) {
     return (
-      <View style={styles.loading}>
-        <ErrorState error={detailQ.error} onRetry={() => void detailQ.refetch()} />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <ErrorState error={detailQ.error} onRetry={() => void detailQ.refetch()} />
+        </View>
+      </StackChromeScreen>
     );
   }
 
   const detailBlock = appointmentDetailBlockReason(detailQ.data);
   if (detailBlock) {
-    return <AppointmentDetailBlockedEmptyState onBack={() => router.back()} block={detailBlock} />;
+    return (
+      <StackChromeScreen>
+        <AppointmentDetailBlockedEmptyState onBack={() => router.back()} block={detailBlock} />
+      </StackChromeScreen>
+    );
   }
 
   if (detailQ.isPending && !primary) {
     return (
-      <View style={styles.loading}>
-        <SkeletonList count={4} itemHeight={116} gap={12} />
-      </View>
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <SkeletonList count={4} itemHeight={116} gap={12} />
+        </View>
+      </StackChromeScreen>
     );
   }
 
   return (
+    <StackChromeScreen>
     <QueryFlatList
       query={historyQ}
       items={items}
@@ -140,14 +150,13 @@ export function PatientAppointmentHistoryScreen() {
       renderItem={renderItem}
       ListEmptyComponent={
         <EmptyState
-          imageSource={EMPTY_RDV_IMAGE}
-          imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-          imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-          title="Pas encore d’historique"
-          description="Les rendez-vous passés apparaîtront ici."
+          illustration="history"
+          title="Aucune visite passée"
+          description="Les visites terminées pour cette personne s’afficheront ici."
         />
       }
     />
+    </StackChromeScreen>
   );
 }
 

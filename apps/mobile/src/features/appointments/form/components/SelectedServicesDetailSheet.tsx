@@ -1,18 +1,20 @@
-import { CarePictogram } from '@/components/ui/CarePictogram';
+import { useEffect, useState } from 'react';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Cluster, Row } from '@/components/layout/primitives';
 import { Trash2 } from 'lucide-react-native';
 import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import type { CareCategory } from '@/features/categories/api/categories.service';
+import { CareIcon } from '@/features/categories/components/CareIcon';
+import { careSourceFromCatalog } from '@/features/categories/utils/care-source';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import {
   detailLinesForSelectedService,
   selectionModalTitle,
 } from '../utils/selected-service-detail-lines';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -23,7 +25,7 @@ interface Props {
   onRemove: (serviceId: string) => void;
 }
 
-/** Détail du panier — SheetModal (Expo). */
+/** Détail du panier — retrait confirmé en ligne. */
 export function SelectedServicesDetailSheet({
   visible,
   selectedServices,
@@ -34,18 +36,16 @@ export function SelectedServicesDetailSheet({
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const handleRemove = (svc: SelectedServiceInput) => {
-    Alert.alert('Retirer ce soin ?', svc.name, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Retirer',
-        style: 'destructive',
-        onPress: () => {
-          onRemove(svc.id);
-          if (selectedServices.length <= 1) onClose();
-        },
-      },
-    ]);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) setPendingRemoveId(null);
+  }, [visible]);
+
+  const confirmRemove = (serviceId: string) => {
+    setPendingRemoveId(null);
+    onRemove(serviceId);
+    if (selectedServices.length <= 1) onClose();
   };
 
   return (
@@ -56,102 +56,114 @@ export function SelectedServicesDetailSheet({
       onBack={onClose}
       title={selectionModalTitle(selectedServices.length)}
       subtitle="Vérifiez les options avant de continuer."
+      footer={<Button title="Fermer" variant="secondary" onPress={onClose} fullWidth size="lg" />}
     >
       {selectedServices.map((svc, index) => {
         const lines = detailLinesForSelectedService(svc, categories, formDataByService);
-        const cat = categories.find((c) => c.id === svc.category_id);
         const isLast = index === selectedServices.length - 1;
+        const confirming = pendingRemoveId === svc.id;
 
         return (
           <View key={svc.id} style={[styles.item, !isLast && styles.itemBorder]}>
             <Cluster
-              leading={<CarePictogram label={svc.name} type={svc.type} icon={cat ? cat.icon : svc.icon} imageUrl={cat ? cat.image_url : svc.category_image_url} size={24} />}
+              leading={
+                <CareIcon
+                  care={careSourceFromCatalog(
+                    { categoryId: svc.category_id, name: svc.name },
+                    svc.type,
+                    categories,
+                  )}
+                  variant="well"
+                />
+              }
               align="start"
-              gap={spacing[2]}
+              gap={spacing[3]}
               actions={
-                <Pressable
-                  onPress={() => handleRemove(svc)}
-                  hitSlop={8}
-                  style={styles.removeBtn}
-                  accessibilityLabel={`Retirer ${svc.name}`}
-                  accessibilityRole="button"
-                >
-                  <Trash2 size={iconSize.md} color={c.error} strokeWidth={2} />
-                </Pressable>
+                confirming ? null : (
+                  <Pressable
+                    onPress={() => setPendingRemoveId(svc.id)}
+                    style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
+                    accessibilityLabel={`Retirer ${svc.name}`}
+                    accessibilityRole="button"
+                  >
+                    <Trash2 size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+                  </Pressable>
+                )
               }
             >
-              <AppText style={styles.itemName} numberOfLines={2}>
-                {svc.name}
-              </AppText>
+              <AppText variant="headline">{svc.name}</AppText>
+              {lines.length > 0 ? (
+                <View style={styles.details}>
+                  {lines.map((ln, i) => (
+                    <AppText key={`${svc.id}-${i}`} variant="secondary">
+                      <AppText variant="secondary" style={styles.detailLabel}>{ln.label} </AppText>
+                      {ln.value}
+                    </AppText>
+                  ))}
+                </View>
+              ) : (
+                <AppText variant="secondary" style={styles.detailLabel}>Aucune option renseignée.</AppText>
+              )}
             </Cluster>
-            {lines.length > 0 ? (
-              <View style={styles.details}>
-                {lines.map((ln, i) => (
-                  <AppText key={`${svc.id}-${i}`} style={styles.detailLine}>
-                    <AppText style={styles.detailLabel}>{ln.label} </AppText>
-                    <AppText style={styles.detailValue}>{ln.value}</AppText>
-                  </AppText>
-                ))}
+            {confirming ? (
+              <View style={styles.confirm}>
+                <AppText variant="body" accessibilityRole="alert">Retirer ce soin de la demande ?</AppText>
+                <Row gap={spacing[2]}>
+                  <Button
+                    title="Annuler"
+                    variant="ghost"
+                    onPress={() => setPendingRemoveId(null)}
+                    style={styles.confirmBtn}
+                  />
+                  <Button
+                    title="Retirer"
+                    variant="destructive"
+                    onPress={() => confirmRemove(svc.id)}
+                    style={styles.confirmBtn}
+                  />
+                </Row>
               </View>
-            ) : (
-              <AppText style={styles.empty}>Aucune option renseignée.</AppText>
-            )}
+            ) : null}
           </View>
         );
       })}
-      <Button title="Fermer" onPress={onClose} fullWidth size="lg" />
     </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     item: {
       paddingVertical: spacing[3],
+      gap: spacing[3],
     },
     itemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.borderLight,
     },
-    itemName: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-      lineHeight: fontSize.base * 1.35,
-    },
     removeBtn: {
-      width: 44,
-      height: 44,
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       marginTop: -spacing[2],
       marginRight: -spacing[2],
     },
+    pressed: { opacity: 0.6 },
     details: {
-      marginTop: spacing[2],
-      paddingLeft: spacing[2.5],
-      borderLeftWidth: 2,
-      borderLeftColor: c.border,
-      gap: spacing[1.5],
-    },
-    detailLine: {
-      fontSize: fontSize.sm,
-      lineHeight: fontSize.sm * 1.45,
+      marginTop: spacing[1],
+      gap: spacing[1],
     },
     detailLabel: {
       ...font.regular,
       color: c.textTertiary,
     },
-    detailValue: {
-      ...font.medium,
-      color: c.textSecondary,
+    confirm: {
+      gap: spacing[2],
+      padding: spacing[3],
+      borderRadius: radius.md,
+      backgroundColor: c.surfaceAlt,
     },
-    empty: {
-      marginTop: spacing[1],
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textTertiary,
-      lineHeight: fontSize.sm * 1.4,
-    },
+    confirmBtn: { flex: 1 },
   };
 }

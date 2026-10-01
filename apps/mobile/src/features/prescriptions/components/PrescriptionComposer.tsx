@@ -392,7 +392,7 @@ export function PrescriptionComposer({
             <PenLine size={iconSize.md} color={c.primary} strokeWidth={2} />
           </Pressable>
         ) : (
-          <PenLine size={iconSize.mdSm} color={c.textTertiary} strokeWidth={2} />
+          <PenLine size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
         )}
       </View>
 

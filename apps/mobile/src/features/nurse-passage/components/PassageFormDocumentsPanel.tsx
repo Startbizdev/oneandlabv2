@@ -3,7 +3,8 @@ import type { PassagePrescriptionDraft } from '@/features/prescriptions/api/pres
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
 import { PrescriptionWorkspaceScreen } from '@/features/prescriptions/screens/PrescriptionWorkspaceScreen';
 import { usePassagePrescriptionGapsAlert } from '../hooks/use-passage-prescription-gaps-alert';
-import { H_PADDING, spacing } from '@/theme';
+import { useStyles } from '@/theme';
+import { buildPassageDocumentsPanelStyles } from './passage-documents-panel-styles';
 
 type Props = {
   patientId: string;
@@ -11,10 +12,11 @@ type Props = {
 };
 
 export function PassageFormDocumentsPanel({ patientId, onPrescriptionDraft }: Props) {
+  const styles = useStyles(buildPassageDocumentsPanelStyles);
   const { gapsAlert } = usePassagePrescriptionGapsAlert(patientId);
 
   return (
-    <View style={{ gap: spacing[4], paddingHorizontal: H_PADDING, paddingBottom: spacing[10] }}>
+    <View style={styles.panel}>
       {gapsAlert}
       <ProfileDocumentsPremiumPanel embedded patientUserId={patientId} />
       <PrescriptionWorkspaceScreen

@@ -1,10 +1,10 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { FilterOptionChips, type FilterChipOption } from '@/components/ui/FilterOptionChips';
 import { Input } from '@/components/ui/Input';
 import { Search } from 'lucide-react-native';
-import { spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props<
   TTab extends string = string,
@@ -14,8 +14,9 @@ interface Props<
   visible: boolean;
   onClose: () => void;
   title?: string;
-  search: string;
-  onSearchChange: (v: string) => void;
+  /** Champ de recherche affiché seulement si `onSearchChange` est fourni. */
+  search?: string;
+  onSearchChange?: (v: string) => void;
   searchPlaceholder?: string;
   tabs?: FilterChipOption<TTab>[];
   tab?: TTab;
@@ -23,7 +24,6 @@ interface Props<
   segments?: FilterChipOption<TSegment>[];
   segment?: TSegment;
   onSegmentChange?: (v: TSegment) => void;
-  showSearch?: boolean;
   segmentSectionLabel?: string;
   secondarySegments?: FilterChipOption<TSecondary>[];
   secondarySegment?: TSecondary;
@@ -51,7 +51,6 @@ export function AppointmentsFilterSheet<
   segments,
   segment,
   onSegmentChange,
-  showSearch = true,
   segmentSectionLabel = 'Statut',
   secondarySegments,
   secondarySegment,
@@ -68,13 +67,13 @@ export function AppointmentsFilterSheet<
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={title}>
-      {showSearch ? (
+    <SheetModal visible={visible} onClose={onClose} title={title}>
+      {onSearchChange ? (
         <Input
-          value={search}
+          value={search ?? ''}
           onChangeText={onSearchChange}
           placeholder={searchPlaceholder}
-          leftIcon={<Search size={iconSize.sm} color={c.textTertiary} strokeWidth={2} />}
+          leftIcon={<Search size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
         />
       ) : null}
 
@@ -108,7 +107,7 @@ export function AppointmentsFilterSheet<
           <AppText style={styles.resetText}>Réinitialiser les filtres</AppText>
         </Pressable>
       ) : null}
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
@@ -119,10 +118,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   sectionLabel: {
     ...font.semiBold,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
+    fontSize: fontSize.sm,
+    color: c.textSecondary,
   },
   resetBtn: {
     alignSelf: 'center' as const,

@@ -1,39 +1,18 @@
 import React from 'react';
 import { View, StyleSheet, type ViewProps } from 'react-native';
-import { elevation, radius, spacing, useStyles, type Theme } from '@/theme';
-
-type ElevationLevel = keyof typeof elevation;
+import { radius, spacing, useStyles, type Theme } from '@/theme';
 
 interface CardProps extends ViewProps {
-  shadow?: ElevationLevel;
-  padding?: 'none' | 'sm' | 'md' | 'lg';
-  radius?: keyof typeof import('@/theme').radius;
-  noBorder?: boolean;
+  /** `none` quand la carte contient des rangées pleine largeur (`ListRowShell`). */
+  padding?: 'none' | 'md';
 }
 
-function CardComponent({
-  children,
-  shadow = 'sm',
-  padding = 'md',
-  radius: radiusKey = 'xl',
-  noBorder = false,
-  style,
-  ...props
-}: CardProps) {
+/** Groupe logique sur le fond d'app : surface blanche, trait discret, sans ombre. */
+function CardComponent({ children, padding = 'md', style, ...props }: CardProps) {
   const styles = useStyles(buildStyles);
 
   return (
-    <View
-      style={[
-        styles.base,
-        elevation[shadow],
-        paddingStyles[padding],
-        { borderRadius: radiusValues[radiusKey] },
-        noBorder && styles.noBorder,
-        style,
-      ]}
-      {...props}
-    >
+    <View style={[styles.base, padding === 'md' && styles.padded, style]} {...props}>
       {children}
     </View>
   );
@@ -41,35 +20,17 @@ function CardComponent({
 
 export const Card = React.memo(CardComponent);
 
-const radiusValues = {
-  xs: 6,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 32,
-  full: 9999,
-};
-
-const paddingStyles = {
-  none: {},
-  sm: { padding: spacing[3] },
-  md: { padding: spacing[4] },
-  lg: { padding: spacing[5] },
-};
-
 function buildStyles({ colors: c }: Theme) {
   return {
-  base: {
-    backgroundColor: c.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: c.cardBorder,
-    overflow: 'hidden' as const,
-  },
-  noBorder: {
-    borderWidth: 0,
-    borderColor: 'transparent',
-  },
-};
+    base: {
+      backgroundColor: c.surface,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      overflow: 'hidden' as const,
+    },
+    padded: {
+      padding: spacing[4],
+    },
+  };
 }

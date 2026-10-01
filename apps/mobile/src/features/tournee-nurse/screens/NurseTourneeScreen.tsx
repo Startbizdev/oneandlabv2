@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ErrorState } from '@/components/ui/ErrorState';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { Row } from '@/components/layout/primitives';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackContentTopInset } from '@/navigation/use-stack-scroll-config';
 import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 import { useToast } from '@/providers/ToastProvider';
+import { isManualOrderLockedError, tourOptimizeErrorMessage } from '@oneandlab/shared-api';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
+import { handleApiError } from '@/lib/errors/handle-api-error';
 import { PassageFab } from '@/features/nurse-passage/components/PassageFab';
 import {
   PassagePlanningSheet,
@@ -19,18 +16,21 @@ import {
 } from '@/features/nurse-passage/components/PassagePlanningSheet';
 import { PassageSimpleListRow } from '@/features/nurse-passage/components/PassageSimpleListRow';
 import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
-import { deletePatientAbsence } from '@/features/patient-absence/api/patient-absence.service';
-import { countTourActiveRemainingStops, flattenTourStopsWithSlotSections, isTourStopAbsent } from '@oneandlab/shared-utils';
+import {
+  countTourActiveRemainingStops,
+  flattenTourStopsWithSlotSections,
+  isTourStopAbsent,
+  isTourStopDone,
+} from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { todayTourDate } from '../hooks/nurse-tour-query';
 import { useNurseTourStopCompletion } from '../hooks/use-nurse-tour-stop-status';
 import { NurseNextPassageCard } from '../components/NurseNextPassageCard';
 import { nursePassageDetailHref } from '../utils/passage-detail-href';
+import { useTourStopActions } from '../hooks/use-tour-stop-actions';
+import { useTourCalendarImport } from '../hooks/use-tour-calendar-import';
 import { TourCalendarExportAction } from '../components/TourCalendarExportAction';
-import {
-  TourCalendarImportSheet,
-  type TourCalendarImportScope,
-} from '../components/TourCalendarImportSheet';
+import { TourCalendarImportSheet } from '../components/TourCalendarImportSheet';
 import { TourDayStrip } from '../components/TourDayStrip';
 import { TourEmptyPanel } from '../components/TourEmptyPanel';
 import { TourLoadingSkeleton } from '../components/TourLoadingSkeleton';
@@ -38,10 +38,11 @@ import { TourLocateAction } from '../components/TourLocateAction';
 import { TourPassageSectionHeader } from '../components/TourPassageSectionHeader';
 import { TourSlotSectionLabel } from '../components/TourSlotSectionLabel';
 import { TourSortFilterSheet } from '../components/TourSortFilterSheet';
+import { TourStopActionsSheet } from '../components/TourStopActionsSheet';
 import { TourStopRescheduleSheet } from '../components/TourStopRescheduleSheet';
 import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
-import { countTodayActiveStops, importTourToDeviceCalendar } from '../utils/tour-calendar';
+import { countTodayActiveStops } from '../utils/tour-calendar';
 
 export function NurseTourneeScreen() {
   const styles = useStyles(buildStyles);
@@ -49,21 +50,10 @@ export function NurseTourneeScreen() {
   const { show: showToast } = useToast();
   const [date, setDate] = useState(todayTourDate);
   const [locating, setLocating] = useState(false);
-  const [exportingCalendar, setExportingCalendar] = useState(false);
-  const [rescheduleStop, setRescheduleStop] = useState<NurseTourStop | null>(null);
   const [planningSheetOpen, setPlanningSheetOpen] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
   const [manualOrderActive, setManualOrderActive] = useState(false);
-  const [absenceStop, setAbsenceStop] = useState<NurseTourStop | null>(null);
-
-  const contentTopInset = useStackContentTopInset();
-  const sceneInsets = useTabSceneInsets();
-  const listScrollConfig = buildTabSceneScrollConfig(
-    { insetTop: 0, insetBottom: sceneInsets.insetBottom },
-    styles.list,
-    { extraTop: spacing[2], extraBottom: spacing[16] },
-  );
 
   const {
     tour,
@@ -81,6 +71,8 @@ export function NurseTourneeScreen() {
     nextStop,
   } = useNurseTour(date);
   const { markDone, reopen } = useNurseTourStopCompletion(date);
+  const { openStopActions, actionsSheet, rescheduleStop, closeReschedule, absenceStop, closeAbsence } =
+    useTourStopActions(refetch);
   const isToday = date === todayTourDate();
 
   useFocusEffect(
@@ -94,6 +86,10 @@ export function NurseTourneeScreen() {
   }, [date]);
 
   const displayStops = useMemo(() => tour?.stops ?? [], [tour?.stops]);
+  const { importing: exportingCalendar, importToCalendar } = useTourCalendarImport(
+    date,
+    displayStops,
+  );
   const tourListRows = useMemo(
     () => flattenTourStopsWithSlotSections(displayStops),
     [displayStops],
@@ -125,11 +121,12 @@ export function NurseTourneeScreen() {
         await optimize(mode, force);
         setManualOrderActive(mode === 'manual');
         showToast('Ordre mis à jour', { type: 'success' });
-      } catch {
-        showToast('Optimisation impossible', { type: 'error' });
+      } catch (e) {
+        if (e instanceof ApiRequestError && isManualOrderLockedError(e.status, e.code)) void refetch();
+        handleApiError(e, showToast, 'nurse-tour-optimize', 'Optimisation impossible', tourOptimizeErrorMessage);
       }
     },
-    [optimize, showToast],
+    [optimize, refetch, showToast],
   );
 
   const handleMove = useCallback(
@@ -138,7 +135,8 @@ export function NurseTourneeScreen() {
         await moveStop(id, dir);
         setManualOrderActive(true);
         showToast('Ordre enregistré', { type: 'success' });
-      } catch {
+      } catch (e) {
+        console.warn('[tour] réordonnancement impossible', e);
         showToast('Enregistrement impossible', { type: 'error' });
       }
     },
@@ -147,61 +145,10 @@ export function NurseTourneeScreen() {
 
   const openPassageDetail = useCallback(
     (stop: NurseTourStop) => {
-      router.push(nursePassageDetailHref(stop) as never);
+      router.push(nursePassageDetailHref(stop));
     },
     [router],
   );
-
-  const reportCalendarImportResult = useCallback(
-    (result: Awaited<ReturnType<typeof importTourToDeviceCalendar>>) => {
-      if (result.ok && result.mode === 'native') {
-        showToast(
-          `${result.count} rendez-vous ajouté${result.count > 1 ? 's' : ''} à votre calendrier`,
-          { type: 'success' },
-        );
-        return;
-      }
-      if (result.ok && result.mode === 'share') {
-        showToast('Choisissez Calendrier pour importer vos rendez-vous', { type: 'success' });
-        return;
-      }
-      if (!result.ok) {
-        if (result.reason === 'no_events') {
-          showToast('Aucun rendez-vous à ajouter au calendrier', { type: 'error' });
-          return;
-        }
-        if (result.reason === 'permission') {
-          showToast('Autorisez Cary à accéder à votre calendrier dans Réglages', { type: 'error' });
-          return;
-        }
-        showToast('Ajout au calendrier impossible', { type: 'error' });
-      }
-    },
-    [showToast],
-  );
-
-  const handleCalendarImport = useCallback(
-    async (scope: TourCalendarImportScope) => {
-      setExportingCalendar(true);
-      try {
-        const result = await importTourToDeviceCalendar({
-          scope,
-          date,
-          todayStops: tour?.stops ?? [],
-        });
-        reportCalendarImportResult(result);
-      } catch {
-        showToast('Ajout au calendrier impossible', { type: 'error' });
-      } finally {
-        setExportingCalendar(false);
-      }
-    },
-    [date, reportCalendarImportResult, showToast, tour?.stops],
-  );
-
-  const openCalendarImportSheet = useCallback(() => {
-    setCalendarSheetOpen(true);
-  }, []);
 
   const handlePlanningChoice = useCallback(
     (choice: PassagePlanningChoice) => {
@@ -209,76 +156,9 @@ export function NurseTourneeScreen() {
       router.push({
         pathname: '/(nurse)/passage/patient-pick',
         params: { start_date: date, mode: choice },
-      } as never);
+      });
     },
     [date, router],
-  );
-
-  const openAbsenceSheet = useCallback((stop: NurseTourStop) => {
-    if (!stop.patient_id) {
-      showToast('Patient introuvable pour cette absence', { type: 'error' });
-      return;
-    }
-    setAbsenceStop(stop);
-  }, [showToast]);
-
-  const handleManageAbsence = useCallback(
-    (stop: NurseTourStop) => {
-      if (!stop.patient_id) {
-        showToast('Patient introuvable pour cette absence', { type: 'error' });
-        return;
-      }
-      const absent = isTourStopAbsent(stop);
-      const absenceId = stop.patient_absence?.id;
-
-      const liftAbsence = () => {
-        if (!absenceId) {
-          openAbsenceSheet(stop);
-          return;
-        }
-        void (async () => {
-          try {
-            await deletePatientAbsence(stop.patient_id!, absenceId);
-            showToast('Absence levée — patient de retour', { type: 'success' });
-            void refetch();
-          } catch {
-            showToast('Suppression impossible', { type: 'error' });
-          }
-        })();
-      };
-
-      const actions = [
-        {
-          text: absent ? 'Modifier l\'absence' : 'Déclarer une absence',
-          onPress: () => openAbsenceSheet(stop),
-        },
-        ...(absent
-          ? [
-              {
-                text: 'Patient de retour — lever l\'absence',
-                style: 'destructive' as const,
-                onPress: liftAbsence,
-              },
-            ]
-          : []),
-        { text: 'Annuler', style: 'cancel' as const },
-      ];
-
-      if (Platform.OS === 'ios') {
-        const labels = actions.map((a) => a.text);
-        ActionSheetIOS.showActionSheetWithOptions(
-          {
-            options: labels,
-            cancelButtonIndex: labels.length - 1,
-            destructiveButtonIndex: absent ? 1 : undefined,
-          },
-          (i) => actions[i]?.onPress?.(),
-        );
-        return;
-      }
-      Alert.alert(stop.patient_name, undefined, actions);
-    },
-    [openAbsenceSheet, refetch, showToast],
   );
 
   const hasStops = displayStops.length > 0;
@@ -290,7 +170,7 @@ export function NurseTourneeScreen() {
     tour && (tour.plan.sort_mode !== 'smart' || tour.plan.manual_order_locked),
   );
 
-  const listHeader = useCallback(
+  const listHeader = useMemo(
     () => (
       <View style={styles.listHeader}>
         {showTourSummary && tour ? (
@@ -331,7 +211,7 @@ export function NurseTourneeScreen() {
       headerRight={
         <Row align="center">
           <TourCalendarExportAction
-            onPress={openCalendarImportSheet}
+            onPress={() => setCalendarSheetOpen(true)}
             loading={exportingCalendar}
           />
           <TourLocateAction onPress={() => void handleLocate()} loading={locating} />
@@ -339,7 +219,7 @@ export function NurseTourneeScreen() {
       }
     >
       <View style={styles.container}>
-        <View style={[styles.headerZone, { paddingTop: contentTopInset }]}>
+        <View style={[styles.headerZone, { paddingTop: spacing[3] }]}>
           <TourDayStrip
             embedded
             selectedDate={date}
@@ -363,9 +243,8 @@ export function NurseTourneeScreen() {
             data={tourListRows}
             keyExtractor={(item) => item.key}
             extraData={`${tour?.summary.done_stops}/${tour?.summary.total_stops}`}
-            {...spreadTabSceneScrollProps(listScrollConfig)}
             contentContainerStyle={[
-              listScrollConfig.contentContainerStyle,
+              styles.list,
               !hasStops && styles.listEmpty,
             ]}
             ListHeaderComponent={listHeader}
@@ -374,7 +253,6 @@ export function NurseTourneeScreen() {
               <RefreshControl
                 refreshing={isFetching && !isLoading}
                 onRefresh={() => void refetch()}
-                progressViewOffset={listScrollConfig.refreshProgressOffset}
               />
             }
             showsVerticalScrollIndicator={false}
@@ -386,14 +264,10 @@ export function NurseTourneeScreen() {
               const stop = item.stop;
               const toggleDone = () => {
                 if (isTourStopAbsent(stop)) {
-                  handleManageAbsence(stop);
+                  openStopActions(stop);
                   return;
                 }
-                const isDone =
-                  stop.visit_status === 'done' ||
-                  stop.visit_status === 'skipped' ||
-                  stop.status === 'completed';
-                void (isDone ? reopen(stop) : markDone(stop));
+                void (isTourStopDone(stop) ? reopen(stop) : markDone(stop));
               };
               return (
                 <PassageSimpleListRow
@@ -403,7 +277,7 @@ export function NurseTourneeScreen() {
                   isNext={stop.stop_id === tour.next_stop_id}
                   onPressName={() => openPassageDetail(stop)}
                   onToggleDone={toggleDone}
-                  onManageAbsence={() => handleManageAbsence(stop)}
+                  onManageAbsence={() => openStopActions(stop)}
                   onMoveUp={
                     showManualReorder ? () => void handleMove(stop.appointment_id, 'up') : undefined
                   }
@@ -433,7 +307,7 @@ export function NurseTourneeScreen() {
           patientName={absenceStop.patient_name}
           defaultStartDate={date}
           existing={absenceStop.patient_absence ?? null}
-          onClose={() => setAbsenceStop(null)}
+          onClose={closeAbsence}
           onSaved={() => {
             showToast('Tournée actualisée', { type: 'success' });
             void refetch();
@@ -457,17 +331,19 @@ export function NurseTourneeScreen() {
         selectedDate={date}
         todayCount={countTodayActiveStops(tour?.stops ?? [])}
         onClose={() => setCalendarSheetOpen(false)}
-        onSelect={(scope) => void handleCalendarImport(scope)}
+        onSelect={(scope) => void importToCalendar(scope)}
       />
+
+      <TourStopActionsSheet {...actionsSheet} />
 
       <TourStopRescheduleSheet
         stop={rescheduleStop}
         visible={Boolean(rescheduleStop)}
-        onClose={() => setRescheduleStop(null)}
+        onClose={closeReschedule}
         onConfirm={async (payload) => {
           if (!rescheduleStop) return;
           await reschedule(rescheduleStop.stop_id, payload);
-          showToast('Créneau mis à jour — patient prévenu', { type: 'success' });
+          showToast('Créneau mis à jour, patient prévenu', { type: 'success' });
         }}
       />
     </StackChromeScreen>
@@ -489,8 +365,9 @@ function buildStyles({ colors: c }: Theme) {
       borderBottomColor: c.borderLight,
     },
     list: {
+      paddingTop: spacing[2],
       paddingHorizontal: H_PADDING,
-      paddingBottom: spacing[10],
+      paddingBottom: spacing[10] + spacing[16],
     },
     listHeader: {
       alignSelf: 'stretch' as const,

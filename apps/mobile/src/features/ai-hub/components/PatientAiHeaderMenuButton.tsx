@@ -1,19 +1,11 @@
-import { iconSize } from '@/theme';
-import { List } from 'lucide-react-native';
-import { GlassHeaderButton } from '@/components/navigation/GlassHeaderButton';
+import { History } from 'lucide-react-native';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
 
 interface Props {
   onPress: () => void;
 }
 
-/** Historique conversations Cary — bouton glass iOS 26. */
+/** Historique des conversations Cary. */
 export function PatientAiHeaderMenuButton({ onPress }: Props) {
-  return (
-    <GlassHeaderButton
-      symbol="clock.arrow.circlepath"
-      accessibilityLabel="Historique des conversations"
-      onPress={onPress}
-      fallback={<List size={iconSize.md} strokeWidth={2.25} />}
-    />
-  );
+  return <HeaderAction icon={History} accessibilityLabel="Historique des conversations" onPress={onPress} />;
 }

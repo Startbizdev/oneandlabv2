@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { PatientDuplicatePrompt } from '@/features/appointments/form/components/PatientDuplicatePrompt';
@@ -13,6 +13,14 @@ import { PERSONAL_DOC_FIELDS } from '@/features/appointments/form/constants/appo
 import type { AddressPayload } from '@/features/appointments/form/types';
 import type { DocumentFileRef } from '@/features/appointments/form/types/document-file-ref';
 import { adoptStaffPatient, createPatient } from '../api/patients.service';
+import { lookupPatientByContact, patientRowFromLookup } from '../api/patient-lookup.service';
+import {
+  isEmailAlreadyUsedError,
+  patientAdoptErrorMessage,
+  patientCreateErrorMessage,
+} from '@oneandlab/shared-api';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
+import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 import { queryKeys } from '@/lib/query-keys';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -75,12 +83,13 @@ export function CreatePatientModal({
     Record<string, DocumentFileRef | undefined>
   >({});
   const [patientBookingConsent, setPatientBookingConsent] = useState(false);
-  const {
-    duplicateOpen,
-    duplicateRow,
-    dismissDuplicate,
-    resetDuplicate,
-  } = usePatientDuplicateDetection(email, phone, visible && detectDuplicates);
+  const [consentError, setConsentError] = useState(false);
+  const [adopting, setAdopting] = useState(false);
+  const { duplicate, dismissDuplicate, resetDuplicate, showDuplicate } = usePatientDuplicateDetection(
+    email,
+    phone,
+    visible && detectDuplicates,
+  );
 
   const reset = useCallback(() => {
     setFirstName('');
@@ -91,6 +100,7 @@ export function CreatePatientModal({
     setAddressComplement('');
     setPersonalFiles({});
     setPatientBookingConsent(false);
+    setConsentError(false);
     setError(null);
     resetDuplicate();
   }, [resetDuplicate]);
@@ -99,8 +109,52 @@ export function CreatePatientModal({
     if (!visible) reset();
   }, [visible, reset]);
 
+  const toggleConsent = () => {
+    setPatientBookingConsent((v) => !v);
+    setConsentError(false);
+  };
+
+  const adoptExistingPatient = async () => {
+    if (!duplicate || adopting) return;
+    if (!patientBookingConsent) {
+      setConsentError(true);
+      setError('Cochez le consentement du patient pour utiliser ce dossier.');
+      return;
+    }
+    setAdopting(true);
+    setError(null);
+    try {
+      const res = await adoptStaffPatient(duplicate.patient.id, duplicate.contact, true);
+      if (!res.success) throw new Error(res.error ?? 'Impossible d’utiliser ce dossier.');
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
+        qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
+        qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] }),
+      ]);
+      const row = patientRowFromLookup(duplicate.patient);
+      resetDuplicate();
+      onExistingPatient?.(row);
+      onClose();
+    } catch (e) {
+      setError(apiErrorMessage(e, patientAdoptErrorMessage, 'Impossible d’utiliser ce dossier.'));
+    } finally {
+      setAdopting(false);
+    }
+  };
+
+  /** 409 `EMAIL_ALREADY_USED` : propose le dossier existant si la recherche par e-mail le retrouve. */
+  const proposeExistingByEmail = async (existingPatientId: string | undefined) => {
+    if (!detectDuplicates || !existingPatientId || !email.trim()) return;
+    try {
+      const found = await lookupPatientByContact(email, '');
+      if (found?.patient.id === existingPatientId) showDuplicate(found);
+    } catch (e) {
+      console.warn('[patients] existing patient lookup failed', e);
+    }
+  };
+
   const submit = async () => {
-    if (duplicateOpen && duplicateRow) {
+    if (duplicate) {
       setError('Ce patient existe déjà — utilisez le dossier existant.');
       return;
     }
@@ -109,6 +163,7 @@ export function CreatePatientModal({
       return;
     }
     if (!patientBookingConsent) {
+      setConsentError(true);
       setError('Veuillez confirmer le consentement du patient pour la prise de rendez-vous.');
       return;
     }
@@ -152,46 +207,29 @@ export function CreatePatientModal({
       });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur');
+      setError(apiErrorMessage(e, patientCreateErrorMessage, 'Création impossible'));
+      if (e instanceof ApiRequestError && isEmailAlreadyUsedError(e.status, e.code)) {
+        await proposeExistingByEmail(e.existingPatientId);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Nouveau patient"
       stackBehavior={stackBehavior}
     >
-      {duplicateOpen && duplicateRow ? (
+      {duplicate ? (
         <PatientDuplicatePrompt
-          patient={duplicateRow}
+          patient={duplicate.patient}
           variant="create"
+          adopting={adopting}
           onDismiss={dismissDuplicate}
-          onUseExisting={() => {
-            if (!duplicateRow) return;
-            void (async () => {
-              try {
-                const res = await adoptStaffPatient(duplicateRow.id);
-                if (!res.success) {
-                  setError(res.error ?? 'Impossible d’utiliser ce dossier.');
-                  return;
-                }
-                await Promise.all([
-                  qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
-                  qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
-                  qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] }),
-                ]);
-                dismissDuplicate();
-                onExistingPatient?.(duplicateRow);
-                onClose();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : 'Impossible d’utiliser ce dossier.');
-              }
-            })();
-          }}
+          onUseExisting={() => void adoptExistingPatient()}
         />
       ) : null}
       <View style={styles.fields}>
@@ -229,8 +267,8 @@ export function CreatePatientModal({
 
       <StaffPatientBookingConsentRow
         checked={patientBookingConsent}
-        onToggle={() => setPatientBookingConsent((v) => !v)}
-        error={error?.includes('consentement') ?? false}
+        onToggle={toggleConsent}
+        error={consentError}
       />
 
       {error ? <AppText style={styles.errorText}>{error}</AppText> : null}
@@ -244,7 +282,7 @@ export function CreatePatientModal({
         </View>
       </Row>
 
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

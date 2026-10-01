@@ -1,17 +1,21 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ClipboardList, FileText, HeartPulse } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { useStackContentTopInset } from '@/navigation/use-stack-scroll-config';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { Button } from '@/components/ui/Button';
-import { Row, Stack } from '@/components/layout/primitives';
-import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SettingsSection } from '@/components/ui/SettingsSection';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
+import { SkeletonList } from '@/components/ui/skeletons';
 import { DetailSegmentBar } from '@/features/appointments/detail/components/layout/DetailSegmentBar';
-import { fetchPatientProfile } from '@/features/patients/api/patient-profile.service';
+import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { usePassagePatient } from '../hooks/use-passage-patient';
+import { PassagePatientHeader } from '../components/PassagePatientHeader';
+import { PASSAGE_FIELD_ICONS } from '../components/passage-field-icons';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import { createNursePassageSeries } from '../api/nurse-passage.service';
 import { PassageCreationAttempt } from '../utils/passage-creation-attempt';
@@ -21,7 +25,6 @@ import { PassageFormCareSheet } from '../components/PassageFormCareSheet';
 import { PassageFormDailyTimesSheet } from '../components/PassageFormDailyTimesSheet';
 import { PassageFormDocumentsPanel } from '../components/PassageFormDocumentsPanel';
 import { PassageFormDurationSheet } from '../components/PassageFormDurationSheet';
-import { PassageFormFieldRow } from '../components/PassageFormFieldRow';
 import { PassageFormHealthRecordPanel } from '../components/PassageFormHealthRecordPanel';
 import { PassageFormLocationSheet } from '../components/PassageFormLocationSheet';
 import { PassageFormNotesSheet } from '../components/PassageFormNotesSheet';
@@ -42,10 +45,12 @@ import {
   formatPlanningSummary,
 } from '../utils/passage-form-summaries';
 import { useToast } from '@/providers/ToastProvider';
+import { nursePassageCreateErrorMessage } from '@oneandlab/shared-api';
+import { handleApiError } from '@/lib/errors/handle-api-error';
 import { parseProfileAddress, hasValidGeoAddress } from '@/features/profile/utils/parse-profile-address';
 import { useAuthStore } from '@/store/auth-store';
 import type { NursePassageNursingItem, PassageDailyTimeSlot } from '@oneandlab/shared-types';
-import { H_PADDING, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 
 type SheetKey = 'planning' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
 type SegmentId = 'information' | 'documents' | 'health_record';
@@ -62,9 +67,7 @@ function paramString(v: string | string[] | undefined): string {
 }
 
 export function PassageFormScreen() {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const contentTopInset = useStackContentTopInset();
   const router = useRouter();
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -80,15 +83,7 @@ export function PassageFormScreen() {
   const stripDate = paramString(params.start_date) || new Date().toISOString().slice(0, 10);
   const flowMode = paramString(params.mode);
 
-  const patientQ = useQuery({
-    queryKey: ['passage-patient', patientId],
-    queryFn: async () => {
-      const res = await fetchPatientProfile(patientId);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Patient introuvable');
-      return res.data;
-    },
-    enabled: Boolean(patientId),
-  });
+  const patientQ = usePassagePatient(patientId);
 
   const [atHome, setAtHome] = useState(true);
   const [duration, setDuration] = useState<number>(30);
@@ -163,14 +158,13 @@ export function PassageFormScreen() {
       });
     },
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: ['nurse-tour'] });
+      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
       const ordonnanceMsg = prescriptionDraftRef.current ? (data.appointment_ids?.length ? ' Ordonnance ajoutée au passage.' : ' Ordonnance enregistrée dans les documents du patient.') : '';
       toast(`${data.created_appointments} passage(s) planifié(s).${ordonnanceMsg}`, { type: 'success' });
-      router.replace('/(nurse)/tournee' as never);
+      router.replace('/(nurse)/(tabs)/tournee');
     },
-    onError: (e: Error) => {
-      toast(e.message || 'Enregistrement impossible', { type: 'error' });
-    },
+    onError: (e) =>
+      handleApiError(e, toast, 'passage-create', 'Enregistrement impossible', nursePassageCreateErrorMessage),
   });
 
   const handlePlanningConfirm = (next: typeof planningState) => {
@@ -236,38 +230,85 @@ export function PassageFormScreen() {
     });
   };
 
+  if (!patientId) {
+    return (
+      <StackChromeScreen>
+        <EmptyState
+          illustration="patients"
+          title="Aucun patient sélectionné"
+          actionLabel="Choisir un patient"
+          onAction={() => router.back()}
+        />
+      </StackChromeScreen>
+    );
+  }
+
   if (patientQ.isLoading) {
     return (
-      <StackChromeScreen title="Prise en charge">
-        <View style={[styles.centered, { paddingTop: contentTopInset }]}>
-          <ActivityIndicator size="large" color={c.primary} />
+      <StackChromeScreen>
+        <View style={styles.loading}>
+          <SkeletonList count={5} itemHeight={56} gap={spacing[2]} />
         </View>
       </StackChromeScreen>
     );
   }
 
-  if (patientQ.isError || !patientId) {
+  if (patientQ.isError || !patientQ.data) {
     return (
-      <StackChromeScreen title="Prise en charge">
-        <View style={[styles.centered, { paddingTop: contentTopInset }]}>
-          <Stack gap={spacing[4]}>
-            <AppText>Le patient ne peut pas être chargé.</AppText>
-            <Button title={patientId ? 'Réessayer' : 'Choisir un patient'} variant="outline" onPress={() => patientId ? void patientQ.refetch() : router.back()} />
-          </Stack>
-        </View>
+      <StackChromeScreen>
+        <ErrorState title="Patient indisponible" error={patientQ.error} onRetry={() => void patientQ.refetch()} />
       </StackChromeScreen>
     );
   }
+
+  const patient = patientQ.data;
+  const fieldRows: SettingsRowProps[] = [
+    {
+      icon: PASSAGE_FIELD_ICONS.planning,
+      label: 'Planification',
+      description: formatPlanningSummary(planningState, passageCount),
+      onPress: () => setOpenSheet('planning'),
+    },
+    {
+      icon: PASSAGE_FIELD_ICONS.time,
+      label: 'Créneaux',
+      description: formatDailyTimesSummary(dailyTimeSlots),
+      onPress: () => setOpenSheet('daily_times'),
+    },
+    {
+      icon: PASSAGE_FIELD_ICONS.location,
+      label: 'Lieu',
+      description: locationSummary,
+      onPress: () => setOpenSheet('location'),
+    },
+    {
+      icon: PASSAGE_FIELD_ICONS.duration,
+      label: 'Durée',
+      description: formatPassageDurationSummary(duration, customDuration),
+      onPress: () => setOpenSheet('duration'),
+    },
+    {
+      icon: PASSAGE_FIELD_ICONS.care,
+      label: 'Soins',
+      description: careSummary,
+      onPress: () => setOpenSheet('care'),
+    },
+    {
+      icon: PASSAGE_FIELD_ICONS.notes,
+      label: 'Note',
+      description: formatNotesSummary(notes),
+      onPress: () => setOpenSheet('notes'),
+    },
+  ];
 
   return (
-    <StackChromeScreen title="Prise en charge">
-      <View style={[styles.screen, { paddingTop: contentTopInset, backgroundColor: c.background }]}>
+    <StackChromeScreen>
+      <View style={styles.screen}>
         <View style={styles.header}>
           <DetailSegmentBar
             segments={PASSAGE_FORM_SEGMENTS}
             active={segment}
             onChange={(id) => setSegment(id as SegmentId)}
-            compact
           />
         </View>
 
@@ -278,65 +319,20 @@ export function PassageFormScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Stack gap={spacing[3]}>
-              <View style={styles.patientBlock}>
-                <AppText style={[styles.sectionLabel, { color: c.textTertiary }]}>Patient</AppText>
-                <Row gap={spacing[3]} align="center" style={styles.patientRow}>
-                  <ProfileAvatar
-                    profileImageUrl={patientQ.data?.profile_image_url}
-                    seed={patientId || patientName}
-                    gender={patientQ.data?.gender}
-                    size={iconSize['5xl']}
-                  />
-                  <View style={styles.patientNameCol}>
-                    <AppText style={[styles.patientName, { color: c.textPrimary }]} numberOfLines={2}>
-                      {patientName}
-                    </AppText>
-                  </View>
-                </Row>
-              </View>
-
-              <PassageFormFieldRow
-                label="Planification"
-                value={formatPlanningSummary(planningState, passageCount)}
-                onPress={() => setOpenSheet('planning')}
-              />
-              <PassageFormFieldRow
-                label="Créneaux de passage"
-                value={formatDailyTimesSummary(dailyTimeSlots)}
-                onPress={() => setOpenSheet('daily_times')}
-              />
-              <PassageFormFieldRow
-                label="Lieu"
-                value={locationSummary}
-                onPress={() => setOpenSheet('location')}
-              />
-              <PassageFormFieldRow
-                label="Durée du passage"
-                value={formatPassageDurationSummary(duration, customDuration)}
-                onPress={() => setOpenSheet('duration')}
-              />
-              <PassageFormFieldRow
-                label="Soins"
-                value={careSummary}
-                empty={nursingItems.length === 0}
-                onPress={() => setOpenSheet('care')}
-              />
-              <PassageFormFieldRow
-                label="Note"
-                value={formatNotesSummary(notes)}
-                empty={!notes.trim()}
-                onPress={() => setOpenSheet('notes')}
-              />
-
-              <Button
-                title={createMut.isPending ? 'Enregistrement…' : 'Enregistrer le passage'}
-                onPress={handleSubmit}
-                disabled={createMut.isPending}
-                loading={createMut.isPending}
-                fullWidth
-              />
-            </Stack>
+            <PassagePatientHeader
+              name={patientName}
+              seed={patientId}
+              profileImageUrl={patient.profile_image_url}
+              gender={patient.gender}
+            />
+            <SettingsSection items={fieldRows} />
+            <Button
+              title="Enregistrer le passage"
+              onPress={handleSubmit}
+              disabled={createMut.isPending}
+              loading={createMut.isPending}
+              fullWidth
+            />
           </KeyboardScrollView>
         ) : (
           <ScrollView
@@ -409,9 +405,9 @@ export function PassageFormScreen() {
   );
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    screen: { flex: 1, minWidth: 0 },
+    screen: { flex: 1, minWidth: 0, paddingTop: spacing[3], backgroundColor: c.background },
     header: {
       paddingHorizontal: H_PADDING,
       paddingTop: spacing[1],
@@ -420,28 +416,14 @@ function buildStyles({ fontSize }: Theme) {
     bodyScroll: { flex: 1, minWidth: 0 },
     scroll: {
       paddingHorizontal: H_PADDING,
-      paddingTop: spacing[1],
+      paddingTop: spacing[2],
       paddingBottom: spacing[10],
+      gap: spacing[5],
     },
     altScrollContent: {
       paddingTop: spacing[1],
       paddingBottom: spacing[10],
     },
-    centered: {
-    minWidth: 0, flex: 1, alignItems: 'center' as const, justifyContent: 'center' as const },
-    patientBlock: { gap: spacing[2] },
-    patientRow: { minWidth: 0 },
-    patientNameCol: { flex: 1, minWidth: 0 },
-    sectionLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      textTransform: 'uppercase' as const,
-      letterSpacing: 0.5,
-    },
-    patientName: {
-      ...font.heading,
-      fontSize: fontSize.xl,
-      lineHeight: fontSize.xl * 1.2,
-    },
+    loading: { paddingHorizontal: H_PADDING, paddingTop: spacing[4] },
   };
 }

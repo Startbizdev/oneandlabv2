@@ -1,34 +1,26 @@
-import { useAppColors } from '@/theme/use-app-colors';
-
 import { useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Cluster } from '@/components/layout/primitives';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { FolderOpen } from 'lucide-react-native';
 import { queryKeys } from '@/lib/query-keys';
 import { fetchPatientDocuments } from '@/features/patients/api/patient-profile.service';
-import { ProfileNavRow } from '@/features/profile/components/ProfileNavRow';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { SettingsRow } from '@/components/ui/SettingsRow';
+import { radius, useStyles, type Theme } from '@/theme';
 
 interface Props {
   patientUserId: string;
-  documentsRoute: string;
+  documentsHref: Href;
 }
 
-function dossierSubtitle(count: number): string {
-  if (count === 0) {
-    return 'Vitale, mutuelle… · ouvrir pour ajouter';
-  }
-  if (count === 1) {
-    return '1 document enregistré';
-  }
+function dossierDescription(count: number | null): string {
+  if (count === null) return 'Chargement…';
+  if (count === 0) return 'Aucun document · Vitale, mutuelle…';
+  if (count === 1) return '1 document enregistré';
   return `${count} documents enregistrés`;
 }
 
-export function WizardPatientDocumentsPanel({
-  patientUserId, documentsRoute }: Props) {
-  const c = useAppColors();
+export function WizardPatientDocumentsPanel({ patientUserId, documentsHref }: Props) {
   const styles = useStyles(buildStyles);
   const router = useRouter();
 
@@ -41,78 +33,41 @@ export function WizardPatientDocumentsPanel({
     enabled: Boolean(patientUserId),
   });
 
+  const { refetch } = docsQ;
   useFocusEffect(
     useCallback(() => {
-      if (patientUserId) void docsQ.refetch();
-    }, [patientUserId, docsQ.refetch]),
+      if (patientUserId) void refetch();
+    }, [patientUserId, refetch]),
   );
 
-  if (!patientUserId || !documentsRoute) return null;
+  if (!patientUserId) return null;
 
-  const count = docsQ.data?.length ?? 0;
   const loading = docsQ.isLoading && docsQ.data === undefined;
 
   return (
     <View style={styles.card}>
-      {loading ? (
-        <Cluster
-          gap={spacing[3]}
-          style={styles.loadingRow}
-          leading={
-            <View style={styles.iconWrap}>
-              <FolderOpen size={iconSize.md} color={c.primary} strokeWidth={2.25} />
-            </View>
-          }
-          actions={
-            <ActivityIndicator size="small" color={c.textTertiary} style={styles.spinner} />
-          }
-        >
-          <AppText style={styles.loadingTitle}>Dossier patient</AppText>
-        </Cluster>
-      ) : (
-        <ProfileNavRow
-          icon={FolderOpen}
-          title="Dossier patient"
-          subtitle={dossierSubtitle(count)}
-          onPress={() => router.push(documentsRoute as never)}
-        />
-      )}
+      <SettingsRow
+        icon={FolderOpen}
+        label="Dossier patient"
+        description={
+          docsQ.isError && docsQ.data === undefined
+            ? 'Documents indisponibles · touchez pour ouvrir'
+            : dossierDescription(loading ? null : (docsQ.data?.length ?? 0))
+        }
+        onPress={() => router.push(documentsHref)}
+      />
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-  card: {
-    width: '100%' as const,
-    alignSelf: 'stretch' as const,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surface,
-    overflow: 'hidden' as const,
-  },
-  loadingRow: {
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: c.primaryLight,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    flexShrink: 0,
-  },
-  loadingTitle: {
-    ...font.semiBold,
-    fontSize: fontSize.base,
-    color: c.textPrimary,
-  },
-  spinner: {
-    marginLeft: spacing[2],
-  },
-};
+    card: {
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      overflow: 'hidden' as const,
+    },
+  };
 }
-

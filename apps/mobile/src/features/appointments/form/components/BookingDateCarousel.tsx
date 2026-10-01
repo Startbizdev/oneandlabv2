@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import dayjs from 'dayjs';
@@ -17,13 +16,12 @@ import {
   buildBookingDaySlides,
   dateToIsoDay,
   formatBookingDayCell,
-  formatBookingSelectedDay,
   formatBookingSlidePeriod,
   isBookingDayDisabled,
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
-import { animation, elevation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, animation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -64,7 +62,6 @@ function DayCell({
   height: number;
   onPress: () => void;
 }) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const scale = useSharedValue(1);
   const { weekday, day: dayNum } = formatBookingDayCell(day);
@@ -75,7 +72,7 @@ function DayCell({
   }));
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
   };
 
@@ -102,24 +99,18 @@ function DayCell({
         animStyle,
         styles.cellOuter,
         { width, height },
-        selected && styles.cellOuterSelected,
         disabled && styles.cellOuterDisabled,
       ]}
     >
       {selected ? (
-        <LinearGradient
-          colors={[c.gradientStart, c.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.cellInner, styles.cellInnerSelected]}
-        >
+        <View style={[styles.cellInner, styles.cellInnerSelected]}>
           <AppText style={[styles.weekday, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit>
             {weekday}
           </AppText>
           <AppText style={[styles.dayNum, styles.textOn]} adjustsFontSizeToFit minimumFontScale={0.85}>
             {dayNum}
           </AppText>
-        </LinearGradient>
+        </View>
       ) : (
         <View
           style={[
@@ -231,18 +222,13 @@ function PeriodNavigator({
         accessibilityLabel="Période précédente"
         accessibilityState={{ disabled: !canPrev }}
       >
-        <ChevronLeft size={iconSize.mdSm} color={canPrev ? c.primary : c.textTertiary} strokeWidth={2.5} />
+        <ChevronLeft size={iconSize.md} color={canPrev ? c.primary : c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
 
       <View style={styles.periodCenter}>
-        <AppText style={styles.periodLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.9}>
+        <AppText style={styles.periodLabel}>
           {label}
         </AppText>
-        {pageCount > 1 ? (
-          <AppText style={styles.periodHint}>
-            {page + 1} / {pageCount}
-          </AppText>
-        ) : null}
       </View>
 
       <Pressable
@@ -254,7 +240,7 @@ function PeriodNavigator({
         accessibilityLabel="Période suivante"
         accessibilityState={{ disabled: !canNext }}
       >
-        <ChevronRight size={iconSize.mdSm} color={canNext ? c.primary : c.textTertiary} strokeWidth={2.5} />
+        <ChevronRight size={iconSize.md} color={canNext ? c.primary : c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
     </Row>
   );
@@ -319,11 +305,12 @@ export function BookingDateCarousel({
   }, [acceptSaturday, acceptSunday, minLeadTimeHours, onChange, slides, value]);
 
   useEffect(() => {
-    if (!selected || slideWidth <= 0) return;
-    const idx = slideIndexForBookingDate(selected, DAYS_PER_SLIDE, minLeadTimeHours);
+    const day = parseIsoDay(value);
+    if (!day || slideWidth <= 0) return;
+    const idx = slideIndexForBookingDate(day, DAYS_PER_SLIDE, minLeadTimeHours);
     if (idx == null) return;
     scrollToPage(idx, false);
-  }, [selected?.format('YYYY-MM-DD'), slideWidth, minLeadTimeHours, scrollToPage]);
+  }, [value, slideWidth, minLeadTimeHours, scrollToPage]);
 
   const onMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -364,7 +351,7 @@ export function BookingDateCarousel({
 
   return (
     <View style={styles.wrap}>
-      <AppText style={styles.label}>Date souhaitée</AppText>
+      <AppText variant="headline" accessibilityRole="header">Quel jour ?</AppText>
 
       <View style={styles.calendarCard}>
         <PeriodNavigator
@@ -400,14 +387,6 @@ export function BookingDateCarousel({
             <View style={{ height: listHeight }} />
           )}
         </View>
-
-        {selected ? (
-          <View style={styles.selectedRecap}>
-            <AppText style={styles.selectedRecapText} numberOfLines={1}>
-              {formatBookingSelectedDay(selected)}
-            </AppText>
-          </View>
-        ) : null}
       </View>
     </View>
   );
@@ -419,31 +398,24 @@ function buildStyles({ colors: c, fontSize }: Theme) {
 
   return {
     wrap: { gap: spacing[2] },
-    label: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-    },
     calendarCard: {
       gap: spacing[2.5],
       padding: spacing[3],
       borderRadius: radius.xl,
       backgroundColor: c.surface,
       borderWidth: 1,
-      borderColor: c.borderLight,
-      ...elevation.xs,
+      borderColor: c.cardBorder,
     },
     navBtn: {
       width: 44,
       height: 44,
       borderRadius: radius.md,
-      backgroundColor: c.primaryLight,
+      backgroundColor: c.surfaceAlt,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
     },
     navBtnDisabled: {
-      backgroundColor: c.surfaceSubtle,
-      opacity: 0.7,
+      opacity: 0.5,
     },
     periodCenter: {
       minWidth: 0,
@@ -452,17 +424,10 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       gap: 2,
     },
     periodLabel: {
-      ...font.bold,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textPrimary,
       textAlign: 'center' as const,
-      textTransform: 'capitalize' as const,
-      letterSpacing: -0.2,
-    },
-    periodHint: {
-      ...font.medium,
-      fontSize: fontSize['2xs'],
-      color: c.textTertiary,
     },
     sliderHost: {
       overflow: 'hidden' as const,
@@ -476,13 +441,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     cellOuter: {
       borderRadius: radius.md,
       backgroundColor: 'transparent',
-    },
-    cellOuterSelected: {
-      ...elevation.sm,
-      shadowColor: c.primaryDark,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
     },
     cellOuterDisabled: {
       opacity: 0.42,
@@ -499,10 +457,10 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       overflow: 'hidden' as const,
     },
     cellInnerSelected: {
-      borderWidth: 0,
+      backgroundColor: c.primary,
     },
     cellInnerDefault: {
-      backgroundColor: c.surfaceSubtle,
+      backgroundColor: c.surfaceAlt,
       borderWidth: 1,
       borderColor: c.borderLight,
     },
@@ -532,20 +490,8 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     dayNumToday: {
       color: c.primary,
     },
-    textOn: { color: c.textInverse },
+    textOn: { color: c.onPrimary },
     textOff: { color: c.textTertiary },
-    selectedRecap: {
-      alignItems: 'center' as const,
-      paddingTop: spacing[1],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-    },
-    selectedRecapText: {
-      ...font.semiBold,
-      fontSize: fontSize.sm,
-      color: c.primary,
-      textTransform: 'capitalize' as const,
-    },
   };
 }
 

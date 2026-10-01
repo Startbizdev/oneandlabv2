@@ -19,6 +19,8 @@ import { AppText, avatarSize, iconSize, radius, spacing, useStyles, font, type T
 interface Props {
   apt: Appointment;
   batchCount?: number;
+  /** Le soignant attribué est déjà présenté plus bas (détail du rendez-vous). */
+  assigneeShownElsewhere?: boolean;
 }
 
 function dateLine(apt: Appointment): string {
@@ -29,12 +31,13 @@ function dateLine(apt: Appointment): string {
 }
 
 /** Bandeau patient : soin, statut en clair, date, créneau et soignant attribué. */
-export function PatientAppointmentSummaryHeader({ apt, batchCount = 1 }: Props) {
+export function PatientAppointmentSummaryHeader({ apt, batchCount = 1, assigneeShownElsewhere = false }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const status = appointmentStatusForDisplay(apt, { role: 'patient' });
   const assignee = rdvMaquetteAvatarCounterparty(apt, 'patient');
   const title = rdvMaquetteActsLine(apt, 'patient');
+  const assigned = !!assignee && !assignee.assignmentPending;
 
   return (
     <View style={styles.card}>
@@ -62,12 +65,13 @@ export function PatientAppointmentSummaryHeader({ apt, batchCount = 1 }: Props) 
         </Row>
       </View>
 
+      {assigned && assigneeShownElsewhere ? null : (
       <View style={styles.assignee}>
-        {assignee && !assignee.assignmentPending ? (
+        {assigned && assignee ? (
           <Row gap={spacing[3]} align="center">
             <ProfileAvatar
               profileImageUrl={assignee.profileImageUrl ?? null}
-              seed={assignee.name || apt.id}
+              seed={assignee.avatarSeed || assignee.name || apt.id}
               gender={assignee.gender ?? null}
               size={avatarSize.sm}
             />
@@ -89,6 +93,7 @@ export function PatientAppointmentSummaryHeader({ apt, batchCount = 1 }: Props) 
           </Row>
         )}
       </View>
+      )}
     </View>
   );
 }

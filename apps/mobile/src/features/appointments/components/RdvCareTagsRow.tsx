@@ -3,14 +3,15 @@ import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { Appointment } from '@oneandlab/shared-types';
 import { Row } from '@/components/layout/primitives';
-import { CarePictogram } from '@/components/ui/CarePictogram';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
+import { CareIcon } from '@/features/categories/components/CareIcon';
+import { careSourceFromCatalog } from '@/features/categories/utils/care-source';
 import {
   buildCareTileOrbColorMap,
   resolveRdvCareTagColors,
 } from '@/features/appointments/form/utils/booking-care-catalog';
 import { rdvCatalogDisplayLines, type RdvCatalogDisplayOpts } from '@/utils/rdv-catalog-lines';
-import { radius, spacing, AppText, font, useStyles, useTheme, type Theme } from '@/theme';
+import { iconSize, radius, spacing, AppText, font, useStyles, useTheme, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 interface Props {
@@ -31,7 +32,7 @@ function listCareTagColors(c: AppColors) {
   };
 }
 
-/** Soins en mini-tags (emoji + libellé). */
+/** Soins en mini-tags (icône + libellé). */
 export function RdvCareTagsRow({
   apt,
   hideStaffOnlyCares,
@@ -84,7 +85,7 @@ export function RdvCareTagsRow({
           <Row
             key={`${line.category_id ?? 'noid'}-${idx}-${line.label}`}
             align="center"
-            gap={compact ? 3 : spacing[1]}
+            gap={spacing[1]}
             style={[
               styles.tag,
               {
@@ -93,7 +94,14 @@ export function RdvCareTagsRow({
               },
             ]}
           >
-            <CarePictogram icon={categories.find((c) => c.id === line.category_id)?.icon ?? line.category_icon} imageUrl={categories.find((c) => c.id === line.category_id)?.image_url ?? line.category_image_url} label={line.label} type={apt.type} size={compact ? 14 : 16} />
+            <CareIcon
+              care={careSourceFromCatalog(
+                { categoryId: line.category_id, name: line.label },
+                apt.type,
+                categories,
+              )}
+              size={compact ? iconSize.sm : iconSize.md}
+            />
             <AppText style={styles.label}>
               {line.label}
             </AppText>
@@ -123,10 +131,6 @@ function buildStyles({ colors: c, fontSize }: Theme, density: 'default' | 'compa
       paddingVertical: compact ? spacing[0.5] : spacing[1],
       borderRadius: radius.sm,
       borderWidth: StyleSheet.hairlineWidth,
-    },
-    emoji: {
-      fontSize: labelSize,
-      lineHeight: lh(labelSize),
     },
     label: {
       flexShrink: 1,

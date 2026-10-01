@@ -17,8 +17,14 @@ export type ReviewRow = {
 
 export type ReviewFormState = { rating: number; comment: string };
 
+type AppointmentWithAssignees = Appointment & {
+  assigned_nurse_display_name?: string | null;
+  assigned_to_display_name?: string | null;
+  assigned_lab_display_name?: string | null;
+};
+
 export function revieweeFirstName(appt: Appointment): string {
-  const ext = appt as unknown as Record<string, unknown>;
+  const ext: AppointmentWithAssignees = appt;
   if (isNursingAppointment(appt.type)) {
     const full = String(ext.assigned_nurse_display_name ?? '').trim();
     const first = full.split(/\s+/).filter(Boolean)[0];

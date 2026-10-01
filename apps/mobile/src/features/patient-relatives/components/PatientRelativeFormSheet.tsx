@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
@@ -96,7 +96,7 @@ export function PatientRelativeFormSheet({
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={() => { if (!saving) onClose(); }}
       title={initial ? 'Modifier le proche' : 'Ajouter un proche'}
@@ -157,7 +157,7 @@ export function PatientRelativeFormSheet({
           />
         </View>
       </Row>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

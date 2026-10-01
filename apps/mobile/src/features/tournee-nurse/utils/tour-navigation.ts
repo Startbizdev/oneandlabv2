@@ -2,20 +2,22 @@ import { Linking, Platform } from 'react-native';
 import type { QueryClient } from '@tanstack/react-query';
 import { buildNavigationUrl, type NavigationTarget } from '@oneandlab/shared-utils';
 import type { NavAppPref, NurseTourPayload } from '../api/nurse-tour.service';
+import { NURSE_TOUR_QUERY_ROOT } from '../hooks/nurse-tour-query';
 import type { PreleveurTourPayload } from '@/features/tournee-preleveur/api/preleveur-tour.service';
+import { PRELEVEUR_TOUR_QUERY_ROOT } from '@/features/tournee-preleveur/hooks/preleveur-tour-query';
 
 const NAV_APP_PREFS: readonly NavAppPref[] = ['waze', 'google_maps', 'apple_maps', 'system'];
 
 /** Défaut aligné sur la colonne `nav_app_pref` des plans de tournée (migrations 092 / 098). */
 const DEFAULT_NAV_APP_PREF: NavAppPref = 'waze';
 
-const NURSE_TOUR_QUERY_ROOT = 'nurse-tour';
-const PRELEVEUR_TOUR_QUERY_ROOT = 'preleveur-tour';
+const [NURSE_TOUR_ROOT] = NURSE_TOUR_QUERY_ROOT;
+const [PRELEVEUR_TOUR_ROOT] = PRELEVEUR_TOUR_QUERY_ROOT;
 
 /** Seuls les plans de tournée infirmier et préleveur portent `nav_app_pref`. */
 function tourQueryRootForRole(role: string | null | undefined): string | null {
-  if (role === 'nurse') return NURSE_TOUR_QUERY_ROOT;
-  if (role === 'preleveur') return PRELEVEUR_TOUR_QUERY_ROOT;
+  if (role === 'nurse') return NURSE_TOUR_ROOT;
+  if (role === 'preleveur') return PRELEVEUR_TOUR_ROOT;
   return null;
 }
 
@@ -73,7 +75,7 @@ function cachedTourNavAppPref(
 }
 
 export function cachedNurseNavAppPref(qc: QueryClient, stopId?: string | null): NavAppPref {
-  return cachedTourNavAppPref(qc, NURSE_TOUR_QUERY_ROOT, (s) => Boolean(stopId) && s.stop_id === stopId);
+  return cachedTourNavAppPref(qc, NURSE_TOUR_ROOT, (s) => Boolean(stopId) && s.stop_id === stopId);
 }
 
 /**

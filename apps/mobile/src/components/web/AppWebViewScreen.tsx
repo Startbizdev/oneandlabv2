@@ -1,25 +1,17 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { useMemo, useState } from 'react';
-import { AppText, spacing, useStyles, font, type Theme } from '@/theme';
+import { useState } from 'react';
+import { spacing, useStyles, type Theme } from '@/theme';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { useLiquidGlassHeaderInset } from '@/components/navigation/liquid-glass-header-inset';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { webAppUrl } from '@/config/env';
-import { useAuthStore } from '@/store/auth-store';
 
 interface Props {
-  /** Chemin web relatif, ex. `/nurse/abonnement` */
+  /** Chemin web public relatif sans paramètres, ex. `/cgv` */
   path: string;
+  /** Absent : titre de `STACK_HEADER_CATALOG`. */
   title?: string;
-  /** Injecte le token mobile dans `localStorage` (pages espace connecté). */
-  requireAuth?: boolean;
-}
-
-function buildAuthInjectionScript(token: string): string {
-  const encoded = JSON.stringify(token);
-  return `(function(){try{localStorage.setItem('auth_token',${encoded});}catch(e){}})();true;`;
 }
 
 type LoadFailure = { kind: 'network' } | { kind: 'http'; status: number };
@@ -32,22 +24,14 @@ function loadFailureError(failure: LoadFailure): Error | null {
   );
 }
 
-export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: Props) {
+export function AppWebViewScreen({ path, title }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-
-  const token = useAuthStore((s) => s.token);
-  const uri = webAppUrl(path);
+  const uri = webAppUrl(`${path}?embed=1`);
 
   const [loading, setLoading] = useState(true);
   const [loadFailure, setLoadFailure] = useState<LoadFailure | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const headerInset = useLiquidGlassHeaderInset();
-
-  const injectedBefore = useMemo(() => {
-    if (!requireAuth || !token) return undefined;
-    return buildAuthInjectionScript(token);
-  }, [requireAuth, token]);
 
   const retry = () => {
     setLoadFailure(null);
@@ -55,25 +39,15 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
     setAttempt((n) => n + 1);
   };
 
-  const titleNode = (
-    <AppText style={styles.title} numberOfLines={1}>
-      {title}
-    </AppText>
-  );
-
   return (
-    <StackChromeScreen title={titleNode}>
-      <View style={[styles.container, { paddingTop: headerInset }]}>
+    <StackChromeScreen title={title}>
+      <View style={styles.container}>
         {loadFailure ? (
-          <View style={styles.errorOverlay}>
-            <ErrorState
-              title="Page indisponible"
-              error={loadFailureError(loadFailure)}
-              onRetry={retry}
-            />
+          <View style={styles.overlay}>
+            <ErrorState title="Page indisponible" error={loadFailureError(loadFailure)} onRetry={retry} />
           </View>
         ) : loading ? (
-          <View style={styles.loader}>
+          <View style={[styles.overlay, styles.loader]} accessibilityLabel="Chargement de la page">
             <ActivityIndicator size="large" color={c.primary} />
           </View>
         ) : null}
@@ -89,10 +63,8 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
               setLoadFailure({ kind: 'http', status: nativeEvent.statusCode });
             }
           }}
-          injectedJavaScriptBeforeContentLoaded={injectedBefore}
           javaScriptEnabled
           domStorageEnabled
-          sharedCookiesEnabled
           startInLoadingState={false}
         />
       </View>
@@ -100,30 +72,17 @@ export function AppWebViewScreen({ path, title = 'Cary', requireAuth = false }: 
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
     webview: { minWidth: 0, flex: 1, backgroundColor: c.surface },
-    loader: {
-      ...StyleSheet.absoluteFillObject,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      backgroundColor: c.background,
-      zIndex: 2,
-    },
-    errorOverlay: {
+    overlay: {
       ...StyleSheet.absoluteFillObject,
       justifyContent: 'center' as const,
       paddingHorizontal: spacing[4],
       backgroundColor: c.background,
       zIndex: 2,
     },
-    title: {
-      minWidth: 0,
-      ...font.heading,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-      flexShrink: 1,
-    },
+    loader: { alignItems: 'center' as const },
   };
 }

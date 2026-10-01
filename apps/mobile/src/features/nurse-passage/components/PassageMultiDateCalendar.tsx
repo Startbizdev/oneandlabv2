@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useLayoutMetrics, calendarCellMaxWidth, useStyles, font, type Theme } from '@/theme';
 dayjs.locale('fr');
 
 type Props = {
@@ -51,20 +51,20 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
       <Row justify="between" align="center" style={styles.header}>
         <Pressable
           onPress={() => setCursor((m) => m.subtract(1, 'month'))}
-          hitSlop={8}
+          hitSlop={10}
           accessibilityLabel="Mois précédent"
         >
-          <ChevronLeft size={iconSize.mdLg} color={c.textSecondary} />
+          <ChevronLeft size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         </Pressable>
         <AppText style={[styles.monthLabel, { color: c.textPrimary }]}>
           {cursor.format('MMMM YYYY')}
         </AppText>
         <Pressable
           onPress={() => setCursor((m) => m.add(1, 'month'))}
-          hitSlop={8}
+          hitSlop={10}
           accessibilityLabel="Mois suivant"
         >
-          <ChevronRight size={iconSize.mdLg} color={c.textSecondary} />
+          <ChevronRight size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         </Pressable>
       </Row>
 
@@ -78,14 +78,15 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
 
       <View style={styles.grid}>
         {grid.map((cell, idx) => {
-          if (!cell.iso || cell.day == null) {
+          const { iso, day } = cell;
+          if (!iso || day == null) {
             return <View key={`empty-${idx}`} style={[styles.cell, { maxWidth: cellMaxWidth }]} />;
           }
-          const on = selectedSet.has(cell.iso);
+          const on = selectedSet.has(iso);
           return (
             <Pressable
-              key={cell.iso}
-              onPress={() => toggle(cell.iso!)}
+              key={iso}
+              onPress={() => toggle(iso)}
               style={[
                 styles.cell,
                 styles.dayCell,
@@ -94,10 +95,10 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
               ]}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
-              accessibilityLabel={dayjs(cell.iso).format('D MMMM YYYY')}
+              accessibilityLabel={dayjs(iso).format('D MMMM YYYY')}
             >
               <AppText style={[styles.dayLabel, { color: on ? c.primaryDark : c.textPrimary }]}>
-                {cell.day}
+                {day}
               </AppText>
             </Pressable>
           );
@@ -110,7 +111,7 @@ export function PassageMultiDateCalendar({ selected, onChange }: Props) {
             {sortedSelected.length} date{sortedSelected.length > 1 ? 's' : ''} sélectionnée
             {sortedSelected.length > 1 ? 's' : ''}
           </AppText>
-          <AppText style={[styles.summaryDates, { color: c.textPrimary }]} numberOfLines={3}>
+          <AppText style={[styles.summaryDates, { color: c.textPrimary }]}>
             {sortedSelected.map((d) => dayjs(d).format('D MMM')).join(' · ')}
           </AppText>
         </View>
@@ -130,7 +131,7 @@ function buildStyles({ fontSize }: Theme) {
     },
     weekdayRow: { justifyContent: 'space-between' as const },
     weekday: {
-      width: 36,
+      width: spacing[9],
       textAlign: 'center' as const,
       ...font.semiBold,
       fontSize: fontSize.xs,

@@ -1,61 +1,50 @@
-import type { TutorialIllustrationKey } from '@oneandlab/onboarding';
-import { IllustrationCanvas } from './illustration/tutorial-illustration-parts';
-import {
-  AiScene,
-  AppointmentsScene,
-  BookScene,
-  NotificationsScene,
-  RelativesScene,
-  WelcomeScene,
-} from './illustration/tutorial-illustration-patient-scenes';
-import {
-  CalendarScene,
-  DemandesScene,
-  PatientsScene,
-  PrescriptionsScene,
-  QrScene,
-  TourneeScene,
-} from './illustration/tutorial-illustration-staff-scenes';
+import { Image } from 'react-native';
+import type { TutorialIllustrationKey, TutorialRole } from '@oneandlab/onboarding';
+import { ILLUSTRATIONS, type IllustrationKey } from '@/constants/illustrations';
+import { useStyles } from '@/theme';
 
-type Props = {
-  illustration: TutorialIllustrationKey;
+const TUTORIAL_ILLUSTRATION: Record<TutorialIllustrationKey, IllustrationKey> = {
+  welcome: 'welcome',
+  appointments: 'appointments',
+  book: 'booking',
+  relatives: 'relatives',
+  ai: 'messages',
+  notifications: 'notifications',
+  demandes: 'requests',
+  calendar: 'calendar',
+  patients: 'patients',
+  qr: 'patients',
+  prescriptions: 'prescriptions',
+  tournee: 'tour',
 };
 
-function IllustrationBody({ illustration }: Props) {
-  switch (illustration) {
-    case 'welcome':
-      return <WelcomeScene />;
-    case 'appointments':
-      return <AppointmentsScene />;
-    case 'book':
-      return <BookScene />;
-    case 'relatives':
-      return <RelativesScene />;
-    case 'ai':
-      return <AiScene />;
-    case 'notifications':
-      return <NotificationsScene />;
-    case 'demandes':
-      return <DemandesScene />;
-    case 'calendar':
-      return <CalendarScene />;
-    case 'patients':
-      return <PatientsScene />;
-    case 'qr':
-      return <QrScene />;
-    case 'prescriptions':
-      return <PrescriptionsScene />;
-    case 'tournee':
-      return <TourneeScene />;
-    default:
-      return null;
-  }
+/** Côté soignant, la slide « visites » parle de la fiche du passage, pas d'un patient qui attend chez lui. */
+const PROFESSIONAL_OVERRIDES: Partial<Record<TutorialIllustrationKey, IllustrationKey>> = {
+  appointments: 'health-record',
+};
+
+export function TutorialIllustration({
+  illustration,
+  role,
+}: {
+  illustration: TutorialIllustrationKey;
+  role: TutorialRole;
+}) {
+  const styles = useStyles(buildStyles);
+  const key =
+    (role !== 'patient' ? PROFESSIONAL_OVERRIDES[illustration] : undefined) ?? TUTORIAL_ILLUSTRATION[illustration];
+  return (
+    <Image
+      source={ILLUSTRATIONS[key]}
+      style={styles.image}
+      resizeMode="contain"
+      accessible={false}
+    />
+  );
 }
 
-export function TutorialIllustration({ illustration }: Props) {
-  return (
-    <IllustrationCanvas>
-      <IllustrationBody illustration={illustration} />
-    </IllustrationCanvas>
-  );
+function buildStyles() {
+  return {
+    image: { width: '100%' as const, height: '100%' as const, alignSelf: 'center' as const },
+  };
 }

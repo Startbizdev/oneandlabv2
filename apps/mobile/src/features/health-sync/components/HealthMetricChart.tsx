@@ -1,11 +1,11 @@
 import { layoutRowEndBetween } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useMemo } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { LineChart } from 'lucide-react-native';
 import type { HealthMetricPoint } from '@oneandlab/shared-types';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   title: string;
@@ -122,12 +122,12 @@ export function HealthMetricChart({
             </View>
           </View>
           <AppText style={styles.range}>
-            Unité : {unit} · {points.length} mesures
+            {points.length} mesures
           </AppText>
         </>
       ) : (
         <View style={styles.emptyShell}>
-          <LineChart size={iconSize.md} color={c.textTertiary} strokeWidth={1.75} />
+          <LineChart size={iconSize.md} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
           <AppText style={styles.emptyHint}>Pas assez de mesures sur la période</AppText>
         </View>
       )}
@@ -142,7 +142,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       paddingVertical: spacing[4],
     },
     wrapDivider: {
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.borderLight,
     },
     header: {

@@ -68,7 +68,7 @@ function SkeletonGroupComponent({ count = 3, height = 80, gap = 12, style }: Ske
   return (
     <Animated.View style={[{ gap }, style]}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} height={height} borderRadius={radius.xl} />
+        <Skeleton key={i} height={height} borderRadius={radius.lg} />
       ))}
     </Animated.View>
   );
@@ -80,7 +80,7 @@ SkeletonGroup.displayName = 'SkeletonGroup';
 function buildStyles({ colors: c }: Theme) {
   return {
   base: {
-    backgroundColor: c.surfaceSubtle,
+    backgroundColor: c.surfaceAlt,
     width: '100%' as const,
   },
 };

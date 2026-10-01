@@ -26,9 +26,14 @@ import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
 import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
+import { aiBookingDraftErrorMessage, isAiDraftClosedError } from '@oneandlab/shared-api';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
+import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 import type { PatientAiChatAttachment, PatientAiChatMessage, PatientAiConversation } from '../types/patient-ai-conversation';
 import { AI_PROFILE_DOC_TYPES } from '../utils/ai-draft-documents';
-import { mapSuggestionToMessage, systemKeyFromConversationType, appointmentDetailHref } from '../utils/ai-navigation';
+import { mapSuggestionToMessage, systemKeyFromConversationType } from '../utils/ai-navigation';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 import { resolveConversationTitle } from '../utils/conversation-title';
 import { resolveLatestAiDraft } from '../utils/resolve-latest-ai-draft';
 import { isActiveAiDraft } from '../utils/is-active-ai-draft';
@@ -673,7 +678,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
         return;
       }
       const role = useAuthStore.getState().user?.role ?? 'patient';
-      router.replace(appointmentDetailHref(role, appointmentId) as never);
+      router.replace(appointmentDetailHref(roleRoutePrefix(role), appointmentId));
 
       if (activeId) {
         const confirmedDraft = result.draft;
@@ -710,13 +715,25 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
       appendLocalMessage(activeId, {
         id: `local-error-${Date.now()}`,
         role: 'assistant',
-        text: e instanceof Error ? e.message : 'Impossible de confirmer le rendez-vous.',
+        text: apiErrorMessage(e, aiBookingDraftErrorMessage, 'Impossible de confirmer le rendez-vous.'),
       });
+      if (e instanceof ApiRequestError && isAiDraftClosedError(e.code)) {
+        setActiveDraft(null);
+        if (activeId) void reloadConversation(activeId);
+      }
     } finally {
       confirmInFlight.current = false;
       setConfirmingDraft(false);
     }
-  }, [activeConversation?.messages, activeDraft, activeId, appendLocalMessage, init?.patientId, showToast]);
+  }, [
+    activeConversation?.messages,
+    activeDraft,
+    activeId,
+    appendLocalMessage,
+    init?.patientId,
+    reloadConversation,
+    showToast,
+  ]);
 
   const handleAttach = useCallback(
     async (docTypeOverride?: string, pickSource?: CarePhotoPickSource) => {
@@ -805,13 +822,6 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     ],
   );
 
-  const handleReplaceDocument = useCallback(
-    (docType: string) => {
-      void handleAttach(docType);
-    },
-    [handleAttach],
-  );
-
   const clearAttachment = useCallback(() => {
     setPendingAttachment(null);
   }, []);
@@ -832,7 +842,7 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
   const onVoiceAppointmentCreated = useCallback(
     (appointmentId: string) => {
       const role = useAuthStore.getState().user?.role ?? 'patient';
-      router.replace(appointmentDetailHref(role, appointmentId) as never);
+      router.replace(appointmentDetailHref(roleRoutePrefix(role), appointmentId));
       setActiveDraft(null);
     },
     [],
@@ -868,7 +878,6 @@ export function useCaryAiHub(init?: CaryAiHubInit) {
     syncVoiceDraft,
     onVoiceAppointmentCreated,
     handleAttach,
-    handleReplaceDocument,
     clearAttachment,
     pendingAttachment,
     attaching,

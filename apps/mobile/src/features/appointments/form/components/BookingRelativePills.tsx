@@ -1,9 +1,9 @@
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import type { PatientRelative } from '@/features/patient-relatives/api/patient-relatives.service';
 import { useAppColors } from '@/theme/use-app-colors';
-import { AppText, font, iconSize, radius, spacing, useStyles, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, AppText, font, iconSize, radius, spacing, useStyles, type Theme } from '@/theme';
 
 interface Props {
   /** Libellé du titulaire du compte (« Pour moi », « Titulaire »). */
@@ -29,15 +29,15 @@ export function BookingRelativePills({ selfLabel, relatives, selectedId, onSelec
   ];
 
   return (
-    <Row wrap gap={spacing[2]} align="center">
+    <View accessibilityRole="radiogroup" style={styles.wrap}>
       {options.map((option) => {
         const on = selectedId === option.id;
         return (
           <Pressable
             key={option.id ?? 'self'}
             onPress={() => onSelect(option.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: on }}
             accessibilityLabel={option.label}
             style={[styles.pill, on && styles.pillActive]}
           >
@@ -52,16 +52,22 @@ export function BookingRelativePills({ selfLabel, relatives, selectedId, onSelec
         style={[styles.pill, styles.addPill]}
       >
         <Row gap={spacing[1]} align="center">
-          <Plus size={iconSize.xs} color={c.primary} strokeWidth={2.5} />
+          <Plus size={iconSize.md} color={c.textLink} strokeWidth={ICON_STROKE_WIDTH} />
           <AppText style={styles.addText}>{addLabel}</AppText>
         </Row>
       </Pressable>
-    </Row>
+    </View>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
+    wrap: {
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      alignItems: 'center' as const,
+      gap: spacing[2],
+    },
     pill: {
       minHeight: 44,
       justifyContent: 'center' as const,
@@ -72,24 +78,23 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       backgroundColor: c.surface,
     },
     pillActive: {
-      backgroundColor: c.primary,
+      backgroundColor: c.primaryLight,
       borderColor: c.primary,
     },
     pillText: {
-      ...font.medium,
+      ...font.semiBold,
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
-    pillTextActive: { color: c.onPrimary },
+    pillTextActive: { color: c.primaryDark },
     addPill: {
-      borderColor: c.primaryMid,
       borderStyle: 'dashed' as const,
       backgroundColor: 'transparent',
     },
     addText: {
       ...font.semiBold,
       fontSize: fontSize.sm,
-      color: c.primary,
+      color: c.textLink,
     },
   };
 }

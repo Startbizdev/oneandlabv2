@@ -1,19 +1,20 @@
-import { layoutRowBetween } from '@/theme/layout-styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { History } from 'lucide-react-native';
+import { CalendarOff, History } from 'lucide-react-native';
 import { PATIENT_ABSENCE_TYPE_OPTIONS } from '@oneandlab/shared-constants';
 import type { PatientAbsence, PatientAbsenceType } from '@oneandlab/shared-types';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
-import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Badge } from '@/components/ui/Badge';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { IsoDatePicker } from '@/features/nurse-passage/components/IsoDatePicker';
 import {
@@ -24,7 +25,7 @@ import {
 } from '../api/patient-absence.service';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { useToast } from '@/providers/ToastProvider';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { spacing, AppText, useStyles } from '@/theme';
 
 type SheetTab = 'declare' | 'history';
 
@@ -38,6 +39,8 @@ type Props = {
   onSaved: () => void;
 };
 
+const ABSENCE_TYPE_OPTIONS = PATIENT_ABSENCE_TYPE_OPTIONS.map((o) => ({ label: o.label, value: o.value }));
+
 function isAbsenceActive(absence: PatientAbsence, today = dayjs().format('YYYY-MM-DD')): boolean {
   const start = absence.start_date.slice(0, 10);
   const end = absence.end_date.slice(0, 10);
@@ -48,6 +51,14 @@ function formatAbsencePeriod(absence: PatientAbsence): string {
   const start = formatBirthDateFr(absence.start_date.slice(0, 10));
   const end = formatBirthDateFr(absence.end_date.slice(0, 10));
   return `Du ${start} au ${end}`;
+}
+
+function absenceDescription(absence: PatientAbsence): string {
+  const parts = [formatAbsencePeriod(absence)];
+  if (isAbsenceActive(absence)) parts.push('En cours');
+  const note = absence.note?.trim();
+  if (note) parts.push(note);
+  return parts.join(' · ');
 }
 
 export function PatientAbsenceSheet({
@@ -68,12 +79,14 @@ export function PatientAbsenceSheet({
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultStartDate);
   const [note, setNote] = useState('');
+  const [confirmLiftOpen, setConfirmLiftOpen] = useState(false);
 
   const historyQ = useQuery({
     queryKey: ['patient-absences', patientId, 'all'],
-    queryFn: () => fetchPatientAbsences(patientId!, false),
+    queryFn: () => (patientId ? fetchPatientAbsences(patientId, false) : Promise.resolve([])),
     enabled: visible && Boolean(patientId),
   });
+  const history = historyQ.data ?? [];
 
   const resetFormForNew = useCallback(() => {
     setEditingAbsence(null);
@@ -135,6 +148,7 @@ export function PatientAbsenceSheet({
       await deletePatientAbsence(patientId, editingAbsence.id);
     },
     onSuccess: async () => {
+      setConfirmLiftOpen(false);
       await invalidateAbsenceQueries();
       onSaved();
       onClose();
@@ -162,43 +176,41 @@ export function PatientAbsenceSheet({
 
   const segments = useMemo(
     () => [
-      { id: 'declare' as const, label: 'Déclarer' },
-      {
-        id: 'history' as const,
-        label: 'Historique',
-        badge: historyQ.data?.length,
-      },
+      { id: 'declare' as const, label: editingAbsence ? 'Modifier' : 'Déclarer' },
+      { id: 'history' as const, label: 'Historique', badge: historyQ.data?.length },
     ],
-    [historyQ.data?.length],
+    [editingAbsence, historyQ.data?.length],
   );
 
   const isEditing = Boolean(editingAbsence?.id);
 
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title="Absence patient" snapPoints={['92%']}>
-      <View style={styles.body}>
-        {patientName ? <AppText style={styles.patientName}>{patientName}</AppText> : null}
+  const historyRows = history.map((absence) => ({
+    icon: CalendarOff,
+    label: absence.type_label_fr,
+    description: absenceDescription(absence),
+    onPress: () => handleSelectHistoryItem(absence),
+  }));
 
+  return (
+    <SheetModal
+      visible={visible}
+      onClose={onClose}
+      title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
+      snapPoints={['92%']}
+    >
+      <View style={styles.body}>
         <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
 
         {tab === 'declare' ? (
           <View style={styles.tabBody}>
-            <AppText style={styles.hint}>
-              {isEditing
-                ? 'Modifiez les informations de cette absence, ou créez-en une nouvelle.'
-                : 'Le passage reste visible sur la tournée mais la carte sera grisée avec le motif jusqu\'à la date de fin.'}
+            <AppText variant="secondary">
+              Le passage reste sur la tournée, grisé jusqu’à la date de fin.
             </AppText>
-
-            {isEditing ? (
-              <Pressable onPress={resetFormForNew} accessibilityRole="button">
-                <AppText style={styles.newAbsenceLink}>Créer une nouvelle absence</AppText>
-              </Pressable>
-            ) : null}
 
             <SelectField
               label="Motif"
               value={absenceType}
-              options={PATIENT_ABSENCE_TYPE_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
+              options={ABSENCE_TYPE_OPTIONS}
               onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
             />
 
@@ -219,28 +231,24 @@ export function PatientAbsenceSheet({
             />
 
             <Button
-              title={
-                saveMut.isPending
-                  ? 'Enregistrement…'
-                  : isEditing
-                    ? 'Mettre à jour'
-                    : 'Enregistrer l\'absence'
-              }
-              onPress={() => void saveMut.mutate()}
+              title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
+              onPress={() => saveMut.mutate()}
               loading={saveMut.isPending}
               disabled={deleteMut.isPending}
               fullWidth
             />
 
             {isEditing ? (
-              <Button
-                title={deleteMut.isPending ? 'Suppression…' : 'Patient de retour — lever l\'absence'}
-                variant="dangerOutline"
-                onPress={() => void deleteMut.mutate()}
-                loading={deleteMut.isPending}
-                disabled={saveMut.isPending}
-                fullWidth
-              />
+              <>
+                <Button
+                  title="Patient de retour"
+                  variant="dangerOutline"
+                  onPress={() => setConfirmLiftOpen(true)}
+                  disabled={saveMut.isPending}
+                  fullWidth
+                />
+                <Button title="Nouvelle absence" variant="ghost" onPress={resetFormForNew} fullWidth />
+              </>
             ) : null}
           </View>
         ) : (
@@ -248,16 +256,14 @@ export function PatientAbsenceSheet({
             {historyQ.isLoading ? (
               <SkeletonList count={4} />
             ) : historyQ.isError ? (
-              <EmptyState
+              <ErrorState
                 title="Historique indisponible"
-                description="Impossible de charger les absences de ce patient."
-                actionLabel="Réessayer"
-                onAction={() => void historyQ.refetch()}
+                error={historyQ.error}
+                onRetry={() => void historyQ.refetch()}
               />
-            ) : (historyQ.data?.length ?? 0) === 0 ? (
+            ) : history.length === 0 ? (
               <EmptyState
-                title="Aucune absence notée"
-                description="Les absences déclarées pour ce patient apparaîtront ici."
+                title="Aucune absence"
                 Icon={History}
                 actionLabel="Déclarer une absence"
                 onAction={() => {
@@ -266,96 +272,29 @@ export function PatientAbsenceSheet({
                 }}
               />
             ) : (
-              <View style={styles.historyList}>
-                {historyQ.data!.map((absence) => {
-                  const active = isAbsenceActive(absence);
-                  return (
-                    <View key={absence.id} style={styles.historyRow}>
-                      <View style={styles.historyRowHeader}>
-                        <AppText style={styles.historyType} numberOfLines={1}>
-                          {absence.type_label_fr}
-                        </AppText>
-                        {active ? <Badge label="En cours" variant="warning" /> : null}
-                      </View>
-                      <AppText style={styles.historyDates}>{formatAbsencePeriod(absence)}</AppText>
-                      {absence.note?.trim() ? (
-                        <AppText style={styles.historyNote} numberOfLines={2}>
-                          {absence.note.trim()}
-                        </AppText>
-                      ) : null}
-                      <Pressable
-                        onPress={() => handleSelectHistoryItem(absence)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Modifier l'absence ${absence.type_label_fr}`}
-                      >
-                        <AppText style={styles.historyAction}>Modifier</AppText>
-                      </Pressable>
-                    </View>
-                  );
-                })}
-              </View>
+              <SettingsSection items={historyRows} />
             )}
           </View>
         )}
       </View>
-    </BottomSheet>
+
+      <ConfirmSheet
+        visible={confirmLiftOpen}
+        title="Lever l’absence ?"
+        message="L’absence est supprimée et les passages redeviennent actifs."
+        confirmLabel="Lever l’absence"
+        tone="destructive"
+        loading={deleteMut.isPending}
+        onConfirm={() => deleteMut.mutate()}
+        onClose={() => setConfirmLiftOpen(false)}
+      />
+    </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[4] },
     tabBody: { gap: spacing[3] },
-    patientName: {
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    hint: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    newAbsenceLink: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.primary,
-    },
-    historyList: { gap: spacing[2] },
-    historyRow: {
-      gap: spacing[1],
-      padding: spacing[3],
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: c.borderLight,
-      backgroundColor: c.surface,
-    },
-    historyRowHeader: {
-      ...layoutRowBetween(spacing[2]),
-    },
-    historyType: {
-      minWidth: 0,
-      flex: 1,
-      ...font.semiBold,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    historyDates: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    historyNote: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textTertiary,
-    },
-    historyAction: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.primary,
-      marginTop: spacing[0.5],
-    },
   };
 }

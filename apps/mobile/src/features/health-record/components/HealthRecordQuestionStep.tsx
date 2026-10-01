@@ -1,26 +1,14 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { ChoiceCard } from '@/components/ui/ChoiceCard';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Row } from '@/components/layout/primitives';
 import type { HealthRecordQuestion } from '../api/health-record.service';
-import { HEALTH_RECORD_OPTIONAL_BADGE, unwrapHealthRecordValue, formatHealthRecordStoredValue } from '../utils/health-record-display';
-import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { formatHealthRecordDisplay, unwrapHealthRecordValue } from '../utils/health-record-display';
+import { AppText, spacing, useStyles } from '@/theme';
 
-const ENUM_LABELS: Record<string, string> = {
-  never: 'Jamais',
-  former: 'Ancien fumeur',
-  yes: 'Oui',
-  no: 'Non',
-  unknown: 'Je ne sais pas',
-  occasional: 'Occasionnel',
-  regular: 'Régulier',
-  sedentary: 'Sédentaire',
-  moderate: 'Modérée',
-  active: 'Active',
-};
+const YES_NO_UNKNOWN = ['yes', 'no', 'unknown'] as const;
 
 function hasStoredValue(value: unknown): boolean {
   const unwrapped = unwrapHealthRecordValue(value);
@@ -38,10 +26,6 @@ function formatInitialNumber(value: unknown): string {
   return '';
 }
 
-function formatCurrentValueLabel(value: unknown): string {
-  return formatHealthRecordStoredValue(value);
-}
-
 interface Props {
   question: HealthRecordQuestion;
   initialValue?: unknown;
@@ -51,36 +35,20 @@ interface Props {
   saving?: boolean;
 }
 
-function QuestionHeader({ label, styles }: { label: string; styles: ReturnType<typeof buildStyles> }) {
-  return (
-    <Row gap={spacing[2]} align="center" wrap style={styles.labelRow}>
-      <AppText style={styles.label}>{label}</AppText>
-      <Badge
-        label={HEALTH_RECORD_OPTIONAL_BADGE}
-        variant="neutral"
-        dot={false}
-        size="sm"
-        shape="square"
-      />
-    </Row>
-  );
-}
-
 function SecondaryActions({
   hasAnswer,
   saving,
   onSkip,
   onClear,
-  styles,
 }: {
   hasAnswer: boolean;
   saving?: boolean;
   onSkip: () => void;
   onClear: () => void;
-  styles: ReturnType<typeof buildStyles>;
 }) {
+  const styles = useStyles(buildStyles);
   return (
-    <View style={styles.actions}>
+    <View style={styles.secondary}>
       <Button title="Passer" variant="ghost" onPress={onSkip} disabled={saving} />
       {hasAnswer ? (
         <Button title="Effacer ma réponse" variant="ghost" onPress={onClear} disabled={saving} />
@@ -89,18 +57,13 @@ function SecondaryActions({
   );
 }
 
-export function HealthRecordQuestionStep({
-  question,
-  initialValue,
-  onAnswer,
-  onSkip,
-  saving,
-}: Props) {
+export function HealthRecordQuestionStep({ question, initialValue, onAnswer, onSkip, saving }: Props) {
   const styles = useStyles(buildStyles);
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');
   const [numberError, setNumberError] = useState<string | null>(null);
   const hasAnswer = hasStoredValue(initialValue);
+  const current = unwrapHealthRecordValue(initialValue);
   const clearAnswer = () => onAnswer(null);
 
   useEffect(() => {
@@ -120,61 +83,35 @@ export function HealthRecordQuestionStep({
     setNumberValue('');
   }, [question.key, question.type, initialValue]);
 
-  if (question.type === 'yes_no_unknown') {
-    return (
-      <View style={styles.root}>
-        <QuestionHeader label={question.label_fr} styles={styles} />
-        {hasAnswer ? (
-          <AppText style={styles.currentValue}>
-            Réponse actuelle : {formatCurrentValueLabel(initialValue)}
-          </AppText>
-        ) : null}
-        <View style={styles.choices}>
-          <Button
-            title="Oui"
-            variant={unwrapHealthRecordValue(initialValue) === 'yes' ? 'primary' : 'secondary'}
-            onPress={() => onAnswer('yes')}
-            disabled={saving}
-          />
-          <Button
-            title="Non"
-            variant={unwrapHealthRecordValue(initialValue) === 'no' ? 'primary' : 'secondary'}
-            onPress={() => onAnswer('no')}
-            disabled={saving}
-          />
-          <Button
-            title="Je ne sais pas"
-            variant={unwrapHealthRecordValue(initialValue) === 'unknown' ? 'primary' : 'ghost'}
-            onPress={() => onAnswer('unknown')}
-            disabled={saving}
-          />
-        </View>
-        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
-      </View>
-    );
-  }
+  const title = (
+    <AppText variant="title" accessibilityRole="header">
+      {question.label_fr}
+    </AppText>
+  );
 
-  if (question.type === 'enum' && question.options?.length) {
+  const choiceOptions =
+    question.type === 'yes_no_unknown'
+      ? [...YES_NO_UNKNOWN]
+      : question.type === 'enum' && question.options?.length
+        ? question.options
+        : null;
+
+  if (choiceOptions) {
     return (
       <View style={styles.root}>
-        <QuestionHeader label={question.label_fr} styles={styles} />
-        {hasAnswer ? (
-          <AppText style={styles.currentValue}>
-            Réponse actuelle : {formatCurrentValueLabel(initialValue)}
-          </AppText>
-        ) : null}
-        <View style={styles.choices}>
-          {question.options.map((opt) => (
-            <Button
+        {title}
+        <View style={styles.options} accessibilityRole="radiogroup">
+          {choiceOptions.map((opt) => (
+            <ChoiceCard
               key={opt}
-              title={ENUM_LABELS[opt] ?? opt}
-              variant={unwrapHealthRecordValue(initialValue) === opt ? 'primary' : opt === 'unknown' ? 'ghost' : 'secondary'}
-              onPress={() => onAnswer(opt)}
+              title={formatHealthRecordDisplay(opt)}
+              selected={current === opt}
               disabled={saving}
+              onPress={() => onAnswer(opt)}
             />
           ))}
         </View>
-        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
+        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} />
       </View>
     );
   }
@@ -196,7 +133,7 @@ export function HealthRecordQuestionStep({
 
     return (
       <View style={styles.root}>
-        <QuestionHeader label={question.label_fr} styles={styles} />
+        {title}
         <Input
           keyboardType="decimal-pad"
           placeholder={question.placeholder ?? 'Ex. 175'}
@@ -206,15 +143,10 @@ export function HealthRecordQuestionStep({
             setNumberError(null);
           }}
           error={numberError ?? undefined}
+          accessibilityLabel={question.label_fr}
         />
-        <View style={styles.actions}>
-          <Button
-            title={saving ? 'Enregistrement…' : 'Continuer'}
-            onPress={handleContinue}
-            disabled={saving}
-          />
-        </View>
-        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
+        <Button title="Continuer" size="lg" fullWidth loading={saving} onPress={handleContinue} />
+        <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} />
       </View>
     );
   }
@@ -230,45 +162,29 @@ export function HealthRecordQuestionStep({
 
   return (
     <View style={styles.root}>
-      <QuestionHeader label={question.label_fr} styles={styles} />
+      {title}
       <Textarea
         placeholder={question.placeholder ?? 'Votre réponse…'}
         value={textValue}
         onChangeText={setTextValue}
         numberOfLines={4}
+        accessibilityLabel={question.label_fr}
       />
-      <View style={styles.actions}>
-        <Button
-          title={saving ? 'Enregistrement…' : 'Continuer'}
-          onPress={handleContinueText}
-          disabled={saving}
-        />
-      </View>
-      <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} styles={styles} />
+      <Button title="Continuer" size="lg" fullWidth loading={saving} onPress={handleContinueText} />
+      <SecondaryActions hasAnswer={hasAnswer} saving={saving} onSkip={onSkip} onClear={clearAnswer} />
     </View>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
     root: { gap: spacing[4] },
-    labelRow: {
+    options: { gap: spacing[2] },
+    secondary: {
+      flexDirection: 'row' as const,
       flexWrap: 'wrap' as const,
+      justifyContent: 'center' as const,
+      gap: spacing[2],
     },
-    label: {
-      minWidth: 0,
-      flexShrink: 1,
-      ...font.headingSemiBold,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-      lineHeight: 28,
-    },
-    currentValue: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
-    choices: { gap: spacing[2] },
-    actions: { gap: spacing[2] },
   };
 }

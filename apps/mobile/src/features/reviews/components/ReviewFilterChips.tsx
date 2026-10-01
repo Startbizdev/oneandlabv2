@@ -1,13 +1,5 @@
-import { Pressable, ScrollView } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
 import type { ReviewFilter } from '@/features/reviews/types';
-import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-
-const FILTERS: { id: ReviewFilter; label: string }[] = [
-  { id: 'all', label: 'Tous' },
-  { id: 'pending', label: 'À répondre' },
-  { id: 'answered', label: 'Répondus' },
-];
 
 interface Props {
   value: ReviewFilter;
@@ -16,58 +8,17 @@ interface Props {
 }
 
 export function ReviewFilterChips({ value, onChange, counts }: Props) {
-  const styles = useStyles(buildStyles);
+  const segments: FullWidthSegment<ReviewFilter>[] = [
+    { id: 'all', label: 'Tous' },
+    { id: 'pending', label: 'À répondre', badge: counts?.pending },
+    { id: 'answered', label: 'Répondus' },
+  ];
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
-      <Row gap={spacing[2]}>
-      {FILTERS.map((f) => {
-        const active = value === f.id;
-        const count = counts?.[f.id];
-        const label = count != null && f.id !== 'all' ? `${f.label} (${count})` : f.label;
-        return (
-          <Pressable
-            key={f.id}
-            onPress={() => onChange(f.id)}
-            style={[styles.chip, active && styles.chipActive]}
-          >
-            <AppText style={[styles.chipText, active && styles.chipTextActive]}>{label}</AppText>
-          </Pressable>
-        );
-      })}
-      </Row>
-    </ScrollView>
+    <FullWidthSegmentBar
+      segments={segments}
+      value={value}
+      onChange={onChange}
+      accessibilityLabel="Filtrer les avis"
+    />
   );
 }
-
-function buildStyles({ colors: c, fontSize }: Theme) {
-  return {
-  row: {
-    paddingVertical: spacing[1],
-  },
-  chip: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: c.borderLight,
-    backgroundColor: c.surface,
-  },
-  chipActive: {
-    backgroundColor: c.primary,
-    borderColor: c.primary,
-  },
-  chipText: {
-    ...font.semiBold,
-    fontSize: fontSize.sm,
-    color: c.textSecondary,
-  },
-  chipTextActive: {
-    color: c.textInverse,
-  },
-};
-}
-

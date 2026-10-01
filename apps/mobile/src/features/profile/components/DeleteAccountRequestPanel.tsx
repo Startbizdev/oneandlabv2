@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2 } from 'lucide-react-native';
 import { ACCOUNT_DELETION_REASON_MAX_LENGTH } from '@oneandlab/shared-api';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -40,7 +39,7 @@ export function DeleteAccountRequestPanel() {
   if (send.isSuccess) {
     return (
       <EmptyState
-        Icon={CheckCircle2}
+        illustration="success"
         title="Demande envoyée"
         description={
           email
@@ -66,7 +65,6 @@ export function DeleteAccountRequestPanel() {
         maxLength={ACCOUNT_DELETION_REASON_MAX_LENGTH}
         hint={`${reason.length} / ${ACCOUNT_DELETION_REASON_MAX_LENGTH} caractères`}
         editable={!send.isPending}
-        style={styles.textarea}
       />
 
       {send.isError ? (
@@ -91,10 +89,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     stack: {
       gap: spacing[4],
-    },
-    textarea: {
-      minHeight: 110,
-      textAlignVertical: 'top' as const,
     },
     error: {
       ...font.medium,

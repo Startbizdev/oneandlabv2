@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, View } from 'react-native';
 import dayjs from 'dayjs';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
@@ -42,7 +42,7 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
   };
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
       onClose={onClose}
       title="Quelle planification ?"
@@ -68,7 +68,7 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
           </Pressable>
         ))}
       </View>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 

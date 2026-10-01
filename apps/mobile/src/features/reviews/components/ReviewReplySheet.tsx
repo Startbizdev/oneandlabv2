@@ -1,14 +1,13 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { View } from 'react-native';
+import { REVIEW_RESPONSE_MAX_LENGTH } from '@oneandlab/shared-api';
+import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { SheetModal } from '@/components/ui/SheetModal';
+import { Textarea } from '@/components/ui/Textarea';
 import { ReviewStars } from '@/features/reviews/components/ReviewStars';
 import type { Review } from '@/features/reviews/types';
 import { reviewerDisplayName } from '@/features/reviews/utils/review-labels';
-import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
-import { MessageSquare } from 'lucide-react-native';
-import { StyleSheet, View } from 'react-native';
-import { Row } from '@/components/layout/primitives';
+import { AppText, iconSize, spacing, useStyles } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -29,86 +28,60 @@ export function ReviewReplySheet({
   onSubmit,
   submitting,
 }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
 
   if (!review) return null;
+  const comment = review.comment?.trim();
 
   return (
-    <BottomSheet
+    <SheetModal
       visible={visible}
-      onClose={() => { if (!submitting) onClose(); }}
+      onClose={() => {
+        if (!submitting) onClose();
+      }}
       enableSwipeToDismiss={!submitting}
       dismissOnBackdropPress={!submitting}
-      title="Répondre à l'avis"
+      title="Répondre à l’avis"
       subtitle={reviewerDisplayName(review)}
-      headerIcon={<MessageSquare size={iconSize.md} color={c.primary} strokeWidth={2} />}
     >
-      <View style={styles.preview}>
-        <ReviewStars rating={review.rating ?? 0} size={iconSize.xs} />
-        <AppText style={styles.previewComment}>
-          {review.comment?.trim() ? `« ${review.comment.trim()} »` : 'Pas de commentaire texte.'}
-        </AppText>
+      <View style={styles.body}>
+        <View style={styles.preview}>
+          <ReviewStars rating={review.rating ?? 0} size={iconSize.sm} showValue={false} />
+          {comment ? <AppText variant="secondary">{comment}</AppText> : null}
+        </View>
+        <Textarea
+          label="Votre réponse"
+          hint={`Visible sur votre profil public Cary · ${draft.length}/${REVIEW_RESPONSE_MAX_LENGTH}`}
+          value={draft}
+          onChangeText={onChangeDraft}
+          maxLength={REVIEW_RESPONSE_MAX_LENGTH}
+          editable={!submitting}
+          placeholder="Remerciez le patient ou apportez une précision…"
+        />
+        <Row gap={spacing[3]}>
+          <View style={styles.action}>
+            <Button title="Annuler" variant="ghost" size="lg" fullWidth onPress={onClose} disabled={submitting} />
+          </View>
+          <View style={styles.action}>
+            <Button
+              title="Publier"
+              size="lg"
+              fullWidth
+              loading={submitting}
+              disabled={submitting || !draft.trim()}
+              onPress={onSubmit}
+            />
+          </View>
+        </Row>
       </View>
-      <Input
-        label="Votre réponse"
-        value={draft}
-        onChangeText={onChangeDraft}
-        multiline
-        editable={!submitting}
-        numberOfLines={5}
-        placeholder="Remerciez le patient ou apportez des précisions…"
-        style={styles.input}
-      />
-      <AppText style={styles.hint}>Votre réponse sera visible sur votre fiche publique Cary.</AppText>
-      <Row gap={spacing[3]} style={styles.actions}>
-        <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} disabled={submitting} fullWidth size="lg" />
-        </View>
-        <View style={styles.actionBtn}>
-          <Button
-            title="Envoyer"
-            loading={submitting}
-            disabled={submitting || !draft.trim()}
-            onPress={onSubmit}
-            fullWidth
-          />
-        </View>
-      </Row>
-    </BottomSheet>
+    </SheetModal>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles() {
   return {
-  preview: {
-    backgroundColor: c.surfaceAlt,
-    borderRadius: radius.lg,
-    padding: spacing[3],
-    gap: spacing[2],
-    borderLeftWidth: 3,
-    borderLeftColor: c.star,
-  },
-  previewComment: {
-    ...font.regular,
-    fontSize: fontSize.sm,
-    color: c.textPrimary,
-    lineHeight: fontSize.sm * 1.5,
-    fontStyle: 'italic' as const,
-  },
-  input: { minHeight: 120, textAlignVertical: 'top' as const },
-  hint: {
-    ...font.regular,
-    fontSize: fontSize.xs,
-    color: c.textTertiary,
-    lineHeight: fontSize.xs * 1.45,
-  },
-  actions: {
-    marginTop: spacing[2],
-    paddingTop: spacing[3],
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: c.borderLight,
-  },
-  actionBtn: { minWidth: 0, flex: 1 },
-};
+    body: { gap: spacing[4] },
+    preview: { gap: spacing[2] },
+    action: { flex: 1, minWidth: 0 },
+  };
 }

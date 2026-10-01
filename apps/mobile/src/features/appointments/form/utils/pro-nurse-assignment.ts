@@ -1,4 +1,4 @@
-import { isNursingAppointment } from '@oneandlab/shared-utils';
+import { FRENCH_MOBILE_PHONE_ERROR, isNursingAppointment, normalizeFrenchMobilePhone } from '@oneandlab/shared-utils';
 
 export type NurseAssignmentMode = 'cary_dispatch' | 'patient_nurse';
 
@@ -19,7 +19,8 @@ export function applyProNurseAssignmentToPayloads<T extends Record<string, unkno
   }
 
   const linkedNurseId = assignment.linkedNurseId?.trim() || '';
-  const extPhone = assignment.external?.phone?.replace(/\s/g, '').trim() || '';
+  const rawPhone = assignment.external?.phone?.trim() || '';
+  const extPhone = normalizeFrenchMobilePhone(rawPhone) ?? rawPhone;
 
   if (!linkedNurseId && !extPhone) {
     return payloads;
@@ -49,10 +50,16 @@ export function validateProNurseAssignment(assignment: ProNurseAssignment | null
     return null;
   }
   const linked = assignment.linkedNurseId?.trim() || '';
-  const extPhone = assignment.external?.phone?.replace(/\s/g, '').trim() || '';
+  const extPhone = assignment.external?.phone?.trim() || '';
 
   if (!linked && !extPhone) {
     return "Choisissez un infirmier(ère) dans la liste ou renseignez son numéro de mobile pour l'invitation SMS.";
   }
+  if (!linked) return externalNursePhoneError(extPhone);
   return null;
+}
+
+/** Erreur à afficher sous le champ, ou null si vide ou valide. */
+export function externalNursePhoneError(phone: string): string | null {
+  return phone.trim() && !normalizeFrenchMobilePhone(phone) ? FRENCH_MOBILE_PHONE_ERROR : null;
 }

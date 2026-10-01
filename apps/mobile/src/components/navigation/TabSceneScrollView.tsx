@@ -11,63 +11,39 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { useStyles } from '@/theme';
-
-type ScrollPaddingOptions = {
-  extraTop?: number;
-  extraBottom?: number;
-};
 
 type Props = {
   children: ReactNode;
   scrollRef?: RefObject<ScrollView | null>;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  scrollPaddingOptions?: ScrollPaddingOptions;
   refreshing?: boolean;
   onRefresh?: () => void;
   onEndReached?: () => void;
   onEndReachedThreshold?: number;
   showsVerticalScrollIndicator?: boolean;
-  /** Le chrome est rendu hors scroll avec `paddingTop` — ne pas réappliquer l'inset haut. */
-  omitTopInset?: boolean;
 };
 
 /**
- * ScrollView onglet NativeTabs — copie exacte du pattern NurseAppointmentsListScreen / PatientsListScreen.
- * Parent obligatoire : `<View style={{
-    minWidth: 0, flex: 1 }}>`.
+ * ScrollView des primitives `QueryFlatList` / `InfiniteQueryFlatList` sur Android.
+ * Les écrans utilisent `SceneScrollView`. Parent obligatoire : `<View style={{ minWidth: 0, flex: 1 }}>`.
  */
 export function TabSceneScrollView({
   children,
   scrollRef: scrollRefProp,
   contentContainerStyle,
-  scrollPaddingOptions,
   refreshing = false,
   onRefresh,
   onEndReached,
   onEndReachedThreshold = 0.35,
   showsVerticalScrollIndicator = false,
-  omitTopInset = false,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sceneInsets = useTabSceneInsets();
-  const scrollInsets = omitTopInset ? { ...sceneInsets, insetTop: 0 } : sceneInsets;
   const innerRef = useRef<ScrollView>(null);
   const scrollRef = scrollRefProp ?? innerRef;
 
   useScrollToTopOnPop(scrollRef);
-
-  const scrollConfig = buildTabSceneScrollConfig(
-    scrollInsets,
-    contentContainerStyle,
-    scrollPaddingOptions,
-  );
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -88,17 +64,12 @@ export function TabSceneScrollView({
       collapsable={false}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled={Platform.OS === 'android'}
-      {...spreadTabSceneScrollProps(scrollConfig)}
-      contentContainerStyle={scrollConfig.contentContainerStyle}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       refreshControl={
         onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.primary}
-            progressViewOffset={scrollConfig.refreshProgressOffset}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
         ) : undefined
       }
       onScroll={onEndReached ? handleScroll : undefined}

@@ -250,6 +250,7 @@ export function useNurseIap() {
     subscription: subscriptionQ.data,
     subscriptionLoading: subscriptionQ.isFetching,
     subscriptionError: subscriptionQ.isError,
+    subscriptionErrorDetail: subscriptionQ.error,
     refetchSubscription: subscriptionQ.refetch,
     localizedProPrice,
     purchasePro,

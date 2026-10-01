@@ -31,7 +31,7 @@ export function DocumentDownloadButton({
       {downloading ? (
         <ActivityIndicator size="small" color={c.primary} />
       ) : (
-        <ExternalLink size={iconSize.mdSm} color={c.primary} strokeWidth={2.25} />
+        <ExternalLink size={iconSize.md} color={c.primary} strokeWidth={2.25} />
       )}
     </Pressable>
   );

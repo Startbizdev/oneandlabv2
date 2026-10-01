@@ -1,8 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { useHeaderHeight } from '@react-navigation/elements';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { appointmentTimeFrance } from '@oneandlab/shared-utils';
 import type { AppointmentConversationMessage } from '@oneandlab/shared-types';
 import { useAppActive } from '@/lib/hooks/use-app-active';
@@ -10,7 +9,7 @@ import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { Row } from '@/components/layout/primitives';
 import { useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Paperclip, Send } from 'lucide-react-native';
+import { Paperclip, Send } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -20,12 +19,9 @@ import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { pickCarePhoto } from '@/lib/uploads/pick-care-photo';
-import {
-  buildTabSceneScrollConfig,
-  spreadTabSceneScrollProps,
-  useTabSceneInsets,
-} from '@/components/navigation/liquid-glass-header-inset';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
+import { ScreenKeyboardAvoidingView } from '@/components/navigation/ScreenFrame';
 import {
   fetchAppointmentConversation,
   postAppointmentConversationAttachment,
@@ -42,7 +38,7 @@ import {
   withConversationDaySeparators,
 } from '../detail/components/conversation/ConversationDaySeparator';
 import { useLeaveConversation } from '../detail/hooks/use-leave-conversation';
-import { spacing, iconSize, useStyles, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, radius, spacing, iconSize, useStyles, type Theme } from '@/theme';
 
 type OutboxMessage = {
   localId: string;
@@ -78,13 +74,10 @@ export function AppointmentConversationScreen() {
   const [outbox, setOutbox] = useState<OutboxMessage[]>([]);
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const headerHeight = useHeaderHeight();
-  const sceneInsets = useTabSceneInsets();
-  const listScrollConfig = buildTabSceneScrollConfig(sceneInsets, styles.list);
-  const navigation = useNavigation();
   const leaveConversation = useLeaveConversation(appointmentId, userRole, fromNotification);
   const focused = useIsFocused();
   const appActive = useAppActive();
+  const { footerPadding } = useSceneBottomInset();
 
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: queryKeys.appointments.conversation(appointmentId),
@@ -171,16 +164,10 @@ export function AppointmentConversationScreen() {
     );
   }, [messages, outbox]);
 
-  useEffect(() => {
-    const counterpart = messages.find((message) => message.author_id !== userId)?.author_name?.trim();
-    const staffRole = userRole === 'nurse' || userRole === 'pro' || userRole === 'preleveur';
-    const title = staffRole
-      ? 'Discuter avec le patient'
-      : counterpart
-        ? `Discuter avec ${counterpart}`
-        : 'Discuter avec votre soignant';
-    navigation.setOptions({ title });
-  }, [messages, navigation, userId, userRole]);
+  const title = useMemo(() => {
+    if (userRole !== 'patient') return undefined;
+    return messages.find((message) => message.author_id !== userId)?.author_name?.trim() || undefined;
+  }, [messages, userId, userRole]);
 
   const threadLength = threadItems.length;
   useEffect(() => {
@@ -204,30 +191,28 @@ export function AppointmentConversationScreen() {
   const canSend = Boolean(draft.trim());
 
   return (
-    <StackChromeScreen>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={headerHeight} style={styles.root}>
+    <StackChromeScreen title={title}>
+    <ScreenKeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={c.primary} />
       ) : !data && error ? (
         <View style={styles.errorState}>
-          <ErrorState
-            error={error}
-            title="Les échanges n’ont pas pu être chargés"
-            onRetry={() => void refetch()}
-          />
+          <ErrorState error={error} title="Messages indisponibles" onRetry={() => void refetch()} />
           <Button title="Retour au rendez-vous" variant="ghost" onPress={leaveConversation} />
         </View>
       ) : (
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[
-            listScrollConfig.contentContainerStyle,
-            !threadLength && styles.listEmpty,
-          ]}
-          {...spreadTabSceneScrollProps(listScrollConfig)}
+          contentContainerStyle={[styles.list, !threadLength && styles.listEmpty]}
           keyboardShouldPersistTaps="handled"
         >
-          {!threadLength ? <EmptyState Icon={MessageCircle} title="Vos échanges, au même endroit" description="Les messages et pièces jointes de ce rendez-vous apparaîtront ici." /> : null}
+          {!threadLength ? (
+            <EmptyState
+              illustration="messages"
+              title="Aucun message"
+              description={canPost ? 'Écrivez un message ou joignez une photo.' : undefined}
+            />
+          ) : null}
           {threadItems.map((item) => {
             if (item.kind === 'day') return <ConversationDaySeparator key={item.key} label={item.label} />;
             const entry = item.message;
@@ -263,12 +248,12 @@ export function AppointmentConversationScreen() {
         </ScrollView>
       )}
       {canPost ? (
-        <View style={styles.composer}>
+        <View style={[styles.composer, { paddingBottom: Math.max(footerPadding, spacing[3]) }]}>
           <Row style={styles.composerBar}>
             <Pressable onPress={() => void onPickAttachment()} disabled={sendMutation.isPending}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
               accessibilityRole="button" accessibilityLabel="Joindre une photo ou un document">
-              <Paperclip size={iconSize.md} color={c.textSecondary} />
+              <Paperclip size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             </Pressable>
             <TextInput value={draft} onChangeText={setDraft} placeholder="Écrire un message…"
               placeholderTextColor={c.textTertiary} accessibilityLabel="Votre message"
@@ -277,27 +262,55 @@ export function AppointmentConversationScreen() {
               disabled={!canSend}
               style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
               accessibilityRole="button" accessibilityLabel="Envoyer le message">
-              <Send size={iconSize.md} color={canSend ? c.primary : c.textTertiary} />
+              <Send size={iconSize.md} color={canSend ? c.primary : c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
             </Pressable>
           </Row>
         </View>
       ) : null}
-    </KeyboardAvoidingView>
+    </ScreenKeyboardAvoidingView>
     </StackChromeScreen>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c, text }: Theme) {
   return {
     root: { flex: 1, minWidth: 0, backgroundColor: c.background },
     loader: { marginTop: spacing[8] },
     errorState: { paddingHorizontal: spacing[4], gap: spacing[2] },
     list: { padding: spacing[4], gap: spacing[3], paddingBottom: spacing[24] },
     listEmpty: { flexGrow: 1, minWidth: 0, justifyContent: 'center' as const },
-    composer: { borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.surface, padding: spacing[3], gap: spacing[2] },
-    composerBar: { minHeight: 48, maxHeight: 112, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface, borderRadius: 24, alignItems: 'center' as const, paddingHorizontal: spacing[1], paddingVertical: spacing[1] },
-    composerInput: { flex: 1, minWidth: 0, minHeight: 34, maxHeight: 96, paddingHorizontal: spacing[2], paddingVertical: spacing[1], ...font.regular, fontSize: fontSize.md, color: c.textPrimary, textAlignVertical: 'center' as const },
-    iconButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center' as const, justifyContent: 'center' as const },
-    iconPressed: { opacity: 0.6 },
+    composer: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: c.borderLight,
+      backgroundColor: c.surface,
+      padding: spacing[3],
+    },
+    composerBar: {
+      minHeight: MIN_TOUCH_TARGET + spacing[1],
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      borderRadius: radius.full,
+      alignItems: 'center' as const,
+      padding: spacing[0.5],
+    },
+    composerInput: {
+      flex: 1,
+      minWidth: 0,
+      maxHeight: spacing[24],
+      paddingHorizontal: spacing[2],
+      paddingVertical: spacing[2],
+      ...text.body,
+      color: c.textPrimary,
+      textAlignVertical: 'center' as const,
+    },
+    iconButton: {
+      width: MIN_TOUCH_TARGET,
+      height: MIN_TOUCH_TARGET,
+      borderRadius: radius.full,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    iconPressed: { backgroundColor: c.surfaceAlt },
   } satisfies Parameters<typeof StyleSheet.create>[0];
 }

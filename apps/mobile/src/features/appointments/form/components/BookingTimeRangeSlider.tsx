@@ -1,6 +1,5 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import { LayoutChangeEvent, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -9,7 +8,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import {
   clampAvailabilityRange,
@@ -17,7 +15,7 @@ import {
   isAvailabilityRangeValid,
 } from '../utils/booking-availability-utils';
 import { AVAILABILITY_MIN_SPAN_HOURS } from '@oneandlab/shared-constants';
-import { animation, palette, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
+import { animation, elevation, radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
 const THUMB = 24;
 /** Zone tactile autour de chaque poignée (≥ 44 pt). */
@@ -35,7 +33,6 @@ function triggerHaptic() {
 }
 
 export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthSv = useSharedValue(0);
@@ -170,14 +167,7 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
 
       <View style={styles.trackShell} onLayout={onLayout}>
         <View style={styles.trackBase} />
-        <Animated.View style={[styles.trackFill, rangeFillStyle]}>
-          <LinearGradient
-            colors={[c.gradientStart, c.gradientEnd]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
+        <Animated.View style={[styles.trackFill, rangeFillStyle]} />
 
         <GestureDetector gesture={loGesture}>
           <Animated.View style={[styles.thumbHit, loThumbStyle]} {...thumbA11y('lo')}>
@@ -221,7 +211,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     ...font.heading,
     fontSize: fontSize.lg,
     color: c.textPrimary,
-    fontVariant: ['tabular-nums' as const],
+    fontVariant: ['tabular-nums' as const, 'lining-nums' as const],
   },
   timeSep: {
     ...font.medium,
@@ -249,7 +239,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     position: 'absolute' as const,
     height: 4,
     borderRadius: radius.full,
-    overflow: 'hidden' as const,
+    backgroundColor: c.primary,
   },
   thumb: {
     width: THUMB,
@@ -260,11 +250,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderColor: c.primary,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    shadowColor: palette.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
+    ...elevation.xs,
   },
   thumbDot: {
     width: 8,
@@ -279,7 +265,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   },
   warn: {
     ...font.medium,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     color: c.error,
     textAlign: 'center' as const,
   },

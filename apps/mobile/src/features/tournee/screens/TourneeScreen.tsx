@@ -7,23 +7,47 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { SlidersHorizontal } from 'lucide-react-native';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { EMPTY_RDV_IMAGE, EMPTY_RDV_IMAGE_HEIGHT, EMPTY_RDV_IMAGE_WIDTH } from '@/constants/empty-state-images';
 import { formatAvailabilityDisplayFr } from '@/utils/appointment-datetime-fr';
-import { H_PADDING, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import {
+  H_PADDING,
+  ICON_STROKE_WIDTH,
+  MIN_TOUCH_TARGET,
+  radius,
+  spacing,
+  iconSize,
+  AppText,
+  useStyles,
+  font,
+  type Theme,
+} from '@/theme';
 import { layoutRowCenter } from '@/theme/layout-styles';
 import { useToast } from '@/providers/ToastProvider';
+import { isManualOrderLockedError, tourOptimizeErrorMessage } from '@oneandlab/shared-api';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
+import { handleApiError } from '@/lib/errors/handle-api-error';
+import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { TourDayStrip } from '@/features/tournee-nurse/components/TourDayStrip';
 import { TourLoadingSkeleton } from '@/features/tournee-nurse/components/TourLoadingSkeleton';
 import { TourLocateAction } from '@/features/tournee-nurse/components/TourLocateAction';
 import { TourSortFilterSheet, tourSortModeLabel } from '@/features/tournee-nurse/components/TourSortFilterSheet';
 import { TourStopCard } from '@/features/tournee-nurse/components/TourStopCard';
-import { TourSummaryCard } from '@/features/tournee-nurse/components/TourSummaryCard';
 import { todayTourDate } from '@/features/tournee-nurse/hooks/nurse-tour-query';
 import { parseNavAppPref } from '@/features/tournee-nurse/utils/tour-navigation';
 import type { TourSortMode } from '@/features/tournee-nurse/api/nurse-tour.service';
 import { usePreleveurTour } from '@/features/tournee-preleveur/hooks/use-preleveur-tour';
+import type { PreleveurTourPayload } from '@/features/tournee-preleveur/api/preleveur-tour.service';
 import { PreleveurStopRow } from '../components/PreleveurStopRow';
 
+function tourProgressLabel(summary: PreleveurTourPayload['summary']): string {
+  const parts = [
+    `${summary.total_stops} arrêt${summary.total_stops > 1 ? 's' : ''}`,
+    `${summary.done_stops} terminé${summary.done_stops > 1 ? 's' : ''}`,
+  ];
+  if (summary.estimated_km > 0) parts.push(`~${summary.estimated_km.toFixed(1)} km`);
+  return parts.join(' · ');
+}
+
+/** Tournée du préleveur : jour, ordre de passage, prochain arrêt puis liste ordonnée. */
 export function TourneeScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -88,11 +112,12 @@ export function TourneeScreen() {
         await optimize(mode, force);
         setManualOrderActive(mode === 'manual');
         showToast('Ordre mis à jour', { type: 'success' });
-      } catch {
-        showToast('Optimisation impossible', { type: 'error' });
+      } catch (e) {
+        if (e instanceof ApiRequestError && isManualOrderLockedError(e.status, e.code)) void refetch();
+        handleApiError(e, showToast, 'preleveur-tour-optimize', 'Optimisation impossible', tourOptimizeErrorMessage);
       }
     },
-    [optimize, showToast],
+    [optimize, refetch, showToast],
   );
 
   const handleMove = useCallback(
@@ -108,7 +133,7 @@ export function TourneeScreen() {
   );
 
   const openStop = useCallback(
-    (appointmentId: string) => router.push(`/(preleveur)/appointment/${appointmentId}` as never),
+    (appointmentId: string) => router.push(appointmentDetailHref('/(preleveur)', appointmentId)),
     [router],
   );
 
@@ -116,9 +141,15 @@ export function TourneeScreen() {
     ? tourSortModeLabel(tour.plan.sort_mode as TourSortMode)
     : 'Intelligent';
 
+  const progressLabel = tour ? tourProgressLabel(tour.summary) : null;
+
   const ListHeader = (
     <View style={styles.listHeader}>
-      {tour ? <TourSummaryCard summary={tour.summary} /> : null}
+      {progressLabel && stops.length > 0 ? (
+        <AppText variant="secondary" style={styles.progress}>
+          {progressLabel}
+        </AppText>
+      ) : null}
       {isToday && tour && nextStop ? (
         <TourStopCard
           stop={nextStop}
@@ -127,18 +158,15 @@ export function TourneeScreen() {
           eyebrow={`Prochain arrêt · ${nextStop.position} sur ${stops.length}`}
           care={
             nextStop.category_name ? (
-              <AppText style={styles.category} numberOfLines={2}>
-                {nextStop.category_name}
-              </AppText>
+              <AppText variant="secondary">{nextStop.category_name}</AppText>
             ) : null
           }
           onPress={() => openStop(nextStop.appointment_id)}
         />
       ) : null}
       {stops.length > 0 ? (
-        <AppText style={styles.sectionLabel}>
-          {stops.length} arrêt{stops.length > 1 ? 's' : ''}
-          {tour?.summary.estimated_km ? ` · ~${tour.summary.estimated_km.toFixed(1)} km` : ''}
+        <AppText variant="headline" style={styles.sectionLabel}>
+          Arrêts
         </AppText>
       ) : null}
     </View>
@@ -155,7 +183,7 @@ export function TourneeScreen() {
             accessibilityRole="button"
             accessibilityLabel={`Ordre de la tournée : ${sortLabel}`}
           >
-            <SlidersHorizontal size={iconSize.sm} color={c.primary} strokeWidth={2} />
+            <SlidersHorizontal size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             <AppText style={styles.toolBtnText}>{sortLabel}</AppText>
           </Pressable>
           <TourLocateAction loading={locating} onPress={() => void handleLocate()} />
@@ -191,13 +219,7 @@ export function TourneeScreen() {
             <RefreshControl refreshing={isFetching && !isLoading} onRefresh={() => void refetch()} />
           }
           ListEmptyComponent={
-            <EmptyState
-              title="Aucun arrêt prévu"
-              description="Aucun prélèvement assigné pour cette date."
-              imageSource={EMPTY_RDV_IMAGE}
-              imageWidth={EMPTY_RDV_IMAGE_WIDTH}
-              imageHeight={EMPTY_RDV_IMAGE_HEIGHT}
-            />
+            <EmptyState title="Aucun arrêt ce jour" illustration="tour" />
           }
         />
       )}
@@ -229,7 +251,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     toolbar: { flexWrap: 'wrap' as const },
     toolBtn: {
       ...layoutRowCenter(spacing[2]),
-      minHeight: 44,
+      minHeight: MIN_TOUCH_TARGET,
       paddingHorizontal: spacing[3],
       borderRadius: radius.lg,
       backgroundColor: c.surface,
@@ -241,19 +263,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
-    listHeader: { paddingTop: spacing[3], gap: spacing[1] },
-    category: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-    },
+    listHeader: { paddingTop: spacing[3], gap: spacing[3] },
+    progress: { paddingHorizontal: spacing[1] },
     sectionLabel: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      letterSpacing: 0.6,
-      textTransform: 'uppercase' as const,
-      marginBottom: spacing[2],
+      paddingHorizontal: spacing[1],
+      marginTop: spacing[1],
+      marginBottom: spacing[1],
     },
     list: {
       minWidth: 0,

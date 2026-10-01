@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import { FileText, X } from 'lucide-react-native';
 import { isPdfMime } from '../utils/attachment-preview';
-import { hexToRgba, palette, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { hexToRgba, MIN_TOUCH_TARGET, radius, spacing, iconSize, AppText, useStyles, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 
 export type PatientAiAttachmentPreview = {
   uri: string;
@@ -24,7 +24,10 @@ interface Props {
 }
 
 const COMPOSER_SIZE = 72;
-const MESSAGE_MAX_WIDTH = 220;
+const MESSAGE_WIDTH = 220;
+const MESSAGE_IMAGE_HEIGHT = 160;
+const REMOVE_SIZE = 24;
+const REMOVE_HIT_SLOP = (MIN_TOUCH_TARGET - REMOVE_SIZE) / 2;
 
 export function PatientAiAttachmentThumbnail({
   attachment,
@@ -38,7 +41,7 @@ export function PatientAiAttachmentThumbnail({
   const styles = useStyles(buildStyles);
   const isPdf = isPdfMime(attachment.mimeType, attachment.fileName);
   const isMessage = variant === 'message';
-  const hasImageUri = Boolean(attachment.uri?.trim());
+  const showFileTile = isPdf || !attachment.uri?.trim();
 
   const body = (
     <View
@@ -46,12 +49,14 @@ export function PatientAiAttachmentThumbnail({
         styles.tile,
         isMessage ? styles.tileMessage : styles.tileComposer,
         isMessage && compact ? styles.tileMessageCompact : null,
-        { backgroundColor: c.surfaceAlt, borderColor: c.borderLight },
       ]}
     >
-      {isPdf || !hasImageUri ? (
-        <View style={[styles.pdfIconWrap, { backgroundColor: isPdf ? c.errorLight : c.surface }]}>
-          <FileText size={isMessage ? 28 : 24} color={isPdf ? c.error : c.textSecondary} strokeWidth={2} />
+      {showFileTile ? (
+        <View style={styles.fileTile}>
+          <FileText size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+          <AppText variant="caption" style={styles.fileName} numberOfLines={isMessage ? undefined : 2}>
+            {attachment.fileName}
+          </AppText>
         </View>
       ) : (
         <Image
@@ -61,28 +66,20 @@ export function PatientAiAttachmentThumbnail({
           accessibilityIgnoresInvertColors
         />
       )}
-      {isPdf || !hasImageUri ? (
-        <AppText
-          style={[styles.pdfName, { color: c.textSecondary }]}
-          numberOfLines={2}
-        >
-          {attachment.fileName}
-        </AppText>
-      ) : null}
       {loading ? (
         <View style={[styles.loadingOverlay, { backgroundColor: hexToRgba(c.background, 0.8) }]}>
-          <ActivityIndicator size="small" color={c.primary} />
+          <ActivityIndicator size="small" color={c.textSecondary} />
         </View>
       ) : null}
       {onRemove && !loading ? (
         <Pressable
           onPress={onRemove}
-          hitSlop={8}
-          style={[styles.removeBtn, { backgroundColor: c.surface }]}
+          hitSlop={REMOVE_HIT_SLOP}
+          style={styles.removeBtn}
           accessibilityRole="button"
           accessibilityLabel="Retirer la pièce jointe"
         >
-          <X size={iconSize.xs} color={c.textSecondary} strokeWidth={2.5} />
+          <X size={iconSize.xs} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
         </Pressable>
       ) : null}
     </View>
@@ -90,7 +87,7 @@ export function PatientAiAttachmentThumbnail({
 
   if (onPress) {
     return (
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Aperçu du document">
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Aperçu de ${attachment.fileName}`}>
         {body}
       </Pressable>
     );
@@ -99,48 +96,29 @@ export function PatientAiAttachmentThumbnail({
   return body;
 }
 
-function buildStyles({ fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     tile: {
       position: 'relative' as const,
       borderRadius: radius.lg,
       borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
       overflow: 'hidden' as const,
     },
-    tileComposer: {
-      width: COMPOSER_SIZE,
-      height: COMPOSER_SIZE,
-    },
-    tileMessage: {
-      maxWidth: MESSAGE_MAX_WIDTH,
-      minWidth: 140,
-      marginBottom: spacing[1.5],
-    },
-    tileMessageCompact: {
-      marginBottom: 0,
-    },
-    imageComposer: {
-      width: COMPOSER_SIZE,
-      height: COMPOSER_SIZE,
-    },
-    imageMessage: {
-      width: MESSAGE_MAX_WIDTH,
-      height: 160,
-      borderRadius: radius.md,
-    },
-    pdfIconWrap: {
+    tileComposer: { width: COMPOSER_SIZE, height: COMPOSER_SIZE },
+    tileMessage: { width: MESSAGE_WIDTH, marginBottom: spacing[1.5] },
+    tileMessageCompact: { marginBottom: 0 },
+    imageComposer: { width: COMPOSER_SIZE, height: COMPOSER_SIZE },
+    imageMessage: { width: MESSAGE_WIDTH, height: MESSAGE_IMAGE_HEIGHT },
+    fileTile: {
+      flex: 1,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      paddingTop: spacing[2],
-      paddingBottom: spacing[1],
+      gap: spacing[1],
+      padding: spacing[2],
     },
-    pdfName: {
-      ...font.medium,
-      fontSize: fontSize['2xs'],
-      paddingHorizontal: spacing[2],
-      paddingBottom: spacing[2],
-      textAlign: 'center' as const,
-    },
+    fileName: { textAlign: 'center' as const },
     loadingOverlay: {
       ...StyleSheet.absoluteFillObject,
       alignItems: 'center' as const,
@@ -150,18 +128,12 @@ function buildStyles({ fontSize }: Theme) {
       position: 'absolute' as const,
       top: spacing[1],
       right: spacing[1],
-      width: 24,
-      height: 24,
+      width: REMOVE_SIZE,
+      height: REMOVE_SIZE,
       borderRadius: radius.full,
+      backgroundColor: hexToRgba(c.textPrimary, 0.72),
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
-      ...StyleSheet.flatten({
-        shadowColor: palette.black,
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 2,
-        elevation: 2,
-      }),
     },
   };
 }

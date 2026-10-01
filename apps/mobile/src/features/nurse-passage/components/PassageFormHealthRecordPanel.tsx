@@ -1,10 +1,8 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { HeartPulse } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
 import { fetchStaffHealthRecord } from '@/features/health-record/api/health-record.service';
@@ -17,25 +15,12 @@ import { ClinicalVitalsPanel } from '@/features/health-record/components/Clinica
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
 import { useAuthStore } from '@/store/auth-store';
 import { PassageFormHealthRecordSectionSheet } from './PassageFormHealthRecordSectionSheet';
-import {
-  elevation,
-  H_PADDING,
-  radius,
-  spacing,
-  iconSize,
-  progressRingSize,
-  AppText,
-  font,
-  useStyles,
-  type Theme,
-} from '@/theme';
+import { H_PADDING, radius, spacing, progressRingSize, AppText, useStyles, type Theme } from '@/theme';
 
 type Props = {
   patientId: string;
   /** `passage` = onglet prise en charge ; `screen` = fiche patient plein écran */
   variant?: 'passage' | 'screen';
-  /** Incrémenter pour forcer un rechargement (pull-to-refresh parent). */
-  refreshKey?: number;
   /** Contexte de saisie des constantes (passage, RDV…). */
   clinicalVitalContext?: ClinicalVitalContext;
 };
@@ -43,10 +28,8 @@ type Props = {
 export function PassageFormHealthRecordPanel({
   patientId,
   variant = 'passage',
-  refreshKey = 0,
   clinicalVitalContext,
 }: Props) {
-  const c = useAppColors();
   const styles = useStyles(variant === 'screen' ? buildScreenStyles : buildPassageStyles);
   const userRole = useAuthStore((s) => s.user?.role);
   const showClinicalVitals = userRole === 'nurse' || userRole === 'pro';
@@ -59,14 +42,9 @@ export function PassageFormHealthRecordPanel({
     enabled: Boolean(patientId),
   });
 
-  const data = recapQ.data;
+  const { data, refetch } = recapQ;
   const percent = data?.completion?.percent ?? 0;
   const heroSubtitle = healthRecordStaffHeroSubtitle(percent, data?.completion?.missing_count ?? 0);
-
-  useEffect(() => {
-    if (refreshKey > 0) void recapQ.refetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on refreshKey only
-  }, [refreshKey]);
 
   if (recapQ.isLoading && !data) {
     return (
@@ -79,14 +57,7 @@ export function PassageFormHealthRecordPanel({
   if (recapQ.isError) {
     return (
       <View style={styles.wrap}>
-        <EmptyState
-          title="Carnet inaccessible"
-          description={
-            recapQ.error instanceof Error ? recapQ.error.message : 'Impossible de charger le carnet.'
-          }
-          actionLabel="Réessayer"
-          onAction={() => void recapQ.refetch()}
-        />
+        <ErrorState title="Carnet indisponible" error={recapQ.error} onRetry={() => void refetch()} />
       </View>
     );
   }
@@ -94,25 +65,15 @@ export function PassageFormHealthRecordPanel({
   return (
     <>
       <View style={styles.wrap}>
-        <View style={styles.banner}>
-          <AppText style={styles.bannerText}>
-            Données déclarées par le patient — vous pouvez les compléter ou corriger ici.
-          </AppText>
-        </View>
-
-        <View style={[styles.heroCard, elevation.sm]}>
+        <View style={styles.heroCard}>
           <Row gap={spacing[4]} align="center">
             <HealthRecordProgressRing percent={percent} size={progressRingSize.lg} strokeWidth={6} />
             <View style={styles.heroText}>
-              <Row gap={spacing[2]} align="center">
-                <View style={[styles.heroIcon, { backgroundColor: c.primaryLight }]}>
-                  <HeartPulse size={iconSize.sm} color={c.primary} strokeWidth={2} />
-                </View>
-                <AppText style={styles.heroTitle}>Carnet de santé</AppText>
-              </Row>
-              <AppText style={styles.heroSub}>{heroSubtitle}</AppText>
+              {variant === 'passage' ? <AppText variant="headline">Carnet de santé</AppText> : null}
+              <AppText variant="secondary">{heroSubtitle}</AppText>
             </View>
           </Row>
+          <AppText variant="caption">Déclaré par le patient, vous pouvez le compléter.</AppText>
         </View>
 
         {showClinicalVitals ? (
@@ -132,7 +93,7 @@ export function PassageFormHealthRecordPanel({
 
         <Button title="Modifier la fiche patient" variant="secondary" onPress={() => setEditPatientOpen(true)} />
 
-        <AppText style={styles.disclaimer}>{data?.disclaimer_fr}</AppText>
+        {data?.disclaimer_fr ? <AppText variant="caption">{data.disclaimer_fr}</AppText> : null}
       </View>
 
       <PassageFormHealthRecordSectionSheet
@@ -146,7 +107,7 @@ export function PassageFormHealthRecordPanel({
         visible={editPatientOpen}
         patientId={patientId}
         onClose={() => setEditPatientOpen(false)}
-        onSaved={() => void recapQ.refetch()}
+        onSaved={() => void refetch()}
       />
     </>
   );
@@ -160,57 +121,21 @@ function buildScreenStyles(t: Theme) {
   return buildStyles(t, 0);
 }
 
-function buildStyles({ colors: c, fontSize }: Theme, paddingHorizontal: number) {
+function buildStyles({ colors: c }: Theme, paddingHorizontal: number) {
   return {
     wrap: {
       gap: spacing[3],
       paddingHorizontal,
       paddingBottom: spacing[10],
     },
-    banner: {
-      backgroundColor: c.warningLight ?? c.primaryLight,
-      borderRadius: radius.lg,
-      padding: spacing[3],
-      borderWidth: 1,
-      borderColor: c.borderLight,
-    },
-    bannerText: {
-      ...font.medium,
-      fontSize: fontSize.sm,
-      color: c.textPrimary,
-      lineHeight: 20,
-    },
     heroCard: {
       backgroundColor: c.surface,
-      borderRadius: radius.xl,
-      borderWidth: 1,
+      borderRadius: radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: c.borderLight,
       padding: spacing[4],
-    },
-    heroIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: radius.md,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
+      gap: spacing[3],
     },
     heroText: { flex: 1, minWidth: 0, gap: spacing[1] },
-    heroTitle: {
-      ...font.heading,
-      fontSize: fontSize.lg,
-      color: c.textPrimary,
-    },
-    heroSub: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    disclaimer: {
-      ...font.regular,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-      lineHeight: fontSize.xs * 1.45,
-    },
   };
 }
