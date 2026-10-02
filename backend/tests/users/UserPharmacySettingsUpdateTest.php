@@ -90,6 +90,16 @@ final class UserPharmacySettingsUpdateTest extends TestCase
         $this->assertSame(1, $this->storedFlag($this->pharmacistId, 'pharmacy_orders_paused'));
     }
 
+    public function testMobileScopeKeepsEmploiButNotProfessionalIdentifiers(): void
+    {
+        $user = $this->userModel->getById($this->pharmacistId, $this->pharmacistId, 'pro', 'mobile');
+
+        $this->assertNotNull($user);
+        $this->assertSame('Pharmacien', $user['emploi']);
+        $this->assertNull($user['rpps']);
+        $this->assertNull($user['adeli']);
+    }
+
     public function testUpdateWithoutPharmacyFieldsIsUnaffected(): void
     {
         $this->assertTrue($this->userModel->update(TestFixtures::PRO, ['phone' => '0601020304'], TestFixtures::PRO, 'pro'));

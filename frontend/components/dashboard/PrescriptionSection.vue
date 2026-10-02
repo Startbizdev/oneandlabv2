@@ -158,7 +158,7 @@ const { user } = useAuth();
 
 const kind = computed(() => props.prescriptionKind ?? 'medical');
 const showNurseScopeHelp = computed(() =>
-  shouldShowNursePrescriptionScopeHelp(user.value?.role, kind.value),
+  shouldShowNursePrescriptionScopeHelp(user.value, kind.value),
 );
 const linkedToAppointment = computed(() => Boolean(props.appointment?.id));
 const sectionTitle = computed(() =>

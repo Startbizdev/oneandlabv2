@@ -7,6 +7,8 @@
  * Pour une règle transversale : keyRules[]
  */
 
+import { isProIpaEmploi } from '@oneandlab/shared-types';
+
 export type NursePrescriptionLegalSource = {
   id: string;
   label: string;
@@ -198,12 +200,13 @@ export const NURSE_PRESCRIPTION_SCOPE: NursePrescriptionScopeContent = {
   ],
 };
 
-/** Afficher l’aide prescription infirmière (web + mobile). */
+/** Aide prescription infirmière (web + mobile) : infirmiers, et pros inscrits comme infirmier IPA. */
 export function shouldShowNursePrescriptionScopeHelp(
-  role: string | null | undefined,
+  user: { role?: string | null; emploi?: string | null } | null | undefined,
   prescriptionKind: 'medical' | 'nursing' | null | undefined,
 ): boolean {
-  return (role === 'nurse' || role === 'pro') && prescriptionKind === 'nursing';
+  if (prescriptionKind !== 'nursing') return false;
+  return user?.role === 'nurse' || (user?.role === 'pro' && isProIpaEmploi(user.emploi));
 }
 
 /** Items accordéon Nuxt UI { label, content, value }. */

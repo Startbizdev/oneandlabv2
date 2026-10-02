@@ -496,16 +496,17 @@ class User
                 } else {
                     $user['adeli'] = null;
                 }
-                if ($this->hasEmploiColumn() && array_key_exists('emploi', $user)) {
-                    $user['emploi'] = $user['emploi'] !== null ? trim((string) $user['emploi']) : null;
-                } else {
-                    $user['emploi'] = null;
-                }
             } else {
                 $user['rpps'] = null;
                 $user['company_name'] = null;
                 $user['siret'] = null;
                 $user['adeli'] = null;
+            }
+
+            // Profession en clair, non sensible : nécessaire au mobile (pro infirmier IPA, officine).
+            if ($this->hasEmploiColumn() && array_key_exists('emploi', $user)) {
+                $user['emploi'] = $user['emploi'] !== null ? trim((string) $user['emploi']) : null;
+            } else {
                 $user['emploi'] = null;
             }
 
