@@ -57,6 +57,7 @@ export const STACK_HEADER_CATALOG: Record<string, StackHeaderCatalogEntry> = {
   'commandes-recues/[id]': { title: 'Commande reçue' },
   'commandes-recues/[id]/ordonnances': { title: 'Ordonnances' },
   'traitements/index': { title: 'Mes traitements' },
+  'traitements/new': { title: 'Commander en pharmacie' },
   'traitements/[id]': { title: 'Détail du traitement' },
   'health-data': { title: 'Mes données santé' },
   'health-record/index': { title: 'Mon carnet de santé' },

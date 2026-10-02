@@ -1815,3 +1815,38 @@ Défaut QA : visuels de soins mélangés selon l'écran — illustrations 3D (`c
   - [ ] profil infirmier, soins proposés — `ProfileCareTypesSection` ; fiche publique d'un soignant — `ProviderPublicProfileSheet`
 - `CareServiceQuickOptionsSheet` n'affiche aucun pictogramme (titre texte) : rien à changer.
 
+## Pro / infirmier / labo — « Nouveau patient », patient déjà enregistré (2026-10-02)
+
+Défaut signalé : « Utiliser ce dossier » ne fait rien. Reproduit sur emulator-5600 (pro, e-mail de Simone Leroy, patiente non rattachée au pro).
+
+- Cause : `POST /patients/adopt` exige le consentement du patient quand le dossier n'est pas encore rattaché (`PatientProfessionalAccessService::adoptPatientForStaff`, `PATIENT_BOOKING_CONSENT_REQUIRED`) ; le contrôle mobile refusait l'action avant l'appel, mais la case de consentement et le message d'erreur étaient tout en bas de la sheet, sous les documents : rien de visible près du bouton.
+- Correction : quand un doublon est détecté, la case de consentement et l'erreur sont rendues dans la carte « Patient déjà enregistré », juste au-dessus des actions (`PatientDuplicatePrompt` accepte `children`) ; sans doublon, elles restent en bas du formulaire. Jamais affichées deux fois.
+- Vérifié après : sans case cochée, bordure rouge et message sous la case dans la carte ; case cochée → sheet fermée, Simone Leroy ajoutée à « Mes patients » (3 patients).
+- Variante prise de RDV (`FormPatientSection`) inchangée : elle signale déjà le consentement manquant par toast.
+
+
+## Prescription — aide « Que puis-je prescrire en tant qu'infirmier ? » (2026-10-02)
+
+Défaut signalé : l'encart s'affichait aussi chez les pros médecins.
+
+- Cause : la condition ne regardait que le type d'ordonnance (`nursing`), or `resolvePrescriptionKindForRole` renvoie `nursing` pour l'infirmier **et** pour le pro.
+- Correction : règle unique `shouldShowNursePrescriptionScopeHelp` (`packages/shared-utils/src/nurse-prescription-scope.ts`), utilisée par le mobile (`PrescriptionComposer`) et le web (`PrescriptionSection.vue`) : rôle `nurse`, ou rôle `pro` avec l'emploi « Infirmier IPA » (`isProIpaEmploi`). Le backend renvoie désormais `emploi` aussi en scope mobile (`User::getById`, identifiants professionnels toujours masqués, test ajouté).
+- Vérifié après : pro médecin (Pierre Medecin) → encart absent ; infirmière (Nina) → encart présent en tête de la prescription d'un RDV. Cas pro IPA couvert par le test unitaire `nurse-prescription-scope-help.test.ts` (pas de compte pro IPA en base QA).
+- Point signalé, non modifié : un pro médecin rédige aussi une ordonnance de type `nursing` (`resolvePrescriptionKindForRole`).
+
+## Connexion / inscription — code OTP (2026-10-02)
+
+Défauts signalés : impossible de coller le code ; « le dernier chiffre s'efface ».
+
+- Cause : `maxLength` coupait un collage contenant autre chose que 6 chiffres ; le « dernier chiffre qui s'efface » était un code refusé : le champ était vidé et l'erreur partait dans un toast tronqué.
+- Correction (`OtpCodeStep`, `LoginFlow`, `RegisterScreen`) : saisie filtrée sur les chiffres puis limitée à 6, envoi automatique au 6ᵉ chiffre, erreur affichée en entier sous le champ (remplace l'aide), effacée à la saisie ou au renvoi du code.
+- Vérifié après sur emulator-5600 : saisie chiffre par chiffre → connexion ; mauvais code → message complet sous le champ, champ vidé ; collage d'un texte contenant le code → 6 chiffres retenus → connexion.
+- Sheets de connexion : plus de double évitement du clavier (`NativeSheetBody`, `KeyboardScrollView enabled={!fitToContents}`) : la sheet se pose juste au-dessus du clavier, sans vide ni contenu hors écran.
+
+## Patient — commander en pharmacie depuis « Mes traitements » (2026-10-02)
+
+Défaut signalé : le patient ne peut pas passer de commande pharmacie.
+
+- Backend vérifié : `PharmacyModuleConfig::canOrder` inclut `patient` ; `PharmacyOrderService::create` accepte le patient pour lui-même (`isPatientSelf`). Seul le mobile bloquait (`newOrderHref` à `null` pour le patient).
+- Correction : bouton « + » / « Commander en pharmacie » piloté par `can_order` du serveur ; route `(patient)/traitements/new` → `PharmacyOrderWizardScreen` en mode patient (bénéficiaire « Moi » ou un proche, pas de choix de patient, textes à la 2ᵉ personne, retour à « Mes traitements »).
+- Vérifié après sur emulator-5600 (Alice) : Click & collect → Moi → Pharmacie du Vieux-Port → récap « Pour : Moi » → commande envoyée, en tête de « Mes traitements » ; en base : `requester_role = patient`, patient = demandeur, `en_attente`.

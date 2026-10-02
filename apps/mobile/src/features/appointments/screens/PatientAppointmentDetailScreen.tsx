@@ -2,7 +2,7 @@ import { spacing, useStyles } from '@/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
 import { SceneScrollView } from '@/components/navigation/SceneScrollView';
@@ -41,6 +41,7 @@ export function PatientAppointmentDetailScreen() {
     segment?: string;
   }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [segment, setSegment] = useState<SegmentId>('infos');
@@ -208,7 +209,7 @@ export function PatientAppointmentDetailScreen() {
       <PatientCancelAppointmentSheet
         visible={cancelOpen && cancellableForPatient.length > 0}
         targets={cancellableForPatient}
-        onDone={() => router.back()}
+        onDone={() => navigation.goBack()}
         onClose={() => setCancelOpen(false)}
       />
     </>

@@ -26,12 +26,15 @@ import { useDeepLinks } from '@/features/navigation/hooks/use-deep-links';
 import { NetworkProvider } from '@/providers/NetworkProvider';
 import { usePushTokenRegistration } from '@/features/notifications/hooks/use-push-token-registration';
 import { useAppColors } from '@/theme/use-app-colors';
+import { useTheme } from '@/theme';
+import { sheetScreenOptions } from '@/navigation/screen-options';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ fade: true, duration: 250 });
 
 function RootLayoutInner() {
   const c = useAppColors();
+  const theme = useTheme();
   const hydrate = useAuthStore((s) => s.hydrate);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   // `index` ne fait qu'aiguiller (Redirect) : le splash couvre l'écran tant qu'on n'a pas quitté cette route.
@@ -66,6 +69,7 @@ function RootLayoutInner() {
         <Stack.Screen name="(patient)" />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="sheet/[id]" options={({ route }) => sheetScreenOptions(theme, route.params)} />
       </Stack>
       <MustChangePasswordGate />
       <BiometricEnrollmentOfferHost />

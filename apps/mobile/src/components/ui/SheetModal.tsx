@@ -1,74 +1,57 @@
-import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useReducer, useRef } from 'react';
+import { Keyboard, useWindowDimensions, type ViewStyle } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useNavigationReady } from '@/navigation/use-navigation-ready';
 import {
-  BackHandler,
-  Keyboard,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-  type ViewStyle,
-} from 'react-native';
-import { Row } from '@/components/layout/primitives';
-import { BottomSheetModalContainer } from './BottomSheetModalContainer';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-  type BottomSheetScrollViewMethods,
-} from '@gorhom/bottom-sheet';
-import { BottomSheetKeyboardAwareScrollView } from './BottomSheetKeyboardAwareScrollView';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft } from 'lucide-react-native';
-import {
-  elevation,
-  radius,
-  spacing,
-  iconSize,
-  AppText,
-  useStyles,
-  ICON_STROKE_WIDTH,
-  MIN_TOUCH_TARGET,
-  type Theme,
-} from '@/theme';
-import { SheetKeyboardProvider } from './sheet-keyboard-context';
-import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from './sheet-keyboard-accessory';
-import { FormScrollContext, useFormScrollProviderValue } from '@/components/layout/form-scroll-context';
+  removeSheet,
+  requestSheetClose,
+  sheetRemovalOutcome,
+  snapPointsToDetents,
+  upsertSheet,
+  type SheetEntry,
+} from './sheet/sheet-store';
 
-const MAX_HEIGHT_RATIO = 0.86;
+type SheetProps = Omit<SheetEntry, 'closeRequested' | 'onRemoved'>;
+
 /** Ouverture haute pour fiches profil (intervenant RDV). */
 export const PROFILE_SHEET_SNAP_POINTS: (string | number)[] = ['92%'];
 
-interface Props {
+interface BaseProps {
   visible: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string;
   onBack?: () => void;
   children: React.ReactNode;
-  /**
-   * Actions en bas du scroll (après `children`) — le clavier Gorhom remonte la sheet.
-   */
+  /** Actions en bas du scroll (après `children`). */
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
-  /** WebView / scroll interne uniquement. */
-  disableScroll?: boolean;
-  dismissOnBackdropPress?: boolean;
-  enableSwipeToDismiss?: boolean;
-  presentKey?: string | number;
-  /** Appelé quand la sheet est entièrement fermée après `visible={false}` (pas au swipe → onClose). */
+  /** `false` pendant un envoi : ni geste iOS, ni retour Android ne ferment la sheet. */
+  dismissible?: boolean;
+  /** Appelé quand la sheet est entièrement fermée après `visible={false}` (pas au geste → onClose). */
   onDismissed?: () => void;
-  /** Remplace le dynamic sizing (ex. fiche profil plein écran). */
-  snapPoints?: (string | number)[];
-  /** Empilement si une autre sheet est déjà ouverte (`push` pour les selects). */
-  stackBehavior?: 'push' | 'switch' | 'replace';
-  keyboardBehavior?: 'extend' | 'fillParent' | 'interactive';
 }
 
 /**
- * Bottom sheet @gorhom/bottom-sheet v5 — contenu + actions dans le scroll, hauteur auto.
+ * iOS ne redimensionne que le ScrollView de la sheet sur un palier fixe : un contenu sans scroll
+ * (`disableScroll`, liste ou WebView interne) garde la hauteur ajustée au contenu.
+ */
+type Props = BaseProps &
+  (
+    | {
+        disableScroll?: false;
+        /** Paliers fixes (`'92%'` ou pixels), figés à l'ouverture, au lieu de la hauteur ajustée au contenu. */
+        snapPoints?: (string | number)[];
+      }
+    | { disableScroll: true; snapPoints?: never }
+  );
+
+/**
+ * Sheet native iOS / Android (`presentation: 'formSheet'`, route `app/sheet/[id].tsx`).
+ * Le contenu reste déclaré ici et suit les re-rendus du parent ; `visible` reste la source de vérité.
+ * Sheet ouverte, `router.back()` / `router.replace()` visent la route de la sheet : quitter l'écran avec
+ * `navigation.goBack()`, ou naviguer dans `onDismissed`.
+ * Android : la formSheet se ferme toujours au glissé ; `dismissible={false}` ne bloque que le bouton retour.
  */
 export function SheetModal({
   visible,
@@ -80,234 +63,77 @@ export function SheetModal({
   footer,
   contentStyle,
   disableScroll = false,
-  dismissOnBackdropPress = true,
-  enableSwipeToDismiss = true,
-  presentKey,
+  dismissible = true,
   onDismissed,
   snapPoints,
-  stackBehavior = 'switch',
-  keyboardBehavior = 'interactive',
 }: Props) {
-  const c = useAppColors();
-  const styles = useStyles(buildStyles);
-  const modalRef = useRef<BottomSheetModal>(null);
-  const insets = useSafeAreaInsets();
-  const formScroll = useFormScrollProviderValue<BottomSheetScrollViewMethods>();
-  const { height: windowHeight } = useWindowDimensions();
-  const maxDynamicContentSize = windowHeight * MAX_HEIGHT_RATIO;
-  const useFixedSnap = snapPoints != null && snapPoints.length > 0;
+  const router = useRouter();
+  const { ready: navigationReady, canNavigate } = useNavigationReady();
+  const { height } = useWindowDimensions();
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
+  const openRef = useRef(false);
+  const mountedRef = useRef(false);
+  const visibleRef = useRef(visible);
+  const latestRef = useRef<SheetProps | null>(null);
+  const callbacksRef = useRef({ onClose, onDismissed });
+  const [removals, markRemoved] = useReducer((n: number) => n + 1, 0);
 
-  const dismissFromParentRef = useRef(false);
-  const hasPresentedRef = useRef(false);
-
-  useEffect(() => {
-    const modal = modalRef.current;
-    if (!modal) return;
-
-    if (visible) {
-      dismissFromParentRef.current = false;
-      const frame = requestAnimationFrame(() => {
-        modal.present();
-        hasPresentedRef.current = true;
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-
-    Keyboard.dismiss();
-    if (!hasPresentedRef.current) return;
-    dismissFromParentRef.current = true;
-    hasPresentedRef.current = false;
-    modal.dismiss();
-  }, [visible, presentKey]);
-
-  /** Android : le bouton retour ferme la sheet au premier plan au lieu de quitter l'écran ou l'app. */
-  useEffect(() => {
-    if (!visible || Platform.OS !== 'android') return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (onBack) onBack();
-      else if (enableSwipeToDismiss || dismissOnBackdropPress) modalRef.current?.dismiss();
-      return true;
+  const publish = useCallback(() => {
+    if (!latestRef.current) return;
+    upsertSheet(id, {
+      ...latestRef.current,
+      onRemoved: (byParent) => {
+        openRef.current = false;
+        removeSheet(id);
+        Keyboard.dismiss();
+        if (!mountedRef.current) return;
+        const outcome = sheetRemovalOutcome(byParent, visibleRef.current);
+        if (outcome === 'dismissed') {
+          callbacksRef.current.onDismissed?.();
+          return;
+        }
+        if (outcome === 'closed') callbacksRef.current.onClose();
+        markRemoved();
+      },
     });
-    return () => sub.remove();
-  }, [visible, onBack, enableSwipeToDismiss, dismissOnBackdropPress]);
+  }, [id]);
 
-  const handleDismiss = useCallback(() => {
-    Keyboard.dismiss();
-    hasPresentedRef.current = false;
-    if (dismissFromParentRef.current) {
-      dismissFromParentRef.current = false;
-      onDismissed?.();
-      return;
+  useLayoutEffect(() => {
+    latestRef.current = {
+      title,
+      subtitle,
+      onBack,
+      content: children,
+      footer,
+      contentStyle,
+      disableScroll,
+      dismissible,
+      detents: snapPointsToDetents(snapPoints, height),
+    };
+    callbacksRef.current = { onClose, onDismissed };
+    visibleRef.current = visible;
+    /** Fermeture en cours : le dernier contenu reste affiché pendant l'animation (pas de titre ni de corps vidés). */
+    if (openRef.current && visible) publish();
+  });
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (openRef.current) requestSheetClose(id);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (visible && !openRef.current) {
+      if (!navigationReady || !canNavigate()) return;
+      openRef.current = true;
+      publish();
+      router.push({ pathname: '/sheet/[id]', params: { id } });
+    } else if (!visible && openRef.current) {
+      requestSheetClose(id);
     }
-    onClose();
-  }, [onClose, onDismissed]);
+  }, [visible, id, publish, router, navigationReady, canNavigate, removals]);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.45}
-        pressBehavior={dismissOnBackdropPress ? 'close' : 'none'}
-      />
-    ),
-    [dismissOnBackdropPress],
-  );
-
-  const renderHandle = useCallback(
-    () => (
-      <View style={styles.handleZone}>
-        <View style={styles.handle} />
-        <Row gap={spacing[2]} style={styles.header}>
-          {onBack ? (
-            <Pressable onPress={onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
-            </Pressable>
-          ) : null}
-          <View style={styles.headerText}>
-            <AppText variant="headline" accessibilityRole="header">
-              {title}
-            </AppText>
-            {subtitle ? <AppText variant="secondary">{subtitle}</AppText> : null}
-          </View>
-        </Row>
-      </View>
-    ),
-    [c.primary, onBack, styles, subtitle, title],
-  );
-
-  const bottomPad = Math.max(insets.bottom, spacing[3]);
-  const accessoryLift = Platform.OS === 'ios' ? SHEET_KEYBOARD_ACCESSORY_HEIGHT : 0;
-  const keyboardBottomOffset =
-    (footer ? 72 + bottomPad : Math.max(bottomPad, spacing[2])) + accessoryLift + spacing[4];
-  const contentStyleBase = [
-    styles.body,
-    contentStyle,
-    { paddingBottom: bottomPad + accessoryLift },
-    !useFixedSnap && styles.bodyFitContent,
-  ];
-
-  const content = (
-    <>
-      {children}
-      {footer ? <View style={styles.scrollFooter}>{footer}</View> : null}
-    </>
-  );
-
-  const body = disableScroll ? (
-    <BottomSheetView style={[contentStyleBase, useFixedSnap && styles.fixedSnapBody]}>
-      {content}
-    </BottomSheetView>
-  ) : (
-    <BottomSheetKeyboardAwareScrollView
-      ref={formScroll.scrollRef}
-      bottomOffset={keyboardBottomOffset}
-      extraKeyboardSpace={accessoryLift + spacing[4]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      showsVerticalScrollIndicator={false}
-      style={styles.scrollHost}
-      contentContainerStyle={contentStyleBase}
-      scrollEventThrottle={16}
-      onScroll={(event) => {
-        formScroll.scrollYRef.current = event.nativeEvent.contentOffset.y;
-      }}
-    >
-      {content}
-    </BottomSheetKeyboardAwareScrollView>
-  );
-
-  return (
-    <BottomSheetModal
-      ref={modalRef}
-      stackBehavior={stackBehavior}
-      containerComponent={Platform.OS === 'ios' ? BottomSheetModalContainer : undefined}
-      enableDynamicSizing={!useFixedSnap}
-      maxDynamicContentSize={useFixedSnap ? undefined : maxDynamicContentSize}
-      snapPoints={useFixedSnap ? snapPoints : undefined}
-      index={useFixedSnap ? snapPoints!.length - 1 : undefined}
-      enablePanDownToClose={enableSwipeToDismiss}
-      enableHandlePanningGesture={enableSwipeToDismiss}
-      enableContentPanningGesture={!disableScroll}
-      handleComponent={renderHandle}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sheetBackground}
-      topInset={insets.top}
-      keyboardBehavior={keyboardBehavior}
-      keyboardBlurBehavior="restore"
-      enableBlurKeyboardOnGesture
-      android_keyboardInputMode="adjustResize"
-      onDismiss={handleDismiss}
-    >
-      <SheetKeyboardProvider>
-        <FormScrollContext.Provider value={formScroll}>{body}</FormScrollContext.Provider>
-      </SheetKeyboardProvider>
-    </BottomSheetModal>
-  );
-}
-
-function buildStyles({ colors: c }: Theme) {
-  return {
-    sheetBackground: {
-      backgroundColor: c.surface,
-      borderTopLeftRadius: radius['2xl'],
-      borderTopRightRadius: radius['2xl'],
-      ...elevation.sheetTop,
-    },
-    handleZone: {
-      backgroundColor: c.surface,
-      borderTopLeftRadius: radius['2xl'],
-      borderTopRightRadius: radius['2xl'],
-    },
-    handle: {
-      alignSelf: 'center' as const,
-      width: 40,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: c.border,
-      marginTop: spacing[2],
-      marginBottom: spacing[2],
-    },
-    header: {
-      paddingHorizontal: spacing[4],
-      paddingBottom: spacing[3],
-      gap: spacing[2],
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.borderLight,
-    },
-    backBtn: {
-      width: MIN_TOUCH_TARGET,
-      height: MIN_TOUCH_TARGET,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-    },
-    headerText: {
-      flex: 1,
-      minWidth: 0,
-      gap: spacing[1],
-    },
-    body: {
-      padding: spacing[4],
-      gap: spacing[3],
-    },
-    bodyFitContent: {
-      flexGrow: 0,
-    },
-    scrollHost: {
-      flexGrow: 0,
-      flexShrink: 0,
-    },
-    scrollFooter: {
-      marginTop: spacing[2],
-      paddingTop: spacing[3],
-      gap: spacing[2],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-    },
-    fixedSnapBody: {
-      minWidth: 0,
-      flex: 1,
-    },
-  };
+  return null;
 }

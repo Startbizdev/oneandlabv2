@@ -103,7 +103,6 @@ export function ProviderPublicProfileSheet({ visible, onClose, providerType, slu
       visible={visible}
       onClose={onClose}
       title={roleLabel}
-      presentKey={`${providerType}:${trimmedSlug}`}
       snapPoints={PROFILE_SHEET_SNAP_POINTS}
     >
       {profileQ.isLoading ? (

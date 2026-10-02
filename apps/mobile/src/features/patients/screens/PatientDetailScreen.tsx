@@ -6,7 +6,7 @@ import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
@@ -71,6 +71,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const patientId = id ?? '';
   const router = useRouter();
+  const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
   const { canOrder } = usePharmacyModuleEnabled();
@@ -112,7 +113,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     onSuccess: () => {
       setDeleteOpen(false);
       toast('Patient supprimé', { type: 'success' });
-      router.back();
+      navigation.goBack();
     },
     onError: (e) => {
       setDeleteOpen(false);

@@ -38,7 +38,7 @@ export function showActionSheet(title: string, options: readonly ActionSheetOpti
   });
 }
 
-/** Hôte unique des feuilles d'actions Android, monté sous `BottomSheetModalProvider`. */
+/** Hôte unique des feuilles d'actions Android, monté dans `AppProviders`. */
 export function ActionSheetHost() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -62,7 +62,6 @@ export function ActionSheetHost() {
     <SheetModal
       visible={visible}
       title={request.title}
-      stackBehavior="push"
       onClose={() => settle(null)}
       onDismissed={() => settle(chosenRef.current)}
       footer={

@@ -12,8 +12,8 @@ const OTP_LENGTH = 6;
 interface Props {
   value: string;
   onChangeText: (value: string) => void;
-  /** Appelé au bouton et automatiquement au 6e chiffre. */
-  onSubmit: (code: string) => void;
+  /** Appelé au bouton et automatiquement au 6e chiffre ; renvoie l'erreur à afficher sous le champ, sinon `null`. */
+  onSubmit: (code: string) => Promise<string | null>;
   submitLabel: string;
   loading: boolean;
   /** Renvoie `true` si un nouveau code a bien été envoyé. */
@@ -30,21 +30,31 @@ export const OtpCodeStep = forwardRef<TextInput, Props>(function OtpCodeStep(
   const styles = useStyles(buildStyles);
   const { remaining, restart } = useResendCountdown();
   const [resending, setResending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     restart();
   }, [restart]);
 
+  async function submit(code: string) {
+    setError(await onSubmit(code));
+  }
+
+  /** Accepte un code collé avec espaces ou texte autour (« 123 456 », « Code : 123456 »). */
   function handleChange(raw: string) {
     const digits = raw.replace(/\D/g, '').slice(0, OTP_LENGTH);
+    setError(null);
     onChangeText(digits);
-    if (digits.length === OTP_LENGTH && !loading) onSubmit(digits);
+    if (digits.length === OTP_LENGTH && !loading) void submit(digits);
   }
 
   async function handleResend() {
     setResending(true);
     try {
-      if (await onResend()) restart();
+      if (await onResend()) {
+        setError(null);
+        restart();
+      }
     } finally {
       setResending(false);
     }
@@ -62,12 +72,12 @@ export const OtpCodeStep = forwardRef<TextInput, Props>(function OtpCodeStep(
         keyboardType="number-pad"
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
-        maxLength={OTP_LENGTH}
-        onSubmitEditing={() => onSubmit(value)}
+        onSubmitEditing={() => void submit(value)}
         placeholder="000000"
+        error={error ?? undefined}
         hint="Valable 5 minutes. Pensez à vérifier vos spams."
       />
-      <Button title={submitLabel} loading={loading} onPress={() => onSubmit(value)} fullWidth size="lg" />
+      <Button title={submitLabel} loading={loading} onPress={() => void submit(value)} fullWidth size="lg" />
       <Button
         title={resendLabel}
         variant="ghost"

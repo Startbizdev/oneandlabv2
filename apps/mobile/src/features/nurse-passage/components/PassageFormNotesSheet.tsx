@@ -26,7 +26,6 @@ export function PassageFormNotesSheet({ visible, notes, onClose, onConfirm }: Pr
       onClose={onClose}
       title="Note"
       subtitle="Consignes, accès, matériel… (optionnel)"
-      snapPoints={['45%']}
       footer={
         <Button
           title="Valider"

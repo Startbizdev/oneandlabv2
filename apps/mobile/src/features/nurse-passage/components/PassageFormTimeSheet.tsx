@@ -102,7 +102,6 @@ export function PassageFormTimeSheet({
       visible={visible}
       onClose={onClose}
       title="Heure de passage"
-      snapPoints={draftSelection === 'range' ? ['72%'] : draftSelection === 'custom' ? ['58%'] : ['48%']}
       footer={
         <Button
           title="Valider"

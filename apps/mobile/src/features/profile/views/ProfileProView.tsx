@@ -309,7 +309,6 @@ function buildStyles() {
   return {
     sheetBody: {
       paddingTop: spacing[2],
-      paddingBottom: spacing[6],
     },
     toggleCard: {
       gap: spacing[2],

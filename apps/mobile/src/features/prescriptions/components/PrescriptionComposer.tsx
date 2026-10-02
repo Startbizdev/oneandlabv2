@@ -83,7 +83,7 @@ export function PrescriptionComposer({
   const user = useAuthStore((s) => s.user);
   const linkedToAppointment = Boolean(appointmentId);
   const isNursing = prescriptionKind === 'nursing';
-  const showNurseScopeHelp = shouldShowNursePrescriptionScopeHelp(user?.role, prescriptionKind);
+  const showNurseScopeHelp = shouldShowNursePrescriptionScopeHelp(user, prescriptionKind);
   const [medicalFields, setMedicalFields] = useState<MedicalPrescriptionFields>(() =>
     parseMedicalPrescriptionText(initialText),
   );

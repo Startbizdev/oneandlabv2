@@ -54,7 +54,7 @@ export function OfferAppointmentModal() {
   const user = useAuthStore((s) => s.user);
   const visible = useOfferQueueStore((s) => s.visible);
   const selected = useOfferQueueStore((s) => s.selected);
-  const presentNonce = useOfferQueueStore((s) => s.presentNonce);
+  const selectedId = selected?.id;
   const shareToken = useOfferQueueStore((s) => s.shareToken);
   const closeModal = useOfferQueueStore((s) => s.closeModal);
   const userId = user?.id;
@@ -75,6 +75,8 @@ export function OfferAppointmentModal() {
   const [loading, setLoading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [prepComplete, setPrepComplete] = useState(false);
+  /** iOS : le plein écran de préparation ne peut être présenté qu'une fois la sheet native retirée. */
+  const [offerSheetGone, setOfferSheetGone] = useState(false);
   const acceptedAptIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -87,7 +89,7 @@ export function OfferAppointmentModal() {
     setConfirmRefuse(false);
     const acceptedBy = useAppPreferencesStore.getState().offerTermsAcceptedUserId;
     setShowTerms(!userId || acceptedBy !== userId);
-  }, [presentNonce, userId]);
+  }, [selectedId, userId]);
 
   const { batchSorted, isMultiBatch, siblingsLoading } = useAppointmentBatch(selected);
 
@@ -116,10 +118,9 @@ export function OfferAppointmentModal() {
     void (async () => {
       await snoozeOfferBatch(row, user?.id);
       closeModal();
-      if (!user?.role || !user.id) return;
-      setTimeout(() => {
+      if (user?.role && user.id) {
         void useOfferQueueStore.getState().processNext(user.role, user.id);
-      }, 400);
+      }
     })();
   }, [closeModal, row, user?.id, user?.role]);
 
@@ -135,10 +136,9 @@ export function OfferAppointmentModal() {
         toast(r.error, { type: 'error' });
       }
       closeModal();
-      if (!user?.role || !user.id) return;
-      setTimeout(() => {
+      if (user?.role && user.id) {
         void useOfferQueueStore.getState().processNext(user.role, user.id);
-      }, 400);
+      }
     })();
   }, [closeModal, row, toast, user?.id, user?.role]);
 
@@ -168,6 +168,7 @@ export function OfferAppointmentModal() {
     if (!row || !selected || !termsAccepted) return;
 
     setLoading(true);
+    setOfferSheetGone(false);
     setPreparing(true);
     setPrepComplete(false);
     const startedAt = Date.now();
@@ -323,11 +324,12 @@ export function OfferAppointmentModal() {
 
   return (
     <>
-      {!preparing && selected ? (
+      {selected ? (
         <SheetModal
-          visible={visible}
-          presentKey={`${selected.id}:${presentNonce}`}
+          visible={visible && !preparing}
           onClose={dismissOffer}
+          onDismissed={() => setOfferSheetGone(true)}
+          dismissible={!busy}
           title={confirmRefuse ? 'Refuser la demande ?' : 'Nouvelle demande'}
           subtitle={lotLabel || undefined}
         >
@@ -352,7 +354,7 @@ export function OfferAppointmentModal() {
         </SheetModal>
       ) : null}
       <OfferAcceptPreparationOverlay
-        visible={preparing}
+        visible={preparing && offerSheetGone}
         complete={prepComplete}
         onFinish={onPrepFinish}
       />

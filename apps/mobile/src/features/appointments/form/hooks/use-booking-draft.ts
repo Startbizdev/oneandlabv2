@@ -29,11 +29,11 @@ export function useBookingDraftOwnerKey(): string | null {
 export function useBookingDraftResume(ownerKey: string | null, enabled: boolean) {
   const [openedAt] = useState(() => Date.now());
   const [handled, setHandled] = useState(false);
+  const [offered, setOffered] = useState(false);
   const hydrated = useSyncExternalStore(subscribeHydration, isDraftStoreHydrated);
   const stored = useBookingDraftStore((s) => (ownerKey ? s.drafts[ownerKey] : undefined));
   const clearDraft = useBookingDraftStore((s) => s.clearDraft);
-  const candidate =
-    enabled &&
+  const resumable =
     hydrated &&
     !handled &&
     stored &&
@@ -42,6 +42,9 @@ export function useBookingDraftResume(ownerKey: string | null, enabled: boolean)
     hasBookingDraftContent(stored.data)
       ? stored.data
       : null;
+  /** La sheet native (route racine) retire le focus à l'écran : une fois proposée, elle reste jusqu'au choix. */
+  if (enabled && resumable && !offered) setOffered(true);
+  const candidate = enabled || offered ? resumable : null;
 
   const take = useCallback((): BookingDraftData | null => {
     setHandled(true);

@@ -14,6 +14,8 @@ interface Props {
   pendingEmail?: string;
   onSelectRole: (role: RegisterRole) => void;
   onLoginPress?: () => void;
+  /** Sheet retirée après `visible={false}`. */
+  onDismissed?: () => void;
 }
 
 export function RegisterBottomSheet({
@@ -22,6 +24,7 @@ export function RegisterBottomSheet({
   pendingEmail,
   onSelectRole,
   onLoginPress,
+  onDismissed,
 }: Props) {
   const styles = useStyles(buildStyles);
   const email = pendingEmail?.trim() ?? '';
@@ -40,6 +43,7 @@ export function RegisterBottomSheet({
     <SheetModal
       visible={visible}
       onClose={onClose}
+      onDismissed={onDismissed}
       title="Créer un compte"
       subtitle={email ? `Aucun compte pour ${email}` : 'Qui êtes-vous ?'}
     >

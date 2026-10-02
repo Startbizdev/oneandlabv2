@@ -92,7 +92,6 @@ export function PrescriptionDatePicker({
         onClose={() => setIosOpen(false)}
         title={label}
         disableScroll
-        snapPoints={['42%']}
         footer={<Button title="Confirmer" onPress={confirmIos} />}
       >
         <DateTimePicker

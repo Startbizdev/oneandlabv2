@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
+import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 
 export type PassagePlanningChoice = 'single_day' | 'recurring';
 
@@ -35,20 +36,15 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const dateLabel = dayjs(selectedDate).format('dddd D MMMM');
-
-  const handleSelect = (choice: PassagePlanningChoice) => {
-    onSelect(choice);
-    onClose();
-  };
+  const { closeThen, onDismissed } = useAfterSheetDismiss(onClose);
 
   return (
     <SheetModal
       visible={visible}
       onClose={onClose}
+      onDismissed={onDismissed}
       title="Quelle planification ?"
       subtitle="Choisissez comment planifier ce passage"
-      enableSwipeToDismiss
-      dismissOnBackdropPress
     >
       <View style={styles.body}>
         {OPTIONS.map((opt) => (
@@ -58,7 +54,7 @@ export function PassagePlanningSheet({ visible, selectedDate, onClose, onSelect 
               styles.option,
               { borderColor: c.border, backgroundColor: c.surfaceAlt },
             ]}
-            onPress={() => handleSelect(opt.id)}
+            onPress={() => closeThen(() => onSelect(opt.id))}
             accessibilityRole="button"
           >
             <AppText style={[styles.optionTitle, { color: c.textPrimary }]}>{opt.title}</AppText>

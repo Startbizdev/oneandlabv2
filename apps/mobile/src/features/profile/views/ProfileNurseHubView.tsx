@@ -196,7 +196,6 @@ function buildStyles() {
     },
     sheetBody: {
       paddingTop: spacing[2],
-      paddingBottom: spacing[6],
     },
   };
 }

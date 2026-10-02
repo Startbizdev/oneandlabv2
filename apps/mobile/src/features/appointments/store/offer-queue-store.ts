@@ -54,8 +54,6 @@ interface OfferQueueState {
   visible: boolean;
   selected: Appointment | null;
   shareToken: string | null;
-  /** Force Gorhom à re-présenter la sheet à chaque ouverture manuelle. */
-  presentNonce: number;
   enqueueMany: (items: Appointment[]) => void;
   processNext: (role: string, userId: string) => Promise<void>;
   openIncomingOffer: (
@@ -76,7 +74,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   visible: false,
   selected: null,
   shareToken: null,
-  presentNonce: 0,
 
   setShareToken: (token) => set({ shareToken: token }),
 
@@ -141,7 +138,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         ...marked,
         selected: data,
         visible: true,
-        presentNonce: get().presentNonce + 1,
       });
     } catch {
       set({ queue: state.queue.slice(1) });
@@ -164,7 +160,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         ...marked,
         selected: previewData,
         visible: true,
-        presentNonce: get().presentNonce + 1,
       });
     }
 
@@ -194,7 +189,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         ...marked,
         selected: data,
         visible: true,
-        presentNonce: previewData ? get().presentNonce : get().presentNonce + 1,
       });
       return { ok: true };
     } catch (error) {
@@ -218,7 +212,6 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       visible: false,
       selected: null,
       shareToken: null,
-      presentNonce: 0,
     });
   },
 }));

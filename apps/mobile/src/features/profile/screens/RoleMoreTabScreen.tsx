@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { HelpCircle, LifeBuoy, LogOut, Scale, Settings, UserX } from 'lucide-react-native';
 import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { LOGIN_HREF } from '@/features/auth/hooks/use-auth-guard';
@@ -35,6 +36,8 @@ export function RoleMoreTabScreen({ roleLabel, sections, legalHref }: Props) {
   const logout = useAuthStore((s) => s.clearSession);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const closeLogout = useCallback(() => setLogoutOpen(false), []);
+  const { closeThen, onDismissed } = useAfterSheetDismiss(closeLogout);
 
   const nav = (href: Href) => router.push(href);
 
@@ -65,8 +68,7 @@ export function RoleMoreTabScreen({ roleLabel, sections, legalHref }: Props) {
     setLoggingOut(true);
     try {
       await logout();
-      setLogoutOpen(false);
-      router.replace(LOGIN_HREF);
+      closeThen(() => router.replace(LOGIN_HREF));
     } catch (e) {
       handleApiError(e, toast, 'logout', 'Déconnexion impossible. Réessayez.');
     } finally {
@@ -110,7 +112,8 @@ export function RoleMoreTabScreen({ roleLabel, sections, legalHref }: Props) {
         tone="destructive"
         loading={loggingOut}
         onConfirm={() => void confirmLogout()}
-        onClose={() => setLogoutOpen(false)}
+        onClose={closeLogout}
+        onDismissed={onDismissed}
       />
     </View>
   );

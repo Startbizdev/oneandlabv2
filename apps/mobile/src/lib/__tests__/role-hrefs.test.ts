@@ -5,6 +5,7 @@ import {
   bookingNewHref,
   pharmacyOrderDetailHref,
   pharmacyOrderNewHref,
+  pharmacyOrdersListHref,
   staffPatientHref,
 } from '../../navigation/role-hrefs';
 import { pharmacyOrderPrescriptionsHref } from '../../features/pharmacy-orders/utils/prescriptions-route';
@@ -67,6 +68,9 @@ describe('role hrefs', () => {
       params: { patientId: 'p1' },
     });
     expect(pharmacyOrderNewHref('/(pro)')).toEqual({ pathname: '/(pro)/commandes-pharmacie/new', params: {} });
+    expect(pharmacyOrderNewHref('/(patient)', 'p1')).toBe('/(patient)/traitements/new');
+    expect(pharmacyOrdersListHref('/(nurse)')).toBe('/(nurse)/commandes-pharmacie');
+    expect(pharmacyOrdersListHref('/(patient)')).toBe('/(patient)/traitements');
     expect(pharmacyOrderDetailHref('/(patient)', 'o1')).toEqual({
       pathname: '/(patient)/traitements/[id]',
       params: { id: 'o1' },

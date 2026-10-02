@@ -4,8 +4,6 @@ import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { buildFieldStyles, FIELD_MIN_HEIGHT } from './field-styles';
-import { useSheetTextInputComponent, useSheetTextInputRef } from './sheet-keyboard-context';
-import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
 
 const NUMERIC_KEYBOARDS = new Set([
   'number-pad',
@@ -17,7 +15,7 @@ const NUMERIC_KEYBOARDS = new Set([
 /** Android affiche la fin d'une valeur longue pré-remplie : hors focus, on montre son début. */
 const START_SELECTION = { start: 0, end: 0 };
 
-/** Pavé numérique : « Valider » natif Android ; barre iOS française (InputAccessoryView). */
+/** Pavé numérique : « Valider » natif Android ; iOS : barre native au-dessus du pavé (`inputAccessoryViewButtonLabel`). */
 function resolveReturnKeyType(
   keyboardType: TextInputProps['keyboardType'],
   returnKeyType: TextInputProps['returnKeyType'],
@@ -61,8 +59,6 @@ function InputComponent(
   const styles = useStyles(buildStyles);
   const field = useStyles(buildFieldStyles);
   const [isFocused, setIsFocused] = useState(false);
-  const TextField = useSheetTextInputComponent();
-  const textFieldRef = useSheetTextInputRef(ref);
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
   const isMultiline = Boolean(multiline);
 
@@ -91,9 +87,6 @@ function InputComponent(
   const resolvedReturnKeyType = isMultiline
     ? (returnKeyType ?? 'default')
     : resolveReturnKeyType(keyboardType, returnKeyType);
-  const iosAccessory =
-    Platform.OS === 'ios' && (isNumeric || isMultiline) ? SHEET_KEYBOARD_ACCESSORY_ID : undefined;
-
   const fieldStyle = [
     styles.input,
     isMultiline && styles.inputMultiline,
@@ -108,13 +101,13 @@ function InputComponent(
   };
 
   const textFieldProps = {
-    ref: textFieldRef,
+    ref,
     onFocus: handleFocus,
     onBlur: handleBlur,
     keyboardType,
     returnKeyType: resolvedReturnKeyType,
     returnKeyLabel: Platform.OS === 'android' && isNumeric ? 'Valider' : undefined,
-    inputAccessoryViewID: iosAccessory,
+    inputAccessoryViewButtonLabel: Platform.OS === 'ios' && isNumeric ? 'Valider' : undefined,
     blurOnSubmit: isMultiline ? false : (blurOnSubmitProp ?? true),
     submitBehavior: (isMultiline ? 'newline' : 'blurAndSubmit') as TextInputProps['submitBehavior'],
     accessibilityLabel: props.accessibilityLabel ?? label,
@@ -136,13 +129,13 @@ function InputComponent(
       {isMultiline ? (
         <View style={[field.container, styles.containerMultiline, borderStyle]}>
           {leftIcon ? <View style={styles.iconLeftMultiline}>{leftIcon}</View> : null}
-          <TextField {...textFieldProps} style={fieldStyle} />
+          <TextInput {...textFieldProps} style={fieldStyle} />
           {rightIcon ? <View style={styles.iconRightMultiline}>{rightIcon}</View> : null}
         </View>
       ) : (
         <Row style={[field.container, styles.containerSingle, borderStyle]}>
           {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
-          <TextField {...textFieldProps} style={fieldStyle} />
+          <TextInput {...textFieldProps} style={fieldStyle} />
           {rightIcon ? <View style={styles.iconRight}>{rightIcon}</View> : null}
         </Row>
       )}

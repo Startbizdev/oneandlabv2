@@ -37,7 +37,7 @@ function buildStyles({ colors: c }: Theme) {
 | `Card` | Groupe de contenu (trait discret, sans ombre) |
 | `SettingsSection` / `SettingsRow` | Menus, réglages, action isolée en rangée |
 | `EmptyState` / `ErrorState` | Rien à afficher (`illustration` de `src/constants/illustrations.ts`) / échec de chargement |
-| `SheetModal` | Bottom sheet |
+| `SheetModal` | Sheet native iOS / Android (`formSheet`, hauteur ajustée au contenu ou `snapPoints`) ; `ActionSheet` / `ConfirmSheet` pour choix et confirmations |
 | `FullWidthSegmentBar` | Segmented control pleine largeur |
 | `Input` / `PasswordInput` / `Textarea` / `SelectField` | Saisie (styles communs `field-styles.ts`) |
 

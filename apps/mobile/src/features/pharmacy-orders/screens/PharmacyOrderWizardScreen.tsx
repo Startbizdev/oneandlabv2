@@ -73,8 +73,29 @@ import {
 
 const CATALOG_WIZARD_STEPS = 4;
 const OWN_PHARMACY_WIZARD_STEPS = 3;
+
+/** Le soignant commande pour un patient ; le patient commande pour lui ou l'un de ses proches. */
+const WIZARD_COPY = {
+  staff: {
+    beneficiaryStep: 'Patient et adresse',
+    holder: 'Titulaire',
+    collectHint: 'Le patient se rendra en pharmacie pour retirer sa commande.',
+    missingAddress: 'Aucune adresse dans le dossier du patient : saisissez l’adresse de livraison.',
+    missingRelativeAddress:
+      'Aucune adresse trouvée pour ce proche ni pour le titulaire : saisissez l’adresse de livraison.',
+  },
+  patient: {
+    beneficiaryStep: 'Bénéficiaire et adresse',
+    holder: 'Moi',
+    collectHint: 'Vous retirerez la commande en pharmacie.',
+    missingAddress: 'Aucune adresse dans votre profil : saisissez l’adresse de livraison.',
+    missingRelativeAddress:
+      'Aucune adresse trouvée pour ce proche ni dans votre profil : saisissez l’adresse de livraison.',
+  },
+} as const;
+
 interface Props {
-  rolePrefix: StaffRoutePrefix;
+  rolePrefix: StaffRoutePrefix | '/(patient)';
   initialPatientId?: string;
 }
 
@@ -87,10 +108,13 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const { show: toast } = useToast();
   const userId = useAuthStore((s) => s.user?.id ?? '');
   const { isOwnPharmacy } = usePharmacyModuleEnabled();
+  const isPatient = rolePrefix === '/(patient)';
+  const copy = WIZARD_COPY[isPatient ? 'patient' : 'staff'];
+  const fixedPatientId = isPatient ? userId : initialPatientId;
 
   const [step, setStep] = useState(1);
   const [fulfillmentMode, setFulfillmentMode] = useState<PharmacyFulfillmentMode>('click_collect');
-  const [patientId, setPatientId] = useState(initialPatientId ?? '');
+  const [patientId, setPatientId] = useState(fixedPatientId ?? '');
   const [relativeId, setRelativeId] = useState<string | null>(null);
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
@@ -104,14 +128,14 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const [addressMissing, setAddressMissing] = useState(false);
   const addressLabelRef = useRef('');
 
-  const patientsQ = usePrescriptionPatientPickerInfinite(true);
+  const patientsQ = usePrescriptionPatientPickerInfinite(!isPatient);
   const patients = useMemo(
     () => flattenPrescriptionPickerPatients(patientsQ.data?.pages),
     [patientsQ.data?.pages],
   );
   useEffect(() => {
-    if (initialPatientId) setPatientId(initialPatientId);
-  }, [initialPatientId]);
+    if (fixedPatientId) setPatientId(fixedPatientId);
+  }, [fixedPatientId]);
 
   const relativesQ = useQuery({
     queryKey: ['patient-relatives', patientId],
@@ -169,8 +193,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const missingAddressError =
     addressMissing && !address?.label?.trim()
       ? relativeId
-        ? 'Aucune adresse trouvée pour ce proche ni pour le titulaire : saisissez l’adresse de livraison.'
-        : 'Aucune adresse dans le dossier du patient : saisissez l’adresse de livraison.'
+        ? copy.missingRelativeAddress
+        : copy.missingAddress
       : undefined;
 
   useEffect(() => {
@@ -256,8 +280,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
 
   const wizardSteps = isOwnPharmacy ? OWN_PHARMACY_WIZARD_STEPS : CATALOG_WIZARD_STEPS;
   const stepLabels = isOwnPharmacy
-    ? ['Mode de retrait', 'Patient et adresse', 'Documents et récap']
-    : ['Mode de retrait', 'Patient et adresse', 'Pharmacie', 'Documents et récap'];
+    ? ['Mode de retrait', copy.beneficiaryStep, 'Documents et récap']
+    : ['Mode de retrait', copy.beneficiaryStep, 'Pharmacie', 'Documents et récap'];
   const displayStep = isOwnPharmacy && step === 4 ? 3 : step;
 
   const wizardBack = useCallback(() => {
@@ -377,8 +401,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     },
     onSuccess: () => {
       toast('Commande envoyée', { type: 'success' });
-      void qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list('sent') });
-      router.replace(pharmacyOrdersListHref(rolePrefix));
+      void qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list(isPatient ? 'patient' : 'sent') });
+      router.dismissTo(pharmacyOrdersListHref(rolePrefix));
     },
     onError: (e) => handleApiError(e, toast, 'pharmacy-order-create'),
   });
@@ -408,10 +432,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   }, [rxFiles.length, toast]);
 
   return (
-    <StackChromeScreen
-      title="Commande pharmacie"
-      headerLeft={<HeaderBackButton onPress={wizardBack} />}
-    >
+    <StackChromeScreen headerLeft={<HeaderBackButton onPress={wizardBack} />}>
       <FormScreen
         contentContainerStyle={styles.formContent}
         backgroundColor={c.background}
@@ -439,7 +460,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
             />
             <AppText style={styles.hint}>
               {fulfillmentMode === 'click_collect'
-                ? 'Le patient se rendra en pharmacie pour retirer sa commande.'
+                ? copy.collectHint
                 : 'La pharmacie livrera à l’adresse indiquée à l’étape suivante.'}
             </AppText>
           </View>
@@ -447,7 +468,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
 
         {step === 2 ? (
           <View style={styles.block}>
-            {!initialPatientId ? <PrescriptionPatientSelectField
+            {!fixedPatientId ? <PrescriptionPatientSelectField
               patients={patients}
               selectedId={patientId}
               onSelect={(id) => {
@@ -463,7 +484,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
               onLoadMore={() => void patientsQ.fetchNextPage()}
               label="Patient"
               placeholder="Choisir un patient…"
-            /> : patientName ? (
+            /> : !isPatient && patientName ? (
               <View style={styles.fixedPatient}>
                 <AppText variant="caption">Patient</AppText>
                 <AppText variant="body">{patientName}</AppText>
@@ -479,7 +500,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                     style={[styles.relativePill, !relativeId && styles.relativePillActive]}
                   >
                     <AppText style={[styles.relativePillText, !relativeId && styles.relativePillTextActive]}>
-                      Titulaire
+                      {copy.holder}
                     </AppText>
                   </Pressable>
                   {(relativesQ.data ?? []).map((r: PatientRelative) => {
@@ -635,7 +656,14 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
             <View style={styles.recap}>
               <AppText style={styles.recapTitle}>Récapitulatif</AppText>
               <AppText style={styles.recapLine}>Mode : {pharmacyFulfillmentLabel(fulfillmentMode)}</AppText>
-              {patientName ? (
+              {isPatient ? (
+                <AppText style={styles.recapLine}>
+                  Pour :{' '}
+                  {selectedRelative
+                    ? personDisplayName(selectedRelative.first_name, selectedRelative.last_name, 'un proche')
+                    : copy.holder}
+                </AppText>
+              ) : patientName ? (
                 <AppText style={styles.recapLine}>
                   Patient : {patientName}
                   {selectedRelative
@@ -661,7 +689,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
         visible={relativeSheetOpen}
         onClose={() => setRelativeSheetOpen(false)}
         patientId={patientId}
-        staffConsent
+        staffConsent={!isPatient}
         onCreated={(id) => {
           setRelativeId(id);
           void relativesQ.refetch();

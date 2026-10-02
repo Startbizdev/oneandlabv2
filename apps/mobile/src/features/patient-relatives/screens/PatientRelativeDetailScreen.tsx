@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
@@ -30,6 +30,8 @@ export function PatientRelativeDetailScreen() {
   const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  /** Quitte cette fiche même si la confirmation (route racine) est encore au premier plan, contrairement à `router.back()`. */
+  const navigation = useNavigation();
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
@@ -75,7 +77,7 @@ export function PatientRelativeDetailScreen() {
       void qc.invalidateQueries({ queryKey: ['patient-relatives'] });
       setConfirmDelete(false);
       toast('Proche supprimé', { type: 'success' });
-      router.back();
+      navigation.goBack();
     },
     onError: (e) => handleApiError(e, toast, 'deleteRelative'),
   });

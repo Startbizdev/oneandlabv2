@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Ellipsis, FileText, HeartPulse, Navigation } from 'lucide-react-native';
 import {
@@ -134,6 +134,8 @@ export function PassageDetailScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
+  /** Quitte ce passage même si une sheet (route racine) est encore au premier plan, contrairement à `router.back()`. */
+  const navigation = useNavigation();
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const user = useAuthStore((s) => s.user);
@@ -431,7 +433,7 @@ export function PassageDetailScreen() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
       toast('Passage marqué comme effectué', { type: 'success' });
-      router.back();
+      navigation.goBack();
     },
     onError: (e: Error) => toast(e.message, { type: 'error' }),
   });
@@ -448,7 +450,7 @@ export function PassageDetailScreen() {
       void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
       setOpenSheet(null);
       toast('Passage supprimé', { type: 'success' });
-      router.back();
+      navigation.goBack();
     },
     onError: (e: Error) => toast(e.message, { type: 'error' }),
   });
@@ -459,7 +461,7 @@ export function PassageDetailScreen() {
       void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
       setOpenSheet(null);
       toast('Série annulée', { type: 'success' });
-      router.back();
+      navigation.goBack();
     },
     onError: (e) => handleApiError(e, toast, 'passage-delete', 'Suppression impossible', nursePassageSeriesErrorMessage),
   });

@@ -2,8 +2,10 @@ import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SHEET_KEYBOARD_ACCESSORY_HEIGHT } from '@/components/ui/sheet-keyboard-accessory';
 import { FormScrollContext, useFormScrollProviderValue } from './form-scroll-context';
+
+/** Air entre le champ actif et le clavier (la barre « Valider » iOS est déjà comptée dans la hauteur du clavier). */
+const KEYBOARD_CLEARANCE = 48;
 
 interface Props extends ScrollViewProps {
   /** Espace supplémentaire sous le champ focus (footer sticky, barre d’action…). */
@@ -42,8 +44,7 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     [formScroll.scrollYRef, onScroll],
   );
 
-  const resolvedBottomOffset =
-    (bottomOffset ?? Math.max(bottom, 8)) + SHEET_KEYBOARD_ACCESSORY_HEIGHT;
+  const resolvedBottomOffset = (bottomOffset ?? Math.max(bottom, 8)) + KEYBOARD_CLEARANCE;
 
   return (
     <FormScrollContext.Provider value={formScroll}>
@@ -55,7 +56,7 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
         showsVerticalScrollIndicator={showsVerticalScrollIndicator}
         contentInsetAdjustmentBehavior={contentInsetAdjustmentBehavior}
         bottomOffset={resolvedBottomOffset}
-        extraKeyboardSpace={SHEET_KEYBOARD_ACCESSORY_HEIGHT}
+        extraKeyboardSpace={KEYBOARD_CLEARANCE}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         {...props}

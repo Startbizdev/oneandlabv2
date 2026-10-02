@@ -41,7 +41,10 @@ export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClo
 
   const historyQ = useQuery({
     queryKey: clinicalVitalHistoryQueryKey(patientId, vitalType ?? 'heart_rate'),
-    queryFn: () => fetchClinicalVitalHistory(patientId, vitalType!),
+    queryFn: () => {
+      if (!vitalType) throw new Error('Constante introuvable');
+      return fetchClinicalVitalHistory(patientId, vitalType);
+    },
     enabled: visible && Boolean(patientId && vitalType),
   });
 
@@ -55,7 +58,6 @@ export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClo
       title={cfg ? `${cfg.emoji} ${cfg.label_fr}` : 'Historique'}
       subtitle={unit ? `Dernières mesures, en ${unit}` : 'Dernières mesures'}
       snapPoints={['88%']}
-      stackBehavior="switch"
       footer={
         vitalType ? <Button title="Nouvelle mesure" size="lg" fullWidth onPress={() => onAdd(vitalType)} /> : undefined
       }

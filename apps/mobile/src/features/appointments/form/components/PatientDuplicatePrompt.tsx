@@ -1,5 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { UserCheck } from 'lucide-react-native';
@@ -15,6 +16,8 @@ interface Props {
   adopting?: boolean;
   onDismiss: () => void;
   onUseExisting: () => void;
+  /** Prérequis de l'adoption (consentement, erreur) affichés juste au-dessus des actions. */
+  children?: ReactNode;
 }
 
 export function PatientDuplicatePrompt({
@@ -23,6 +26,7 @@ export function PatientDuplicatePrompt({
   adopting = false,
   onDismiss,
   onUseExisting,
+  children,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -42,6 +46,7 @@ export function PatientDuplicatePrompt({
           ? `Un dossier existe déjà${name ? ` pour ${name}` : ''}. Vous pouvez le sélectionner pour ce rendez-vous ou continuer à saisir un nouveau patient.`
           : `Un dossier existe déjà${name ? ` (${name})` : ''}. Utilisez-le ou continuez la création si c’est bien une autre personne.`}
       </AppText>
+      {children}
       <View style={styles.actions}>
         <Button
           title={isBooking ? 'Continuer en nouveau' : 'Continuer la saisie'}

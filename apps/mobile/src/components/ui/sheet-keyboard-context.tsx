@@ -1,37 +1,12 @@
-import { createContext, useCallback, useContext, type ForwardedRef } from 'react';
-import { TextInput } from 'react-native';
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { createContext, useContext } from 'react';
 
 const SheetKeyboardContext = createContext(false);
 
-/** Actif dans le contenu d’un {@link SheetModal} — inputs doivent utiliser BottomSheetTextInput. */
+/** Actif dans le contenu d’une sheet native : sélecteurs et pickers s’ouvrent en ligne. */
 export function SheetKeyboardProvider({ children }: { children: React.ReactNode }) {
   return <SheetKeyboardContext.Provider value={true}>{children}</SheetKeyboardContext.Provider>;
 }
 
 export function useInBottomSheet(): boolean {
   return useContext(SheetKeyboardContext);
-}
-
-/**
- * @gorhom/bottom-sheet — TextInput natif ignoré par le gestionnaire clavier.
- * @see https://gorhom.dev/react-native-bottom-sheet/keyboard-handling
- */
-export function useSheetTextInputComponent() {
-  return useInBottomSheet() ? BottomSheetTextInput : TextInput;
-}
-
-/**
- * Ref compatible avec les deux composants de {@link useSheetTextInputComponent} :
- * `BottomSheetTextInput` expose `TextInput | undefined` (variante gesture-handler), le TextInput natif `TextInput | null`.
- */
-export function useSheetTextInputRef(ref: ForwardedRef<TextInput>) {
-  return useCallback(
-    (node: TextInput | null | undefined) => {
-      const instance = node ?? null;
-      if (typeof ref === 'function') ref(instance);
-      else if (ref) ref.current = instance;
-    },
-    [ref],
-  );
 }

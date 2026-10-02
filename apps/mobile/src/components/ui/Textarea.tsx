@@ -4,8 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { spacing, AppText, useStyles, font, lh, type Theme } from '@/theme';
 import { buildFieldStyles } from './field-styles';
-import { useInBottomSheet, useSheetTextInputComponent, useSheetTextInputRef } from './sheet-keyboard-context';
-import { SHEET_KEYBOARD_ACCESSORY_ID } from './sheet-keyboard-accessory';
+import { useInBottomSheet } from './sheet-keyboard-context';
 
 interface TextareaProps extends TextInputProps {
   label?: string;
@@ -32,8 +31,6 @@ function TextareaComponent(
   const field = useStyles(buildFieldStyles);
 
   const [isFocused, setIsFocused] = useState(false);
-  const TextField = useSheetTextInputComponent();
-  const textFieldRef = useSheetTextInputRef(ref);
   const inSheet = useInBottomSheet();
   const borderColor = error
     ? c.borderError
@@ -70,22 +67,15 @@ function TextareaComponent(
           { borderColor, borderWidth: isFocused ? 1.5 : 1 },
         ]}
       >
-        <TextField
-          ref={textFieldRef}
+        <TextInput
+          ref={ref}
           multiline
           numberOfLines={5}
           textAlignVertical="top"
           onFocus={handleFocus}
           onBlur={handleBlur}
-          returnKeyType={
-            Platform.OS === 'ios' && inSheet
-              ? undefined
-              : returnKeyType ?? (inSheet ? 'done' : 'default')
-          }
+          returnKeyType={returnKeyType ?? (Platform.OS === 'android' && inSheet ? 'done' : 'default')}
           returnKeyLabel={Platform.OS === 'android' && inSheet ? 'Valider' : undefined}
-          inputAccessoryViewID={
-            Platform.OS === 'ios' ? SHEET_KEYBOARD_ACCESSORY_ID : undefined
-          }
           blurOnSubmit={blurOnSubmit ?? (Platform.OS === 'android' && inSheet)}
           accessibilityLabel={props.accessibilityLabel ?? label}
           style={[styles.input, style]}

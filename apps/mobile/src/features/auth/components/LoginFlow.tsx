@@ -157,11 +157,8 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
     }
   }
 
-  async function onOtpSubmit(code: string) {
-    if (code.length !== 6) {
-      toast('Code incomplet', { message: 'Entrez les 6 chiffres reçus par e-mail.', type: 'error' });
-      return;
-    }
+  async function onOtpSubmit(code: string): Promise<string | null> {
+    if (code.length !== 6) return 'Entrez les 6 chiffres reçus par e-mail.';
     setLoading(true);
     try {
       const res = await verifyOtp(userId, code, sessionId);
@@ -169,12 +166,11 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
       const user = (res as { user?: AuthUser }).user;
       if (!res.success || !token || !user) throw new Error(res.error ?? 'Code OTP invalide');
       await finishSession(token, user);
+      return null;
     } catch (e) {
       const msg = (e as Error).message;
       setOtp('');
-      if (!msg.includes("n'a pas accès")) {
-        toast('Erreur', { message: msg, type: 'error' });
-      }
+      return msg.includes("n'a pas accès") ? null : msg;
     } finally {
       setLoading(false);
     }
@@ -219,7 +215,7 @@ export function LoginFlow({ onSuccess, onEmailNotFound, onMetaChange }: Props) {
         ref={otpRef}
         value={otp}
         onChangeText={setOtp}
-        onSubmit={(code) => void onOtpSubmit(code)}
+        onSubmit={onOtpSubmit}
         submitLabel="Se connecter"
         loading={loading}
         onResend={() => sendCode(email.trim())}

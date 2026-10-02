@@ -36,11 +36,8 @@ export function ReviewReplySheet({
   return (
     <SheetModal
       visible={visible}
-      onClose={() => {
-        if (!submitting) onClose();
-      }}
-      enableSwipeToDismiss={!submitting}
-      dismissOnBackdropPress={!submitting}
+      onClose={onClose}
+      dismissible={!submitting}
       title="Répondre à l’avis"
       subtitle={reviewerDisplayName(review)}
     >

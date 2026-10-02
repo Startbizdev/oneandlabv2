@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { CalendarPlus, Trash2, UserRound } from 'lucide-react-native';
 import { SheetModal } from '@/components/ui/SheetModal';
+import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 import {
   DetailActionList,
   type DetailActionItem,
@@ -27,44 +29,52 @@ export function StaffPatientActionsSheet({
   onCreateAppointment,
   onDelete,
 }: Props) {
-  const actions: DetailActionItem[] = [];
-  if (target) {
-    const run = (action: (t: StaffPatientActionTarget) => void) => () => {
-      onClose();
-      action(target);
-    };
-    actions.push(
-      {
-        key: 'profile',
-        label: 'Voir le profil',
-        icon: UserRound,
-        tone: 'neutral',
-        showChevron: false,
-        onPress: run(onOpenProfile),
-      },
-      {
-        key: 'appointment',
-        label: 'Créer un rendez-vous',
-        icon: CalendarPlus,
-        tone: 'neutral',
-        showChevron: false,
-        onPress: run(onCreateAppointment),
-      },
-    );
-    if (target.canDelete) {
-      actions.push({
-        key: 'delete',
-        label: 'Supprimer',
-        icon: Trash2,
-        tone: 'destructive',
-        showChevron: false,
-        onPress: run(onDelete),
-      });
-    }
+  /** Dernier patient ciblé : la sheet reste montée pendant sa fermeture pour lancer l'action ensuite. */
+  const [shown, setShown] = useState(target);
+  if (target && target !== shown) setShown(target);
+  const { closeThen, onDismissed } = useAfterSheetDismiss(onClose);
+
+  if (!shown) return null;
+
+  const run = (action: (t: StaffPatientActionTarget) => void) => () => closeThen(() => action(shown));
+
+  const actions: DetailActionItem[] = [
+    {
+      key: 'profile',
+      label: 'Voir le profil',
+      icon: UserRound,
+      tone: 'neutral',
+      showChevron: false,
+      onPress: run(onOpenProfile),
+    },
+    {
+      key: 'appointment',
+      label: 'Créer un rendez-vous',
+      icon: CalendarPlus,
+      tone: 'neutral',
+      showChevron: false,
+      onPress: run(onCreateAppointment),
+    },
+  ];
+  if (shown.canDelete) {
+    actions.push({
+      key: 'delete',
+      label: 'Supprimer',
+      icon: Trash2,
+      tone: 'destructive',
+      showChevron: false,
+      onPress: run(onDelete),
+    });
   }
 
   return (
-    <SheetModal visible={Boolean(target)} onClose={onClose} title={target?.name ?? ''} disableScroll>
+    <SheetModal
+      visible={target !== null}
+      onClose={onClose}
+      onDismissed={onDismissed}
+      title={shown.name}
+      disableScroll
+    >
       <DetailActionList actions={actions} />
     </SheetModal>
   );

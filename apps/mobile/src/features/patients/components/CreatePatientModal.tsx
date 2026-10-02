@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { SheetModal } from '@/components/ui/SheetModal';
@@ -41,7 +41,6 @@ type Props = {
   onCreated?: (patient: CreatedPatientResult) => void;
   /** Dossier déjà existant — fermer sans effacer (liste rafraîchie côté parent). */
   onExistingPatient?: (patient: PatientRow) => void;
-  stackBehavior?: 'push' | 'switch' | 'replace';
   /** Recherche de doublon (`/patients/lookup`, réservée pro / infirmier / labo). */
   detectDuplicates?: boolean;
 };
@@ -66,7 +65,6 @@ export function CreatePatientModal({
   onClose,
   onCreated,
   onExistingPatient,
-  stackBehavior,
   detectDuplicates = true,
 }: Props) {
   const styles = useStyles(buildStyles);
@@ -85,6 +83,8 @@ export function CreatePatientModal({
   const [patientBookingConsent, setPatientBookingConsent] = useState(false);
   const [consentError, setConsentError] = useState(false);
   const [adopting, setAdopting] = useState(false);
+  /** Résultat transmis au parent une fois la sheet retirée (il peut naviguer ou ouvrir une autre sheet). */
+  const pendingResultRef = useRef<(() => void) | null>(null);
   const { duplicate, dismissDuplicate, resetDuplicate, showDuplicate } = usePatientDuplicateDetection(
     email,
     phone,
@@ -133,7 +133,7 @@ export function CreatePatientModal({
       ]);
       const row = patientRowFromLookup(duplicate.patient);
       resetDuplicate();
-      onExistingPatient?.(row);
+      pendingResultRef.current = () => onExistingPatient?.(row);
       onClose();
     } catch (e) {
       setError(apiErrorMessage(e, patientAdoptErrorMessage, 'Impossible d’utiliser ce dossier.'));
@@ -197,14 +197,15 @@ export function CreatePatientModal({
           /* non bloquant */
         }
       }
-      reset();
-      onCreated?.({
+      const created: CreatedPatientResult = {
         id: patientId,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim(),
         ...(email.trim() ? { email: email.trim() } : {}),
-      });
+      };
+      reset();
+      pendingResultRef.current = () => onCreated?.(created);
       onClose();
     } catch (e) {
       setError(apiErrorMessage(e, patientCreateErrorMessage, 'Création impossible'));
@@ -216,12 +217,26 @@ export function CreatePatientModal({
     }
   };
 
+  const consentRow = (
+    <StaffPatientBookingConsentRow
+      checked={patientBookingConsent}
+      onToggle={toggleConsent}
+      error={consentError}
+    />
+  );
+  const errorText = error ? <AppText style={styles.errorText}>{error}</AppText> : null;
+
   return (
     <SheetModal
       visible={visible}
       onClose={onClose}
+      onDismissed={() => {
+        const deliver = pendingResultRef.current;
+        pendingResultRef.current = null;
+        deliver?.();
+      }}
+      dismissible={!loading && !adopting}
       title="Nouveau patient"
-      stackBehavior={stackBehavior}
     >
       {duplicate ? (
         <PatientDuplicatePrompt
@@ -230,7 +245,10 @@ export function CreatePatientModal({
           adopting={adopting}
           onDismiss={dismissDuplicate}
           onUseExisting={() => void adoptExistingPatient()}
-        />
+        >
+          {consentRow}
+          {errorText}
+        </PatientDuplicatePrompt>
       ) : null}
       <View style={styles.fields}>
         <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
@@ -265,13 +283,8 @@ export function CreatePatientModal({
         onChange={(key, file) => setPersonalFiles((prev) => ({ ...prev, [key]: file }))}
       />
 
-      <StaffPatientBookingConsentRow
-        checked={patientBookingConsent}
-        onToggle={toggleConsent}
-        error={consentError}
-      />
-
-      {error ? <AppText style={styles.errorText}>{error}</AppText> : null}
+      {duplicate ? null : consentRow}
+      {duplicate ? null : errorText}
 
       <Row gap={spacing[3]} style={styles.actions}>
         <View style={styles.actionBtn}>

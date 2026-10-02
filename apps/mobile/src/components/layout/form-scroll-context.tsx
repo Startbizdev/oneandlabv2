@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useRef, type RefObject } from '
 import type { View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
-/** Contrat commun du ScrollView d’écran et du scroll de bottom sheet (`BottomSheetScrollViewMethods`). */
+/** Contrat du ScrollView de formulaire (écran ou sheet native, via `KeyboardScrollView`). */
 export type FormScrollable = {
   scrollTo(options: { x?: number; y?: number; animated?: boolean }): void;
   measureInWindow?: View['measureInWindow'];

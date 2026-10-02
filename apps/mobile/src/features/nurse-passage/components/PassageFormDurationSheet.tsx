@@ -51,7 +51,6 @@ export function PassageFormDurationSheet({
       onClose={onClose}
       title="Durée du passage"
       subtitle="Temps prévu sur place chez le patient"
-      snapPoints={['50%']}
       footer={
         <Button
           title="Valider"

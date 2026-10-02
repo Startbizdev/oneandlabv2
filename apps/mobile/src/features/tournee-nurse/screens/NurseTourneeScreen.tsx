@@ -152,7 +152,6 @@ export function NurseTourneeScreen() {
 
   const handlePlanningChoice = useCallback(
     (choice: PassagePlanningChoice) => {
-      setPlanningSheetOpen(false);
       router.push({
         pathname: '/(nurse)/passage/patient-pick',
         params: { start_date: date, mode: choice },

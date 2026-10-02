@@ -45,7 +45,6 @@ interface Props {
   /** Libellé du bouton de confirmation (défaut : « Valider et ajouter »). */
   confirmLabel?: string;
   onClose: () => void;
-  onDismissed?: () => void;
   onConfirm: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
 }
 
@@ -82,7 +81,6 @@ export function CareServiceQuickOptionsSheet({
   embedded = false,
   confirmLabel = 'Valider et ajouter',
   onClose,
-  onDismissed,
   onConfirm,
 }: Props) {
   const styles = useStyles(buildStyles);
@@ -357,12 +355,9 @@ export function CareServiceQuickOptionsSheet({
   return (
     <SheetModal
       visible={isOpen}
-      presentKey={category?.id ?? 'closed'}
       onClose={onClose}
-      onDismissed={onDismissed}
       title={category?.label ?? ''}
       subtitle="Quelques précisions sur ce soin."
-      stackBehavior="push"
       footer={confirmButton}
     >
       {formBody}

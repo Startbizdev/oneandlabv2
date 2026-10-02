@@ -21,6 +21,7 @@ import { pharmacyOrderDetailHref, pharmacyOrderNewHref } from '@/navigation/role
 import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
+import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { spacing, useStyles } from '@/theme';
@@ -33,11 +34,13 @@ const LIST_COPY = {
     emptyActive: 'Aucune commande en cours',
     emptyHistory: 'Aucune commande passée',
     error: 'Commandes indisponibles',
+    newOrder: 'Nouvelle commande',
   },
   patient: {
     emptyActive: 'Aucun traitement en cours',
     emptyHistory: 'Aucun traitement passé',
     error: 'Traitements indisponibles',
+    newOrder: 'Commander en pharmacie',
   },
 } as const;
 
@@ -72,14 +75,8 @@ export function PharmacyOrdersListScreen({ rolePrefix, scope = 'sent' }: Props) 
     [rolePrefix, router],
   );
 
-  const newOrderHref = useMemo(
-    () => (rolePrefix === '/(patient)' ? null : pharmacyOrderNewHref(rolePrefix)),
-    [rolePrefix],
-  );
-  const canCreate = newOrderHref !== null;
-  const openNew = useCallback(() => {
-    if (newOrderHref) router.push(newOrderHref);
-  }, [newOrderHref, router]);
+  const { canOrder: canCreate } = usePharmacyModuleEnabled();
+  const openNew = useCallback(() => router.push(pharmacyOrderNewHref(rolePrefix)), [rolePrefix, router]);
 
   const orders = useMemo(() => ordersQ.data ?? [], [ordersQ.data]);
   const counts = useMemo(() => countPharmacyOrdersBySegment(orders), [orders]);
@@ -88,11 +85,11 @@ export function PharmacyOrdersListScreen({ rolePrefix, scope = 'sent' }: Props) 
     [orders, segment],
   );
 
+  const copy = LIST_COPY[scope];
   const headerRight = canCreate ? (
-    <HeaderAction icon={Plus} accessibilityLabel="Nouvelle commande" onPress={openNew} />
+    <HeaderAction icon={Plus} accessibilityLabel={copy.newOrder} onPress={openNew} />
   ) : null;
 
-  const copy = LIST_COPY[scope];
   const emptyTitle = segment === 'active' ? copy.emptyActive : copy.emptyHistory;
 
   return (
@@ -124,7 +121,7 @@ export function PharmacyOrdersListScreen({ rolePrefix, scope = 'sent' }: Props) 
           <EmptyState
             illustration="pharmacy"
             title={emptyTitle}
-            actionLabel={canCreate && segment === 'active' ? 'Nouvelle commande' : undefined}
+            actionLabel={canCreate && segment === 'active' ? copy.newOrder : undefined}
             onAction={canCreate && segment === 'active' ? openNew : undefined}
           />
         ) : (

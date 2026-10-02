@@ -11,6 +11,7 @@ import React, {
 } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { FullWindowOverlay } from 'react-native-screens';
 import {
   AlertTriangle,
   CircleCheck,
@@ -175,6 +176,11 @@ function ToastCard({
   );
 }
 
+/** iOS : les sheets natives sont présentées au-dessus de la vue racine ; le toast passe dans sa propre fenêtre. */
+function ToastLayer({ children }: { children: ReactNode }) {
+  return Platform.OS === 'ios' ? <FullWindowOverlay>{children}</FullWindowOverlay> : <>{children}</>;
+}
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const styles = useStyles(buildStyles);
 
@@ -218,12 +224,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <View style={styles.root}>
         {children}
         {toast ? (
-          <View
-            style={[styles.host, { top: top + spacing[2] }]}
-            pointerEvents="box-none"
-          >
-            <ToastCard key={toast.id} toast={toast} onDismiss={hide} />
-          </View>
+          <ToastLayer>
+            <View
+              style={[styles.host, { top: top + spacing[2] }]}
+              pointerEvents="box-none"
+            >
+              <ToastCard key={toast.id} toast={toast} onDismiss={hide} />
+            </View>
+          </ToastLayer>
         ) : null}
       </View>
     </ToastContext.Provider>

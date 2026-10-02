@@ -4,9 +4,8 @@ import { isTutorialRole } from '@oneandlab/onboarding';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { useNavigationReady } from '@/navigation/use-navigation-ready';
+import { GLOBAL_SEGMENTS, isSheetSegment } from '@/navigation/global-segments';
 import { getOnboardingHref, isOnboardingSegment } from '../utils/onboarding-route';
-
-const GLOBAL_SEGMENTS = new Set(['profile', 'notifications']);
 
 /** Redirige vers le tutoriel startup après première connexion (par rôle). */
 export function useOnboardingGate() {
@@ -36,7 +35,7 @@ export function useOnboardingGate() {
 
     const role = user.role;
     const root = String(segments[0] ?? '');
-    if (root === '(auth)' || GLOBAL_SEGMENTS.has(root)) return;
+    if (root === '(auth)' || GLOBAL_SEGMENTS.has(root) || isSheetSegment(segments)) return;
     if (isOnboardingSegment(segments)) return;
     if (isOnboardingCompleted(role)) return;
 

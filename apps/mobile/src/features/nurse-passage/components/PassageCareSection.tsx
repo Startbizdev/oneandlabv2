@@ -40,8 +40,6 @@ import {
 type Props = {
   items: NursePassageNursingItem[];
   onChange: (items: NursePassageNursingItem[]) => void;
-  /** Feuille parente ouverte : réinitialise la vue d'ajout. */
-  sheetOpen: boolean;
   onUiPhaseChange?: (
     phase: 'picker' | 'options' | 'selected',
     meta?: { categoryName?: string },
@@ -62,8 +60,8 @@ function toNursingItem(
   };
 }
 
-/** Sélection des soins d'un passage, affichée dans la feuille parente. */
-export function PassageCareSection({ items, onChange, sheetOpen, onUiPhaseChange }: Props) {
+/** Sélection des soins d'un passage, remontée à chaque ouverture de la feuille parente. */
+export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
@@ -79,10 +77,6 @@ export function PassageCareSection({ items, onChange, sheetOpen, onUiPhaseChange
   });
 
   const categories = categoriesQ.data ?? [];
-
-  useEffect(() => {
-    if (sheetOpen) setAddingMore(false);
-  }, [sheetOpen]);
 
   const showOptions = optionsCat != null;
   const showPicker = !showOptions && (items.length === 0 || addingMore);

@@ -152,11 +152,8 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
     }
   }
 
-  async function onVerifyOtp(code: string) {
-    if (code.length !== 6) {
-      toast('Code incomplet', { message: 'Entrez les 6 chiffres', type: 'error' });
-      return;
-    }
+  async function onVerifyOtp(code: string): Promise<string | null> {
+    if (code.length !== 6) return 'Entrez les 6 chiffres reçus par e-mail.';
     setLoading(true);
     try {
       const res = await verifyOtp(userId, code, sessionId || undefined);
@@ -169,13 +166,14 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
       if (!isMobileRole(r)) {
         await useAuthStore.getState().clearSession();
         showAppNotAccessibleAlert(r);
-        return;
+        return null;
       }
       const sessionUser = (me ?? user) as Parameters<typeof setSession>[1];
       void offerBiometricEnrollmentAfterLogin(token, sessionUser, () => router.replace(getRoleHome(r)));
+      return null;
     } catch (e) {
-      toast('Erreur', { message: (e as Error).message, type: 'error' });
       setOtp('');
+      return (e as Error).message;
     } finally {
       setLoading(false);
     }
@@ -188,7 +186,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
           ref={otpRef}
           value={otp}
           onChangeText={setOtp}
-          onSubmit={(code) => void onVerifyOtp(code)}
+          onSubmit={onVerifyOtp}
           submitLabel="Valider le code"
           loading={loading}
           onResend={onResendCode}

@@ -1,4 +1,3 @@
-import { useAppColors } from '@/theme/use-app-colors';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Keyboard, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
@@ -43,7 +42,6 @@ export function PrescriptionSignatureSheet({
   pendingGenerate = false,
   onSaved,
 }: Props) {
-  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const qc = useQueryClient();
@@ -51,7 +49,6 @@ export function PrescriptionSignatureSheet({
   const exportingRef = useRef(false);
   const clearedRef = useRef(false);
   const [exporting, setExporting] = useState(false);
-  const [presentKey, setPresentKey] = useState(0);
 
   const hasStoredSignature = Boolean(initialPng?.trim());
   const normalizedInitial = normalizeSignaturePngBase64(initialPng);
@@ -61,20 +58,11 @@ export function PrescriptionSignatureSheet({
       Keyboard.dismiss();
       clearedRef.current = false;
       exportingRef.current = false;
-      setPresentKey((k) => k + 1);
     } else {
       exportingRef.current = false;
       setExporting(false);
     }
   }, [visible]);
-
-  useEffect(() => {
-    if (!visible || !normalizedInitial) return;
-    const timer = setTimeout(() => {
-      padRef.current?.load(normalizedInitial);
-    }, 320);
-    return () => clearTimeout(timer);
-  }, [visible, normalizedInitial, presentKey]);
 
   const saveMut = useMutation({
     mutationFn: (png: string | null) =>
@@ -126,6 +114,8 @@ export function PrescriptionSignatureSheet({
     [finishExport],
   );
 
+  const busy = exporting || saveMut.isPending;
+
   const handleDeleteStored = () => {
     clearedRef.current = true;
     saveMut.mutate(null);
@@ -134,7 +124,6 @@ export function PrescriptionSignatureSheet({
   return (
     <SheetModal
       visible={visible}
-      presentKey={presentKey}
       onClose={onClose}
       title={pendingGenerate ? 'Signer l’ordonnance' : 'Modifier ma signature'}
       subtitle={
@@ -143,22 +132,21 @@ export function PrescriptionSignatureSheet({
           : 'Effacez, redessinez ou supprimez votre signature enregistrée'
       }
       disableScroll
-      stackBehavior="replace"
-      snapPoints={['72%']}
-      keyboardBehavior="fillParent"
+      // Le tracé dans la WebView ne doit pas tirer la sheet vers le bas : fermeture par « Annuler » uniquement.
+      dismissible={false}
       footer={
         <View style={styles.footer}>
           <Button
             title={pendingGenerate ? 'Enregistrer et continuer' : 'Enregistrer'}
-            loading={saveMut.isPending}
+            loading={busy}
             onPress={handleSave}
           />
+          <Button title="Annuler" variant="ghost" disabled={busy} onPress={onClose} />
         </View>
       }
     >
       <AppText style={styles.hint}>Signez dans la zone ci-dessous avec votre doigt ou un stylet.</AppText>
       <PrescriptionSignaturePad
-        key={presentKey}
         ref={padRef}
         initialPng={normalizedInitial}
         onExport={onExport}
@@ -197,7 +185,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       marginBottom: spacing[2],
       lineHeight: 20,
     },
-    footer: { paddingTop: spacing[2] },
+    footer: { gap: spacing[2] },
     actions: {
       marginTop: spacing[2],
       minWidth: 0,

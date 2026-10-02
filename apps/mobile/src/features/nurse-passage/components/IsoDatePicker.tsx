@@ -65,7 +65,6 @@ export function IsoDatePicker({
       setAndroidOpen(false);
       if (event.type === 'dismissed' || !selected) return;
       onChange(dayjs(selected).format('YYYY-MM-DD'));
-      setInlineOpen(false);
     },
     [onChange],
   );
@@ -141,9 +140,6 @@ export function IsoDatePicker({
           visible={iosOpen}
           onClose={() => setIosOpen(false)}
           title={label ?? 'Date'}
-          disableScroll
-          snapPoints={['42%']}
-          stackBehavior="push"
           footer={<Button title="Confirmer" onPress={confirmIos} />}
         >
           <DateTimePicker

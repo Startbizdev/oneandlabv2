@@ -6,6 +6,7 @@ import { SheetModal } from '@/components/ui/SheetModal';
 import { Row } from '@/components/layout/primitives';
 import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
+import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 
 export type TourCalendarImportScope = 'today' | 'all_upcoming';
 
@@ -50,27 +51,22 @@ export function TourCalendarImportSheet({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const dateLabel = dayjs(selectedDate).format('dddd D MMMM');
-
-  const handleSelect = (scope: TourCalendarImportScope) => {
-    onSelect(scope);
-    onClose();
-  };
+  const { closeThen, onDismissed } = useAfterSheetDismiss(onClose);
 
   return (
     <SheetModal
       visible={visible}
       onClose={onClose}
+      onDismissed={onDismissed}
       title="Ajouter au calendrier"
       subtitle="Choisissez quels rendez-vous importer dans votre calendrier"
-      enableSwipeToDismiss
-      dismissOnBackdropPress
     >
       <View style={styles.body}>
         {OPTIONS.map(({ id, title, subtitle, Icon }) => (
           <Pressable
             key={id}
             style={[styles.option, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}
-            onPress={() => handleSelect(id)}
+            onPress={() => closeThen(() => onSelect(id))}
             accessibilityRole="button"
           >
             <Row gap={spacing[3]} align="center">

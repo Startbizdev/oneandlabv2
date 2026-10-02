@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -22,17 +22,20 @@ import {
 
 const LOGO = require('../../../../assets/logo-cary.png');
 
+type WelcomeSheet = 'login' | 'register';
+
 export function WelcomeScreen() {
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { login } = useLocalSearchParams<{ login?: string }>();
-  const [loginOpen, setLoginOpen] = useState(login === '1');
-  const [registerOpen, setRegisterOpen] = useState(false);
+  const [sheet, setSheet] = useState<WelcomeSheet | null>(login === '1' ? 'login' : null);
   const [pendingEmail, setPendingEmail] = useState('');
+  /** Suite d'une fermeture demandée : sheet suivante ou navigation, lancée une fois la sheet native retirée. */
+  const afterSheetRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (login === '1') setLoginOpen(true);
+    if (login === '1') setSheet('login');
   }, [login]);
 
   const logoWidth = responsiveValue(layout, { compact: 132, default: 148, wide: 164 });
@@ -40,29 +43,35 @@ export function WelcomeScreen() {
   const illustrationSize = responsiveValue(layout, { compact: 200, default: 240, wide: 280 });
   const contentWidth = { width: '100%' as const, maxWidth: layout.contentMaxWidth };
 
-  function onLoginSuccess() {
-    setLoginOpen(false);
+  function closeSheet() {
+    afterSheetRef.current = null;
+    setSheet(null);
+  }
+
+  function closeSheetThen(next: () => void) {
+    afterSheetRef.current = next;
+    setSheet(null);
+  }
+
+  function runAfterSheet() {
+    const next = afterSheetRef.current;
+    afterSheetRef.current = null;
+    next?.();
+  }
+
+  function goHome() {
     const role = useAuthStore.getState().user?.role;
     if (role) router.replace(getRoleHome(role));
   }
 
-  function onEmailNotFound(email: string) {
-    setLoginOpen(false);
+  function openRegister(email = '') {
     setPendingEmail(email);
-    setRegisterOpen(true);
+    setSheet('register');
   }
 
   function onRegisterRole(role: RegisterRole) {
-    setRegisterOpen(false);
-    router.push({
-      pathname: `/(auth)/register/${role}`,
-      params: pendingEmail ? { email: pendingEmail } : {},
-    });
-  }
-
-  function openRegister() {
-    setPendingEmail('');
-    setRegisterOpen(true);
+    const params = pendingEmail ? { email: pendingEmail } : {};
+    closeSheetThen(() => router.push({ pathname: `/(auth)/register/${role}`, params }));
   }
 
   return (
@@ -97,9 +106,15 @@ export function WelcomeScreen() {
           </View>
 
           <View style={[styles.footer, contentWidth]}>
-            <Button title="Se connecter" size="lg" fullWidth onPress={() => setLoginOpen(true)} />
-            <BiometricLoginButton onSuccess={onLoginSuccess} />
-            <Button title="Créer un compte" variant="outline" size="lg" fullWidth onPress={openRegister} />
+            <Button title="Se connecter" size="lg" fullWidth onPress={() => setSheet('login')} />
+            <BiometricLoginButton onSuccess={goHome} />
+            <Button
+              title="Créer un compte"
+              variant="outline"
+              size="lg"
+              fullWidth
+              onPress={() => openRegister()}
+            />
             <View style={styles.legal}>
               <AppText variant="caption" style={styles.centered}>
                 En continuant, vous acceptez :
@@ -110,26 +125,23 @@ export function WelcomeScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* Connexion réussie : `useAuthGuard` ouvre l'accueil du rôle dès que la sheet est retirée. */}
       <LoginBottomSheet
-        visible={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onSuccess={onLoginSuccess}
-        onEmailNotFound={onEmailNotFound}
-        onRegisterPress={() => {
-          setLoginOpen(false);
-          openRegister();
-        }}
+        visible={sheet === 'login'}
+        onClose={closeSheet}
+        onDismissed={runAfterSheet}
+        onSuccess={closeSheet}
+        onEmailNotFound={(email) => closeSheetThen(() => openRegister(email))}
+        onRegisterPress={() => closeSheetThen(() => openRegister())}
       />
 
       <RegisterBottomSheet
-        visible={registerOpen}
-        onClose={() => setRegisterOpen(false)}
+        visible={sheet === 'register'}
+        onClose={closeSheet}
+        onDismissed={runAfterSheet}
         pendingEmail={pendingEmail}
         onSelectRole={onRegisterRole}
-        onLoginPress={() => {
-          setRegisterOpen(false);
-          setLoginOpen(true);
-        }}
+        onLoginPress={() => closeSheetThen(() => setSheet('login'))}
       />
     </View>
   );

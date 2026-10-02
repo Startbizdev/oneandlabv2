@@ -95,9 +95,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
       onClose={onClose}
       title="Fiche patient"
       subtitle="Modifier les informations du patient"
-      stackBehavior="push"
       snapPoints={['92%']}
-      keyboardBehavior="extend"
       footer={
         <Button title="Enregistrer" loading={saveMut.isPending} onPress={() => saveMut.mutate()} />
       }
@@ -141,7 +139,7 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    form: { gap: spacing[3], paddingBottom: spacing[24] },
+    form: { gap: spacing[3] },
     hint: {
       ...font.regular,
       fontSize: fontSize.xs,

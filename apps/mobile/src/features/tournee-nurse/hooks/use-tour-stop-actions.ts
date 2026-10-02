@@ -8,6 +8,7 @@ import { hasTourStopActions } from '../utils/tour-stop-action-availability';
 export function useTourStopActions(refetch: () => unknown) {
   const { show: showToast } = useToast();
   const [actionsStop, setActionsStop] = useState<NurseTourStop | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [rescheduleStop, setRescheduleStop] = useState<NurseTourStop | null>(null);
   const [absenceStop, setAbsenceStop] = useState<NurseTourStop | null>(null);
   const [liftingAbsence, setLiftingAbsence] = useState(false);
@@ -19,6 +20,7 @@ export function useTourStopActions(refetch: () => unknown) {
         return;
       }
       setActionsStop(stop);
+      setActionsOpen(true);
     },
     [showToast],
   );
@@ -31,7 +33,7 @@ export function useTourStopActions(refetch: () => unknown) {
       setLiftingAbsence(true);
       try {
         await deletePatientAbsence(patientId, absenceId);
-        setActionsStop(null);
+        setActionsOpen(false);
         showToast('Absence levée, patient de retour', { type: 'success' });
         void refetch();
       } catch (e) {
@@ -47,9 +49,10 @@ export function useTourStopActions(refetch: () => unknown) {
   return {
     openStopActions,
     actionsSheet: {
+      visible: actionsOpen,
       stop: actionsStop,
       liftingAbsence,
-      onClose: useCallback(() => setActionsStop(null), []),
+      onClose: useCallback(() => setActionsOpen(false), []),
       onReschedule: setRescheduleStop,
       onManageAbsence: setAbsenceStop,
       onLiftAbsence: (stop: NurseTourStop) => void liftAbsence(stop),

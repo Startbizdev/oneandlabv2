@@ -195,7 +195,6 @@ export function PrescriptionPatientSelectField({
       <CreatePatientModal
         visible={createOpen}
         onClose={() => setCreateOpen(false)}
-        stackBehavior="push"
         onCreated={handleCreated}
         onExistingPatient={handleExistingPatient}
       />

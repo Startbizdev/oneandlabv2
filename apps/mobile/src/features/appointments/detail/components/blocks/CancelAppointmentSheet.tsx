@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CalendarX2 } from 'lucide-react-native';
@@ -44,19 +44,8 @@ export function CancelAppointmentSheet({ visible, target, onDone, onClose }: Pro
   const { show: toast } = useToast();
   const qc = useQueryClient();
   const [staff, setStaff] = useState<StaffCancellationValues>(EMPTY_STAFF);
-  const [sheetVisible, setSheetVisible] = useState(false);
-  const pickingPhotoRef = useRef(false);
   const canSubmitStaff = staffCancellationCanSubmit(staff.reason, staff.comment);
   const targetLabel = patientDisplayName(target);
-
-  useEffect(() => {
-    if (visible) {
-      setSheetVisible(true);
-    } else {
-      setSheetVisible(false);
-      pickingPhotoRef.current = false;
-    }
-  }, [visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -76,32 +65,20 @@ export function CancelAppointmentSheet({ visible, target, onDone, onClose }: Pro
     });
   }
 
-  const handleSheetDismissed = useCallback(() => {
-    if (!pickingPhotoRef.current) return;
-    pickingPhotoRef.current = false;
-
-    void (async () => {
-      try {
-        const picked = await pickCarePhoto();
-        if (picked) {
-          patchStaff({
-            photoUri: picked.uri,
-            photoName: picked.fileName,
-            photoMimeType: picked.mimeType,
-          });
-        }
-      } catch (e) {
-        toast(carePhotoPickErrorMessage(e), { type: 'warning' });
-      } finally {
-        if (visible) setSheetVisible(true);
+  async function pickPhoto() {
+    try {
+      const picked = await pickCarePhoto();
+      if (picked) {
+        patchStaff({
+          photoUri: picked.uri,
+          photoName: picked.fileName,
+          photoMimeType: picked.mimeType,
+        });
       }
-    })();
-  }, [toast, visible]);
-
-  const beginPhotoPick = useCallback(() => {
-    pickingPhotoRef.current = true;
-    setSheetVisible(false);
-  }, []);
+    } catch (e) {
+      toast(carePhotoPickErrorMessage(e), { type: 'warning' });
+    }
+  }
 
   const mut = useMutation({
     mutationFn: () =>
@@ -141,10 +118,8 @@ export function CancelAppointmentSheet({ visible, target, onDone, onClose }: Pro
 
   return (
     <SheetModal
-      visible={sheetVisible}
-      presentKey={target.id}
+      visible={visible}
       onClose={onClose}
-      onDismissed={handleSheetDismissed}
       title="Annuler le rendez-vous"
       subtitle="Indiquez la raison avant de confirmer l’annulation."
       footer={footer}
@@ -185,7 +160,7 @@ export function CancelAppointmentSheet({ visible, target, onDone, onClose }: Pro
 
       <View style={styles.formSection}>
         <AppText style={styles.formTitle}>Motif d'annulation</AppText>
-        <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={beginPhotoPick} />
+        <StaffCancellationFields values={staff} onChange={patchStaff} onPickPhoto={() => void pickPhoto()} />
       </View>
     </SheetModal>
   );

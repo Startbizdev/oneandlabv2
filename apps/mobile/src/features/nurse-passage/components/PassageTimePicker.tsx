@@ -61,7 +61,6 @@ export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }
       setAndroidOpen(false);
       if (event.type === 'dismissed' || !selected) return;
       emitTime(selected);
-      setInlineOpen(false);
     },
     [emitTime],
   );
@@ -118,9 +117,6 @@ export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }
           visible={iosOpen}
           onClose={() => setIosOpen(false)}
           title={label}
-          disableScroll
-          snapPoints={['42%']}
-          stackBehavior="push"
           footer={<Button title="Confirmer" onPress={confirmIos} />}
         >
           <DateTimePicker

@@ -18,6 +18,8 @@ interface ConfirmSheetProps {
   loading?: boolean;
   onConfirm: () => void;
   onClose: () => void;
+  /** Sheet retirée : naviguer ou ouvrir une autre vue ici (`useAfterSheetDismiss`). */
+  onDismissed?: () => void;
 }
 
 /** Confirmation avant une action importante ou irréversible. */
@@ -32,6 +34,7 @@ export function ConfirmSheet({
   loading = false,
   onConfirm,
   onClose,
+  onDismissed,
 }: ConfirmSheetProps) {
   const styles = useStyles(buildStyles);
 
@@ -39,9 +42,9 @@ export function ConfirmSheet({
     <SheetModal
       visible={visible}
       onClose={onClose}
+      onDismissed={onDismissed}
       title={title}
-      dismissOnBackdropPress={!loading}
-      enableSwipeToDismiss={!loading}
+      dismissible={!loading}
       footer={
         <View style={styles.actions}>
           <Button

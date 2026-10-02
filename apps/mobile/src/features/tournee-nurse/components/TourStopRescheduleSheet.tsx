@@ -78,6 +78,7 @@ export function TourStopRescheduleSheet({ stop, visible, onClose, onConfirm }: P
       onClose={onClose}
       title="Modifier le créneau"
       subtitle={`${stop.patient_name} · ${dateLabel}`}
+      dismissible={!saving}
       footer={
         <Button
           title="Enregistrer le créneau"

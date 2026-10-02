@@ -34,6 +34,7 @@ export function PassageFormHealthRecordPanel({
   const userRole = useAuthStore((s) => s.user?.role);
   const showClinicalVitals = userRole === 'nurse' || userRole === 'pro';
   const [editSectionId, setEditSectionId] = useState<string | null>(null);
+  const [editSectionOpen, setEditSectionOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
 
   const recapQ = useQuery({
@@ -87,7 +88,10 @@ export function PassageFormHealthRecordPanel({
           <HealthRecordSectionRecap
             key={section.id}
             section={section}
-            onEdit={(sectionId) => setEditSectionId(sectionId)}
+            onEdit={(sectionId) => {
+              setEditSectionId(sectionId);
+              setEditSectionOpen(true);
+            }}
           />
         ))}
 
@@ -97,10 +101,10 @@ export function PassageFormHealthRecordPanel({
       </View>
 
       <PassageFormHealthRecordSectionSheet
-        visible={Boolean(editSectionId)}
+        visible={editSectionOpen}
         patientId={patientId}
         sectionId={editSectionId}
-        onClose={() => setEditSectionId(null)}
+        onClose={() => setEditSectionOpen(false)}
       />
 
       <StaffPatientEditSheet

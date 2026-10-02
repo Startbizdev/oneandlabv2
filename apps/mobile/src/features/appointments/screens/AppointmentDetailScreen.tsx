@@ -6,7 +6,7 @@ import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { useAuthStore } from '@/store/auth-store';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useAppActive } from '@/lib/hooks/use-app-active';
 import { focusedRefetchInterval } from '@/lib/focused-refetch-interval';
 import { prescriptionGenerationEnabled } from '@/features/prescriptions/utils/prescription-access';
@@ -69,6 +69,8 @@ export function AppointmentDetailScreen({ role }: Props) {
   }>();
   const id = idParam ?? '';
   const router = useRouter();
+  /** Quitte cette fiche même si la sheet d'annulation (route racine) est encore au premier plan, contrairement à `router.back()`. */
+  const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const focused = useIsFocused();
   const appActive = useAppActive();
@@ -349,7 +351,7 @@ export function AppointmentDetailScreen({ role }: Props) {
       <CancelAppointmentSheet
         visible={cancelOpen && !canceled}
         target={primary}
-        onDone={() => router.back()}
+        onDone={() => navigation.goBack()}
         onClose={() => setCancelOpen(false)}
       />
     </>

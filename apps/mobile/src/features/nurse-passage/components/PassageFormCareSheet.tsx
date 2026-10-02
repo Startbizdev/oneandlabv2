@@ -70,7 +70,6 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
       <PassageCareSection
         items={draft}
         onChange={setDraft}
-        sheetOpen={visible}
         onUiPhaseChange={handleUiPhaseChange}
       />
     </SheetModal>

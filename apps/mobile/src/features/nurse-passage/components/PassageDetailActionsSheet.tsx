@@ -13,6 +13,7 @@ import {
   DetailActionList,
   type DetailActionItem,
 } from '@/features/appointments/detail/components/layout/DetailActionList';
+import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 
 type Props = {
   visible: boolean;
@@ -59,6 +60,8 @@ export function PassageDetailActionsSheet({
   onDeleteOne,
   onDeleteSeries,
 }: Props) {
+  const { closeThen, onDismissed } = useAfterSheetDismiss(onClose);
+
   const actions = useMemo(() => {
     const items: DetailActionItem[] = [];
 
@@ -71,10 +74,7 @@ export function PassageDetailActionsSheet({
         loading: enRouteLoading,
         disabled: enRouteLoading || markDoneLoading,
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onEnRoute();
-        },
+        onPress: () => closeThen(onEnRoute),
       });
       items.push({
         key: 'mark_done',
@@ -84,10 +84,7 @@ export function PassageDetailActionsSheet({
         loading: markDoneLoading,
         disabled: enRouteLoading || markDoneLoading,
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onMarkDone();
-        },
+        onPress: () => closeThen(onMarkDone),
       });
     }
 
@@ -100,10 +97,7 @@ export function PassageDetailActionsSheet({
         loading: materializeLoading,
         disabled: materializeLoading,
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onMaterialize();
-        },
+        onPress: () => closeThen(onMaterialize),
       });
     }
 
@@ -112,12 +106,9 @@ export function PassageDetailActionsSheet({
         key: 'absence',
         label: isPatientAbsent ? 'Modifier l\'absence du patient' : 'Déclarer une absence',
         icon: UserX,
-        tone: isPatientAbsent ? 'neutral' : 'neutral',
+        tone: 'neutral',
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onManageAbsence();
-        },
+        onPress: () => closeThen(onManageAbsence),
       });
     }
 
@@ -127,10 +118,7 @@ export function PassageDetailActionsSheet({
       icon: FileText,
       tone: 'neutral',
       showChevron: false,
-      onPress: () => {
-        onClose();
-        onOpenFullAppointment();
-      },
+      onPress: () => closeThen(onOpenFullAppointment),
     });
 
     if (showDeleteOne) {
@@ -142,10 +130,7 @@ export function PassageDetailActionsSheet({
         loading: deleteOneLoading,
         disabled: deleteOneLoading || deleteSeriesLoading,
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onDeleteOne();
-        },
+        onPress: () => closeThen(onDeleteOne),
       });
     }
 
@@ -158,22 +143,19 @@ export function PassageDetailActionsSheet({
         loading: deleteSeriesLoading,
         disabled: deleteOneLoading || deleteSeriesLoading,
         showChevron: false,
-        onPress: () => {
-          onClose();
-          onDeleteSeries();
-        },
+        onPress: () => closeThen(onDeleteSeries),
       });
     }
 
     return items;
   }, [
+    closeThen,
     deleteOneLoading,
     deleteSeriesLoading,
     enRouteLoading,
     hasStop,
     markDoneLoading,
     materializeLoading,
-    onClose,
     onDeleteOne,
     onDeleteSeries,
     onEnRoute,
@@ -189,12 +171,7 @@ export function PassageDetailActionsSheet({
   ]);
 
   return (
-    <SheetModal
-      visible={visible}
-      onClose={onClose}
-      title="Actions"
-      disableScroll
-    >
+    <SheetModal visible={visible} onClose={onClose} onDismissed={onDismissed} title="Actions">
       <DetailActionList actions={actions} />
     </SheetModal>
   );

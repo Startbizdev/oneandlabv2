@@ -126,7 +126,6 @@ export function PrescriptionAppointmentSelectSheet({
       onClose={handleClose}
       title="Choisir un rendez-vous"
       subtitle={countLabel}
-      stackBehavior="push"
       disableScroll
       contentStyle={styles.body}
     >
@@ -140,23 +139,23 @@ export function PrescriptionAppointmentSelectSheet({
         />
       </View>
 
-      {initialLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={c.primary} />
-          <AppText style={styles.centeredText}>Chargement…</AppText>
-        </View>
-      ) : resolvedTotal === 0 && !query.trim() ? (
-        <AppText style={styles.empty}>
-          Aucun rendez-vous pour ce patient. Créez-en un ou passez en mode « Sans RDV ».
-        </AppText>
-      ) : filteredRows.length === 0 ? (
-        <AppText style={styles.empty}>
-          {query.trim()
-            ? `Aucun résultat pour « ${query.trim()} ».`
-            : 'Aucun rendez-vous chargé.'}
-        </AppText>
-      ) : (
-        <View style={styles.listPanel}>
+      <View style={styles.listPanel}>
+        {initialLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator color={c.primary} />
+            <AppText style={styles.centeredText}>Chargement…</AppText>
+          </View>
+        ) : resolvedTotal === 0 && !query.trim() ? (
+          <AppText style={styles.empty}>
+            Aucun rendez-vous pour ce patient. Créez-en un ou passez en mode « Sans RDV ».
+          </AppText>
+        ) : filteredRows.length === 0 ? (
+          <AppText style={styles.empty}>
+            {query.trim()
+              ? `Aucun résultat pour « ${query.trim()} ».`
+              : 'Aucun rendez-vous chargé.'}
+          </AppText>
+        ) : (
           <FlashList
             data={filteredRows}
             extraData={selectedId}
@@ -172,8 +171,8 @@ export function PrescriptionAppointmentSelectSheet({
             nestedScrollEnabled
             ListFooterComponent={listFooter}
           />
-        </View>
-      )}
+        )}
+      </View>
     </SheetModal>
   );
 }
@@ -193,8 +192,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       minWidth: 0,
       padding: 0,
       gap: 0,
-      paddingBottom: spacing[2],
-      flexGrow: 1,
     },
     searchWrap: {
       paddingHorizontal: H_PAD,

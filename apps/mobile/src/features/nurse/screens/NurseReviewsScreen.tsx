@@ -154,7 +154,6 @@ export function NurseReviewsScreen() {
         draft={replyDraft}
         onChangeDraft={setReplyDraft}
         onClose={() => {
-          if (respond.isPending) return;
           setReplyTarget(null);
           setReplyDraft('');
         }}

@@ -192,91 +192,93 @@ export function PatientAbsenceSheet({
   }));
 
   return (
-    <SheetModal
-      visible={visible}
-      onClose={onClose}
-      title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
-      snapPoints={['92%']}
-    >
-      <View style={styles.body}>
-        <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
+    <>
+      <SheetModal
+        visible={visible}
+        onClose={onClose}
+        title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
+        snapPoints={['92%']}
+      >
+        <View style={styles.body}>
+          <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
 
-        {tab === 'declare' ? (
-          <View style={styles.tabBody}>
-            <AppText variant="secondary">
-              Le passage reste sur la tournée, grisé jusqu’à la date de fin.
-            </AppText>
+          {tab === 'declare' ? (
+            <View style={styles.tabBody}>
+              <AppText variant="secondary">
+                Le passage reste sur la tournée, grisé jusqu’à la date de fin.
+              </AppText>
 
-            <SelectField
-              label="Motif"
-              value={absenceType}
-              options={ABSENCE_TYPE_OPTIONS}
-              onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
-            />
+              <SelectField
+                label="Motif"
+                value={absenceType}
+                options={ABSENCE_TYPE_OPTIONS}
+                onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
+              />
 
-            <IsoDatePicker label="Du" value={startDate} onChange={setStartDate} />
-            <IsoDatePicker
-              label="Au"
-              value={endDate}
-              onChange={setEndDate}
-              minimumDate={new Date(`${startDate}T12:00:00`)}
-            />
+              <IsoDatePicker label="Du" value={startDate} onChange={setStartDate} />
+              <IsoDatePicker
+                label="Au"
+                value={endDate}
+                onChange={setEndDate}
+                minimumDate={new Date(`${startDate}T12:00:00`)}
+              />
 
-            <Input
-              label="Précision (optionnel)"
-              value={note}
-              onChangeText={setNote}
-              placeholder="Ex. CHU, chez la famille…"
-              multiline
-            />
+              <Input
+                label="Précision (optionnel)"
+                value={note}
+                onChangeText={setNote}
+                placeholder="Ex. CHU, chez la famille…"
+                multiline
+              />
 
-            <Button
-              title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
-              onPress={() => saveMut.mutate()}
-              loading={saveMut.isPending}
-              disabled={deleteMut.isPending}
-              fullWidth
-            />
+              <Button
+                title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
+                onPress={() => saveMut.mutate()}
+                loading={saveMut.isPending}
+                disabled={deleteMut.isPending}
+                fullWidth
+              />
 
-            {isEditing ? (
-              <>
-                <Button
-                  title="Patient de retour"
-                  variant="dangerOutline"
-                  onPress={() => setConfirmLiftOpen(true)}
-                  disabled={saveMut.isPending}
-                  fullWidth
+              {isEditing ? (
+                <>
+                  <Button
+                    title="Patient de retour"
+                    variant="dangerOutline"
+                    onPress={() => setConfirmLiftOpen(true)}
+                    disabled={saveMut.isPending}
+                    fullWidth
+                  />
+                  <Button title="Nouvelle absence" variant="ghost" onPress={resetFormForNew} fullWidth />
+                </>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.tabBody}>
+              {historyQ.isLoading ? (
+                <SkeletonList count={4} />
+              ) : historyQ.isError ? (
+                <ErrorState
+                  title="Historique indisponible"
+                  error={historyQ.error}
+                  onRetry={() => void historyQ.refetch()}
                 />
-                <Button title="Nouvelle absence" variant="ghost" onPress={resetFormForNew} fullWidth />
-              </>
-            ) : null}
-          </View>
-        ) : (
-          <View style={styles.tabBody}>
-            {historyQ.isLoading ? (
-              <SkeletonList count={4} />
-            ) : historyQ.isError ? (
-              <ErrorState
-                title="Historique indisponible"
-                error={historyQ.error}
-                onRetry={() => void historyQ.refetch()}
-              />
-            ) : history.length === 0 ? (
-              <EmptyState
-                title="Aucune absence"
-                Icon={History}
-                actionLabel="Déclarer une absence"
-                onAction={() => {
-                  resetFormForNew();
-                  setTab('declare');
-                }}
-              />
-            ) : (
-              <SettingsSection items={historyRows} />
-            )}
-          </View>
-        )}
-      </View>
+              ) : history.length === 0 ? (
+                <EmptyState
+                  title="Aucune absence"
+                  Icon={History}
+                  actionLabel="Déclarer une absence"
+                  onAction={() => {
+                    resetFormForNew();
+                    setTab('declare');
+                  }}
+                />
+              ) : (
+                <SettingsSection items={historyRows} />
+              )}
+            </View>
+          )}
+        </View>
+      </SheetModal>
 
       <ConfirmSheet
         visible={confirmLiftOpen}
@@ -288,7 +290,7 @@ export function PatientAbsenceSheet({
         onConfirm={() => deleteMut.mutate()}
         onClose={() => setConfirmLiftOpen(false)}
       />
-    </SheetModal>
+    </>
   );
 }
 

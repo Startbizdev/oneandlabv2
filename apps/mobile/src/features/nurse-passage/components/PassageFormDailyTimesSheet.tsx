@@ -53,7 +53,6 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
       onClose={onClose}
       title="Créneaux de passage"
       subtitle="Choisissez les moments à créer chaque jour (ex. matin + midi)."
-      snapPoints={['42%']}
       footer={
         <Button
           title="Valider"

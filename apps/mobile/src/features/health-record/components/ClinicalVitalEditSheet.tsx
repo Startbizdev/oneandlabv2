@@ -28,7 +28,6 @@ type Props = {
   reading?: ClinicalVitalReading | null;
   initialType?: ClinicalVitalType | null;
   context?: ClinicalVitalContext;
-  stackBehavior?: 'push' | 'switch' | 'replace';
   onClose: () => void;
 };
 
@@ -38,7 +37,6 @@ export function ClinicalVitalEditSheet({
   reading,
   initialType,
   context,
-  stackBehavior = 'switch',
   onClose,
 }: Props) {
   const styles = useStyles(buildStyles);
@@ -120,19 +118,11 @@ export function ClinicalVitalEditSheet({
 
   const title = isEdit ? `Modifier · ${config?.label_fr ?? 'Constante'}` : 'Nouvelle mesure';
 
-  const snapPoints = useMemo(() => {
-    if (config?.has_secondary) return ['90%'];
-    if (!isEdit) return ['80%'];
-    return ['72%'];
-  }, [config?.has_secondary, isEdit]);
-
   return (
     <SheetModal
       visible={visible}
       onClose={onClose}
       title={title}
-      snapPoints={snapPoints}
-      stackBehavior={stackBehavior}
       footer={
         confirmDelete ? (
           <Stack gap={spacing[2]}>

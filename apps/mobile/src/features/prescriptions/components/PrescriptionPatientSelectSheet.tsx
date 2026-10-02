@@ -142,7 +142,6 @@ export function PrescriptionPatientSelectSheet({
       subtitle={countLabel}
       contentStyle={styles.sheetBody}
       disableScroll
-      stackBehavior="push"
     >
       <View style={styles.searchWrap}>
         <Input
@@ -154,16 +153,16 @@ export function PrescriptionPatientSelectSheet({
         />
       </View>
 
-      {initialLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={c.primary} />
-        </View>
-      ) : filtered.length === 0 ? (
-        <AppText style={styles.empty}>
-          {query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucun patient'}
-        </AppText>
-      ) : (
-        <View style={styles.listPanel}>
+      <View style={styles.listPanel}>
+        {initialLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={c.primary} />
+          </View>
+        ) : filtered.length === 0 ? (
+          <AppText style={styles.empty}>
+            {query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucun patient'}
+          </AppText>
+        ) : (
           <FlashList
             data={filtered}
             keyExtractor={(item) => item.id}
@@ -175,10 +174,11 @@ export function PrescriptionPatientSelectSheet({
               if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
             }}
             onEndReachedThreshold={0.4}
+            nestedScrollEnabled
             ListFooterComponent={footer}
           />
-        </View>
-      )}
+        )}
+      </View>
     </SheetModal>
   );
 }
@@ -198,8 +198,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       minWidth: 0,
       padding: 0,
       gap: 0,
-      paddingBottom: spacing[2],
-      flexGrow: 1,
     },
     searchWrap: {
       paddingHorizontal: H_PAD,

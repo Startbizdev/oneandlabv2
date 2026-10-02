@@ -10,6 +10,8 @@ interface Props {
   onSuccess: () => void;
   onEmailNotFound?: (email: string) => void;
   onRegisterPress?: () => void;
+  /** Sheet retirée après `visible={false}`. */
+  onDismissed?: () => void;
 }
 
 const INITIAL_META: LoginFlowMeta = { step: 'email', email: '' };
@@ -37,6 +39,7 @@ export function LoginBottomSheet({
   onSuccess,
   onEmailNotFound,
   onRegisterPress,
+  onDismissed,
 }: Props) {
   const styles = useStyles(buildStyles);
   const [meta, setMeta] = useState<LoginFlowMeta>(INITIAL_META);
@@ -46,12 +49,18 @@ export function LoginBottomSheet({
     onClose();
   }
 
+  function handleDismissed() {
+    setMeta(INITIAL_META);
+    onDismissed?.();
+  }
+
   const showRegister = onRegisterPress && meta.step === 'email';
 
   return (
     <SheetModal
       visible={visible}
       onClose={handleClose}
+      onDismissed={handleDismissed}
       title={sheetTitle(meta)}
       subtitle={sheetSubtitle(meta)}
     >

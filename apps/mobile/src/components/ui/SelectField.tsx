@@ -113,7 +113,6 @@ export function SelectField({
           visible={open}
           onClose={() => setOpen(false)}
           title={sheetTitle ?? label}
-          stackBehavior="push"
         >
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {optionItems}

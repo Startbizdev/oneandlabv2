@@ -94,16 +94,29 @@ export function staffPatientHref(
   }
 }
 
-export function pharmacyOrdersListHref(prefix: StaffRoutePrefix): Href {
-  return prefix === '/(pro)' ? '/(pro)/commandes-pharmacie' : '/(nurse)/commandes-pharmacie';
+/** Commandes envoyées (soignant) ou traitements (patient). */
+export function pharmacyOrdersListHref(prefix: StaffRoutePrefix | '/(patient)'): Href {
+  switch (prefix) {
+    case '/(nurse)':
+      return '/(nurse)/commandes-pharmacie';
+    case '/(pro)':
+      return '/(pro)/commandes-pharmacie';
+    case '/(patient)':
+      return '/(patient)/traitements';
+  }
 }
 
-/** Nouvelle commande pharmacie, patient présélectionné si fourni. */
-export function pharmacyOrderNewHref(prefix: StaffRoutePrefix, patientId?: string): Href {
+/** Nouvelle commande pharmacie : patient présélectionné si fourni (soignant), le patient commande pour lui. */
+export function pharmacyOrderNewHref(prefix: StaffRoutePrefix | '/(patient)', patientId?: string): Href {
   const params: RouteParams = patientId ? { patientId } : {};
-  return prefix === '/(pro)'
-    ? { pathname: '/(pro)/commandes-pharmacie/new', params }
-    : { pathname: '/(nurse)/commandes-pharmacie/new', params };
+  switch (prefix) {
+    case '/(nurse)':
+      return { pathname: '/(nurse)/commandes-pharmacie/new', params };
+    case '/(pro)':
+      return { pathname: '/(pro)/commandes-pharmacie/new', params };
+    case '/(patient)':
+      return '/(patient)/traitements/new';
+  }
 }
 
 /** Commande envoyée (soignant) ou traitement (patient). */

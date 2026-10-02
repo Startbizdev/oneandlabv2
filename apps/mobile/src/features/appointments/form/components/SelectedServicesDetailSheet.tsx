@@ -51,7 +51,6 @@ export function SelectedServicesDetailSheet({
   return (
     <SheetModal
       visible={visible}
-      presentKey={selectedServices.map((s) => s.id).join(',') || 'empty'}
       onClose={onClose}
       onBack={onClose}
       title={selectionModalTitle(selectedServices.length)}

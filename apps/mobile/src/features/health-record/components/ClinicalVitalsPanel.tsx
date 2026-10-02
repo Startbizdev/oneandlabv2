@@ -99,7 +99,6 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   const [historyType, setHistoryType] = useState<ClinicalVitalType | null>(null);
   const [editReading, setEditReading] = useState<ClinicalVitalReading | null>(null);
   const [addType, setAddType] = useState<ClinicalVitalType | null>(null);
-  const [editStackPush, setEditStackPush] = useState(false);
 
   const vitalsQ = useQuery({
     queryKey: clinicalVitalsQueryKey(patientId),
@@ -109,10 +108,9 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
 
   const latest = vitalsQ.data?.latest_by_type ?? {};
 
-  const openAdd = (type?: ClinicalVitalType, fromHistory = false) => {
+  const openAdd = (type?: ClinicalVitalType) => {
     setEditReading(null);
     setAddType(type ?? null);
-    setEditStackPush(fromHistory);
     setSheetOpen(true);
   };
 
@@ -121,10 +119,9 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
     setHistoryOpen(true);
   };
 
-  const openEdit = (reading: ClinicalVitalReading, fromHistory = false) => {
+  const openEdit = (reading: ClinicalVitalReading) => {
     setEditReading(reading);
     setAddType(null);
-    setEditStackPush(fromHistory);
     setSheetOpen(true);
   };
 
@@ -132,7 +129,6 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
     setSheetOpen(false);
     setEditReading(null);
     setAddType(null);
-    setEditStackPush(false);
   };
 
   const closeHistory = () => {
@@ -187,8 +183,8 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
         patientId={patientId}
         vitalType={historyType}
         onClose={closeHistory}
-        onAdd={(type) => openAdd(type, true)}
-        onEdit={(reading) => openEdit(reading, true)}
+        onAdd={openAdd}
+        onEdit={openEdit}
       />
 
       <ClinicalVitalEditSheet
@@ -197,7 +193,6 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
         reading={editReading}
         initialType={addType}
         context={context}
-        stackBehavior={editStackPush ? 'push' : 'switch'}
         onClose={closeSheet}
       />
     </View>
