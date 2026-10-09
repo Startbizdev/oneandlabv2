@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../../lib/Crypto.php';
+require_once __DIR__ . '/../../lib/DbSchemaCache.php';
 require_once __DIR__ . '/PharmacyModuleConfig.php';
 
 /**
@@ -20,10 +21,62 @@ final class PharmacyCatalogService
     /**
      * @return list<array<string, mixed>>
      */
+    /**
+     * Pharmacies dont ce patient est le patient (créateur ou lien professionnel), si ce sont des comptes pharmacie.
+     *
+     * @return list<string>
+     */
+    public function pharmacyIdsLinkedToPatient(string $patientId): array
+    {
+        $patientId = trim($patientId);
+        if ($patientId === '') {
+            return [];
+        }
+
+        $candidates = [];
+        $created = $this->db->prepare('SELECT created_by FROM profiles WHERE id = ? AND role = ? LIMIT 1');
+        $created->execute([$patientId, 'patient']);
+        $createdBy = $created->fetchColumn();
+        if (is_string($createdBy) && $createdBy !== '') {
+            $candidates[] = $createdBy;
+        }
+        if (DbSchemaCache::tableExists($this->db, 'patient_professional_access')) {
+            $links = $this->db->prepare('SELECT professional_id FROM patient_professional_access WHERE patient_id = ?');
+            $links->execute([$patientId]);
+            foreach ($links->fetchAll(PDO::FETCH_COLUMN) ?: [] as $professionalId) {
+                if (is_string($professionalId) && $professionalId !== '') {
+                    $candidates[] = $professionalId;
+                }
+            }
+        }
+        $candidates = array_values(array_unique($candidates));
+        if ($candidates === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
+        $profiles = $this->db->prepare("SELECT id, role, emploi FROM profiles WHERE id IN ($placeholders)");
+        $profiles->execute($candidates);
+        $config = $this->moduleConfig->getConfig();
+        $ids = [];
+        foreach ($profiles->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            if (PharmacyModuleConfig::isPharmacyAccount($row, $config)) {
+                $ids[] = (string) $row['id'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param list<string> $patientPharmacyIds
+     * @return list<array<string, mixed>>
+     */
     public function listPharmacies(
         ?string $postalCode = null,
         ?string $fulfillmentMode = null,
         ?string $favoriteUserId = null,
+        array $patientPharmacyIds = [],
     ): array {
         $config = $this->moduleConfig->getConfig();
         $receiverEmplois = $config['pharmacy_receiver_emplois'] ?? ['Pharmacien'];
@@ -60,13 +113,15 @@ final class PharmacyCatalogService
         $items = [];
         foreach ($rows as $row) {
             $item = $this->mapPharmacyRow($row);
+            $isPatientPharmacy = in_array($item['id'], $patientPharmacyIds, true);
+            $item['is_patient_pharmacy'] = $isPatientPharmacy;
             if ($fulfillmentMode === 'click_collect' && empty($item['accepts_click_collect'])) {
                 continue;
             }
             if ($fulfillmentMode === 'home_delivery' && empty($item['accepts_home_delivery'])) {
                 continue;
             }
-            if ($postalCode !== null && $postalCode !== '') {
+            if (!$isPatientPharmacy && $postalCode !== null && $postalCode !== '') {
                 $pc = (string) ($item['postal_code'] ?? '');
                 if ($pc !== '' && !str_starts_with($pc, substr($postalCode, 0, 2))) {
                     continue;
@@ -77,6 +132,11 @@ final class PharmacyCatalogService
         }
 
         usort($items, static function (array $a, array $b): int {
+            $pa = !empty($a['is_patient_pharmacy']) ? 0 : 1;
+            $pb = !empty($b['is_patient_pharmacy']) ? 0 : 1;
+            if ($pa !== $pb) {
+                return $pa <=> $pb;
+            }
             $fa = !empty($a['is_favorite']) ? 0 : 1;
             $fb = !empty($b['is_favorite']) ? 0 : 1;
             if ($fa !== $fb) {

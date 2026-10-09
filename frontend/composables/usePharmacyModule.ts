@@ -174,12 +174,19 @@ export function usePharmacyModule() {
     return res.data;
   }
 
-  async function fetchPharmacies(postalCode?: string, fulfillmentMode?: string): Promise<PharmacyCatalogItem[]> {
+  async function fetchPharmacies(
+    postalCode?: string,
+    fulfillmentMode?: string,
+    patientId?: string,
+  ): Promise<Array<PharmacyCatalogItem & { is_patient_pharmacy?: boolean }>> {
     const params = new URLSearchParams();
     if (postalCode?.trim()) params.set('postal_code', postalCode.trim());
     if (fulfillmentMode) params.set('fulfillment_mode', fulfillmentMode);
+    if (patientId?.trim()) params.set('patient_id', patientId.trim());
     const qs = params.toString();
-    const res = (await apiFetch(`/pharmacies${qs ? `?${qs}` : ''}`, { method: 'GET' })) as ApiResponse<PharmacyCatalogItem[]>;
+    const res = (await apiFetch(`/pharmacies${qs ? `?${qs}` : ''}`, { method: 'GET' })) as ApiResponse<
+      Array<PharmacyCatalogItem & { is_patient_pharmacy?: boolean }>
+    >;
     if (!res?.success || !Array.isArray(res.data)) {
       throw new Error(res?.error || 'Catalogue pharmacie indisponible');
     }

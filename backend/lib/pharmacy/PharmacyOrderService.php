@@ -66,7 +66,7 @@ final class PharmacyOrderService
         $patientId = trim((string) ($input['patient_id'] ?? ''));
         $pharmacyId = trim((string) ($input['pharmacy_id'] ?? ''));
         $uid = (string) ($user['user_id'] ?? '');
-        if (PharmacyModuleConfig::isPharmacyAccount($user, $config)) {
+        if ($pharmacyId === '' && PharmacyModuleConfig::isPharmacyAccount($user, $config)) {
             $pharmacyId = $uid;
         }
         if ($patientId === '' || $pharmacyId === '') {

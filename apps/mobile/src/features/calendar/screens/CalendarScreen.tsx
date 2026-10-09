@@ -18,7 +18,7 @@ import { appointmentCalendarDayKey } from '@/utils/appointment-calendar-day-key'
 import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -209,6 +209,7 @@ export function CalendarScreen({
     [goNextMonth, goPrevMonth],
   );
 
+  const fabClearance = useScreenFabScrollClearance();
   const selectedLabel = capitalizeFrench(dayjs(selectedDay).format('dddd D MMMM'));
   const countLabel =
     dayDisplayRows.length === 0
@@ -217,25 +218,29 @@ export function CalendarScreen({
 
   return (
     <View style={styles.container} accessibilityLabel={title}>
+      <View style={styles.filterHost}>
+        <AppointmentsListFilterBar
+          embedded
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={nurseCalendar ? 'Nom, téléphone, adresse…' : 'Patient, soin…'}
+          onOpenFilters={() => setFilterSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
+      </View>
       <ScrollView
         style={styles.scroll}
         collapsable={false}
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={Platform.OS === 'android'}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          nurseCalendar ? { paddingBottom: spacing[4] + fabClearance } : null,
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
       >
-        <AppointmentsListFilterBar
-          embedded
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Patient, soin…"
-          onOpenFilters={() => setFilterSheetOpen(true)}
-          advancedFilterCount={advancedCount}
-          chips={filterChips}
-        />
-
         <GestureDetector gesture={monthSwipeGesture}>
           <View style={styles.calendarSwipeArea}>
             <Row justify="between" align="center">
@@ -311,6 +316,9 @@ export function CalendarScreen({
           {countLabel && !listQ.isPending && !listQ.isError ? (
             <AppText variant="secondary">{countLabel}</AppText>
           ) : null}
+          {!listQ.isPending && !listQ.isError && dayDisplayRows.length === 0 ? (
+            <AppText variant="secondary">Aucun rendez-vous ce jour</AppText>
+          ) : null}
         </View>
 
         {listQ.isPending ? (
@@ -323,9 +331,7 @@ export function CalendarScreen({
               void listQ.refetch();
             }}
           />
-        ) : dayDisplayRows.length === 0 ? (
-          <EmptyState illustration="calendar" title="Aucun rendez-vous ce jour" />
-        ) : (
+        ) : dayDisplayRows.length === 0 ? null : (
           <View style={styles.dayList}>
             {dayDisplayRows.map((row, index) => (
               <AppointmentListRowCard
@@ -360,6 +366,11 @@ export function CalendarScreen({
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
     container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    filterHost: {
+      alignSelf: 'stretch' as const,
+      width: '100%' as const,
+      paddingHorizontal: spacing[4],
+    },
     scroll: { minWidth: 0, flex: 1 },
     content: {
       paddingHorizontal: spacing[4],

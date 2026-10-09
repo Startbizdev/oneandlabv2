@@ -49,13 +49,10 @@
 
     <UCard class="ring-1 ring-default/60">
       <template #header>
-        <h2 class="text-base font-medium">{{ isOwnPharmacy ? '2. Mode de retrait' : '2. Pharmacie et mode' }}</h2>
+        <h2 class="text-base font-medium">2. Pharmacie et mode</h2>
       </template>
-      <p v-if="isOwnPharmacy" class="mb-4 rounded-lg border border-default/60 bg-muted/30 px-3 py-2.5 text-sm">
-        Cette commande sera préparée par <span class="font-medium">votre pharmacie</span>.
-      </p>
       <div class="grid gap-4 sm:grid-cols-2">
-        <UFormField v-if="!isOwnPharmacy" label="Code postal (filtre)" name="postal">
+        <UFormField label="Code postal (filtre)" name="postal">
           <UInput v-model="postalCode" placeholder="Ex. 75001" @blur="loadPharmacies" />
         </UFormField>
         <UFormField label="Mode de retrait" name="mode">
@@ -68,32 +65,40 @@
           />
         </UFormField>
       </div>
-      <template v-if="!isOwnPharmacy">
-        <div v-if="pharmaciesLoading" class="mt-3 flex justify-center py-4">
-          <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary" />
+      <div v-if="pharmaciesLoading" class="mt-3 flex justify-center py-4">
+        <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary" />
+      </div>
+      <UFormField v-else label="Pharmacie" name="pharmacy" class="mt-3">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <USelect
+            v-model="pharmacyId"
+            :items="visiblePharmacyOptions"
+            value-key="value"
+            placeholder="Choisir une pharmacie…"
+            class="min-w-0 flex-1"
+          />
+          <UButton
+            type="button"
+            color="neutral"
+            variant="outline"
+            icon="i-lucide-store"
+            :disabled="!pharmacyId"
+            @click="openPharmacyProfile"
+          >
+            Voir la fiche
+          </UButton>
         </div>
-        <UFormField v-else label="Pharmacie" name="pharmacy" class="mt-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <USelect
-              v-model="pharmacyId"
-              :items="pharmacyOptions"
-              value-key="value"
-              placeholder="Choisir une pharmacie…"
-              class="min-w-0 flex-1"
-            />
-            <UButton
-              type="button"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-store"
-              :disabled="!pharmacyId"
-              @click="profileOpen = true"
-            >
-              Voir la fiche
-            </UButton>
-          </div>
-        </UFormField>
-      </template>
+        <UButton
+          v-if="otherPharmacyCount > 0 && !showOtherPharmacies"
+          type="button"
+          class="mt-3"
+          color="neutral"
+          variant="outline"
+          @click="revealOtherPharmacies"
+        >
+          Voir les autres pharmacies
+        </UButton>
+      </UFormField>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <UFormField label="Date souhaitée" name="desired_date" required>
           <UInput v-model="desiredDate" type="date" :min="todayIso" :max="maximumDateIso" />
@@ -212,6 +217,11 @@ import {
   isMedicalDocumentTooLarge,
   medicalDocumentFormatError,
 } from '~/utils/medical-document-upload';
+import {
+  splitPharmacyCatalog,
+  withOwnPharmacyOption,
+  type PharmacyCatalogRow,
+} from '~/utils/pharmacy-catalog-priority';
 
 const props = withDefaults(
   defineProps<{
@@ -242,7 +252,8 @@ const postalCode = ref('');
 const fulfillmentMode = ref<PharmacyFulfillmentMode>('click_collect');
 const pharmacyId = ref('');
 const pharmaciesLoading = ref(false);
-const pharmacyOptions = ref<{ label: string; value: string }[]>([]);
+const pharmacyCatalog = ref<PharmacyCatalogRow[]>([]);
+const showOtherPharmacies = ref(false);
 const profileOpen = ref(false);
 const selfRelativeId = ref('');
 const selfRelatives = ref<Array<{ id: string; first_name?: string; last_name?: string }>>([]);
@@ -294,12 +305,14 @@ function selfUserId(): string {
 watch(selectedPatientId, (id) => {
   selectedDocIds.value = [];
   pendingFiles.value = [];
+  showOtherPharmacies.value = false;
   if (id) void loadDocuments(id);
   else ordonnanceOptions.value = [];
+  void loadPharmacies();
 });
 
 watch(fulfillmentMode, () => {
-  if (!isOwnPharmacy.value) void loadPharmacies();
+  void loadPharmacies();
 });
 
 watch(
@@ -309,6 +322,33 @@ watch(
   },
   { immediate: true },
 );
+
+const pharmacySplit = computed(() => {
+  const ownId = isOwnPharmacy.value ? selfUserId() : '';
+  return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalog.value, ownId), ownId);
+});
+
+const visiblePharmacyOptions = computed(() => {
+  const rows = pharmacySplit.value.preferred.length > 0 && !showOtherPharmacies.value
+    ? pharmacySplit.value.preferred
+    : [...pharmacySplit.value.preferred, ...pharmacySplit.value.others];
+  return rows.map((pharmacy) => ({
+    value: pharmacy.id,
+    label: `${pharmacy.display_name}${pharmacy.postal_code ? ` (${pharmacy.postal_code})` : ''}${pharmacy.is_favorite ? ' ★' : ''}`,
+  }));
+});
+
+const otherPharmacyCount = computed(() => (
+  pharmacySplit.value.preferred.length > 0 ? pharmacySplit.value.others.length : 0
+));
+
+function openPharmacyProfile() {
+  profileOpen.value = true;
+}
+
+function revealOtherPharmacies() {
+  showOtherPharmacies.value = true;
+}
 
 function patientLabel(item: StaffHubPatientItem): string {
   return `${item.first_name} ${item.last_name}`.trim();
@@ -407,19 +447,29 @@ async function loadPatients() {
 }
 
 async function loadPharmacies() {
-  if (isOwnPharmacy.value) return;
   pharmaciesLoading.value = true;
   try {
-    const items = await fetchPharmacies(postalCode.value, fulfillmentMode.value);
-    pharmacyOptions.value = items.map((p) => ({
-      value: p.id,
-      label: `${p.display_name}${p.postal_code ? ` (${p.postal_code})` : ''}${p.is_favorite ? ' ★' : ''}`,
-    }));
-    if (pharmacyId.value && !pharmacyOptions.value.some((o) => o.value === pharmacyId.value)) {
-      pharmacyId.value = '';
+    const items = await fetchPharmacies(
+      postalCode.value,
+      fulfillmentMode.value,
+      selectedPatientId.value,
+    );
+    pharmacyCatalog.value = items;
+    const patientPharmacy = items.find((item) => item.is_patient_pharmacy === true);
+    const ownId = isOwnPharmacy.value ? selfUserId() : '';
+    if (patientPharmacy && (pharmacyId.value === '' || pharmacyId.value === ownId)) {
+      pharmacyId.value = patientPharmacy.id;
+      return;
     }
+    const visibleIds = new Set(visiblePharmacyOptions.value.map((option) => option.value));
+    if (pharmacyId.value && visibleIds.has(pharmacyId.value)) return;
+    const preferred = pharmacySplit.value.preferred[0];
+    pharmacyId.value = preferred?.id ?? '';
   } catch (e: unknown) {
-    pharmacyOptions.value = [];
+    pharmacyCatalog.value = [];
+    if (!visiblePharmacyOptions.value.some((option) => option.value === pharmacyId.value)) {
+      pharmacyId.value = pharmacySplit.value.preferred[0]?.id ?? '';
+    }
     toast.add({
       title: 'Pharmacies',
       description: e instanceof Error ? e.message : 'Catalogue indisponible',
@@ -515,7 +565,7 @@ onMounted(() => {
       console.warn('[pharmacie] proches', cause);
     });
   }
-  if (!isOwnPharmacy.value) void loadPharmacies();
+  void loadPharmacies();
   if (selectedPatientId.value) void loadDocuments(selectedPatientId.value);
 });
 </script>

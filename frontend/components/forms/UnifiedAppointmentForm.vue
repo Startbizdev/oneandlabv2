@@ -139,8 +139,11 @@
           :ui="wizardUseServiceCard ? undefined : { label: 'sr-only' }"
         >
           <BookingDateCarousel
-            v-if="!wizardUseServiceCard"
+            v-if="!wizardUseServiceCard || isBloodTestAppointment(svc.type)"
             v-model="formDataByService[svc.id].scheduled_at"
+            v-model:extra-dates="formDataByService[svc.id].extra_scheduled_dates"
+            v-model:selection-mode="formDataByService[svc.id].date_selection_mode"
+            :allow-multiple="isBloodTestAppointment(svc.type)"
             :min-lead-time-hours="bookingLeadTimeForService(svc)"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
@@ -1109,6 +1112,8 @@ type ServiceFormData = {
   preferred_nurse_gender?: 'any' | 'female' | 'male';
   care_options?: Record<string, string | number>;
   scheduled_at?: string;
+  extra_scheduled_dates?: string[];
+  date_selection_mode?: 'single' | 'multiple';
   availability?: string;
   availability_type: string;
   availabilityRange: [number, number];
@@ -1248,7 +1253,14 @@ watch(() => props.selectedServices, (svcs) => {
   svcs?.forEach(s => {
     if (!formDataByService[s.id]) {
       const base: Partial<ServiceFormData> = isBloodTestAppointment(s.type)
-        ? { blood_test_type: 'single', urgentHour: 9, urgentMinute: 0, urgentTimingMode: 'scheduled' }
+        ? {
+            blood_test_type: 'single',
+            urgentHour: 9,
+            urgentMinute: 0,
+            urgentTimingMode: 'scheduled',
+            extra_scheduled_dates: [],
+            date_selection_mode: 'single',
+          }
         : { duration_days: '1', preferred_nurse_gender: 'any' };
       formDataByService[s.id] = {
         ...base,
@@ -1269,6 +1281,10 @@ watch(() => props.selectedServices, (svcs) => {
       if (cur.availability_type === undefined) cur.availability_type = 'all_day';
       if (cur.availabilityRange === undefined) cur.availabilityRange = [9, 11];
       if (cur.files === undefined) cur.files = {};
+      if (isBloodTestAppointment(s.type) && cur.extra_scheduled_dates === undefined) cur.extra_scheduled_dates = [];
+      if (isBloodTestAppointment(s.type) && cur.date_selection_mode !== 'single' && cur.date_selection_mode !== 'multiple') {
+        cur.date_selection_mode = 'single';
+      }
       if (isBloodTestAppointment(s.type) && cur.urgentHour === undefined) cur.urgentHour = 9;
       if (isBloodTestAppointment(s.type) && cur.urgentMinute === undefined) cur.urgentMinute = 0;
       if (isBloodTestAppointment(s.type) && cur.urgentTimingMode === undefined) cur.urgentTimingMode = 'scheduled';
@@ -1373,6 +1389,12 @@ watch(
             }
             if (prev.availability !== undefined) formDataByService[svc.id].availability = prev.availability;
             if (prev.blood_test_type !== undefined) formDataByService[svc.id].blood_test_type = prev.blood_test_type;
+            if (Array.isArray(prev.extra_scheduled_dates)) {
+              formDataByService[svc.id].extra_scheduled_dates = prev.extra_scheduled_dates.filter((day: unknown) => typeof day === 'string');
+            }
+            if (prev.date_selection_mode === 'single' || prev.date_selection_mode === 'multiple') {
+              formDataByService[svc.id].date_selection_mode = prev.date_selection_mode;
+            }
             if (prev.duration_days !== undefined) formDataByService[svc.id].duration_days = prev.duration_days;
             if (prev.custom_days !== undefined) formDataByService[svc.id].custom_days = prev.custom_days;
             if (prev.frequency !== undefined) formDataByService[svc.id].frequency = prev.frequency;

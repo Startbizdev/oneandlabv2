@@ -236,7 +236,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, directedProviderBookingHasLaboratory, directedProviderAssignmentField, resolveDirectedProvider, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, directedProviderBookingHasLaboratory, directedProviderAssignmentField, resolveDirectedProvider, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation, splitBloodPayloadByVisitDates } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   type BookingServiceFormSlice,
@@ -1067,7 +1067,10 @@ function buildAppointmentPayloads(patientId: string): any[] {
   const nursingList = svcs.filter((svc) => isNursingAppointment(svc.type));
   const mergeBlood = bloodList.length > 1;
   const mergeNursing = nursingList.length > 1;
-  const payloadCount = countGroupedAppointmentPayloads(svcs as SelectedServiceInput[]);
+  const payloadCount = countGroupedAppointmentPayloads(
+    svcs as SelectedServiceInput[],
+    formDataByService as Record<string, Record<string, unknown>>,
+  );
   const sharedBatchId =
     payloadCount > 1 && typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function'
       ? globalThis.crypto.randomUUID()
@@ -1230,8 +1233,18 @@ function buildAppointmentPayloads(patientId: string): any[] {
     return payload;
   }
 
+  const expand = (rows: any[]) =>
+    applyLabPreferenceToBloodPayloads(
+      rows.flatMap((row) =>
+        isBloodTestAppointment(String(row.type ?? row.form_type ?? ''))
+          ? splitBloodPayloadByVisitDates(row, formDataByService, bloodList)
+          : [row],
+      ),
+      formData.value ?? {},
+    );
+
   if (!mergeBlood && !mergeNursing) {
-    return applyLabPreferenceToBloodPayloads(svcs.map(singlePayload), formData.value ?? {});
+    return expand(svcs.map(singlePayload));
   }
 
   const out: any[] = [];
@@ -1256,7 +1269,7 @@ function buildAppointmentPayloads(patientId: string): any[] {
       out.push(singlePayload(svc));
     }
   }
-  return applyLabPreferenceToBloodPayloads(out, formData.value ?? {});
+  return expand(out);
 }
 
 function patientBookingNeedsUrgentStripePayment(): boolean {

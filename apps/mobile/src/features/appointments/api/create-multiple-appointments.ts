@@ -1,5 +1,5 @@
 import { appointmentCreateErrorResolver } from '@oneandlab/shared-api';
-import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
+import { appointmentPayloadsShareCreationBatch, ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
 import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 import { randomUUID } from '@/lib/uuid';
 import { createAppointment } from './appointments.service';
@@ -30,7 +30,7 @@ export async function createMultipleAppointments(
   const fingerprint = JSON.stringify(payloads, (key, value) =>
     key === 'creation_batch_id' || key === 'creation_batch_size' ? undefined : value,
   );
-  const sameTypeMulti = payloads.length > 1 && payloads.every(p => p.type === payloads[0].type);
+  const sameTypeMulti = appointmentPayloadsShareCreationBatch(payloads);
   const sharedBatch = sameTypeMulti ? payloads[0].creation_batch_id || randomUUID() : undefined;
   const patientEmail = payloads.find(p => p.patient_email)?.patient_email;
   const prepared = payloads.map(payload => ({

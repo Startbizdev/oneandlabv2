@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../pharmacy/_helpers.php';
+require_once __DIR__ . '/../../lib/Validation.php';
+require_once __DIR__ . '/../../models/User.php';
 
 [$user, $db, $moduleConfig, $orderService, $catalogService] = pharmacyApiBootstrap(['GET', 'OPTIONS']);
 
@@ -26,5 +28,16 @@ $favoriteUserId = PharmacyModuleConfig::canOrder($user, $config)
     ? (string) ($user['user_id'] ?? '')
     : null;
 
-$items = $catalogService->listPharmacies($postalCode, $mode, $favoriteUserId);
+$patientPharmacyIds = [];
+$patientId = isset($_GET['patient_id']) ? trim((string) $_GET['patient_id']) : '';
+if ($patientId !== '' && Validation::uuid($patientId)) {
+    $actorId = (string) ($user['user_id'] ?? '');
+    $isPatientSelf = (string) ($user['role'] ?? '') === 'patient' && $actorId === $patientId;
+    $userModel = new User();
+    if ($isPatientSelf || $userModel->hasProfessionalAccessToPatient($actorId, $patientId)) {
+        $patientPharmacyIds = $catalogService->pharmacyIdsLinkedToPatient($patientId);
+    }
+}
+
+$items = $catalogService->listPharmacies($postalCode, $mode, $favoriteUserId, $patientPharmacyIds);
 echo json_encode(['success' => true, 'data' => $items]);

@@ -13,6 +13,11 @@ import {
   bookingMinCalendarDate,
   isBookingDateUnavailable,
 } from '~/utils/booking-date-constraints';
+import {
+  selectedBookingDates,
+  toggleBookingDate,
+  type BookingDateSelectionMode,
+} from '~/utils/booking-date-selection';
 
 const DESKTOP_DAYS_PER_SLIDE = 14;
 const MOBILE_DAYS_PER_SLIDE = 10;
@@ -25,11 +30,18 @@ const props = defineProps<{
   acceptSaturday?: boolean;
   acceptSunday?: boolean;
   disabled?: boolean;
+  /** Prise de sang : onglet pour choisir plusieurs jours. */
+  allowMultiple?: boolean;
 }>();
+
+const extraDates = defineModel<string[]>('extraDates');
+const selectionMode = defineModel<BookingDateSelectionMode>('selectionMode');
 
 const emit = defineEmits<{
   'update:modelValue': [value: string | null];
 }>();
+
+const multipleActive = computed(() => props.allowMultiple === true && selectionMode.value === 'multiple');
 
 const dfWeekday = new DateFormatter('fr-FR', { weekday: 'short', timeZone: PARIS_TZ });
 const dfMonthShort = new DateFormatter('fr-FR', {
@@ -106,14 +118,31 @@ function dayMonthShortLabel(day: CalendarDate): string {
 
 function selectDay(day: CalendarDate) {
   if (props.disabled || isUnavailable(day)) return;
-  emit('update:modelValue', isoFromCalendarDate(day));
+  const iso = isoFromCalendarDate(day);
+  if (!multipleActive.value) {
+    emit('update:modelValue', iso);
+    return;
+  }
+  const next = toggleBookingDate(props.modelValue, extraDates.value, iso);
+  extraDates.value = next.extra_scheduled_dates;
+  emit('update:modelValue', next.scheduled_at === '' ? null : next.scheduled_at);
+}
+
+function setSelectionMode(mode: BookingDateSelectionMode) {
+  if (!props.allowMultiple || props.disabled) return;
+  selectionMode.value = mode;
+  if (mode === 'single') extraDates.value = [];
 }
 
 function isDaySelected(day: CalendarDate): boolean {
+  const iso = isoFromCalendarDate(day);
+  if (multipleActive.value) return selectedBookingDates(props.modelValue, extraDates.value).includes(iso);
   const s = selectedCalendar.value;
   if (!s) return false;
   return s.year === day.year && s.month === day.month && s.day === day.day;
 }
+
+const multipleDateCount = computed(() => selectedBookingDates(props.modelValue, extraDates.value).length);
 
 const selectedCalendar = computed<CalendarDate | null>(() => {
   const raw = props.modelValue;
@@ -293,6 +322,37 @@ const screenReaderInstructions =
     :aria-label="screenReaderInstructions"
   >
     <p class="sr-only">{{ screenReaderInstructions }}</p>
+
+    <div
+      v-if="allowMultiple"
+      class="mb-3 grid grid-cols-2 gap-2"
+      role="radiogroup"
+      aria-label="Nombre de dates"
+    >
+      <button
+        type="button"
+        role="radio"
+        class="min-h-11 rounded-xl border px-3 text-sm font-medium"
+        :aria-checked="selectionMode !== 'multiple'"
+        :class="selectionMode !== 'multiple' ? 'border-primary-500 bg-primary-500 text-primary-950' : 'border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'"
+        @click="setSelectionMode('single')"
+      >
+        Une date
+      </button>
+      <button
+        type="button"
+        role="radio"
+        class="min-h-11 rounded-xl border px-3 text-sm font-medium"
+        :aria-checked="selectionMode === 'multiple'"
+        :class="selectionMode === 'multiple' ? 'border-primary-500 bg-primary-500 text-primary-950' : 'border-gray-200 bg-white text-gray-800 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'"
+        @click="setSelectionMode('multiple')"
+      >
+        Multiple
+      </button>
+    </div>
+    <p v-if="multipleActive" class="mb-3 text-sm text-gray-600 dark:text-gray-300" aria-live="polite">
+      {{ multipleDateCount }} date{{ multipleDateCount > 1 ? 's' : '' }}
+    </p>
 
     <ClientOnly>
       <nav class="mb-3 flex items-center justify-between gap-2" aria-label="Changer la période du calendrier">

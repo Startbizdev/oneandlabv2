@@ -104,6 +104,8 @@ export type PharmacyCatalogItem = {
   address: PharmacyOrderAddress | null;
   postal_code: string;
   is_favorite?: boolean;
+  /** Pharmacie dont ce patient est le patient (créateur ou lien professionnel). */
+  is_patient_pharmacy?: boolean;
 };
 
 export type PharmacyOrderMessage = {

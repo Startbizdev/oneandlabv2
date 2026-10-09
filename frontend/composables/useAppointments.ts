@@ -4,7 +4,7 @@
 
 import { apiErrorMessage, apiFetch } from '~/utils/api';
 import { appointmentCreateErrorResolver } from '@oneandlab/shared-api';
-import { ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
+import { appointmentPayloadsShareCreationBatch, ResumableAppointmentBatch, runStaffBookingBatch } from '@oneandlab/shared-utils';
 import { bookingDbg } from '~/utils/booking-celebration-debug';
 import type { Appointment, AppointmentFilters, AppointmentCreatePayload } from '~/types/appointments';
 import { APPOINTMENT_PERSONAL_DOC_TYPES } from '~/types/profile';
@@ -257,7 +257,7 @@ export const useAppointments = (scope = 'appointments') => {
         }
         return value;
       });
-      const sameTypeMulti = payloads.length > 1 && payloads.every(p => p.type === payloads[0].type);
+      const sameTypeMulti = appointmentPayloadsShareCreationBatch(payloads);
       const sharedBatch = sameTypeMulti
         ? payloads[0].creation_batch_id || globalThis.crypto?.randomUUID?.()
         : undefined;

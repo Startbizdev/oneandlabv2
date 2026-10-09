@@ -8,6 +8,9 @@ import {
   applyLabPreferenceToBloodPayloads,
   bloodTestNeedsLabPreferenceStep,
   validateLabPreferenceBeforeSubmit,
+  splitBloodPayloadByVisitDates,
+  bloodVisitDates,
+  countGroupedAppointmentPayloads as countGroupedAppointmentPayloadsShared,
 } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 
@@ -71,11 +74,11 @@ export function servicesRequiringOwnSlots(selectedServices: SelectedServiceInput
 }
 
 /** Nombre de POST /appointments après fusion prélèvements + fusion soins infirmiers. */
-export function countGroupedAppointmentPayloads(selectedServices: SelectedServiceInput[]): number {
-  const nBlood = bloodServicesInSelection(selectedServices).length;
-  const nNursing = nursingServicesInSelection(selectedServices).length;
-  const other = selectedServices.length - nBlood - nNursing;
-  return other + Math.min(1, nBlood) + Math.min(1, nNursing);
+export function countGroupedAppointmentPayloads(
+  selectedServices: SelectedServiceInput[],
+  formDataByService: Record<string, Record<string, unknown>> = {},
+): number {
+  return countGroupedAppointmentPayloadsShared(selectedServices, formDataByService);
 }
 
 /** Erreur de validation avec ancrage scroll (wizard pro / dashboard). */
@@ -227,6 +230,15 @@ export function validateUnifiedRdvPayload(
             scrollAnchor: `wizard-rdv-service-${svc.id}`,
           };
         }
+      }
+      if (
+        svcData.date_selection_mode === 'multiple' &&
+        !bloodVisitDates(formDataByService, bloodServicesInSelection(selectedServices))
+      ) {
+        return {
+          message: `Choisissez au moins deux dates de prélèvement pour « ${svc.name} »`,
+          scrollAnchor: `wizard-rdv-service-${svc.id}`,
+        };
       }
     } else {
       if (!svcData.duration_days) {
@@ -473,12 +485,21 @@ export function buildDashboardAppointmentPayloads(
   const mergeBlood = shouldMergeBloodServices(selectedServices);
   const mergeNursing = shouldMergeNursingServices(selectedServices);
 
+  const expand = (rows: Record<string, unknown>[]) =>
+    applyLabPreferenceToBloodPayloads(
+      rows.flatMap((row) =>
+        isBloodTestAppointment(String(row.type ?? row.form_type ?? ''))
+          ? splitBloodPayloadByVisitDates(row, formDataByService, bloodList)
+          : [row],
+      ),
+      formData,
+    );
+
   if (!mergeBlood && !mergeNursing) {
-    return applyLabPreferenceToBloodPayloads(
+    return expand(
       selectedServices.map((svc) =>
         dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx),
       ),
-      formData,
     );
   }
 
@@ -506,5 +527,5 @@ export function buildDashboardAppointmentPayloads(
       out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
     }
   }
-  return applyLabPreferenceToBloodPayloads(out, formData);
+  return expand(out);
 }

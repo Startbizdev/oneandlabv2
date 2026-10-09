@@ -24,6 +24,10 @@ interface Props {
   onUrgentHour?: (h: number) => void;
   onUrgentMinute?: (m: number) => void;
   onUrgentTimingMode?: (m: UrgentTimingMode) => void;
+  allowMultipleDates?: boolean;
+  selectionMode?: 'single' | 'multiple';
+  selectedDates?: string[];
+  onSelectionModeChange?: (mode: 'single' | 'multiple') => void;
 }
 
 export function FormScheduleSection({
@@ -43,6 +47,10 @@ export function FormScheduleSection({
   onUrgentHour,
   onUrgentMinute,
   onUrgentTimingMode,
+  allowMultipleDates = false,
+  selectionMode = 'single',
+  selectedDates,
+  onSelectionModeChange,
 }: Props) {
   const styles = useStyles(buildStyles);
 
@@ -56,17 +64,25 @@ export function FormScheduleSection({
     return () => clearInterval(timer);
   }, [advanceClosedDay]);
   useEffect(() => {
-    if (!advanceClosedDay) return;
+    if (!advanceClosedDay || selectionMode === 'multiple') return;
     const next = nextBookingDateAfterClosing(scheduledAt, maxHour, {}, clockNow);
     if (next) {
       onScheduledAt(next);
       if (range[1] <= range[0]) onRange([9, 11]);
     }
-  }, [advanceClosedDay, clockNow, scheduledAt, maxHour, onScheduledAt, onRange, range]);
+  }, [advanceClosedDay, clockNow, scheduledAt, maxHour, onScheduledAt, onRange, range, selectionMode]);
 
   return (
     <View style={styles.wrapper}>
-      <BookingDateCarousel value={scheduledAt} onChange={onScheduledAt} minLeadTimeHours={minLeadTimeHours} />
+      <BookingDateCarousel
+        value={scheduledAt}
+        onChange={onScheduledAt}
+        minLeadTimeHours={minLeadTimeHours}
+        allowMultiple={allowMultipleDates}
+        selectionMode={selectionMode}
+        selectedDates={selectedDates}
+        onSelectionModeChange={onSelectionModeChange}
+      />
       <BookingAvailabilitySection
         scheduledAt={scheduledAt}
         serviceType={serviceType}

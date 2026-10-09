@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { CalendarDays, List } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { CalendarDays, CalendarPlus, List } from 'lucide-react-native';
 import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
+import { ScreenFab } from '@/components/ui/ScreenFab';
 import { CalendarScreen } from '@/features/calendar/screens/CalendarScreen';
 import { NurseAppointmentsListScreen } from '@/features/nurse/screens/NurseAppointmentsListScreen';
 import { spacing, useStyles, type Theme } from '@/theme';
@@ -16,6 +18,7 @@ const AGENDA_SEGMENTS: FullWidthSegment<AgendaView>[] = [
 /** Onglet Agenda infirmier : liste des rendez-vous ou calendrier mensuel. */
 export function NurseAgendaScreen() {
   const styles = useStyles(buildStyles);
+  const router = useRouter();
   const [view, setView] = useState<AgendaView>('list');
 
   return (
@@ -35,6 +38,11 @@ export function NurseAgendaScreen() {
           />
         )}
       </View>
+      <ScreenFab
+        Icon={CalendarPlus}
+        onPress={() => router.push('/(nurse)/appointments/new')}
+        accessibilityLabel="Nouveau rendez-vous"
+      />
     </View>
   );
 }

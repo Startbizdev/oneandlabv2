@@ -57,11 +57,78 @@ export function servicesRequiringOwnSlots(selectedServices: SelectedServiceInput
   return [...nursingRows, ...bloodRows];
 }
 
-export function countGroupedAppointmentPayloads(selectedServices: SelectedServiceInput[]): number {
+export const BLOOD_EXTRA_DATES_KEY = 'extra_scheduled_dates';
+
+function dateKey(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return '';
+  return raw.slice(0, 10);
+}
+
+/** Dates distinctes d’un prélèvement « plusieurs jours ». null = un seul rendez-vous. */
+export function bloodVisitDates(
+  formDataByService: Record<string, Record<string, unknown>>,
+  bloodServices: SelectedServiceInput[],
+): string[] | null {
+  if (bloodServices.length === 0) return null;
+  const slice = formDataByService[bloodServices[0].id] ?? {};
+  if (slice.date_selection_mode !== 'multiple') return null;
+  const primary = dateKey(slice.scheduled_at);
+  const extras = Array.isArray(slice[BLOOD_EXTRA_DATES_KEY])
+    ? (slice[BLOOD_EXTRA_DATES_KEY] as unknown[]).map(dateKey)
+    : [];
+  const dates = [...new Set([primary, ...extras].filter(Boolean))];
+  return dates.length >= 2 ? dates : null;
+}
+
+/** Plusieurs dates de prélèvement restent des rendez-vous indépendants, pas un lot. */
+export function appointmentPayloadsShareCreationBatch(
+  payloads: Array<{ type?: unknown; form_type?: unknown; scheduled_at?: unknown }>,
+): boolean {
+  if (payloads.length < 2) return false;
+  const firstType = String(payloads[0].type ?? '');
+  if (!payloads.every((payload) => String(payload.type ?? '') === firstType)) return false;
+  const blood = payloads.filter((payload) =>
+    isBloodTestAppointment(String(payload.type ?? payload.form_type ?? '')),
+  );
+  if (blood.length < 2) return true;
+  const days = new Set(blood.map((payload) => String(payload.scheduled_at ?? '').slice(0, 10)));
+  return days.size < 2;
+}
+
+/** Un rendez-vous labo par date. Les analyses du payload restent ensemble sur chaque date. */
+export function splitBloodPayloadByVisitDates(
+  payload: Record<string, unknown>,
+  formDataByService: Record<string, Record<string, unknown>>,
+  bloodServices: SelectedServiceInput[],
+): Record<string, unknown>[] {
+  const dates = bloodVisitDates(formDataByService, bloodServices);
+  if (!dates) return [payload];
+  const availability = (payload.form_data as Record<string, unknown> | undefined)?.availability;
+  return dates.map((date) => {
+    const scheduled = enrichScheduledAtWithAvailability(date, availability) ?? `${date} 09:00:00`;
+    const formData: Record<string, unknown> = {
+      ...((payload.form_data as Record<string, unknown> | undefined) ?? {}),
+      scheduled_at: scheduled,
+    };
+    delete formData[BLOOD_EXTRA_DATES_KEY];
+    const next: Record<string, unknown> = { ...payload, scheduled_at: scheduled, form_data: formData };
+    delete next.creation_batch_id;
+    delete next.creation_batch_size;
+    return next;
+  });
+}
+
+export function countGroupedAppointmentPayloads(
+  selectedServices: SelectedServiceInput[],
+  formDataByService: Record<string, Record<string, unknown>> = {},
+): number {
   const nBlood = bloodServicesInSelection(selectedServices).length;
   const nNursing = nursingServicesInSelection(selectedServices).length;
   const other = selectedServices.length - nBlood - nNursing;
-  return other + Math.min(1, nBlood) + Math.min(1, nNursing);
+  const bloodCount =
+    nBlood === 0 ? 0 : (bloodVisitDates(formDataByService, bloodServicesInSelection(selectedServices))?.length ?? 1);
+  return other + bloodCount + Math.min(1, nNursing);
 }
 
 export type UnifiedRdvValidationError = {
@@ -248,6 +315,15 @@ export function validateUnifiedRdvPayload(
             scrollAnchor: `wizard-rdv-service-${svc.id}`,
           };
         }
+      }
+      if (
+        svcData.date_selection_mode === 'multiple' &&
+        !bloodVisitDates(formDataByService, bloodServicesInSelection(selectedServices))
+      ) {
+        return {
+          message: `Choisissez au moins deux dates de prélèvement pour « ${svc.name} »`,
+          scrollAnchor: `wizard-rdv-service-${svc.id}`,
+        };
       }
     } else {
       if (!svcData.duration_days) {
@@ -517,12 +593,21 @@ export function buildDashboardAppointmentPayloads(
   const mergeBlood = shouldMergeBloodServices(selectedServices);
   const mergeNursing = shouldMergeNursingServices(selectedServices);
 
+  const expand = (rows: Record<string, unknown>[]) =>
+    applyLabPreferenceToBloodPayloads(
+      rows.flatMap((row) =>
+        isBloodTestAppointment(String(row.type ?? row.form_type ?? ''))
+          ? splitBloodPayloadByVisitDates(row, formDataByService, bloodList)
+          : [row],
+      ),
+      formData,
+    );
+
   if (!mergeBlood && !mergeNursing) {
-    return applyLabPreferenceToBloodPayloads(
+    return expand(
       selectedServices.map((svc) =>
         dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx),
       ),
-      formData,
     );
   }
 
@@ -552,5 +637,5 @@ export function buildDashboardAppointmentPayloads(
       out.push(dashboardSingleServicePayload(patientId, svc, formData, formDataByService, commonForm, ctx));
     }
   }
-  return applyLabPreferenceToBloodPayloads(out, formData);
+  return expand(out);
 }

@@ -9,14 +9,12 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarPlus } from 'lucide-react-native';
 import { isNursePassageAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { ScreenFab, useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
-import { NurseSegmentChips } from '@/features/nurse/components/NurseSegmentChips';
+import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
 import { useOpenIncomingOffer } from '@/features/nurse/hooks/use-open-incoming-offer';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
@@ -189,11 +187,21 @@ export function NurseAppointmentsListScreen() {
 
   const emptyTitle = isDemandesSegment ? 'Aucune demande' : 'Aucun rendez-vous';
   const emptyDescription = isDemandesSegment
-    ? 'Les nouvelles demandes de soins apparaîtront ici.'
-    : 'Les demandes acceptées apparaîtront ici.';
+    ? 'Les nouvelles demandes s’afficheront ici.'
+    : 'Les soins acceptés s’afficheront ici.';
 
   return (
     <View style={styles.screen}>
+      <View style={styles.scrollHeader}>
+        <AppointmentsListSearchHost
+          embedded
+          onQueryChange={setSearch}
+          searchPlaceholder="Nom, téléphone, adresse…"
+          onOpenFilters={() => setSheetOpen(true)}
+          advancedFilterCount={advancedCount}
+          chips={filterChips}
+        />
+      </View>
       <ScrollView
         ref={scrollRef}
         style={styles.list}
@@ -211,17 +219,6 @@ export function NurseAppointmentsListScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={200}
       >
-        <View style={styles.scrollHeader}>
-          <AppointmentsListSearchHost
-            embedded
-            onQueryChange={setSearch}
-            searchPlaceholder="Nom, téléphone, adresse…"
-            onOpenFilters={() => setSheetOpen(true)}
-            advancedFilterCount={advancedCount}
-            chips={filterChips}
-          />
-          <NurseSegmentChips value={segment} onChange={setSegment} />
-        </View>
 
         {isInitialLoading ? (
           <SkeletonList count={4} itemHeight={116} gap={spacing[3]} />
@@ -290,11 +287,6 @@ export function NurseAppointmentsListScreen() {
         onSegmentChange={setSegment}
         segmentSectionLabel="Statut"
       />
-      <ScreenFab
-        Icon={CalendarPlus}
-        onPress={() => router.push('/(nurse)/appointments/new')}
-        accessibilityLabel="Nouveau rendez-vous"
-      />
     </View>
   );
 }
@@ -320,6 +312,7 @@ function buildStyles({ colors: c }: Theme) {
     scrollHeader: {
       alignSelf: 'stretch' as const,
       width: '100%' as const,
+      paddingHorizontal: spacing[4],
     },
     rows: {
       minWidth: 0,

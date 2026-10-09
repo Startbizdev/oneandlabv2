@@ -93,7 +93,8 @@ export const queryKeys = {
     details: ['pharmacy-orders', 'detail'] as const,
     detail: (id: string) => ['pharmacy-orders', 'detail', id] as const,
     messages: (id: string) => ['pharmacy-orders', 'messages', id] as const,
-    catalog: (postal: string, mode: string) => ['pharmacy-orders', 'catalog', postal, mode] as const,
+    catalog: (postal: string, mode: string, patientId = '') =>
+      ['pharmacy-orders', 'catalog', postal, mode, patientId] as const,
     pharmacy: (id: string) => ['pharmacy-orders', 'pharmacy', id] as const,
     favorites: (userId: string) => ['pharmacy-orders', 'favorites', userId] as const,
   },

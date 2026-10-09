@@ -21,6 +21,7 @@ import {
   parseIsoDay,
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
+import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { ICON_STROKE_WIDTH, animation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
@@ -45,6 +46,12 @@ interface Props {
   minLeadTimeHours?: number;
   acceptSaturday?: boolean;
   acceptSunday?: boolean;
+  /** Prise de sang : onglet Une date / Multiple sur ce calendrier. */
+  allowMultiple?: boolean;
+  selectionMode?: 'single' | 'multiple';
+  onSelectionModeChange?: (mode: 'single' | 'multiple') => void;
+  /** Jours déjà cochés, YYYY-MM-DD, quand le mode Multiple est actif. */
+  selectedDates?: string[];
 }
 
 function DayCell({
@@ -146,6 +153,7 @@ function DayGrid({
   cellWidth,
   cellHeight,
   selected,
+  selectedDates,
   minLeadTimeHours,
   acceptSaturday,
   acceptSunday,
@@ -157,6 +165,7 @@ function DayGrid({
   cellWidth: number;
   cellHeight: number;
   selected: ReturnType<typeof parseIsoDay>;
+  selectedDates?: string[];
   minLeadTimeHours: number;
   acceptSaturday: boolean;
   acceptSunday: boolean;
@@ -175,11 +184,14 @@ function DayGrid({
               acceptSaturday,
               acceptSunday,
             });
+            const picked = selectedDates
+              ? selectedDates.some((day) => day.slice(0, 10) === iso)
+              : (selected?.isSame(d, 'day') ?? false);
             return (
               <DayCell
                 key={iso}
                 day={d}
-                selected={selected?.isSame(d, 'day') ?? false}
+                selected={picked}
                 disabled={disabled}
                 width={cellWidth}
                 height={cellHeight}
@@ -253,6 +265,10 @@ export function BookingDateCarousel({
   minLeadTimeHours = 0,
   acceptSaturday = true,
   acceptSunday = true,
+  allowMultiple = false,
+  selectionMode = 'single',
+  onSelectionModeChange,
+  selectedDates,
 }: Props) {
   const styles = useStyles(buildStyles);
   const { fontSize } = useTheme();
@@ -330,6 +346,7 @@ export function BookingDateCarousel({
         cellWidth={cellWidth}
         cellHeight={cellHeight}
         selected={selected}
+        selectedDates={selectionMode === 'multiple' ? selectedDates : undefined}
         minLeadTimeHours={minLeadTimeHours}
         acceptSaturday={acceptSaturday}
         acceptSunday={acceptSunday}
@@ -345,12 +362,25 @@ export function BookingDateCarousel({
       minLeadTimeHours,
       onChange,
       selected,
+      selectedDates,
+      selectionMode,
       slideWidth,
     ],
   );
 
   return (
     <View style={styles.wrap}>
+      {allowMultiple ? (
+        <FullWidthSegmentBar
+          accessibilityLabel="Nombre de dates"
+          segments={[
+            { id: 'single', label: 'Une date' },
+            { id: 'multiple', label: 'Multiple' },
+          ]}
+          value={selectionMode === 'multiple' ? 'multiple' : 'single'}
+          onChange={(mode) => onSelectionModeChange?.(mode)}
+        />
+      ) : null}
       <AppText variant="headline" accessibilityRole="header">Quel jour ?</AppText>
 
       <View style={styles.calendarCard}>

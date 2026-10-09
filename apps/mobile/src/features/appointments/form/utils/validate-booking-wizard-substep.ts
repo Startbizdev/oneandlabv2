@@ -1,6 +1,7 @@
 import { AVAILABILITY_MIN_SPAN_HOURS, PATIENT_VIP_MAX_HOUR, PATIENT_VIP_MIN_HOUR } from '@oneandlab/shared-constants';
 import { STAFF_PATIENT_BOOKING_CONSENT_ERROR } from '@oneandlab/shared-constants';
 import {
+  bloodVisitDates,
   isBloodTestAppointment,
   isNursingAppointment,
   validateUnifiedRdvPayload,
@@ -127,6 +128,9 @@ function pushServiceBusinessErrors(
       if (svcData.duration_days === 'custom' && (!svcData.custom_days || Number(svcData.custom_days) < 1)) {
         missing.push(`Indiquez le nombre de jours pour ${svcName}`);
       }
+    }
+    if (svcData.date_selection_mode === 'multiple' && !bloodVisitDates({ [svc.id]: svcData }, [svc])) {
+      missing.push(`Choisissez au moins deux dates de prélèvement pour ${svcName}`);
     }
   } else if (isNursingAppointment(svc.type)) {
     if (!svcData.duration_days) {

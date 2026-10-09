@@ -198,14 +198,12 @@ test('web pro — nouvelle commande propose l’upload d’ordonnance', async ({
   await expect(page.getByRole('button', { name: 'Ajouter une ordonnance' })).toBeVisible();
 });
 
-test('web pharmacien — nouvelle commande reste sur sa pharmacie', async ({ page }) => {
+test('web pharmacien — nouvelle commande montre sa pharmacie puis les autres', async ({ page }) => {
   await pharmacyApiFixture(page, 'pro');
   await page.goto('/pro/commandes-pharmacie/new');
-  await expect(page.getByRole('heading', { name: '2. Mode de retrait' })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('votre pharmacie')).toBeVisible();
-  await expect(page.getByRole('heading', { name: '2. Pharmacie et mode' })).toHaveCount(0);
-  await expect(page.getByText('Code postal (filtre)')).toHaveCount(0);
-  await expect(page.getByText('Choisir une pharmacie…')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '2. Pharmacie et mode' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Pharmacie Exemple')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Voir les autres pharmacies' })).toHaveCount(0);
 });
 
 test('web pharmacien — détail commande affiche la fiche du professionnel', async ({ page }) => {
