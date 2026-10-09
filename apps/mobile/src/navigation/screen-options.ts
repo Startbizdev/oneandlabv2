@@ -18,11 +18,12 @@ export function stackHeaderOptions(
   };
 }
 
-/** Wizard booking — plein écran pour flex:1 + footer sticky. */
+/**
+ * Wizard booking — écran de pile normal.
+ * Un `fullScreenModal` empêche iOS d'afficher la fiche du soin (sheet racine) par-dessus.
+ */
 export function bookingWizardScreenOptions(theme: Theme): NativeStackNavigationOptions {
-  return stackHeaderOptions(theme, {
-    presentation: 'fullScreenModal',
-  });
+  return stackHeaderOptions(theme);
 }
 
 function sheetIdFromParams(params: object | undefined): string {
