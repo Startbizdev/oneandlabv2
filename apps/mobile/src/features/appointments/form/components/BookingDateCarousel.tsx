@@ -114,7 +114,7 @@ function DayCell({
           <AppText style={[styles.weekday, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit>
             {weekday}
           </AppText>
-          <AppText style={[styles.dayNum, styles.textOn]} adjustsFontSizeToFit minimumFontScale={0.85}>
+          <AppText style={[styles.dayNum, styles.textOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
             {dayNum}
           </AppText>
         </View>
@@ -484,7 +484,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       paddingHorizontal: spacing[0.5],
       gap: 2,
       borderRadius: radius.md,
-      overflow: 'hidden' as const,
     },
     cellInnerSelected: {
       backgroundColor: c.primary,
@@ -520,7 +519,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     dayNumToday: {
       color: c.primary,
     },
-    textOn: { color: c.onPrimary },
+    textOn: { color: '#0F172A' },
     textOff: { color: c.textTertiary },
   };
 }

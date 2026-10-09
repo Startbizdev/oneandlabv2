@@ -390,12 +390,13 @@ const screenReaderInstructions =
                 :disabled="disabled || isUnavailable(day)"
                 :aria-label="calendarDayAriaLabel(day)"
                 :aria-pressed="isDaySelected(day)"
+                :style="isDaySelected(day) ? { color: '#0F172A' } : undefined"
                 class="box-border flex aspect-square w-full max-w-full flex-col items-center justify-center gap-0.5 self-start rounded-xl p-1.5 text-center transition-[border-color,background-color,color,transform,box-shadow] duration-150 sm:gap-px sm:p-1 md:gap-1 md:p-1.5 lg:p-2"
                 :class="
                   disabled || isUnavailable(day)
                     ? 'cursor-not-allowed border border-gray-100/95 bg-gray-50/98 text-gray-400 shadow-none dark:border-gray-800/85 dark:bg-gray-950/55 dark:text-gray-600 dark:shadow-none'
                     : isDaySelected(day)
-                      ? 'border border-primary-500 bg-primary-500 text-primary-950 shadow-none'
+                      ? 'border border-primary-500 bg-primary-500 text-slate-950 shadow-none'
                       : 'border border-gray-200 bg-white hover:border-primary-500 hover:bg-primary-50 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-primary-950'
                 "
                 @click="selectDay(day)"
@@ -404,7 +405,7 @@ const screenReaderInstructions =
                   class="text-xs font-medium capitalize leading-none"
                   :class="
                     isDaySelected(day)
-                      ? 'text-primary-950'
+                      ? 'text-slate-950'
                       : 'text-gray-500 dark:text-gray-400'
                   "
                   >{{ calendarDayRibbonLabel(day) }}</span
@@ -413,7 +414,7 @@ const screenReaderInstructions =
                   class="text-[18px] tabular-nums leading-none sm:text-[17px] md:text-xl md:font-bold lg:text-2xl"
                   :class="
                     isDaySelected(day)
-                      ? 'font-bold text-primary-950'
+                      ? 'font-bold text-slate-950'
                       : 'font-semibold text-gray-900 dark:text-gray-50'
                   "
                   >{{ day.day }}</span
@@ -422,7 +423,7 @@ const screenReaderInstructions =
                   class="text-xs capitalize leading-none"
                   :class="
                     isDaySelected(day)
-                      ? 'font-medium text-primary-950'
+                      ? 'font-medium text-slate-950'
                       : 'font-normal text-gray-500 dark:text-gray-400'
                   "
                   >{{ dayMonthShortLabel(day) }}</span
