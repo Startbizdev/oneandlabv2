@@ -1,8 +1,8 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { Check, ChevronDown, ChevronUp, Car, Clock, Route, UserX } from 'lucide-react-native';
-import { isTourStopAbsent } from '@oneandlab/shared-utils';
+import { Check, ChevronDown, ChevronUp, Car, Clock, MapPin, Route, Users, UserX } from 'lucide-react-native';
+import { addressLineWithDistrict, isTourStopAbsent, sharedAppointmentMention } from '@oneandlab/shared-utils';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { Badge } from '@/components/ui/Badge';
 import { TourStopCareSection } from '@/features/tournee-nurse/components/TourStopCareSection';
@@ -31,10 +31,13 @@ const CHECK_SIZE = spacing[9];
 type Props = {
   stop: NurseTourStop;
   index: number;
-  total: number;
+  /** Position dans la section de créneau : les flèches n'échangent qu'à l'intérieur de cette section. */
+  slotIndex: number;
+  slotTotal: number;
   isNext?: boolean;
   onPressName: () => void;
   onToggleDone: () => void;
+  onToggleItem?: (itemId: string, done: boolean) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onManageAbsence?: () => void;
@@ -43,10 +46,12 @@ type Props = {
 export function PassageSimpleListRow({
   stop,
   index,
-  total,
+  slotIndex,
+  slotTotal,
   isNext = false,
   onPressName,
   onToggleDone,
+  onToggleItem,
   onMoveUp,
   onMoveDown,
   onManageAbsence,
@@ -61,6 +66,8 @@ export function PassageSimpleListRow({
   const durationLabel = formatPassageDurationLabel(stop);
   const { kmLabel, driveMinLabel } = resolvePassageRouteListLabels(stop, index);
   const scheduleMeta = [timeLabel, durationLabel].filter(Boolean).join(' · ');
+  const addressLabel = addressLineWithDistrict(stop.address_line);
+  const sharedLabel = sharedAppointmentMention(stop);
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 35).duration(280)} style={cardStyles.cardShell}>
@@ -153,7 +160,21 @@ export function PassageSimpleListRow({
                 <Badge label={absenceLabel} variant="neutral" size="sm" dot={false} />
               ) : null}
             </Row>
-            <TourStopCareSection stop={stop} embedded listCompact muted={done || absent} />
+            <TourStopCareSection
+              stop={stop}
+              embedded
+              listCompact
+              muted={done || absent}
+              onToggleItem={absent ? undefined : onToggleItem}
+            />
+            {addressLabel ? (
+              <Row gap={spacing[2]} align="center" style={styles.metaRow}>
+                <View style={styles.metaIconWrap}>
+                  <MapPin size={iconSize['2xs']} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />
+                </View>
+                <AppText style={[styles.meta, { color: c.textSecondary }]}>{addressLabel}</AppText>
+              </Row>
+            ) : null}
             {scheduleMeta ? (
               <Row gap={spacing[2]} align="center" style={styles.metaRow}>
                 <View style={styles.metaIconWrap}>
@@ -178,32 +199,42 @@ export function PassageSimpleListRow({
                 ) : null}
               </Row>
             ) : null}
+            {sharedLabel ? (
+              <Row gap={spacing[2]} align="center" style={styles.metaRow}>
+                <View style={styles.metaIconWrap}>
+                  <Users size={iconSize['2xs']} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
+                </View>
+                <AppText style={[styles.meta, { color: c.primary }]}>{sharedLabel}</AppText>
+              </Row>
+            ) : null}
           </Pressable>
         </Cluster>
 
-        {onMoveUp || onMoveDown ? (
+        {(onMoveUp || onMoveDown) && slotTotal > 1 ? (
           <Row justify="end" gap={spacing[2]} style={styles.reorderRow}>
             <Pressable
               onPress={onMoveUp}
-              disabled={index === 0}
-              style={[styles.reorderBtn, index === 0 && styles.reorderDisabled]}
-              accessibilityLabel="Monter"
+              disabled={slotIndex === 0}
+              style={[styles.reorderBtn, slotIndex === 0 && styles.reorderDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={`Monter ${stop.patient_name}`}
             >
               <ChevronUp
                 size={iconSize.md}
-                color={index === 0 ? c.textTertiary : c.textSecondary}
+                color={slotIndex === 0 ? c.textTertiary : c.textSecondary}
                 strokeWidth={ICON_STROKE_WIDTH}
               />
             </Pressable>
             <Pressable
               onPress={onMoveDown}
-              disabled={index >= total - 1}
-              style={[styles.reorderBtn, index >= total - 1 && styles.reorderDisabled]}
-              accessibilityLabel="Descendre"
+              disabled={slotIndex >= slotTotal - 1}
+              style={[styles.reorderBtn, slotIndex >= slotTotal - 1 && styles.reorderDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={`Descendre ${stop.patient_name}`}
             >
               <ChevronDown
                 size={iconSize.md}
-                color={index >= total - 1 ? c.textTertiary : c.textSecondary}
+                color={slotIndex >= slotTotal - 1 ? c.textTertiary : c.textSecondary}
                 strokeWidth={ICON_STROKE_WIDTH}
               />
             </Pressable>

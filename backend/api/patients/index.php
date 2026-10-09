@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
     
     $emailOptional = in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur', 'super_admin'], true);
-    $phoneOptional = $user['role'] === 'super_admin';
+    $phoneOptional = User::isPatientPhoneOptionalForCreator((string) $user['role']);
     $required = ['first_name', 'last_name'];
     if (!$phoneOptional) {
         $required[] = 'phone';

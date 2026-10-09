@@ -1,8 +1,17 @@
 import type { Href } from 'expo-router';
 import type { AppNotification } from '../api/notifications.service';
-import { resolveNotificationNavIntent } from '@oneandlab/shared-utils';
-import { appointmentDetailHref, appointmentsListHref } from '@/navigation/role-hrefs';
+import { resolveNotificationNavIntent, type PharmacyOrderNotificationSide } from '@oneandlab/shared-utils';
+import {
+  appointmentDetailHref,
+  appointmentsListHref,
+  pharmacyOrderDetailHref,
+  staffPatientHref,
+} from '@/navigation/role-hrefs';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
+import {
+  pharmacyOrderMessagesHref,
+  type PharmacyOrderRoutePrefix,
+} from '@/features/pharmacy-orders/utils/prescriptions-route';
 
 /** Rôles disposant d'une pile Expo Router ; les autres (labo, sous-compte, admin) n'ont aucune cible. */
 type NavRole = 'nurse' | 'pro' | 'preleveur' | 'patient';
@@ -29,39 +38,37 @@ export type NotificationNavigationOptions = {
 
 type RouteParams = Record<string, string>;
 
-const PHARMACY_REQUESTER_NOTIF_TYPES = new Set([
-  'pharmacy_order_accepted',
-  'pharmacy_order_refused',
-  'pharmacy_order_complement_requested',
-  'pharmacy_order_completed',
-]);
-
-function proOrderIsReceived(notifType: string, options?: NotificationNavigationOptions): boolean {
-  if (notifType === 'pharmacy_order_created') return true;
-  if (PHARMACY_REQUESTER_NOTIF_TYPES.has(notifType)) return false;
-  return Boolean(options?.pharmacyCanReceive);
-}
-
-function pharmacyOrderHref(
-  role: NavRole,
-  orderId: string,
-  notifType: string,
-  extra: RouteParams,
-  options?: NotificationNavigationOptions,
-): Href | null {
-  const params = { ...extra, id: orderId };
+function pharmacyRoutePrefix(role: NavRole): PharmacyOrderRoutePrefix | null {
   switch (role) {
     case 'patient':
-      return { pathname: '/(patient)/traitements/[id]', params };
+      return '/(patient)';
     case 'nurse':
-      return { pathname: '/(nurse)/commandes-pharmacie/[id]', params };
+      return '/(nurse)';
     case 'pro':
-      return proOrderIsReceived(notifType, options)
-        ? { pathname: '/(pro)/commandes-recues/[id]', params }
-        : { pathname: '/(pro)/commandes-pharmacie/[id]', params };
+      return '/(pro)';
     default:
       return null;
   }
+}
+
+/** Un message ouvre directement la vue Messages de la commande, le reste ouvre sa fiche. */
+function pharmacyOrderHref(
+  role: NavRole,
+  orderId: string,
+  side: PharmacyOrderNotificationSide | undefined,
+  messageId: string | undefined,
+  options?: NotificationNavigationOptions,
+): Href | null {
+  const prefix = pharmacyRoutePrefix(role);
+  if (!prefix) return null;
+  const received = prefix === '/(pro)' && (side ? side === 'received' : Boolean(options?.pharmacyCanReceive));
+  if (messageId) return pharmacyOrderMessagesHref(prefix, received ? 'received' : 'sent', orderId, messageId);
+  if (received) return { pathname: '/(pro)/commandes-recues/[id]', params: { id: orderId } };
+  return pharmacyOrderDetailHref(prefix, orderId);
+}
+
+function nurseTourHref(date: string | undefined): Href {
+  return { pathname: '/(nurse)/(tabs)/tournee', params: date ? { date } : {} };
 }
 
 function resultsHref(role: NavRole): Href | null {
@@ -114,6 +121,17 @@ function carePhotoHref(role: NavRole, appointmentId: string, photoId: string): H
   }
 }
 
+function transmissionsHref(role: NavRole, patientId: string): Href | null {
+  switch (role) {
+    case 'nurse':
+      return staffPatientHref('/(nurse)', patientId, 'transmissions');
+    case 'pro':
+      return staffPatientHref('/(pro)', patientId, 'transmissions');
+    default:
+      return null;
+  }
+}
+
 /** Cible de navigation d'une notification, ou `null` si elle n'ouvre aucun écran pour ce rôle. */
 export function resolveNotificationNavigation(
   notif: AppNotification,
@@ -126,13 +144,7 @@ export function resolveNotificationNavigation(
 
   switch (intent.kind) {
     case 'pharmacy_order':
-      return pharmacyOrderHref(
-        r,
-        intent.orderId,
-        String(notif.type ?? ''),
-        intent.messageId ? { messageId: intent.messageId } : {},
-        options,
-      );
+      return pharmacyOrderHref(r, intent.orderId, intent.side, intent.messageId, options);
     case 'results':
       return resultsHref(r);
     case 'reviews': {
@@ -159,6 +171,12 @@ export function resolveNotificationNavigation(
       if (hasCareGallery && intent.careGallery) params.careGallery = '1';
       return appointmentDetailHref(roleRoutePrefix(r), intent.appointmentId, params);
     }
+    case 'patient_transmissions':
+      return transmissionsHref(r, intent.patientId);
+    // La fiche passage mobile s'ouvre depuis un arrêt (RDV) : une série ouvre la tournée du jour.
+    case 'passage_series':
+    case 'nurse_tour':
+      return r === 'nurse' ? nurseTourHref(intent.date) : null;
     case 'none':
       return null;
   }

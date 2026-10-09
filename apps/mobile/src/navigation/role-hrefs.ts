@@ -18,6 +18,21 @@ export function appointmentDetailHref(prefix: RoleRoutePrefix, appointmentId: st
   }
 }
 
+/** Vue « Documents » d'un RDV : voir, télécharger, ajouter, remplacer. */
+export function appointmentDocumentsHref(prefix: RoleRoutePrefix, appointmentId: string): Href {
+  const params = { id: appointmentId };
+  switch (prefix) {
+    case '/(nurse)':
+      return { pathname: '/(nurse)/appointment/[id]/documents', params };
+    case '/(pro)':
+      return { pathname: '/(pro)/appointment/[id]/documents', params };
+    case '/(preleveur)':
+      return { pathname: '/(preleveur)/appointment/[id]/documents', params };
+    case '/(patient)':
+      return { pathname: '/(patient)/appointment/[id]/documents', params };
+  }
+}
+
 /** Replanification staff ; le patient passe par `edit-schedule`, hors de ce parcours. */
 export function appointmentEditHref(prefix: RoleRoutePrefix, appointmentId: string): Href | null {
   const params = { id: appointmentId };
@@ -47,7 +62,10 @@ export function appointmentsListHref(prefix: RoleRoutePrefix): Href {
   }
 }
 
-/** Création de RDV : assistant staff, ou réservation patient (`relative_id` pour un proche). */
+/**
+ * Création de RDV : assistant staff, ou réservation patient (`relative_id` pour un proche,
+ * `provider_id` + `provider_role` pour un soignant présélectionné).
+ */
 export function bookingNewHref(prefix: RoleRoutePrefix, params: RouteParams = {}): Href {
   switch (prefix) {
     case '/(nurse)':
@@ -61,7 +79,7 @@ export function bookingNewHref(prefix: RoleRoutePrefix, params: RouteParams = {}
   }
 }
 
-export type StaffPatientSection = 'documents' | 'prescriptions' | 'history' | 'health-record';
+export type StaffPatientSection = 'documents' | 'prescriptions' | 'history' | 'transmissions' | 'health-record';
 
 /** Fiche patient staff, ou l'une de ses sous-pages. */
 export function staffPatientHref(
@@ -87,6 +105,10 @@ export function staffPatientHref(
       return pro
         ? { pathname: '/(pro)/patient/[id]/history', params }
         : { pathname: '/(nurse)/patient/[id]/history', params };
+    case 'transmissions':
+      return pro
+        ? { pathname: '/(pro)/patient/[id]/transmissions', params }
+        : { pathname: '/(nurse)/patient/[id]/transmissions', params };
     case 'health-record':
       return pro
         ? { pathname: '/(pro)/patient/[id]/health-record', params }

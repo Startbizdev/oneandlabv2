@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../../lib/ai/AiAttachmentService.php';
 
 ai_handle_options(['GET', 'POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
+$user = ai_require_assistant_user();
 
 $conversationId = $_GET['id'] ?? null;
 if (!$conversationId) {
@@ -16,7 +16,7 @@ if (!$conversationId) {
     }
 }
 if (!$conversationId) {
-    ai_json_error('conversation_id requis', 400);
+    ai_json_error('conversation_id requis', 400, 'VALIDATION_ERROR');
 }
 
 $service = new AiAttachmentService();
@@ -33,11 +33,6 @@ try {
         ai_json_response(['success' => true, 'data' => $attachment], 201);
     }
     ai_json_error('Méthode non autorisée', 405);
-} catch (InvalidArgumentException $e) {
-    ai_json_error($e->getMessage(), 400);
-} catch (RuntimeException $e) {
-    ai_json_error($e->getMessage(), 403);
 } catch (Throwable $e) {
-    error_log('ai/conversations/attachments: ' . $e->getMessage());
-    ai_json_error('Pièce jointe impossible', 500);
+    ai_respond_error($e, 'ai/conversations/attachments');
 }

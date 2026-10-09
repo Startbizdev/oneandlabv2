@@ -151,6 +151,8 @@ export function buildAppColors(type: ColorblindType) {
 
     star: cb?.star ?? palette.amber[600],
     starFill: cb?.starFill ?? palette.amber[500],
+    /** Contour d'étoile vide : contraste ≥ 3:1 sur `surface` et `background`. */
+    starEmpty: palette.slate[500],
   };
 }
 

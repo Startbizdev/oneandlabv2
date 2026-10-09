@@ -4,21 +4,38 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Uuid.php';
-require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/../MedicalDocumentAccess.php';
 require_once __DIR__ . '/../rag/AiDocumentJobService.php';
-require_once __DIR__ . '/../../models/User.php';
 
 final class AiAttachmentService
 {
     private PDO $db;
-    private User $userModel;
     private AiDocumentJobService $docJobs;
 
     public function __construct(?PDO $db = null)
     {
         $this->db = $db ?? rag_db();
-        $this->userModel = new User();
         $this->docJobs = new AiDocumentJobService($this->db);
+    }
+
+    /**
+     * Document médical que l'utilisateur a le droit de lire (même règle que le téléchargement), sinon 404 / 403.
+     * À appeler AVANT toute analyse ou injection du contenu dans le prompt.
+     *
+     * @return array<string, mixed>
+     */
+    public function requireAccessibleDocument(array $user, string $medicalDocumentId): array
+    {
+        $doc = $medicalDocumentId !== '' ? $this->getDocument($medicalDocumentId) : null;
+        if ($doc === null) {
+            throw HttpStatusException::notFound('Document introuvable');
+        }
+        if (!MedicalDocumentAccess::userCanAccess($this->db, $user, $doc)) {
+            throw HttpStatusException::forbidden('Accès à ce document refusé');
+        }
+
+        return $doc;
     }
 
     /**
@@ -29,20 +46,14 @@ final class AiAttachmentService
         $userId = (string) ($user['user_id'] ?? '');
         $conv = $this->getConversation($conversationId, $userId);
         if (!$conv) {
-            throw new RuntimeException('Conversation introuvable');
+            throw HttpStatusException::notFound('Conversation introuvable');
         }
         $medicalDocumentId = trim((string) ($input['medical_document_id'] ?? ''));
         if ($medicalDocumentId === '') {
             throw new InvalidArgumentException('medical_document_id requis');
         }
-        $doc = $this->getDocument($medicalDocumentId);
-        if (!$doc) {
-            throw new RuntimeException('Document introuvable');
-        }
+        $doc = $this->requireAccessibleDocument($user, $medicalDocumentId);
         $patientId = (string) ($doc['patient_id'] ?? $conv['patient_id'] ?? $userId);
-        if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $patientId)) {
-            throw new RuntimeException('Accès document refusé');
-        }
         $attachmentType = $this->mapAttachmentType((string) ($doc['document_type'] ?? 'other'), (string) ($doc['mime_type'] ?? ''));
 
         $existing = $this->findExistingAttachment($conversationId, $medicalDocumentId);
@@ -95,7 +106,7 @@ final class AiAttachmentService
     public function listForConversation(string $conversationId, string $userId): array
     {
         if (!$this->getConversation($conversationId, $userId)) {
-            throw new RuntimeException('Conversation introuvable');
+            throw HttpStatusException::notFound('Conversation introuvable');
         }
         $stmt = $this->db->prepare('
             SELECT id, conversation_id, message_id, medical_document_id, attachment_type,
@@ -107,14 +118,6 @@ final class AiAttachmentService
         $stmt->execute([$conversationId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function getDocumentRow(string $id): ?array
-    {
-        return $this->getDocument($id);
     }
 
     /**
@@ -155,11 +158,7 @@ final class AiAttachmentService
             return $messages;
         }
 
-        try {
-            $attachments = $this->listForConversation($conversationId, $userId);
-        } catch (Throwable) {
-            return $messages;
-        }
+        $attachments = $this->listForConversation($conversationId, $userId);
 
         $byMessageId = [];
         $orphans = [];
@@ -245,7 +244,7 @@ final class AiAttachmentService
 
     private function getConversation(string $conversationId, string $userId): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM ai_conversations WHERE id = ? AND user_id = ? LIMIT 1');
+        $stmt = $this->db->prepare('SELECT * FROM ai_conversations WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1');
         $stmt->execute([$conversationId, $userId]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -254,7 +253,9 @@ final class AiAttachmentService
     private function getDocument(string $id): ?array
     {
         $stmt = $this->db->prepare('
-            SELECT md.*, COALESCE(md.patient_id, a.patient_id) AS patient_id
+            SELECT md.*, COALESCE(md.patient_id, a.patient_id) AS patient_id,
+                   a.patient_id AS apt_patient_id, a.relative_id AS apt_relative_id, a.assigned_to, a.assigned_nurse_id, a.assigned_lab_id,
+                   a.assigned_pro_id, a.created_by AS apt_created_by
             FROM medical_documents md
             LEFT JOIN appointments a ON a.id = md.appointment_id
             WHERE md.id = ?

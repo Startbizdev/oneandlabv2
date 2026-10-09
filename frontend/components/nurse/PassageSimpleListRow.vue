@@ -30,6 +30,10 @@
           <UIcon name="i-lucide-clock" class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
           <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ scheduleMeta }}</span>
         </div>
+        <div v-if="sharedMention" class="mt-1 flex min-w-0 items-center gap-1.5">
+          <UIcon name="i-lucide-users" class="h-3.5 w-3.5 shrink-0 text-primary-500" />
+          <span class="truncate text-xs font-medium text-primary-600 dark:text-primary-400">{{ sharedMention }}</span>
+        </div>
         <div
           v-if="routeKmLabel || routeDriveMinLabel"
           class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5"
@@ -95,7 +99,7 @@
 <script setup lang="ts">
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
-import { isTourStopAbsent } from '@oneandlab/shared-utils';
+import { isTourStopAbsent, sharedAppointmentMention } from '@oneandlab/shared-utils';
 import {
   formatPassageTourStopTimeLabel,
   resolvePassageTourStopRouteLabels,
@@ -129,6 +133,7 @@ const done = computed(
     (props.stop.visit_status === 'done' || props.stop.status === 'completed'),
 );
 const mutedText = computed(() => done.value || absent.value);
+const sharedMention = computed(() => sharedAppointmentMention(props.stop));
 const absenceLabel = computed(() => props.stop.patient_absence?.card_label_fr ?? '');
 
 const cardClass = computed(() => {

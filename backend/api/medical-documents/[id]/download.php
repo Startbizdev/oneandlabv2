@@ -57,21 +57,7 @@ if (!$id) {
 
 try {
     // Récupérer le document (LEFT JOIN : document de profil peut avoir appointment_id NULL)
-    $stmt = $db->prepare('
-        SELECT 
-            md.*,
-            a.patient_id AS apt_patient_id,
-            a.assigned_to,
-            a.assigned_nurse_id,
-            a.assigned_lab_id,
-            a.assigned_pro_id,
-            a.created_by AS apt_created_by
-        FROM medical_documents md
-        LEFT JOIN appointments a ON md.appointment_id = a.id
-        WHERE md.id = ?
-    ');
-    $stmt->execute([$id]);
-    $document = $stmt->fetch(PDO::FETCH_ASSOC);
+    $document = MedicalDocumentAccess::loadForAccess($db, (string) $id);
     
     if (!$document) {
         http_response_code(404);

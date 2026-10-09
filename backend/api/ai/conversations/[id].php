@@ -8,55 +8,65 @@ require_once __DIR__ . '/../../../lib/ai/AiBookingService.php';
 require_once __DIR__ . '/../../../lib/ai/AiAttachmentService.php';
 
 ai_handle_options(['GET', 'PATCH', 'DELETE', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur', 'super_admin']);
+$user = ai_require_assistant_user();
 $id = trim((string) ($_GET['id'] ?? ''));
 if ($id === '') {
-    ai_json_error('Identifiant requis', 400);
+    ai_json_error('Identifiant requis', 400, 'VALIDATION_ERROR');
 }
 
 $service = new AiConversationService();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$userId = (string) $user['user_id'];
 
-if ($method === 'GET') {
-    $conv = $service->getById($id, (string) $user['user_id']);
-    if (!$conv) {
-        ai_json_error('Conversation introuvable', 404);
-    }
-    $messages = $service->getMessages($id, (string) $user['user_id']);
-    $userId = (string) $user['user_id'];
-    $attachmentService = new AiAttachmentService();
-    $messages = $attachmentService->enrichMessagesWithAttachments($id, $userId, $messages);
-    $booking = new AiBookingService();
-    foreach ($messages as $i => $msg) {
-        $draftId = is_array($msg['metadata']['draft'] ?? null)
-            ? trim((string) ($msg['metadata']['draft']['id'] ?? ''))
-            : '';
-        if ($draftId === '') {
-            continue;
+try {
+    if ($method === 'GET') {
+        $limitParam = $_GET['limit'] ?? null;
+        if ($limitParam !== null && !ctype_digit((string) $limitParam)) {
+            throw new InvalidArgumentException('limit doit être un entier positif');
         }
-        $liveDraft = $booking->getDraft($draftId, $userId);
-        if ($liveDraft !== null) {
-            $messages[$i]['metadata']['draft'] = $liveDraft;
+        $before = trim((string) ($_GET['before'] ?? ''));
+        $page = $service->getHistoryPage(
+            $id,
+            $userId,
+            $limitParam !== null ? (int) $limitParam : null,
+            $before !== '' ? $before : null,
+        );
+        $conv = $service->getById($id, $userId);
+        $messages = (new AiAttachmentService())->enrichMessagesWithAttachments($id, $userId, $page['messages']);
+        $booking = new AiBookingService();
+        foreach ($messages as $i => $msg) {
+            $draftId = is_array($msg['metadata']['draft'] ?? null)
+                ? trim((string) ($msg['metadata']['draft']['id'] ?? ''))
+                : '';
+            if ($draftId === '') {
+                continue;
+            }
+            $liveDraft = $booking->getDraft($draftId, $userId);
+            if ($liveDraft !== null) {
+                $messages[$i]['metadata']['draft'] = $liveDraft;
+            }
         }
+        ai_json_response(['success' => true, 'data' => [
+            'conversation' => $conv,
+            'messages' => $messages,
+            'has_more' => $page['has_more'],
+            'draft' => $booking->getLatestDraftForConversation($id, $userId),
+        ]]);
     }
-    $draft = $booking->getLatestDraftForConversation($id, $userId);
-    ai_json_response(['success' => true, 'data' => ['conversation' => $conv, 'messages' => $messages, 'draft' => $draft]]);
-}
 
-if ($method === 'PATCH') {
-    $input = ai_read_json_body();
-    $conv = $service->update($id, (string) $user['user_id'], $input);
-    if (!$conv) {
-        ai_json_error('Conversation introuvable', 404);
+    if ($method === 'PATCH') {
+        $conv = $service->update($id, $userId, ai_read_json_body());
+        if (!$conv) {
+            ai_json_error('Conversation introuvable', 404, 'NOT_FOUND');
+        }
+        ai_json_response(['success' => true, 'data' => $conv]);
     }
-    ai_json_response(['success' => true, 'data' => $conv]);
-}
 
-if ($method === 'DELETE') {
-    if (!$service->softDelete($id, (string) $user['user_id'])) {
-        ai_json_error('Conversation introuvable', 404);
+    if ($method === 'DELETE') {
+        ai_json_response(['success' => true, 'data' => ['deleted' => $service->deletePermanently($user, $id)]]);
     }
-    ai_json_response(['success' => true]);
+} catch (Throwable $e) {
+    ai_respond_error($e, 'ai/conversations/detail');
 }
 
 ai_json_error('Méthode non autorisée', 405);

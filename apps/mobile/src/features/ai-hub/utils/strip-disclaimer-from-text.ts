@@ -2,15 +2,23 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Avertissements répétitifs non urgents, retirés du corps de la réponse. */
 const DISCLAIMER_PATTERNS = [
   /cary est un assistant informatif[^.!?]*[.!?]?/gi,
   /il ne remplace pas un avis m[eé]dical[^.!?]*[.!?]?/gi,
-  /en cas d['']urgence[^.!?]*[.!?]?/gi,
-  /(?:contactez|appelez|composez)\s*(?:le\s*)?(?:15|112|samu|pompiers)[^.!?]*[.!?]?/gi,
-  /(?:15|112)\s*(?:ou|\/)\s*(?:112|15)[^.!?]*[.!?]?/gi,
-  /(?:urgence|samu)\s*[:\—–-]\s*(?:contactez|appelez)?[^.!?]*[.!?]?/gi,
   /(?:rappel|disclaimer|note)\s*[:\—–-]\s*[^\n]+/gi,
 ];
+
+/** Consigne d'urgence (15, 112, 3114, SAMU, urgences) : jamais retirée d'une réponse. */
+const EMERGENCY_INSTRUCTION = /(?<!\d)(?:15|112|3114)(?!\d)|\bsamu\b|urgences?/i;
+
+function isEmergencyInstruction(text: string): boolean {
+  return EMERGENCY_INSTRUCTION.test(text);
+}
+
+function removeUnlessEmergency(text: string, pattern: RegExp): string {
+  return text.replace(pattern, (match) => (isEmergencyInstruction(match) ? match : '')).trim();
+}
 
 /** Clés internes Cary IA — jamais visibles dans le chat. */
 const INTERNAL_AI_PATTERNS = [
@@ -19,18 +27,29 @@ const INTERNAL_AI_PATTERNS = [
   /\*\*\((?:patient_mode|booking_step)[^)]+\)\*\*/gi,
 ];
 
+/**
+ * Nettoie les restes d'un retrait (espaces, puces orphelines) sans toucher
+ * aux paragraphes ni aux listes du message.
+ */
+function tidyLayout(text: string): string {
+  return text
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/^[ \t]*[-–—•*]+[ \t]*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[\s\-–—•]+$/, '')
+    .trim();
+}
+
 function stripInternalTokensOnly(text: string): string {
   let out = text.trim();
   for (const pattern of INTERNAL_AI_PATTERNS) {
     out = out.replace(pattern, '').trim();
   }
-  return out
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return tidyLayout(out);
 }
 
-/** Retire disclaimer / urgence / tokens internes du corps du message. */
+/** Retire l'avertissement répété et les tokens internes ; les consignes d'urgence restent. */
 export function stripDisclaimerFromAssistantText(text: string, disclaimer?: string): string {
   const original = text.trim();
   if (!original) return '';
@@ -39,29 +58,26 @@ export function stripDisclaimerFromAssistantText(text: string, disclaimer?: stri
   const d = disclaimer?.trim();
 
   if (d) {
-    if (out.includes(d)) {
+    if (out.includes(d) && !isEmergencyInstruction(d)) {
       out = out.replace(d, '').trim();
     }
     for (const sentence of d.split(/(?<=[.!?…])\s+/)) {
       const s = sentence.trim();
-      if (s.length < 10) continue;
+      if (s.length < 10 || isEmergencyInstruction(s)) continue;
       if (out.toLowerCase().includes(s.toLowerCase())) {
         out = out.replace(new RegExp(escapeRegExp(s), 'gi'), '').trim();
       }
     }
   }
 
-  for (const pattern of [...DISCLAIMER_PATTERNS, ...INTERNAL_AI_PATTERNS]) {
+  for (const pattern of DISCLAIMER_PATTERNS) {
+    out = removeUnlessEmergency(out, pattern);
+  }
+  for (const pattern of INTERNAL_AI_PATTERNS) {
     out = out.replace(pattern, '').trim();
   }
 
-  out = out
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/^[\s\-–—•*]+|[\s\-–—•*]+$/g, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  out = tidyLayout(out);
 
   if (!out && original) {
     return stripInternalTokensOnly(original);

@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/UploadMimeTypes.php';
 require_once __DIR__ . '/MedicalDocumentSubject.php';
 require_once __DIR__ . '/BookingFileJournal.php';
+require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/HttpStatusException.php';
+require_once __DIR__ . '/../config/upload-limits.php';
 
 /**
  * Création / copie de pièces médicales sans requête HTTP (webhook, brouillon patient).
@@ -18,6 +21,72 @@ final class MedicalDocumentsInternal
             return dirname(__DIR__);
         }
         return $backendDir;
+    }
+
+    /**
+     * Contrôle un fichier reçu en multipart (présence, taille, type), le chiffre et l'écrit dans uploads/medical/{id}/.
+     * Le fichier est sur disque au retour : l'appelant le supprime (deleteStoredFile) si l'enregistrement en base échoue.
+     *
+     * @param array<string, mixed>|null $file entrée de $_FILES
+     * @return array{id: string, file_name: string, file_path: string, file_size: int, mime_type: string, file_dek: string}
+     */
+    public static function storeUploadedFile(?array $file, Crypto $crypto): array
+    {
+        if ($file === null || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new HttpStatusException('Fichier requis ou erreur d\'upload', 400, 'FILE_REQUIRED');
+        }
+        if ((int) $file['size'] > ONEANDLAB_MAX_UPLOAD_BYTES) {
+            throw new HttpStatusException('Fichier trop volumineux (max 25 Mo)', 400, 'FILE_TOO_LARGE');
+        }
+        $mimeType = (string) finfo_file(finfo_open(FILEINFO_MIME_TYPE), (string) $file['tmp_name']);
+        if (!in_array($mimeType, UploadMimeTypes::MEDICAL_DOCUMENT, true)) {
+            throw new HttpStatusException('Type de fichier non autorisé', 400, 'FILE_TYPE_NOT_ALLOWED');
+        }
+        $fileContent = file_get_contents((string) $file['tmp_name']);
+        if ($fileContent === false) {
+            throw new HttpStatusException('Erreur lors de la lecture du fichier', 500, 'FILE_READ_FAILED');
+        }
+
+        $encryptedData = $crypto->encryptFile($fileContent);
+        $id = bin2hex(random_bytes(16));
+        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
+        $documentDir = self::backendRoot() . '/uploads/medical/' . $id . '/';
+        if (!is_dir($documentDir)) {
+            mkdir($documentDir, 0755, true);
+        }
+        $encryptedBytes = base64_decode($encryptedData['encrypted']);
+        if ($encryptedBytes === false) {
+            throw new RuntimeException('Erreur lors du décodage base64 du fichier');
+        }
+        $filePath = $documentDir . $fileName . '.encrypted';
+        if (file_put_contents($filePath, $encryptedBytes) === false || !file_exists($filePath)) {
+            throw new RuntimeException('Erreur lors de l\'écriture du fichier sur le serveur. Vérifiez les permissions du dossier uploads/medical/');
+        }
+
+        return [
+            'id' => $id,
+            'file_name' => $fileName,
+            'file_path' => '/uploads/medical/' . $id . '/' . $fileName . '.encrypted',
+            'file_size' => (int) $file['size'],
+            'mime_type' => $mimeType,
+            'file_dek' => (string) $encryptedData['dek'],
+        ];
+    }
+
+    /**
+     * Réponse d'un dépôt de document (POST /medical-documents et remplacement d'ordonnance).
+     *
+     * @param array{id: string, file_name: string, file_size: int, mime_type: string} $stored
+     * @return array{id: string, file_name: string, file_size: int, mime_type: string}
+     */
+    public static function uploadPayload(array $stored): array
+    {
+        return [
+            'id' => $stored['id'],
+            'file_name' => $stored['file_name'],
+            'file_size' => $stored['file_size'],
+            'mime_type' => $stored['mime_type'],
+        ];
     }
 
     /**

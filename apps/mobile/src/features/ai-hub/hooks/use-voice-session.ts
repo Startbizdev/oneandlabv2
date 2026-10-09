@@ -1,7 +1,10 @@
-import type { AiAppointmentDraft } from '@oneandlab/shared-types';
+import type { AiAppointmentDraft, AiEmergency } from '@oneandlab/shared-types';
 import { useAudioRecorderState } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
 import { createVoiceSession, endVoiceSession, sendVoiceTurn } from '../api/ai.service';
+import { aiActionErrorMessage } from '../utils/ai-chat-errors';
+import { normalizeAiEmergency } from '../utils/ai-emergency';
 import { playCaryVoiceBase64, stopCaryVoice } from '../utils/speak-cary-voice';
 import { VOICE_NO_SPEECH_TIMEOUT_MS } from '../utils/voice-audio-vad';
 import {
@@ -41,7 +44,6 @@ export type VoiceTransport = 'none' | 'realtime' | 'rest';
 
 export type VoiceSessionOptions = {
   conversationId?: string;
-  userFirstName?: string | null;
   onConversationSync?: (conversationId: string) => void | Promise<void>;
   onDraftSync?: (draft: AiAppointmentDraft | null) => void | Promise<void>;
   onAppointmentCreated?: (appointmentId: string) => void | Promise<void>;
@@ -68,6 +70,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
   const [lastConversationId, setLastConversationId] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceEnergy, setVoiceEnergy] = useState(0);
+  const [emergency, setEmergency] = useState<AiEmergency | null>(null);
 
   const vadStateRef = useRef<AdaptiveVadState>(createAdaptiveVadState());
 
@@ -116,6 +119,21 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     if (!audioBase64?.trim()) return;
     setPhase('speaking');
     await playCaryVoiceBase64(audioBase64);
+  }, []);
+
+  const showEmergency = useCallback((raw: unknown) => {
+    const normalized = normalizeAiEmergency(raw);
+    if (normalized) setEmergency(normalized);
+  }, []);
+
+  /** Clôt et oublie la session serveur courante (fin de conversation, ou temps réel abandonné pour REST). */
+  const releaseSession = useCallback(() => {
+    const sid = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (!sid) return;
+    endVoiceSession(sid).catch((e: unknown) => {
+      voiceLog('session.end.failed', { message: getErrorMessage(e, 'clôture impossible') });
+    });
   }, []);
 
   const ensureSession = useCallback(async () => {
@@ -221,6 +239,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       if (assistantText) {
         setTurns((prev) => appendVoiceTurn(prev, createVoiceTurn('assistant', assistantText)));
       }
+      showEmergency(result.emergency);
 
       if (onSyncRef.current && result.conversation_id) {
         await onSyncRef.current(result.conversation_id);
@@ -240,7 +259,12 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     } catch (e) {
       submitFailed = true;
       voiceLog('submit.api.error', { message: getErrorMessage(e, 'Réponse vocale indisponible') });
-      setVoiceError(getErrorMessage(e, 'Réponse vocale indisponible'));
+      if (e instanceof ApiRequestError && e.code === 'VOICE_SESSION_ENDED') {
+        sessionIdRef.current = null;
+        setVoiceError('La session vocale a expiré. Reparlez : une nouvelle session démarre.');
+      } else {
+        setVoiceError(aiActionErrorMessage(e, 'Réponse vocale indisponible. Réessayez.'));
+      }
       return null;
     } finally {
       submittingRef.current = false;
@@ -251,7 +275,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
         await startRecording({ clearError: !submitFailed });
       }
     }
-  }, [ensureSession, playAudio, startRecording]);
+  }, [ensureSession, playAudio, showEmergency, startRecording]);
 
   submitRecordingRef.current = submitRecording;
 
@@ -372,7 +396,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
       });
     } catch (e) {
       voiceLog('session.error', { message: getErrorMessage(e, 'Impossible d’ouvrir la conversation vocale') });
-      setVoiceError(getErrorMessage(e, 'Impossible d’ouvrir la conversation vocale'));
+      setVoiceError(aiActionErrorMessage(e, 'Impossible d’ouvrir la conversation vocale.'));
       setActive(false);
       setPhase('error');
       return;
@@ -438,26 +462,30 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
         setLastConversationId(convId);
         if (onSyncRef.current) await onSyncRef.current(convId);
       },
+      onEmergency: showEmergency,
       onEnergy: (energy) => setVoiceEnergy(energy),
       onError: (message) => setVoiceError(message),
       onFallbackRequired: () => {
         voiceLog('session.realtime.fallback-required');
         void client.stop();
         realtimeClientRef.current = null;
+        releaseSession();
         void startRestConversation();
       },
     });
 
     if (!ok && activeRef.current) {
       realtimeClientRef.current = null;
+      releaseSession();
       await startRestConversation();
     }
-  }, [conversationId, startRestConversation]);
+  }, [conversationId, releaseSession, showEmergency, startRestConversation]);
 
   const startConversation = useCallback(async () => {
     voiceLog('session.open');
     setActive(true);
     setTurns([]);
+    setEmergency(null);
     setVoiceError(null);
     setLastConversationId(conversationId ?? null);
     restFallbackStartedRef.current = false;
@@ -486,30 +514,17 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     void realtimeClientRef.current?.stop();
     realtimeClientRef.current = null;
     restFallbackStartedRef.current = false;
-
-    const sid = sessionIdRef.current;
-    sessionIdRef.current = null;
-    if (sid) void endVoiceSession(sid).catch(() => undefined);
+    releaseSession();
     setTransport('none');
     setPhase('idle');
-  }, []);
-
-  const endSession = useCallback(async () => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    try {
-      await endVoiceSession(sid);
-    } catch {
-      /* session déjà clôturée ou réseau */
-    }
-  }, []);
+  }, [releaseSession]);
 
   const reset = useCallback(
     (opts?: { keepConversationId?: boolean }) => {
       stopConversation();
-      sessionIdRef.current = null;
       welcomeRef.current = {};
       setTurns([]);
+      setEmergency(null);
       setVoiceError(null);
       if (!opts?.keepConversationId) {
         setLastConversationId(null);
@@ -529,6 +544,7 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     recognizing: recording,
     voiceEnergy,
     speechError: voiceError,
+    emergency,
     lastUserText,
     lastResponse,
     lastConversationId,
@@ -537,7 +553,6 @@ export function useVoiceSession(options: VoiceSessionOptions = {}) {
     startConversation,
     stopConversation,
     interruptAssistant,
-    endSession,
     reset,
   };
 }

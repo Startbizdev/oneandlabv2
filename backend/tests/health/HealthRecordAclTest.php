@@ -18,6 +18,12 @@ final class HealthRecordAclTest extends TestCase
         $this->db = TestDatabase::pdo();
     }
 
+    protected function tearDown(): void
+    {
+        $this->db = null;
+        parent::tearDown();
+    }
+
     public function testStaffAccessDeniedForUnknownPatient(): void
     {
         $service = new HealthRecordService($this->db);
@@ -28,7 +34,7 @@ final class HealthRecordAclTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Accès carnet refusé');
-        $service->getRecapForStaff($viewer, '00000000-0000-0000-0000-000000000001');
+        $service->getRecapForViewer($viewer, '00000000-0000-0000-0000-000000000001');
     }
 
     public function testStaffWriteDeniedForUnknownPatientWritesNothing(): void
@@ -47,7 +53,7 @@ final class HealthRecordAclTest extends TestCase
         $before = $countRows();
 
         try {
-            $service->upsertAnswersForStaff($viewer, $patientId, ['allergies_has' => ['value' => 'yes']]);
+            $service->upsertAnswersForViewer($viewer, $patientId, ['allergies_has' => ['value' => 'yes']]);
             $this->fail('Écriture soignant acceptée sans accès au dossier');
         } catch (RuntimeException $e) {
             $this->assertSame('Accès carnet refusé', $e->getMessage());

@@ -28,16 +28,19 @@ export function availabilitySliderMinHour(
   return bookingSlotMinHourParis(scheduledAt, maxHour, minHour);
 }
 
+/** `step` en heures : 1 = heure pleine (RDV), 0.25 = quart d'heure (passages infirmiers). */
 export function clampAvailabilityRange(
   lo: number,
   hi: number,
   maxHour: number,
   minHour = AVAILABILITY_MIN_HOUR,
+  step = 1,
 ): [number, number] {
   const floor = minHour;
   const max = maxHour;
-  let l = Math.max(floor, Math.min(max, Math.round(lo)));
-  let h = Math.max(floor, Math.min(max, Math.round(hi)));
+  const snap = (v: number) => Math.round(v / step) * step;
+  let l = Math.max(floor, Math.min(max, snap(lo)));
+  let h = Math.max(floor, Math.min(max, snap(hi)));
   if (h < l) [l, h] = [h, l];
   if (h - l < AVAILABILITY_MIN_SPAN_HOURS) {
     h = Math.min(max, l + AVAILABILITY_MIN_SPAN_HOURS);

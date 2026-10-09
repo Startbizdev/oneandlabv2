@@ -40,6 +40,16 @@ export function normalizeNurseSegment(raw: string): NurseSegment {
   return ok ? (raw as NurseSegment) : 'tous';
 }
 
+/**
+ * Période triée côté serveur (`patient_period`) : sans elle, la pagination par date de création renvoie
+ * d'abord les passages lointains et les prochains jours arrivent en page suivante.
+ */
+export function nurseSegmentPeriod(segment: NurseSegment): 'upcoming' | 'past' | undefined {
+  if (segment === 'historique') return 'past';
+  if (segment === 'tous' || segment === 'acceptes') return 'upcoming';
+  return undefined;
+}
+
 /** Patient — prochains / passés (filtrage client). */
 export type PatientListTab = 'upcoming' | 'past';
 

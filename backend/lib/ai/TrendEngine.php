@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Uuid.php';
-require_once __DIR__ . '/../PatientDossierAccess.php';
-require_once __DIR__ . '/../../models/User.php';
 
 /**
  * Tendances descriptives — jamais diagnostic.
@@ -33,6 +31,7 @@ final class TrendEngine
         foreach ($trends as $t) {
             $this->upsertTrend($patientId, $t);
         }
+        $this->deleteStaleTrends($patientId, array_column($trends, 'trend_key'));
 
         return $this->listForPatient($patientId);
     }
@@ -55,16 +54,20 @@ final class TrendEngine
     }
 
     /**
-     * @param array<string, mixed> $user
-     * @return list<array<string, mixed>>
+     * Une tendance qui ne s'applique plus (bilan refait, données arrêtées) ne doit pas rester dans le contexte.
+     *
+     * @param list<string> $currentKeys
      */
-    public function listForUser(array $user): array
+    private function deleteStaleTrends(string $patientId, array $currentKeys): void
     {
-        if (($user['role'] ?? '') !== 'patient') {
-            return [];
-        }
+        if ($currentKeys === []) {
+            $this->db->prepare('DELETE FROM ai_trends WHERE patient_id = ?')->execute([$patientId]);
 
-        return $this->listForPatient((string) $user['user_id']);
+            return;
+        }
+        $placeholders = implode(',', array_fill(0, count($currentKeys), '?'));
+        $this->db->prepare("DELETE FROM ai_trends WHERE patient_id = ? AND trend_key NOT IN ($placeholders)")
+            ->execute([$patientId, ...$currentKeys]);
     }
 
     /**
@@ -201,13 +204,7 @@ final class TrendEngine
         $stmt->execute([$patientId]);
         $last = $stmt->fetchColumn();
         if ($last === false || $last === null) {
-            return [[
-                'metric_type' => null,
-                'trend_key' => 'lab_overdue',
-                'observation_fr' => 'Aucun bilan de laboratoire récent dans votre dossier Cary.',
-                'window_days' => 365,
-                'data_points_count' => 0,
-            ]];
+            return [];
         }
         if (strtotime((string) $last) < strtotime('-12 months')) {
             return [[

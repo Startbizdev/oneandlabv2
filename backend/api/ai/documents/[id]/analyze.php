@@ -4,20 +4,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../../lib/rag/AiDocumentJobService.php';
-require_once __DIR__ . '/../../../../lib/PatientDossierAccess.php';
-require_once __DIR__ . '/../../../../models/User.php';
-
+require_once __DIR__ . '/../../../../lib/ai/AiAttachmentService.php';
 require_once __DIR__ . '/../../../../lib/ai/AiChatRateLimit.php';
-require_once __DIR__ . '/../../../../lib/ai/AiUserFacingError.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
-
-try {
-    AiChatRateLimit::assertAllowed($user, 'analyze');
-} catch (RuntimeException $e) {
-    ai_json_error(AiUserFacingError::fromThrowable($e), (int) ($e->getCode() ?: 429));
-}
+$user = ai_require_assistant_user();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     ai_json_error('Méthode non autorisée', 405);
@@ -31,32 +22,18 @@ if (!$id) {
     }
 }
 if (!$id) {
-    ai_json_error('ID document requis', 400);
+    ai_json_error('ID document requis', 400, 'VALIDATION_ERROR');
 }
 
-$db = ai_db();
-$userModel = new User();
-$stmt = $db->prepare('
-    SELECT md.*, COALESCE(md.patient_id, a.patient_id) AS resolved_patient_id
-    FROM medical_documents md
-    LEFT JOIN appointments a ON a.id = md.appointment_id
-    WHERE md.id = ?
-    LIMIT 1
-');
-$stmt->execute([$id]);
-$doc = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$doc) {
-    ai_json_error('Document introuvable', 404);
+try {
+    AiChatRateLimit::assertAllowed($user, 'analyze');
+    $doc = (new AiAttachmentService())->requireAccessibleDocument($user, (string) $id);
+    $patientId = (string) ($doc['patient_id'] ?? $user['user_id']);
+    $summaryId = (new AiDocumentJobService(ai_db()))->queueDocument($patientId, (string) $id, 'document_analysis');
+    ai_json_response([
+        'success' => true,
+        'data' => ['summary_job_id' => $summaryId, 'status' => 'pending'],
+    ], 202);
+} catch (Throwable $e) {
+    ai_respond_error($e, 'ai/documents/analyze');
 }
-$patientId = (string) ($doc['resolved_patient_id'] ?? $user['user_id']);
-if (!PatientDossierAccess::canAccess($db, $userModel, $user, $patientId)) {
-    ai_json_error('Accès refusé', 403);
-}
-
-$jobs = new AiDocumentJobService($db);
-$summaryId = $jobs->queueDocument($patientId, (string) $id, 'document_analysis');
-
-ai_json_response([
-    'success' => true,
-    'data' => ['summary_job_id' => $summaryId, 'status' => 'pending'],
-], 202);

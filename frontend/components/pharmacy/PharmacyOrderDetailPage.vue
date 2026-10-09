@@ -38,7 +38,7 @@
                 <dd class="font-medium">
                   <NuxtLink
                     v-if="mode === 'admin' || mode === 'receiver'"
-                    :to="profileLink(order.patient_id)"
+                    :to="patientProfileLink(order)"
                     class="text-primary hover:underline"
                   >
                     {{ order.relative_display_name || order.patient_display_name || 'Patient' }}
@@ -49,14 +49,13 @@
               <div>
                 <dt class="text-muted">Pharmacie</dt>
                 <dd class="font-medium">
-                  <NuxtLink
-                    v-if="mode === 'admin'"
-                    :to="profileLink(order.pharmacy_id)"
-                    class="text-primary hover:underline"
+                  <button
+                    type="button"
+                    class="text-left text-primary hover:underline"
+                    @click="pharmacyProfileOpen = true"
                   >
                     {{ order.pharmacy_display_name || 'Pharmacie' }}
-                  </NuxtLink>
-                  <span v-else>{{ order.pharmacy_display_name || 'Pharmacie' }}</span>
+                  </button>
                 </dd>
               </div>
               <div v-if="order.desired_fulfillment_date">
@@ -139,42 +138,15 @@
             <p v-else class="text-sm text-muted">Aucune ordonnance jointe.</p>
           </UCard>
 
-          <UCard class="ring-1 ring-default/60">
-            <template #header>
-              <h2 class="text-base font-medium">Conversation</h2>
-            </template>
-            <div v-if="messagesLoading" class="flex justify-center py-8">
-              <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary" />
-            </div>
-            <div v-else class="space-y-3">
-              <UEmpty
-                v-if="messages.length === 0"
-                icon="i-lucide-message-square"
-                title="Aucun message"
-                :description="mode === 'admin' ? 'Historique des échanges entre les parties.' : 'Échangez avec l\'autre partie si besoin.'"
-                variant="naked"
-                class="py-6"
-              />
-              <div class="flex w-full flex-col gap-2">
-                <div
-                  v-for="msg in messages"
-                  :key="msg.id"
-                  class="max-w-[85%] rounded-lg border border-default/60 px-3 py-2 text-sm break-words"
-                  :class="msg.author_id === user?.id ? 'self-end bg-primary/10' : 'self-start'"
-                >
-                  <div class="flex items-center justify-between gap-3 text-xs text-muted">
-                    <span class="truncate">{{ msg.author_name || 'Utilisateur' }}</span>
-                    <span class="shrink-0">{{ formatDate(msg.created_at) }}</span>
-                  </div>
-                  <p class="mt-1 whitespace-pre-wrap break-words">{{ msg.body }}</p>
-                </div>
-              </div>
-              <form v-if="canPost && mode !== 'admin'" class="flex gap-2 pt-2" @submit.prevent="sendMessage">
-                <UInput v-model="newMessage" placeholder="Votre message…" class="flex-1" />
-                <UButton type="submit" color="primary" icon="i-lucide-send" :loading="sendingMessage" :disabled="!newMessage.trim()" />
-              </form>
-            </div>
-          </UCard>
+          <NuxtLink
+            :to="`${listPath}/${orderId}/messages`"
+            class="flex items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-default/60 transition-colors hover:bg-elevated/60"
+          >
+            <UIcon name="i-lucide-message-circle" class="h-5 w-5 shrink-0 text-muted" />
+            <span class="flex-1 text-sm font-medium">Messages</span>
+            <span v-if="messageCount !== null" class="text-sm text-muted">{{ messageCount }}</span>
+            <UIcon name="i-lucide-chevron-right" class="h-4 w-4 shrink-0 text-muted" />
+          </NuxtLink>
         </div>
 
         <aside class="space-y-6">
@@ -307,11 +279,17 @@
         </div>
       </Teleport>
     </ClientOnly>
+
+    <PharmacyPublicProfileModal
+      :open="pharmacyProfileOpen"
+      :pharmacy-id="order?.pharmacy_id ?? null"
+      @close="pharmacyProfileOpen = false"
+    />
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
-import type { PharmacyOrder, PharmacyOrderMessage, PharmacyOrderStatus } from '@oneandlab/shared-types';
+import type { PharmacyOrder, PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { PHARMACY_FULFILLMENT_LABELS, PHARMACY_ORDER_STATUS_LABELS } from '@oneandlab/shared-constants';
 import { parseAppointmentDateFrance } from '@oneandlab/shared-utils';
 import { downloadMedicalDocument } from '~/utils/download-medical-document';
@@ -326,19 +304,16 @@ const props = defineProps<{
 
 const toast = useAppToast();
 const { user } = useAuth();
-const { fetchOrder, updateOrderStatus, fetchMessages, postMessage } = usePharmacyModule();
+const { fetchOrder, updateOrderStatus, fetchMessages } = usePharmacyModule();
 
 const loading = ref(true);
 const order = ref<PharmacyOrder | null>(null);
 const actionLoading = ref(false);
 
-const messages = ref<PharmacyOrderMessage[]>([]);
-const messagesLoading = ref(false);
-const canPost = ref(false);
-const newMessage = ref('');
-const sendingMessage = ref(false);
+const messageCount = ref<number | null>(null);
 
 const showRefuseModal = ref(false);
+const pharmacyProfileOpen = ref(false);
 const refusalReason = ref('');
 
 const pageTitle = computed(() => props.pageTitle ?? 'Détail commande');
@@ -349,6 +324,12 @@ const pageDescription = computed(() => {
 
 function profileLink(userId: string): string {
   return `/profile?userId=${encodeURIComponent(userId)}`;
+}
+
+/** Commande pour un proche : la page profil ouvre le dossier du proche à partir du titulaire. */
+function patientProfileLink(current: PharmacyOrder): string {
+  if (!current.relative_id) return profileLink(current.patient_id);
+  return `/profile?${new URLSearchParams({ userId: current.patient_id, relativeId: current.relative_id }).toString()}`;
 }
 
 function requesterRoleLabel(role: string): string {
@@ -481,17 +462,13 @@ async function loadOrder() {
   }
 }
 
-async function loadMessages() {
-  messagesLoading.value = true;
+async function loadMessageCount() {
   try {
     const data = await fetchMessages(props.orderId);
-    messages.value = data.messages;
-    canPost.value = data.can_post;
-  } catch {
-    messages.value = [];
-    canPost.value = false;
-  } finally {
-    messagesLoading.value = false;
+    messageCount.value = data.messages.length;
+  } catch (e: unknown) {
+    console.warn('[pharmacy-order] message count unavailable', e);
+    messageCount.value = null;
   }
 }
 
@@ -500,7 +477,7 @@ async function setStatus(status: PharmacyOrderStatus, patch: { rejection_reason?
   try {
     order.value = await updateOrderStatus(props.orderId, status, patch);
     toast.add({ title: 'Statut mis à jour', color: 'success' });
-    await loadMessages();
+    await loadMessageCount();
   } catch (e: unknown) {
     toast.add({
       title: 'Erreur',
@@ -530,27 +507,7 @@ async function cancelOrder() {
   await setStatus('annulee');
 }
 
-async function sendMessage() {
-  const body = newMessage.value.trim();
-  if (!body) return;
-  sendingMessage.value = true;
-  try {
-    const msg = await postMessage(props.orderId, body);
-    messages.value = [...messages.value, { ...msg, author_name: user.value?.first_name ? `${user.value.first_name} ${user.value.last_name ?? ''}`.trim() : 'Moi' }];
-    newMessage.value = '';
-  } catch (e: unknown) {
-    toast.add({
-      title: 'Erreur',
-      description: e instanceof Error ? e.message : 'Envoi impossible',
-      color: 'error',
-    });
-  } finally {
-    sendingMessage.value = false;
-  }
-}
-
 onMounted(async () => {
-  await loadOrder();
-  await loadMessages();
+  await Promise.all([loadOrder(), loadMessageCount()]);
 });
 </script>

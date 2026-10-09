@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cary",
     "slug": "cary-mobile",
-    "version": "1.8.36",
+    "version": "1.8.37",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cary",
@@ -31,7 +31,7 @@
           "NSAllowsLocalNetworking": true
         }
       },
-      "buildNumber": "106"
+      "buildNumber": "111"
     },
     "android": {
       "adaptiveIcon": {
@@ -40,7 +40,7 @@
       },
       "package": "com.carybioapp.app",
       "edgeToEdgeEnabled": true,
-      "versionCode": 37,
+      "versionCode": 39,
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
@@ -52,6 +52,9 @@
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
+      ],
+      "blockedPermissions": [
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "plugins": [
@@ -114,6 +117,12 @@
         "expo-calendar",
         {
           "calendarPermission": "Cary ajoute vos passages de tournée à votre calendrier."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Cary lit le contact que vous choisissez pour préremplir la fiche d’un nouveau patient."
         }
       ]
     ],

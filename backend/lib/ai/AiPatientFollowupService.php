@@ -5,19 +5,27 @@ declare(strict_types=1);
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../NotificationService.php';
-require_once __DIR__ . '/AiBookingService.php';
 
+/**
+ * Signaux de suivi informatifs (cron quotidien) : bilan ancien, passage manqué, ordonnance à renouveler,
+ * téléphone manquant. Chaque signal crée au plus une notification `ai_signal_detected` tous les 14 jours.
+ */
 final class AiPatientFollowupService
 {
+    public const NOTIFICATION_TYPE = 'ai_signal_detected';
+    private const LAB_OVERDUE_MONTHS = 12;
+    private const SIGNAL_COOLDOWN_DAYS = 14;
+
     private PDO $db;
-    private AiBookingService $booking;
 
     public function __construct(?PDO $db = null)
     {
-        $this->db = $db ?? rag_db();
-        $this->booking = new AiBookingService();
+        $this->db = $db ?? ai_db();
     }
 
+    /**
+     * @return array{patients_scanned: int, signals_created: int, errors: int, run_id: string}
+     */
     public function runDailyScan(int $patientLimit = 200): array
     {
         $runId = Uuid::v4();
@@ -37,6 +45,7 @@ final class AiPatientFollowupService
             try {
                 $created += $this->scanPatient((string) $patientId);
             } catch (Throwable $e) {
+                error_log('ai-patient-followup patient ' . $patientId . ' : ' . $e->getMessage());
                 $errors[] = $patientId . ': ' . $e->getMessage();
             }
         }
@@ -51,48 +60,48 @@ final class AiPatientFollowupService
             $errors !== [] ? mb_substr(implode('; ', $errors), 0, 500) : null,
         ]);
 
-        return ['patients_scanned' => $scanned, 'signals_created' => $created, 'run_id' => $runId];
+        return ['patients_scanned' => $scanned, 'signals_created' => $created, 'errors' => count($errors), 'run_id' => $runId];
     }
 
-    private function scanPatient(string $patientId): int
+    public function scanPatient(string $patientId): int
     {
         $created = 0;
         if ($this->detectLabOverdue($patientId)) {
             $created += $this->createSignal($patientId, 'lab_overdue', [
-                'message' => 'Aucun bilan de laboratoire récent dans votre dossier.',
-                'months_threshold' => 12,
+                'message' => 'Votre dernier bilan de laboratoire date de plus d\'un an.',
+                'months_threshold' => self::LAB_OVERDUE_MONTHS,
             ]);
         }
-        if ($this->detectNewLabResult($patientId)) {
-            $created += $this->createSignal($patientId, 'new_lab_result', [
-                'message' => 'Un nouveau résultat de laboratoire est disponible.',
-            ]);
-        }
-        if ($this->detectNoShow($patientId)) {
+        $missedAppointmentId = $this->findRecentMissedVisit($patientId);
+        if ($missedAppointmentId !== null) {
             $created += $this->createSignal($patientId, 'appointment_no_show', [
-                'message' => 'Un rendez-vous récent n\'a pas été honoré.',
+                'message' => 'Un professionnel n\'a pas pu vous rencontrer lors d\'un passage récent. Vous pouvez reprogrammer depuis le rendez-vous.',
+                'appointment_id' => $missedAppointmentId,
             ]);
         }
         if ($this->detectPrescriptionExpiring($patientId)) {
             $created += $this->createSignal($patientId, 'prescription_expiring', [
-                'message' => 'Une ordonnance pourrait nécessiter un renouvellement.',
+                'message' => 'Une ordonnance de votre dossier arrive bientôt à un an : pensez à la faire renouveler.',
             ]);
         }
-        if ($this->detectProfileIncomplete($patientId)) {
+        if ($this->detectPhoneMissing($patientId)) {
             $created += $this->createSignal($patientId, 'profile_incomplete', [
-                'message' => 'Votre profil Cary est incomplet.',
+                'message' => 'Ajoutez votre numéro de téléphone pour être joint le jour du passage.',
             ]);
         }
 
         return $created;
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     private function createSignal(string $patientId, string $type, array $payload): int
     {
         $check = $this->db->prepare('
             SELECT id FROM ai_patient_signals
             WHERE patient_id = ? AND signal_type = ? AND dismissed_at IS NULL AND acted_at IS NULL
-              AND detected_at > DATE_SUB(NOW(), INTERVAL 14 DAY)
+              AND detected_at > DATE_SUB(NOW(), INTERVAL ' . self::SIGNAL_COOLDOWN_DAYS . ' DAY)
             LIMIT 1
         ');
         $check->execute([$patientId, $type]);
@@ -105,65 +114,67 @@ final class AiPatientFollowupService
             VALUES (?, ?, ?, \'informational\', ?, NOW())
         ')->execute([$id, $patientId, $type, json_encode($payload, JSON_UNESCAPED_UNICODE)]);
 
-        $this->notifySignal($patientId, $type, $payload);
+        $this->notifySignal($patientId, $id, $type, $payload);
 
         return 1;
     }
 
-    private function notifySignal(string $patientId, string $type, array $payload): void
+    /**
+     * Notification typée : ouvre le rendez-vous concerné, sinon reste informative (pas de navigation).
+     *
+     * @param array<string, mixed> $payload
+     */
+    private function notifySignal(string $patientId, string $signalId, string $type, array $payload): void
     {
+        $data = ['signal_type' => $type, 'signal_id' => $signalId];
+        if (!empty($payload['appointment_id'])) {
+            $data['appointment_id'] = (string) $payload['appointment_id'];
+        } else {
+            $data['no_navigate'] = true;
+        }
         try {
-            $notif = new NotificationService();
-            $notif->createNotification(
+            (new NotificationService())->createNotification(
                 $patientId,
-                'ai_signal_detected',
+                self::NOTIFICATION_TYPE,
                 'Suggestion Cary',
-                (string) ($payload['message'] ?? 'Une suggestion santé est disponible.'),
-                ['signal_type' => $type],
+                (string) $payload['message'],
+                $data,
             );
-        } catch (Throwable) {
-            // non bloquant
+        } catch (Throwable $e) {
+            error_log('ai-patient-followup notification ' . $type . ' non envoyée (' . $patientId . ') : ' . $e->getMessage());
         }
     }
 
+    /** Uniquement si un bilan existe déjà et date de plus de 12 mois : un dossier sans bilan n'est pas « en retard ». */
     private function detectLabOverdue(string $patientId): bool
     {
         $stmt = $this->db->prepare('
-            SELECT MAX(created_at) AS last_at FROM medical_documents
+            SELECT MAX(created_at) FROM medical_documents
             WHERE patient_id = ? AND document_type = \'resultats\'
         ');
         $stmt->execute([$patientId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $last = $row['last_at'] ?? null;
-        if ($last === null) {
-            return true;
+        $last = $stmt->fetchColumn();
+        if ($last === false || $last === null) {
+            return false;
         }
 
-        return strtotime((string) $last) < strtotime('-12 months');
+        return strtotime((string) $last) < strtotime('-' . self::LAB_OVERDUE_MONTHS . ' months');
     }
 
-    private function detectNewLabResult(string $patientId): bool
+    /** Passage annulé par le professionnel pour « patient absent » dans les 7 derniers jours (pas les autres annulations). */
+    private function findRecentMissedVisit(string $patientId): ?string
     {
         $stmt = $this->db->prepare('
-            SELECT COUNT(*) FROM medical_documents
-            WHERE patient_id = ? AND document_type = \'resultats\'
-              AND created_at > DATE_SUB(NOW(), INTERVAL 3 DAY)
+            SELECT id FROM appointments
+            WHERE patient_id = ? AND status = \'canceled\' AND cancellation_reason = \'patient_absent\'
+              AND canceled_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+            ORDER BY canceled_at DESC
+            LIMIT 1
         ');
         $stmt->execute([$patientId]);
+        $id = $stmt->fetchColumn();
 
-        return (int) $stmt->fetchColumn() > 0;
-    }
-
-    private function detectNoShow(string $patientId): bool
-    {
-        $stmt = $this->db->prepare('
-            SELECT COUNT(*) FROM appointments
-            WHERE patient_id = ? AND status IN (\'cancelled\', \'no_show\')
-              AND updated_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
-        ');
-        $stmt->execute([$patientId]);
-
-        return (int) $stmt->fetchColumn() > 0;
+        return $id !== false ? (string) $id : null;
     }
 
     private function detectPrescriptionExpiring(string $patientId): bool
@@ -179,75 +190,12 @@ final class AiPatientFollowupService
         return (int) $stmt->fetchColumn() > 0;
     }
 
-    private function detectProfileIncomplete(string $patientId): bool
+    private function detectPhoneMissing(string $patientId): bool
     {
-        $stmt = $this->db->prepare('
-            SELECT phone, email_encrypted FROM profiles WHERE id = ? LIMIT 1
-        ');
+        $stmt = $this->db->prepare('SELECT phone_encrypted FROM profiles WHERE id = ? LIMIT 1');
         $stmt->execute([$patientId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
-            return false;
-        }
+        $phone = $stmt->fetchColumn();
 
-        return trim((string) ($row['phone'] ?? '')) === '';
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function actOnSignal(string $signalId, array $user): array
-    {
-        $userId = (string) ($user['user_id'] ?? '');
-        $stmt = $this->db->prepare('SELECT * FROM ai_patient_signals WHERE id = ? AND patient_id = ? LIMIT 1');
-        $stmt->execute([$signalId, $userId]);
-        $signal = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$signal) {
-            throw new RuntimeException('Signal introuvable');
-        }
-        $draft = $this->booking->createDraft($user, [
-            'patient_id' => $userId,
-            'payload' => [
-                'type' => 'blood_test',
-                'patient_mode' => 'self',
-                'booking_step' => 'services',
-                'signal_type' => (string) $signal['signal_type'],
-            ],
-        ]);
-        $draftId = (string) ($draft['id'] ?? '');
-        $this->db->prepare('UPDATE ai_patient_signals SET acted_at = NOW(), draft_id = ? WHERE id = ?')
-            ->execute([$draftId !== '' ? $draftId : null, $signalId]);
-
-        return ['draft_id' => $draftId, 'draft' => $draft];
-    }
-
-    public function dismissSignal(string $signalId, string $userId): void
-    {
-        $this->db->prepare('
-            UPDATE ai_patient_signals SET dismissed_at = NOW()
-            WHERE id = ? AND patient_id = ? AND dismissed_at IS NULL
-        ')->execute([$signalId, $userId]);
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    public function listActiveSignals(string $userId): array
-    {
-        $stmt = $this->db->prepare('
-            SELECT id, signal_type, severity, payload_json, detected_at, draft_id
-            FROM ai_patient_signals
-            WHERE patient_id = ? AND dismissed_at IS NULL AND acted_at IS NULL
-            ORDER BY detected_at DESC
-            LIMIT 20
-        ');
-        $stmt->execute([$userId]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        foreach ($rows as &$row) {
-            $row['payload'] = json_decode((string) ($row['payload_json'] ?? '{}'), true);
-            unset($row['payload_json']);
-        }
-
-        return $rows;
+        return $phone !== false && trim((string) $phone) === '';
     }
 }

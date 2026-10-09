@@ -7,6 +7,8 @@ require_once __DIR__ . '/AiAddressFromMessageResolver.php';
 require_once __DIR__ . '/ContextComposer.php';
 require_once __DIR__ . '/../GoogleAddressSearch.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/AiStaffPatientResolver.php';
 
 /**
  * Exécute les tools Grok côté serveur (persistance + infra déterministe).
@@ -165,14 +167,29 @@ final class AiBookingToolExecutor
         }
 
         $draftId = is_array($this->draft) ? (string) ($this->draft['id'] ?? '') : '';
-        if ($draftId !== '') {
-            $updated = $this->bookingService()->patchDraft($draftId, $this->user, $patch, null);
-        } else {
-            $updated = $this->bookingService()->createDraft($this->user, [
-                'conversation_id' => $this->conversationId,
-                'payload' => $patch,
-                'user_message' => null,
-            ]);
+        try {
+            if ($draftId !== '') {
+                $updated = $this->bookingService()->patchDraft($draftId, $this->user, $patch, null);
+            } else {
+                $updated = $this->bookingService()->createDraft($this->user, [
+                    'conversation_id' => $this->conversationId,
+                    'payload' => $patch,
+                    'user_message' => null,
+                ]);
+            }
+        } catch (HttpStatusException | InvalidArgumentException $e) {
+            return ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => $e->getMessage(),
+                'user_hint_fr' => $e->getMessage(),
+            ]];
+        }
+        if ($updated === null) {
+            return ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => 'draft_closed',
+                'user_hint_fr' => 'Ce brouillon est clôturé — recommencez une demande.',
+            ]];
         }
 
         $this->draft = $updated;
@@ -228,7 +245,13 @@ final class AiBookingToolExecutor
 
             return $this->updateDraft(['patch' => $patch]);
         } catch (Throwable $e) {
-            return ['draft' => $this->draft, 'result' => ['ok' => false, 'error' => $e->getMessage()]];
+            error_log('AiBookingToolExecutor géocodage : ' . $e->getMessage());
+
+            return ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => 'geocoding_unavailable',
+                'user_hint_fr' => 'La recherche d\'adresse est indisponible — indiquez l\'adresse complète avec le code postal.',
+            ]];
         }
     }
 
@@ -267,6 +290,14 @@ final class AiBookingToolExecutor
     {
         $patientId = trim((string) ($arguments['patient_id'] ?? ''));
         if ($patientId !== '') {
+            if (!(new AiStaffPatientResolver($this->userModel()))->staffCanUsePatient($patientId, $this->user)) {
+                return ['draft' => $this->draft, 'result' => [
+                    'ok' => false,
+                    'error' => 'Patient introuvable',
+                    'user_hint_fr' => 'Patient introuvable — vérifiez le nom ou choisissez dans la liste.',
+                ]];
+            }
+
             return $this->updateDraft([
                 'patch' => [
                     'patient_mode' => 'existing',

@@ -137,7 +137,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-refresh-cw"
-                  :loading="containsPending(uploadingTypes, doc.document_type)"
+                  :loading="isReplacing(doc)"
                   :loading-auto="false"
                   aria-label="Remplacer"
                   :on-click="() => triggerReplace(doc)"
@@ -292,7 +292,7 @@
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-refresh-cw"
-                  :loading="containsPending(uploadingTypes, doc.document_type)"
+                  :loading="isReplacing(doc)"
                   :loading-auto="false"
                   aria-label="Remplacer"
                   :on-click="() => triggerReplace(doc)"
@@ -460,7 +460,7 @@
               variant="ghost"
               size="xs"
               icon="i-lucide-refresh-cw"
-              :loading="containsPending(uploadingTypes, doc.document_type)"
+              :loading="isReplacing(doc)"
               :loading-auto="false"
               aria-label="Remplacer"
               :on-click="() => triggerReplace(doc)"
@@ -621,7 +621,7 @@
                 variant="ghost"
                 size="xs"
                 icon="i-lucide-refresh-cw"
-                :loading="containsPending(uploadingTypes, doc.document_type)"
+                :loading="isReplacing(doc)"
                 :loading-auto="false"
                 aria-label="Remplacer"
                 :on-click="() => triggerReplace(doc)"
@@ -706,6 +706,8 @@
 </template>
 
 <script setup lang="ts">
+import { canReplacePrescriptionDocument } from '@oneandlab/shared-utils';
+
 /** Fourni par `RdvDocumentsEmbeddedProvide` sur la fiche détail RDV : grille libellé / valeur comme le reste de la page. */
 const embeddedInRdvAccordion = inject<boolean>('rdvAppointmentDocumentsEmbedded', false);
 
@@ -794,6 +796,8 @@ const props = withDefaults(
 const emit = defineEmits<{
   download: [doc: any]
   replace: [doc: any]
+  /** Ordonnance remplacée par `POST /medical-documents/{id}/replace` : recharger la liste. */
+  replaced: []
   upload: [docType: string, file: File]
   carePhotoUpload: [file: File]
   carePhotoThreadUpdated: []
@@ -801,6 +805,11 @@ const emit = defineEmits<{
 
 const { user } = useAuth();
 const documentsViewerId = computed(() => (user.value?.id != null ? String(user.value.id) : null));
+const { replacingId: replacingPrescriptionId, replace: replacePrescription } = useReplacePrescription();
+
+function isReplacing(doc: any): boolean {
+  return replacingPrescriptionId.value === String(doc.id) || containsPending(props.uploadingTypes, doc.document_type);
+}
 
 const draggedOver = ref<string | null>(null);
 const fileInputRefs = ref<Record<string, HTMLInputElement>>({});
@@ -926,7 +935,11 @@ function triggerUpload(docType: string, forceReplace = false) {
   fileInputRefs.value[docType]?.click();
 }
 
-function triggerReplace(doc: any) {
+async function triggerReplace(doc: any) {
+  if (canReplacePrescriptionDocument(user.value?.role, doc)) {
+    if (await replacePrescription(String(doc.id))) emit('replaced');
+    return;
+  }
   const docType = doc.document_type;
   if (fileInputRefs.value[docType]) {
     fileInputRefs.value[docType].click();

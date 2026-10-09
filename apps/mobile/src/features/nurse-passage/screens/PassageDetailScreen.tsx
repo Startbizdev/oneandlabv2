@@ -2,15 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, Ellipsis, FileText, HeartPulse, Navigation } from 'lucide-react-native';
+import { ClipboardList, HeartPulse, Navigation } from 'lucide-react-native';
 import {
+  appointmentDossierPatientId,
   canCancelAppointment,
+  isPatientAbsenceActiveOn,
+  isCoNurseViewer,
+  nurseOwnerOnlyActionsVisible,
   resolvePassageCustomTime,
   resolvePassageTimeRange,
 } from '@oneandlab/shared-utils';
 import type {
   NursePassageNursingItem,
   NursePassageSeriesInput,
+  NursePassageSeriesUpdateResult,
+  PassageDailyTimeSlot,
   PassagePlanningConfig,
   PassageTimeSlot,
   PatientAbsence,
@@ -19,47 +25,62 @@ import { PASSAGE_DURATION_PRESETS } from '@oneandlab/shared-types';
 import { nursePassageSeriesErrorMessage } from '@oneandlab/shared-api';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { appointmentDetailHref, staffPatientHref } from '@/navigation/role-hrefs';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { Button } from '@/components/ui/Button';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { fetchAppointment, updateAppointment } from '@/features/appointments/api/appointments.service';
+import { updateAppointment } from '@/features/appointments/api/appointments.service';
 import { cancelAppointment } from '@/features/appointments/detail/api/appointment-detail.service';
-import { DetailSegmentBar } from '@/features/appointments/detail/components/layout/DetailSegmentBar';
 import { medicalDocumentsQueryOptions } from '@/features/appointments/detail/hooks/use-appointment-detail-extras';
 import { useAppointmentCareCategories } from '@/features/appointments/detail/hooks/use-appointment-care-categories';
 import { filterListDocuments } from '@/features/appointments/detail/utils/document-labels';
+import { appointmentDocumentsRow } from '@/features/appointments/detail/utils/appointment-documents-row';
 import {
   resolveAppointmentDetailAddressLine,
   resolveAppointmentMapCoords,
 } from '@/features/appointments/detail/utils/appointment-address-display';
 import { parseProfileAddress } from '@/features/profile/utils/parse-profile-address';
 import { updateNurseTourStopStatus } from '@/features/tournee-nurse/api/nurse-tour.service';
-import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import {
+  NURSE_TOUR_QUERY_ROOT,
+  nurseTourQueryOptions,
+  todayTourDate,
+} from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { nursePassageDocumentsHref } from '@/features/tournee-nurse/utils/passage-detail-href';
 import {
   buildTourNavigationUrl,
   cachedNurseNavAppPref,
   openTourNavigation,
 } from '@/features/tournee-nurse/utils/tour-navigation';
 import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
+import { TransmissionEntrySheet } from '@/features/patients/components/TransmissionEntrySheet';
 import { fetchPatientAbsences } from '@/features/patient-absence/api/patient-absence.service';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { useAppColors } from '@/theme/use-app-colors';
 import { H_PADDING, ICON_STROKE_WIDTH, spacing, iconSize, useStyles, type Theme } from '@/theme';
 import {
+  cancelNursePassageOccurrence,
   deleteNursePassageSeries,
   fetchNursePassageSeries,
   materializeNursePassageSeries,
+  removeNursePassageSlot,
   updateNursePassageSeries,
 } from '../api/nurse-passage.service';
+import {
+  invalidateNursePassageQueries,
+  nursePassageSeriesQueryKey,
+} from '../hooks/invalidate-nurse-passage-queries';
+import { passageAppointmentQueryOptions } from '../hooks/passage-appointment-query';
+import { seriesDailySlots } from '../utils/passage-daily-slots';
 import { PassageDetailActionsSheet } from '../components/PassageDetailActionsSheet';
-import { PassageDetailDocumentsPanel } from '../components/PassageDetailDocumentsPanel';
+import { PassageFormDailyTimesSheet } from '../components/PassageFormDailyTimesSheet';
 import { PassageFormCareSheet } from '../components/PassageFormCareSheet';
 import { PassageFormDurationSheet } from '../components/PassageFormDurationSheet';
 import { PassageFormHealthRecordPanel } from '../components/PassageFormHealthRecordPanel';
@@ -68,10 +89,12 @@ import { PassageFormNotesSheet } from '../components/PassageFormNotesSheet';
 import { PassageFormPlanningSheet } from '../components/PassageFormPlanningSheet';
 import { PassageFormTimeSheet } from '../components/PassageFormTimeSheet';
 import { PassagePatientHeader } from '../components/PassagePatientHeader';
+import { CoNursesSection } from '@/features/nurse-collaborations/components/CoNursesSection';
 import { PASSAGE_FIELD_ICONS } from '../components/passage-field-icons';
 import { usePassagePatient } from '../hooks/use-passage-patient';
 import {
   formatCareSummary,
+  formatDailyTimesSummary,
   formatLocationSummary,
   formatNotesSummary,
   formatPassageDurationSummary,
@@ -94,24 +117,28 @@ import {
 type SheetKey =
   | 'planning'
   | 'time'
+  | 'daily_times'
   | 'location'
   | 'duration'
   | 'care'
   | 'notes'
   | 'actions'
   | 'absence'
+  | 'transmission'
   | 'confirm_delete_one'
+  | 'confirm_remove_slot'
   | 'confirm_delete_series'
   | null;
 
-type SegmentId = 'information' | 'documents' | 'health_record';
+type SegmentId = 'information' | 'health_record';
 
 const APPOINTMENT_ONLY_SERIES_IDS = new Set(['rdv', '_', 'appointment']);
 
-const PASSAGE_DETAIL_SEGMENTS = [
-  { id: 'information' as const, label: 'Informations', Icon: ClipboardList },
-  { id: 'documents' as const, label: 'Documents', Icon: FileText },
-  { id: 'health_record' as const, label: 'Carnet', Icon: HeartPulse },
+const withoutTourOrigin = () => null;
+
+const PASSAGE_DETAIL_SEGMENTS: FullWidthSegment<SegmentId>[] = [
+  { id: 'information', label: 'Informations', Icon: ClipboardList },
+  { id: 'health_record', label: 'Carnet', Icon: HeartPulse },
 ];
 
 function resolveSeriesId(raw: string): string {
@@ -128,6 +155,15 @@ function durationFromSeries(minutes: number): { duration: number; customDuration
 
 function resolveDurationMinutes(duration: number, customDuration: string): number {
   return duration === -1 ? Math.max(5, parseInt(customDuration, 10) || 30) : duration;
+}
+
+function seriesUpdateToast(data: NursePassageSeriesUpdateResult): string {
+  const parts = [
+    data.updated_appointments > 0 ? `${data.updated_appointments} passage(s) mis à jour` : null,
+    data.created_appointments > 0 ? `${data.created_appointments} ajouté(s)` : null,
+    data.canceled_appointments > 0 ? `${data.canceled_appointments} annulé(s)` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : 'Série mise à jour';
 }
 
 export function PassageDetailScreen() {
@@ -148,13 +184,14 @@ export function PassageDetailScreen() {
   const seriesId = resolveSeriesId(String(params.seriesId ?? ''));
   const isAppointmentOnly = !seriesId;
   const appointmentId = String(params.appointment_id ?? '');
-  const stopId = String(params.stop_id ?? '');
+  const routeStopId = String(params.stop_id ?? '');
 
   const [segment, setSegment] = useState<SegmentId>('information');
   const [openSheet, setOpenSheet] = useState<SheetKey>(null);
   const [timeSlot, setTimeSlot] = useState<PassageTimeSlot>('morning');
   const [customTime, setCustomTime] = useState('09:00');
   const [timeRange, setTimeRange] = useState<[number, number] | null>([8, 12]);
+  const [dailyTimeSlots, setDailyTimeSlots] = useState<PassageDailyTimeSlot[]>([]);
   const [atHome, setAtHome] = useState(true);
   const [duration, setDuration] = useState<number>(30);
   const [customDuration, setCustomDuration] = useState('');
@@ -166,27 +203,27 @@ export function PassageDetailScreen() {
   const formInitialized = useRef(false);
 
   const seriesQ = useQuery({
-    queryKey: ['nurse-passage-series', seriesId],
+    queryKey: nursePassageSeriesQueryKey(seriesId),
     queryFn: () => fetchNursePassageSeries(seriesId),
     enabled: Boolean(seriesId),
   });
 
-  const appointmentQ = useQuery({
-    queryKey: ['appointment', appointmentId],
-    queryFn: async () => {
-      const res = await fetchAppointment(appointmentId);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'RDV introuvable');
-      return res.data;
-    },
-    enabled: Boolean(appointmentId),
-  });
-
-  const docsOptions = medicalDocumentsQueryOptions(appointmentId);
-  const docsQ = useQuery({ ...docsOptions, enabled: docsOptions.enabled && segment === 'documents' });
+  const appointmentQ = useQuery(passageAppointmentQueryOptions(appointmentId));
+  const docsQ = useQuery(medicalDocumentsQueryOptions(appointmentId));
 
   const series = seriesQ.data;
   const apt = appointmentQ.data;
-  const patientId = apt?.patient_id ?? series?.patient_id ?? '';
+
+  /** Ouvert depuis l'agenda (sans arrêt) : l'arrêt de la tournée du jour permet « Je pars » et « Marquer effectué ». */
+  const today = todayTourDate();
+  const todayTourQ = useQuery({
+    ...nurseTourQueryOptions(today, withoutTourOrigin),
+    enabled: !routeStopId && Boolean(appointmentId) && apt?.scheduled_at?.slice(0, 10) === today,
+  });
+  const stopId =
+    routeStopId || todayTourQ.data?.stops.find((s) => s.appointment_id === appointmentId)?.stop_id || '';
+  /** Passage d'un proche : son dossier, jamais celui du titulaire. */
+  const patientId = (apt ? appointmentDossierPatientId(apt) : series?.patient_id) ?? '';
   const patientQ = usePassagePatient(patientId);
   const patient = patientQ.data;
 
@@ -204,18 +241,12 @@ export function PassageDetailScreen() {
 
   const activeAbsenceForDate = useMemo((): PatientAbsence | null => {
     const list = absencesQ.data ?? [];
-    return (
-      list.find(
-        (a) => a.start_date.slice(0, 10) <= passageDate && a.end_date.slice(0, 10) >= passageDate,
-      ) ?? null
-    );
+    return list.find((a) => isPatientAbsenceActiveOn(a, passageDate)) ?? null;
   }, [absencesQ.data, passageDate]);
 
   const invalidatePassage = useCallback(() => {
-    void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
-    void qc.invalidateQueries({ queryKey: ['nurse-passage-series', seriesId] });
-    void qc.invalidateQueries({ queryKey: ['appointment', appointmentId] });
-  }, [appointmentId, qc, seriesId]);
+    invalidateNursePassageQueries(qc, appointmentId);
+  }, [appointmentId, qc]);
 
   const refreshAfterAbsenceChange = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['patient-absences', patientId] });
@@ -236,6 +267,7 @@ export function PassageDetailScreen() {
       series.first_date ?? apt?.scheduled_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
     setTimeSlot(series.time_slot);
     setCustomTime(series.custom_time ?? '09:00');
+    setDailyTimeSlots(seriesDailySlots(series));
     setTimeRange(
       resolvePassageTimeRange({
         time_slot: series.time_slot,
@@ -253,8 +285,10 @@ export function PassageDetailScreen() {
     formInitialized.current = true;
   }, [series, apt?.scheduled_at]);
 
+  const formFromAppointment = isAppointmentOnly || seriesQ.isError;
+
   useEffect(() => {
-    if (!isAppointmentOnly || !apt || formInitialized.current) return;
+    if (!formFromAppointment || !apt || formInitialized.current) return;
     const fields = initPassageFormFromAppointment(apt);
     setTimeSlot(fields.time_slot);
     setCustomTime(fields.custom_time ?? '09:00');
@@ -275,7 +309,7 @@ export function PassageDetailScreen() {
       defaultPlanningFormState(apt.scheduled_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)),
     );
     formInitialized.current = true;
-  }, [apt, isAppointmentOnly]);
+  }, [apt, formFromAppointment]);
 
   const patientName = patient
     ? [patient.first_name, patient.last_name].filter(Boolean).join(' ').trim() || 'Patient'
@@ -284,14 +318,9 @@ export function PassageDetailScreen() {
   const phone = patient?.phone ?? (typeof formPhone === 'string' ? formPhone : null);
 
   const passageCount = useMemo(
-    () => previewPassageCount(planningState, nursingItems),
-    [planningState, nursingItems],
+    () => previewPassageCount(planningState, nursingItems, dailyTimeSlots.length),
+    [planningState, nursingItems, dailyTimeSlots.length],
   );
-
-  const locationSummary = useMemo(() => {
-    const raw = atHome ? patient?.address : user?.address;
-    return formatLocationSummary(atHome, parseProfileAddress(raw)?.label);
-  }, [atHome, patient?.address, user?.address]);
 
   const navigationTarget = useMemo(() => {
     if (!atHome) {
@@ -309,6 +338,9 @@ export function PassageDetailScreen() {
     return { lat: parsed.lat, lng: parsed.lng, addressLine: parsed.label };
   }, [apt, atHome, patient?.address, user?.address]);
 
+  /** Lieu affiché = adresse réellement enregistrée sur le passage (celle de la navigation), arrondissement en avant. */
+  const locationSummary = formatLocationSummary(atHome, navigationTarget?.addressLine);
+
   const canLaunchNavigation = Boolean(
     navigationTarget && buildTourNavigationUrl(cachedNurseNavAppPref(qc, stopId), navigationTarget),
   );
@@ -322,12 +354,7 @@ export function PassageDetailScreen() {
     mutationFn: (payload: Partial<NursePassageSeriesInput>) => updateNursePassageSeries(seriesId, payload),
     onSuccess: (data) => {
       invalidatePassage();
-      toast(
-        data.created_appointments > 0
-          ? `Mis à jour, ${data.created_appointments} passage(s) regénéré(s)`
-          : 'Passage mis à jour',
-        { type: 'success' },
-      );
+      toast(seriesUpdateToast(data), { type: 'success' });
     },
     onError: (e) => handleApiError(e, toast, 'passage-update', 'Mise à jour impossible', nursePassageSeriesErrorMessage),
   });
@@ -354,8 +381,7 @@ export function PassageDetailScreen() {
       return res.data;
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
-      void qc.invalidateQueries({ queryKey: ['appointment', appointmentId] });
+      invalidatePassage();
       toast('Passage mis à jour', { type: 'success' });
     },
     onError: (e: Error) => toast(e.message, { type: 'error' }),
@@ -363,14 +389,14 @@ export function PassageDetailScreen() {
 
   const persistUpdate = useCallback(
     (payload: Partial<NursePassageSeriesInput>) => {
-      if (isAppointmentOnly) {
+      if (isAppointmentOnly || seriesQ.isError || isCoNurseViewer(apt)) {
         saveAppointmentMut.mutate(payload);
         return;
       }
       if (!seriesId) return;
       saveMut.mutate(payload);
     },
-    [isAppointmentOnly, saveAppointmentMut, saveMut, seriesId],
+    [apt, isAppointmentOnly, saveAppointmentMut, saveMut, seriesId, seriesQ.isError],
   );
 
   const materializeMut = useMutation({
@@ -379,8 +405,7 @@ export function PassageDetailScreen() {
       return materializeNursePassageSeries(seriesId);
     },
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
-      void qc.invalidateQueries({ queryKey: ['nurse-passage-series', seriesId] });
+      invalidatePassage();
       toast(
         data.created_appointments > 0
           ? `${data.created_appointments} passage(s) planifié(s)`
@@ -440,6 +465,10 @@ export function PassageDetailScreen() {
 
   const deleteOneMut = useMutation({
     mutationFn: async () => {
+      if (seriesId) {
+        await cancelNursePassageOccurrence(seriesId, appointmentId);
+        return;
+      }
       const res = await cancelAppointment(appointmentId, {
         reason: 'other',
         comment: 'Passage supprimé par infirmier',
@@ -447,20 +476,32 @@ export function PassageDetailScreen() {
       if (!res.ok) throw new Error(res.error ?? 'Suppression impossible');
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+      invalidatePassage();
       setOpenSheet(null);
       toast('Passage supprimé', { type: 'success' });
       navigation.goBack();
     },
-    onError: (e: Error) => toast(e.message, { type: 'error' }),
+    onError: (e) => handleApiError(e, toast, 'passage-delete-one', 'Suppression impossible', nursePassageSeriesErrorMessage),
+  });
+
+  const removeSlotMut = useMutation({
+    mutationFn: () => removeNursePassageSlot(seriesId, appointmentId),
+    onSuccess: (canceled) => {
+      invalidatePassage();
+      setOpenSheet(null);
+      toast(`Créneau retiré de la série, ${canceled} passage(s) annulé(s)`, { type: 'success' });
+      navigation.goBack();
+    },
+    onError: (e) =>
+      handleApiError(e, toast, 'passage-remove-slot', 'Retrait du créneau impossible', nursePassageSeriesErrorMessage),
   });
 
   const deleteSeriesMut = useMutation({
     mutationFn: () => deleteNursePassageSeries(seriesId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+    onSuccess: (canceled) => {
+      invalidatePassage();
       setOpenSheet(null);
-      toast('Série annulée', { type: 'success' });
+      toast(`Série supprimée, ${canceled} passage(s) annulé(s)`, { type: 'success' });
       navigation.goBack();
     },
     onError: (e) => handleApiError(e, toast, 'passage-delete', 'Suppression impossible', nursePassageSeriesErrorMessage),
@@ -468,9 +509,11 @@ export function PassageDetailScreen() {
 
   const closeSheet = useCallback(() => setOpenSheet(null), []);
 
-  const loading = (seriesId ? seriesQ.isLoading : false) || appointmentQ.isLoading || patientQ.isLoading;
-  const loadFailed =
-    appointmentQ.isError || seriesQ.isError || patientQ.isError || !apt || Boolean(seriesId && !series);
+  const loading =
+    appointmentQ.isLoading ||
+    (Boolean(seriesId) && seriesQ.isLoading) ||
+    (Boolean(patientId) && patientQ.isLoading);
+  const loadFailed = appointmentQ.isError || !apt || Boolean(seriesId && !series && !seriesQ.isError);
 
   if (!loading && loadFailed) {
     return (
@@ -498,6 +541,7 @@ export function PassageDetailScreen() {
     );
   }
 
+  const ownerActions = nurseOwnerOnlyActionsVisible(apt);
   const fieldRows: SettingsRowProps[] = [];
   if (!isAppointmentOnly) {
     fieldRows.push({
@@ -508,12 +552,19 @@ export function PassageDetailScreen() {
     });
   }
   fieldRows.push(
-    {
-      icon: PASSAGE_FIELD_ICONS.time,
-      label: 'Heure',
-      description: formatTimeSummary(timeSlot, customTime, timeRange),
-      onPress: () => setOpenSheet('time'),
-    },
+    isAppointmentOnly
+      ? {
+          icon: PASSAGE_FIELD_ICONS.time,
+          label: 'Heure',
+          description: formatTimeSummary(timeSlot, customTime, timeRange),
+          onPress: () => setOpenSheet('time'),
+        }
+      : {
+          icon: PASSAGE_FIELD_ICONS.time,
+          label: 'Créneaux',
+          description: formatDailyTimesSummary(dailyTimeSlots),
+          onPress: () => setOpenSheet('daily_times'),
+        },
     {
       icon: PASSAGE_FIELD_ICONS.location,
       label: 'Lieu',
@@ -539,19 +590,27 @@ export function PassageDetailScreen() {
       onPress: () => setOpenSheet('notes'),
     },
   );
+  const documentsRow = appointmentDocumentsRow({
+    documents: filteredDocs,
+    loading: docsQ.isLoading,
+    failed: docsQ.isError && !docsQ.data,
+    appointmentStatus: apt.status,
+    onPress: () => router.push(nursePassageDocumentsHref(String(params.seriesId ?? ''), appointmentId)),
+  });
 
   return (
     <StackChromeScreen
       headerRight={
-        <HeaderAction icon={Ellipsis} accessibilityLabel="Actions du passage" onPress={() => setOpenSheet('actions')} />
+        <HeaderAction label="Actions" accessibilityLabel="Actions du passage" onPress={() => setOpenSheet('actions')} />
       }
     >
       <View style={styles.screen}>
         <View style={styles.header}>
-          <DetailSegmentBar
+          <FullWidthSegmentBar
             segments={PASSAGE_DETAIL_SEGMENTS}
-            active={segment}
-            onChange={(id) => setSegment(id as SegmentId)}
+            value={segment}
+            onChange={setSegment}
+            accessibilityLabel="Sections du passage"
           />
         </View>
 
@@ -570,6 +629,13 @@ export function PassageDetailScreen() {
               phone={phone}
             />
             <SettingsSection items={fieldRows} />
+            {documentsRow ? <SettingsSection items={[documentsRow]} /> : null}
+            <CoNursesSection
+              apt={apt}
+              viewerId={user?.id}
+              passageSeriesId={seriesId || null}
+              onSelfRemoved={() => navigation.goBack()}
+            />
             {canLaunchNavigation ? (
               <Button
                 title="Lancer la navigation"
@@ -586,28 +652,7 @@ export function PassageDetailScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {segment === 'documents' ? (
-              docsQ.isError && !docsQ.data ? (
-                <ErrorState
-                  title="Documents indisponibles"
-                  error={docsQ.error}
-                  onRetry={() => void docsQ.refetch()}
-                />
-              ) : (
-                <PassageDetailDocumentsPanel
-                  patientId={patientId}
-                  appointmentId={appointmentId}
-                  apt={apt}
-                  docs={filteredDocs}
-                  docsLoading={docsQ.isLoading}
-                  onDocumentsChanged={async () => {
-                    await qc.invalidateQueries({ queryKey: docsOptions.queryKey });
-                  }}
-                />
-              )
-            ) : (
-              <PassageFormHealthRecordPanel patientId={patientId} clinicalVitalContext={{ type: 'passage' }} />
-            )}
+            <PassageFormHealthRecordPanel patientId={patientId} clinicalVitalContext={{ type: 'passage' }} />
           </ScrollView>
         )}
       </View>
@@ -620,7 +665,30 @@ export function PassageDetailScreen() {
         onConfirm={(next) => {
           setPlanningState(next);
           const built = buildPlanningPayload(next, nursingItems);
-          persistUpdate({ planning_type: built.planning_type, planning_config: built.planning_config });
+          persistUpdate({
+            planning_type: built.planning_type,
+            planning_config: embedTimeRangeInPlanningConfig(
+              built.planning_config,
+              series?.planning_config.time_range ?? null,
+              dailyTimeSlots,
+            ),
+          });
+        }}
+      />
+      <PassageFormDailyTimesSheet
+        visible={openSheet === 'daily_times'}
+        slots={dailyTimeSlots}
+        onClose={closeSheet}
+        onConfirm={(slots) => {
+          setDailyTimeSlots(slots);
+          const primary = slots[0];
+          const built = buildPlanningPayload(planningState, nursingItems);
+          persistUpdate({
+            time_slot: primary.time_slot,
+            custom_time: primary.time_slot === 'all_day' ? null : primary.custom_time ?? null,
+            time_range: null,
+            planning_config: embedTimeRangeInPlanningConfig(built.planning_config, null, slots),
+          });
         }}
       />
       <PassageFormTimeSheet
@@ -705,25 +773,44 @@ export function PassageDetailScreen() {
         markDoneLoading={markDoneMut.isPending}
         deleteOneLoading={deleteOneMut.isPending}
         deleteSeriesLoading={deleteSeriesMut.isPending}
-        showDeleteSeries={!isAppointmentOnly}
-        showDeleteOne={canCancelAppointment(apt, { role: user?.role, id: user?.id })}
+        removeSlotLoading={removeSlotMut.isPending}
+        showDeleteSeries={!isAppointmentOnly && ownerActions}
+        showDeleteOne={ownerActions && canCancelAppointment(apt, { role: user?.role, id: user?.id })}
+        showRemoveSlot={!isAppointmentOnly && ownerActions && dailyTimeSlots.length > 1}
         onMaterialize={() => materializeMut.mutate()}
         onEnRoute={() => enRouteMut.mutate()}
         onMarkDone={() => markDoneMut.mutate()}
         onManageAbsence={() => setOpenSheet('absence')}
+        onAddTransmission={() => setOpenSheet('transmission')}
+        onOpenTransmissions={() => router.push(staffPatientHref('/(nurse)', patientId, 'transmissions'))}
         onOpenFullAppointment={() => router.push(appointmentDetailHref('/(nurse)', appointmentId))}
         onDeleteOne={() => setOpenSheet('confirm_delete_one')}
+        onRemoveSlot={() => setOpenSheet('confirm_remove_slot')}
         onDeleteSeries={() => setOpenSheet('confirm_delete_series')}
       />
 
       <ConfirmSheet
         visible={openSheet === 'confirm_delete_one'}
         title="Supprimer ce passage ?"
-        message="Ce rendez-vous sera annulé."
+        message={
+          isAppointmentOnly
+            ? 'Ce rendez-vous sera annulé.'
+            : 'Seul ce passage est annulé ; il ne sera pas recréé. Les autres passages de la série sont conservés.'
+        }
         confirmLabel="Supprimer"
         tone="destructive"
         loading={deleteOneMut.isPending}
         onConfirm={() => deleteOneMut.mutate()}
+        onClose={closeSheet}
+      />
+      <ConfirmSheet
+        visible={openSheet === 'confirm_remove_slot'}
+        title="Retirer ce créneau de la série ?"
+        message="Ce créneau ne sera plus planifié : ce passage et les suivants à la même heure sont annulés. Les autres créneaux sont conservés."
+        confirmLabel="Retirer le créneau"
+        tone="destructive"
+        loading={removeSlotMut.isPending}
+        onConfirm={() => removeSlotMut.mutate()}
         onClose={closeSheet}
       />
       <ConfirmSheet
@@ -746,6 +833,14 @@ export function PassageDetailScreen() {
           existing={activeAbsenceForDate}
           onClose={closeSheet}
           onSaved={refreshAfterAbsenceChange}
+        />
+      ) : null}
+      {patientId ? (
+        <TransmissionEntrySheet
+          visible={openSheet === 'transmission'}
+          patientId={patientId}
+          prefill={{ appointmentId, occurredOn: passageDate }}
+          onClose={closeSheet}
         />
       ) : null}
     </StackChromeScreen>

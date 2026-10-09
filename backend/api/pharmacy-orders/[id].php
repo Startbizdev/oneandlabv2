@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../lib/ApiServerError.php';
 [$user, $db, $moduleConfig, $orderService] = pharmacyApiBootstrap(['GET', 'PATCH', 'OPTIONS']);
 $notifications = new NotificationService();
 $pharmacyNotify = new PharmacyNotificationHelper($db);
+$orderNotifier = new PharmacyOrderNotifier(fn (...$args) => $notifications->createNotification(...$args));
 
 $orderId = trim((string) ($_GET['id'] ?? ''));
 if ($orderId === '') {
@@ -35,6 +36,7 @@ if (!PharmacyOrderAccess::canView($user, $order)) {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
+    $order['can_attach_prescriptions'] = PharmacyOrderAccess::canAttachPrescriptions($user, $order);
     echo json_encode(['success' => true, 'data' => $order]);
     exit;
 }
@@ -54,6 +56,9 @@ if ($method === 'PATCH') {
     }
     try {
         $updated = $orderService->updateStatus($user, $orderId, $newStatus, $body);
+        if ($newStatus === 'annulee') {
+            $orderNotifier->orderCancelled($updated, (string) ($user['user_id'] ?? ''));
+        }
         $notifyType = match ($newStatus) {
             'acceptee' => 'pharmacy_order_accepted',
             'refusee' => 'pharmacy_order_refused',
@@ -69,12 +74,13 @@ if ($method === 'PATCH') {
                 'terminee' => ['Commande terminée', 'Votre commande est prête ou a été livrée.'],
                 default => ['Commande mise à jour', 'Le statut de votre commande a changé.'],
             };
+            $notificationData = ['pharmacy_order_id' => $orderId, 'pharmacy_order_side' => PharmacyOrderNotifier::SIDE_SENT];
             $notifications->createNotification(
                 (string) $updated['requester_id'],
                 $notifyType,
                 $notificationCopy[0],
                 $notificationCopy[1],
-                ['pharmacy_order_id' => $orderId],
+                $notificationData,
             );
             if (
                 (string) $updated['patient_id'] !== (string) $updated['requester_id']
@@ -85,7 +91,7 @@ if ($method === 'PATCH') {
                     $notifyType,
                     $notificationCopy[0],
                     $notificationCopy[1],
-                    ['pharmacy_order_id' => $orderId],
+                    $notificationData,
                 );
             }
             $requesterRole = (string) ($updated['requester_role'] ?? 'pro');

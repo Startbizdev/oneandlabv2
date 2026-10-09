@@ -7,10 +7,17 @@ require_once __DIR__ . '/AIGateway.php';
 require_once __DIR__ . '/MemoryComposer.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/../Validation.php';
+require_once __DIR__ . '/../DatabaseTransaction.php';
+require_once __DIR__ . '/AiChatService.php';
 require_once __DIR__ . '/../../models/User.php';
 
 final class AiReportService
 {
+    public const ROLES = ['nurse', 'pro', 'preleveur'];
+    public const MAX_CONTENT_LENGTH = 10000;
+
     private PDO $db;
     private AIGateway $gateway;
     private MemoryComposer $memory;
@@ -31,17 +38,35 @@ final class AiReportService
     public function createFromDictation(array $user, array $input): array
     {
         $role = (string) ($user['role'] ?? '');
-        if (!in_array($role, ['nurse', 'pro', 'preleveur'], true)) {
-            throw new RuntimeException('Réservé aux professionnels');
+        if (!in_array($role, self::ROLES, true)) {
+            throw HttpStatusException::forbidden('Réservé aux professionnels');
         }
         $patientId = trim((string) ($input['patient_id'] ?? ''));
-        $appointmentId = isset($input['appointment_id']) ? trim((string) $input['appointment_id']) : null;
+        $appointmentId = trim((string) ($input['appointment_id'] ?? ''));
+        $appointmentId = $appointmentId !== '' ? $appointmentId : null;
         $transcript = trim((string) ($input['transcript'] ?? $input['text'] ?? ''));
         if ($patientId === '' || $transcript === '') {
             throw new InvalidArgumentException('patient_id et transcript requis');
         }
+        if (!Validation::uuid($patientId) || ($appointmentId !== null && !Validation::uuid($appointmentId))) {
+            throw new InvalidArgumentException('patient_id ou appointment_id invalide');
+        }
+        if (mb_strlen($transcript) > AiChatService::MAX_MESSAGE_LENGTH) {
+            throw new HttpStatusException(
+                'Dictée trop longue (' . AiChatService::MAX_MESSAGE_LENGTH . ' caractères maximum)',
+                400,
+                'AI_MESSAGE_TOO_LONG',
+            );
+        }
         if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $patientId)) {
-            throw new RuntimeException('Accès patient refusé');
+            throw HttpStatusException::forbidden('Accès à ce patient refusé');
+        }
+        if ($appointmentId !== null) {
+            $stmt = $this->db->prepare('SELECT patient_id FROM appointments WHERE id = ? LIMIT 1');
+            $stmt->execute([$appointmentId]);
+            if ($stmt->fetchColumn() !== $patientId) {
+                throw HttpStatusException::notFound('Rendez-vous introuvable pour ce patient');
+            }
         }
 
         $context = $this->memory->compose($user, $patientId, 'professional', false, $transcript);
@@ -74,28 +99,85 @@ final class AiReportService
         return $this->getById($id, (string) $user['user_id']) ?? [];
     }
 
-    public function validate(string $id, string $userId): ?array
+    /**
+     * Correction du texte par son auteur tant que le compte rendu n'est pas validé.
+     * Le premier texte produit par l'IA reste dans content_json.ai_text.
+     *
+     * @return array<string, mixed>
+     */
+    public function updateDraftText(string $id, string $userId, mixed $text): array
     {
-        $report = $this->getById($id, $userId);
-        if (!$report || ($report['status'] ?? '') !== 'draft') {
-            return null;
+        if (!is_string($text) || trim($text) === '') {
+            throw new InvalidArgumentException('content_text requis');
         }
-        $this->db->prepare('UPDATE ai_reports SET status = \'validated\', updated_at = NOW() WHERE id = ?')
-            ->execute([$id]);
+        $text = trim($text);
+        if (mb_strlen($text) > self::MAX_CONTENT_LENGTH) {
+            throw new HttpStatusException(
+                'Compte rendu trop long (' . self::MAX_CONTENT_LENGTH . ' caractères maximum)',
+                400,
+                'AI_REPORT_TOO_LONG',
+            );
+        }
+        DatabaseTransaction::run($this->db, function () use ($id, $userId, $text): void {
+            $row = $this->lockOwned($id, $userId);
+            if ($row['status'] !== 'draft') {
+                throw new HttpStatusException('Ce compte rendu est déjà validé : il ne peut plus être modifié.', 409, 'AI_REPORT_ALREADY_VALIDATED');
+            }
+            $content = json_decode((string) ($row['content_json'] ?? ''), true);
+            $content = is_array($content) ? $content : [];
+            $content['ai_text'] ??= (string) $row['content_text'];
+            $this->db->prepare('UPDATE ai_reports SET content_text = ?, content_json = ?, updated_at = NOW() WHERE id = ?')
+                ->execute([$text, json_encode($content, JSON_UNESCAPED_UNICODE), $id]);
+        });
 
-        return $this->getById($id, $userId);
+        return $this->getById($id, $userId) ?? [];
     }
 
-    public function publish(string $id, string $userId): ?array
+    /** @return array<string, mixed> */
+    public function validate(string $id, string $userId): array
     {
-        $report = $this->getById($id, $userId);
-        if (!$report || !in_array($report['status'] ?? '', ['draft', 'validated'], true)) {
-            return null;
-        }
-        $this->db->prepare('UPDATE ai_reports SET status = \'published\', updated_at = NOW() WHERE id = ?')
-            ->execute([$id]);
+        return $this->transition($id, $userId, ['draft'], 'validated', 'Ce compte rendu est déjà validé.', 'AI_REPORT_ALREADY_VALIDATED');
+    }
 
-        return $this->getById($id, $userId);
+    /** @return array<string, mixed> */
+    public function publish(string $id, string $userId): array
+    {
+        return $this->transition($id, $userId, ['draft', 'validated'], 'published', 'Ce compte rendu est déjà publié.', 'AI_REPORT_ALREADY_PUBLISHED');
+    }
+
+    /**
+     * @param list<string> $from
+     * @return array<string, mixed>
+     */
+    private function transition(string $id, string $userId, array $from, string $to, string $conflict, string $conflictCode): array
+    {
+        DatabaseTransaction::run($this->db, function () use ($id, $userId, $from, $to, $conflict, $conflictCode): void {
+            $row = $this->lockOwned($id, $userId);
+            if (!in_array($row['status'], $from, true)) {
+                throw new HttpStatusException($conflict, 409, $conflictCode);
+            }
+            $this->db->prepare('UPDATE ai_reports SET status = ?, updated_at = NOW() WHERE id = ?')->execute([$to, $id]);
+        });
+
+        return $this->getById($id, $userId) ?? [];
+    }
+
+    /** @return array<string, mixed> */
+    private function lockOwned(string $id, string $userId): array
+    {
+        if (!Validation::uuid($id)) {
+            throw new InvalidArgumentException('Identifiant de compte rendu invalide');
+        }
+        $stmt = $this->db->prepare('
+            SELECT status, content_text, content_json FROM ai_reports WHERE id = ? AND created_by = ? FOR UPDATE
+        ');
+        $stmt->execute([$id, $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw HttpStatusException::notFound('Compte rendu introuvable');
+        }
+
+        return $row;
     }
 
     /**

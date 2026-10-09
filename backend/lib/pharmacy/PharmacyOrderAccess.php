@@ -10,6 +10,9 @@ require_once __DIR__ . '/PharmacyModuleConfig.php';
  */
 final class PharmacyOrderAccess
 {
+    /** @var list<string> */
+    public const PRESCRIPTION_ATTACHABLE_STATUSES = ['en_attente', 'complement_demande'];
+
     public static function canAccess(array $user, array $order, ?PharmacyModuleConfig $configService = null): bool
     {
         $role = (string) ($user['role'] ?? '');
@@ -69,6 +72,24 @@ final class PharmacyOrderAccess
         $status = (string) ($order['status'] ?? '');
 
         return !in_array($status, ['annulee', 'refusee', 'terminee'], true);
+    }
+
+    /** Demandeur ou patient de la commande, tant que la pharmacie ne l'a pas prise en charge. */
+    public static function canAttachPrescriptions(array $user, array $order): bool
+    {
+        return self::isRequesterOrPatient($user, $order)
+            && in_array((string) ($order['status'] ?? ''), self::PRESCRIPTION_ATTACHABLE_STATUSES, true);
+    }
+
+    public static function isRequesterOrPatient(array $user, array $order): bool
+    {
+        $uid = (string) ($user['user_id'] ?? '');
+        if ($uid === '') {
+            return false;
+        }
+
+        return (string) ($order['requester_id'] ?? '') === $uid
+            || (($user['role'] ?? '') === 'patient' && (string) ($order['patient_id'] ?? '') === $uid);
     }
 
     public static function canTransitionPharmacy(array $user, array $order): bool

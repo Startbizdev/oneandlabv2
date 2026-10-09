@@ -104,13 +104,7 @@
               <tr v-for="row in routing" :key="row.task_type" class="border-b border-default/30">
                 <td class="py-2 pr-4 font-mono text-xs">{{ row.task_type }}</td>
                 <td class="py-2 pr-4">
-                  <USelect
-                    v-model="row.provider"
-                    :aria-label="`Fournisseur pour ${row.task_type}`"
-                    :items="providerOptions"
-                    size="xs"
-                    class="min-w-[120px]"
-                  />
+                  {{ providerLabel(row.provider) }}
                 </td>
                 <td class="py-2 pr-4">
                   <UInput v-model="row.model" :aria-label="`Modèle pour ${row.task_type}`" size="xs" class="min-w-[100px]" />
@@ -170,11 +164,14 @@ const usage = ref<{
 const settings = reactive({ disclaimer_fr: '', temperature: 0.4 });
 const savingSettings = ref(false);
 
-const providerOptions = [
-  { label: 'Grok', value: 'grok' },
-  { label: 'OpenAI', value: 'openai' },
-  { label: 'DeepSeek', value: 'deepseek' },
-];
+const providerLabels: Record<string, string> = {
+  grok: 'Grok (xAI)',
+  local: 'Simulateur local (QA)',
+};
+
+function providerLabel(provider: string): string {
+  return providerLabels[provider] ?? provider;
+}
 
 function triggerBlobDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

@@ -14,6 +14,7 @@ final class PatientDocumentLibrary
             FROM medical_documents md
             LEFT JOIN appointments a ON a.id = md.appointment_id
             WHERE md.document_type NOT IN ('care_photo', 'cancellation_photo')
+              AND md.replaced_by_document_id IS NULL
               AND (a.relative_id IS NULL OR a.relative_id = '')
               AND (
                 a.patient_id = ?

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import {
   isCareCategoryWithoutBookingOptions,
+  sortCareCategoriesForBooking,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { NursePassageNursingItem } from '@oneandlab/shared-types';
@@ -32,9 +33,13 @@ import {
   useStyles,
   type Theme,
 } from '@/theme';
+import { useToast } from '@/providers/ToastProvider';
 import {
   buildPassageNursingItemLabel,
   formatPassageNursingItemLabel,
+  hasPassageCareOptions,
+  passageNursingItemKey,
+  sortPassageNursingItems,
 } from '../utils/passage-nursing-item-label';
 
 type Props = {
@@ -65,6 +70,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
+  const { show: toast } = useToast();
   const [addingMore, setAddingMore] = useState(false);
   const [optionsCat, setOptionsCat] = useState<CareCategory | null>(null);
 
@@ -76,7 +82,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
     },
   });
 
-  const categories = categoriesQ.data ?? [];
+  const categories = useMemo(() => sortCareCategoriesForBooking(categoriesQ.data ?? []), [categoriesQ.data]);
 
   const showOptions = optionsCat != null;
   const showPicker = !showOptions && (items.length === 0 || addingMore);
@@ -92,7 +98,11 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
 
   const closeOptions = useCallback(() => setOptionsCat(null), []);
 
-  const selectedIds = useMemo(() => new Set(items.map((i) => i.category_id)), [items]);
+  /** Un soin sans options ne s'ajoute qu'une fois ; avec options, il peut revenir avec d'autres valeurs. */
+  const takenIds = useMemo(
+    () => new Set(items.filter((i) => !hasPassageCareOptions(i)).map((i) => i.category_id)),
+    [items],
+  );
 
   const ensureCategoryReady = useCallback(
     async (cat: CareCategory): Promise<CareCategory> => {
@@ -109,22 +119,26 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
 
   const addItem = useCallback(
     (item: NursePassageNursingItem) => {
-      if (selectedIds.has(item.category_id)) return;
-      onChange([...items, item]);
+      const key = passageNursingItemKey(item);
+      if (items.some((i) => passageNursingItemKey(i) === key)) {
+        toast('Ce soin est déjà ajouté avec ces options', { type: 'info' });
+        return;
+      }
+      onChange(sortPassageNursingItems([...items, item], categories));
     },
-    [items, onChange, selectedIds],
+    [categories, items, onChange, toast],
   );
 
   const removeItem = useCallback(
-    (categoryId: string) => {
-      onChange(items.filter((i) => i.category_id !== categoryId));
+    (key: string) => {
+      onChange(items.filter((i) => passageNursingItemKey(i) !== key));
     },
     [items, onChange],
   );
 
   const handlePickCategory = useCallback(
     async (cat: CareCategory) => {
-      if (selectedIds.has(cat.id)) return;
+      if (takenIds.has(cat.id)) return;
       const ready = await ensureCategoryReady(cat);
       const optionCount = ready.options?.length ?? 0;
       if (isCareCategoryWithoutBookingOptions(ready) || optionCount === 0) {
@@ -134,7 +148,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
       }
       setOptionsCat(ready);
     },
-    [addItem, ensureCategoryReady, selectedIds],
+    [addItem, ensureCategoryReady, takenIds],
   );
 
   const handleOptionsConfirm = useCallback(
@@ -189,7 +203,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
             showsVerticalScrollIndicator={false}
           >
             {categories.map((cat) => {
-              const taken = selectedIds.has(cat.id);
+              const taken = takenIds.has(cat.id);
               return (
                 <Pressable
                   key={cat.id}
@@ -214,11 +228,12 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
     <View style={styles.selected}>
       {items.map((item) => {
         const label = formatPassageNursingItemLabel(item, categories);
+        const key = passageNursingItemKey(item);
         return (
-          <View key={item.category_id} style={styles.careRow}>
+          <View key={key} style={styles.careRow}>
             <AppText style={styles.careName}>{label}</AppText>
             <Pressable
-              onPress={() => removeItem(item.category_id)}
+              onPress={() => removeItem(key)}
               style={styles.removeBtn}
               accessibilityRole="button"
               accessibilityLabel={`Retirer ${label}`}

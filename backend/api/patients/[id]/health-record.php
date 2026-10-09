@@ -7,7 +7,8 @@ require_once __DIR__ . '/../../../lib/health/HealthRecordService.php';
 require_once __DIR__ . '/../../../lib/ApiServerError.php';
 
 health_handle_options(['GET', 'PATCH', 'OPTIONS']);
-$user = health_record_require_user(['nurse', 'pro', 'lab', 'subaccount', 'preleveur', 'super_admin']);
+// patient : uniquement le dossier d'un de ses proches (vérifié par HealthRecordService).
+$user = health_record_require_user(['patient', 'nurse', 'pro', 'lab', 'subaccount', 'preleveur', 'super_admin']);
 $patientId = trim((string) ($_GET['id'] ?? ''));
 if ($patientId === '') {
     health_json_error('Identifiant patient requis', 400);
@@ -23,7 +24,7 @@ if ($method === 'PATCH') {
     }
     try {
         $service = new HealthRecordService();
-        $data = $service->upsertAnswersForStaff($user, $patientId, $answers);
+        $data = $service->upsertAnswersForViewer($user, $patientId, $answers);
         health_json_response(['success' => true, 'data' => $data]);
     } catch (PDOException $e) {
         ApiServerError::respond('PATCH carnet patient ' . $patientId . ' user=' . $user['user_id'], $e);
@@ -39,7 +40,7 @@ if ($method !== 'GET') {
 
 try {
     $service = new HealthRecordService();
-    $data = $service->getRecapForStaff($user, $patientId);
+    $data = $service->getRecapForViewer($user, $patientId);
     health_json_response(['success' => true, 'data' => $data]);
 } catch (PDOException $e) {
     ApiServerError::respond('GET carnet patient ' . $patientId . ' user=' . $user['user_id'], $e);

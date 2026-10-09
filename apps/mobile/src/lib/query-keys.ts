@@ -28,9 +28,16 @@ export const queryKeys = {
     historyCount: (id: string) => ['patients', 'history', 'count', id] as const,
     lookup: (query: string) => ['patients', 'lookup', query] as const,
     hubSearch: (query: string) => ['patients', 'hub-search', query] as const,
+    phones: (id: string) => ['patients', 'phones', id] as const,
+    relative: (id: string, relativeId: string) => ['patients', 'relative', id, relativeId] as const,
+    transmissions: (id: string) => ['patients', 'transmissions', id] as const,
+    transmissionCareItems: (id: string, date: string) => ['patients', 'transmission-care-items', id, date] as const,
   },
   categories: {
-    list: (type?: string, scope?: string) => ['categories', 'list', type, scope] as const,
+    list: (type?: string, scope?: string, providerId?: string | null) =>
+      providerId
+        ? (['categories', 'list', type, scope, providerId] as const)
+        : (['categories', 'list', type, scope] as const),
     options: (categoryId: string) => ['categories', 'options', categoryId] as const,
   },
   reviews: {
@@ -46,8 +53,11 @@ export const queryKeys = {
     nursePreferences: ['profile', 'nurse-category-preferences'] as const,
     publicProvider: (type: 'nurse' | 'lab', slug: string) =>
       ['profile', 'public', type, slug] as const,
+    providerName: (providerId: string) => ['profile', 'provider-name', providerId] as const,
   },
   documents: {
+    all: ['documents'] as const,
+    byId: (documentId: string) => ['medical-document', documentId] as const,
     medical: (appointmentId: string) => ['documents', 'medical', appointmentId] as const,
     patient: (userId: string) => ['documents', 'patient', userId] as const,
     relative: (relativeId: string) => ['documents', 'relative', relativeId] as const,
@@ -59,6 +69,7 @@ export const queryKeys = {
     subscription: ['iap', 'subscription'] as const,
   },
   prescriptions: {
+    all: ['prescriptions'] as const,
     list: (query: string) => ['prescriptions', 'list', query] as const,
   },
   labResults: {
@@ -70,12 +81,20 @@ export const queryKeys = {
   labBrands: {
     public: () => ['lab-brands', 'public'] as const,
   },
+  nurseCollaborations: {
+    all: ['nurse-collaborations'] as const,
+    list: (appointmentId?: string) => ['nurse-collaborations', 'list', appointmentId ?? 'all'] as const,
+    picker: (search: string) => ['nurse-collaborations', 'picker', search] as const,
+  },
   pharmacyOrders: {
     flags: (userId: string) => ['pharmacy-orders', 'flags', userId] as const,
+    lists: ['pharmacy-orders', 'list'] as const,
     list: (scope: string) => ['pharmacy-orders', 'list', scope] as const,
+    details: ['pharmacy-orders', 'detail'] as const,
     detail: (id: string) => ['pharmacy-orders', 'detail', id] as const,
     messages: (id: string) => ['pharmacy-orders', 'messages', id] as const,
     catalog: (postal: string, mode: string) => ['pharmacy-orders', 'catalog', postal, mode] as const,
+    pharmacy: (id: string) => ['pharmacy-orders', 'pharmacy', id] as const,
     favorites: (userId: string) => ['pharmacy-orders', 'favorites', userId] as const,
   },
 } as const;

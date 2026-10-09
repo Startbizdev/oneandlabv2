@@ -3,8 +3,9 @@
     role-base="/patient/traitements"
     scope="patient"
     title="Mes traitements"
-    description="Suivez les traitements préparés pour vous."
+    description="Commandez en pharmacie et suivez vos traitements."
     empty-description="Vos commandes de traitement apparaîtront ici."
+    show-new-button
   />
 </template>
 

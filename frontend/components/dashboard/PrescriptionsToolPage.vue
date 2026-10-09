@@ -75,8 +75,11 @@
             :role-base="roleBase"
             :show-patient="!initialPatientId"
             :downloading="downloadingId === row.id"
+            :replaceable="canReplace"
+            :replacing="replacingId === row.id"
             @preview="previewPrescription"
             @download="downloadPrescription"
+            @replace="replacePrescription"
           />
         </div>
 
@@ -233,6 +236,7 @@
 import PrescriptionHistoryRow from '~/components/dashboard/PrescriptionHistoryRow.vue';
 import { PATIENT_SELECT_SEARCH_PLACEHOLDER, buildPatientSelectRow } from '~/utils/patient-select-menu';
 import { prescriptionGenerationEnabled } from '~/utils/prescription-access';
+import { canReplacePrescriptionRole } from '@oneandlab/shared-utils';
 import type { Appointment } from '~/types/appointments';
 
 const props = defineProps<{
@@ -253,6 +257,12 @@ const prescriptionAccessBlocked = computed(
 const newPatientProfilePath = '/profile?newPatient=1';
 
 const toast = useAppToast();
+const canReplace = computed(() => canReplacePrescriptionRole(user.value?.role));
+const { replacingId, replace } = useReplacePrescription();
+
+async function replacePrescription(row: { id: string }) {
+  if (await replace(row.id)) await fetchPrescriptionsList();
+}
 
 interface ProPrescriptionRow {
   id: string;

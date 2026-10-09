@@ -5,6 +5,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { queryClient } from '@/lib/query-client';
 import { fetchAppointmentsPaginated } from '../api/appointments.service';
 import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/constants/nurse-demandes-filters';
+import { nurseSegmentPeriod } from '@/constants/appointments-list-filters';
 
 async function prefetchInfiniteFirstPage(filters: AppointmentListFilters): Promise<void> {
   await queryClient.prefetchInfiniteQuery({
@@ -28,7 +29,7 @@ export function prefetchAppointmentsForUser(role: string | undefined): void {
 
   const mainFilters: AppointmentListFilters =
     role === 'nurse'
-      ? { nurse_tab: 'soins', limit: APPOINTMENTS_LIST_PAGE_SIZE }
+      ? { nurse_tab: 'soins', patient_period: nurseSegmentPeriod('tous'), limit: APPOINTMENTS_LIST_PAGE_SIZE }
       : role === 'preleveur'
         ? {
             type: 'blood_test',

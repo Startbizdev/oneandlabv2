@@ -12,8 +12,11 @@ export * from './nurse-passage';
 export * from './admin-dispatch';
 export * from './lab-brands';
 export * from './patient-absence';
+export * from './patient-phone';
+export * from './patient-transmissions';
 export * from './appointment-conversation';
 export * from './pharmacy-orders';
+export * from './nurse-collaborations';
 export * from './public-profile';
 export {
   GENDER_OPTIONS,

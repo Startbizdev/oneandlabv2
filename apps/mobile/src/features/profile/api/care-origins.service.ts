@@ -2,6 +2,7 @@ import { api } from '@/api/client';
 
 export type CareOrigin = {
   id: string;
+  professional_id: string;
   display_name: string;
   role?: string | null;
   emploi?: string | null;

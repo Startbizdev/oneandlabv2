@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../AppointmentOfferSnooze.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
 final class AppointmentListEnricher
 {
@@ -42,6 +43,10 @@ final class AppointmentListEnricher
                     'error' => 'Erreur de déchiffrement',
                 ];
             }
+        }
+
+        if (($user['role'] ?? '') === 'nurse') {
+            $decryptedAppointments = NurseCollaboration::withCoNurses($db, $decryptedAppointments, (string) $user['user_id']);
         }
 
         if ($lightListPayload) {

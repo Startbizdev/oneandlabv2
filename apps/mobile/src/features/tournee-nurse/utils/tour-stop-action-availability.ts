@@ -1,4 +1,4 @@
-import { isTourStopAbsent, isTourStopDone } from '@oneandlab/shared-utils';
+import { appointmentDossierPatientId, isTourStopAbsent, isTourStopDone } from '@oneandlab/shared-utils';
 import type { NurseTourStop } from '../api/nurse-tour.service';
 
 export type TourStopActionAvailability = {
@@ -10,7 +10,7 @@ export type TourStopActionAvailability = {
 /** Le créneau ne se change que sur un passage à venir ; l'absence exige un patient connu. */
 export function tourStopActionAvailability(stop: NurseTourStop): TourStopActionAvailability {
   const absent = isTourStopAbsent(stop);
-  const hasPatient = Boolean(stop.patient_id);
+  const hasPatient = Boolean(appointmentDossierPatientId(stop));
   return {
     reschedule: !absent && !isTourStopDone(stop),
     manageAbsence: hasPatient,

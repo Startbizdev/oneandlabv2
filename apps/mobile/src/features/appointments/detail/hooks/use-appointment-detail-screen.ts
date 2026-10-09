@@ -3,7 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import type { Appointment } from '@oneandlab/shared-types';
-import { canCancelAppointment } from '@oneandlab/shared-utils';
+import { appointmentDossierPatientId, canCancelAppointment } from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppActive } from '@/lib/hooks/use-app-active';
@@ -56,17 +56,17 @@ export function useAppointmentDetailScreen(
   /** RDV ouvert (URL) — ne pas remplacer par le 1er du lot trié chronologiquement. */
   const primary =
     apt ?? batchSorted.find((a) => String(a.id) === String(id)) ?? batchSorted[0];
-  const relativeId = primary?.relative_id?.trim() || undefined;
-  const patientId = primary?.patient_id?.trim() || undefined;
+  /** Dossier du patient concerné : le proche pour un RDV pris pour lui, sinon le titulaire. */
+  const patientId = appointmentDossierPatientId(primary) ?? undefined;
 
   const needsPatientAvatarEnrichment = useMemo(() => {
-    if (!primary || !patientId || relativeId) return false;
+    if (!primary || !patientId) return false;
     if (!STAFF_PROFILE_MERGE_ROLES.has(role)) return false;
     const ext = primary as { beneficiary_profile_image_url?: string | null };
     return !ext.beneficiary_profile_image_url;
-  }, [primary, patientId, relativeId, role]);
+  }, [primary, patientId, role]);
 
-  /** Fiche du titulaire du compte : avatar + détection bénéficiaire ≠ titulaire (« Voir le profil »). */
+  /** Fiche du patient concerné : avatar + lien « Dossier de … ». */
   const patientProfileQ = useQuery({
     queryKey: queryKeys.patients.detail(patientId ?? ''),
     queryFn: async () => {
@@ -196,8 +196,10 @@ export function useAppointmentDetailScreen(
     id,
     config,
     apt,
-    /** Fiche du titulaire du compte (staff uniquement, null sinon). */
-    patientAccountProfile: patientProfileQ.data ?? null,
+    /** Dossier du patient concerné (proche ou titulaire), `undefined` sans dossier. */
+    dossierPatientId: patientId,
+    /** Fiche de ce dossier (staff uniquement, null sinon). */
+    dossierProfile: patientProfileQ.data ?? null,
     primary: primaryForDisplay,
     batchSorted,
     isMultiBatch,

@@ -34,6 +34,7 @@ final class PatientAccessSourcesTest extends TestCase
             $this->db->prepare('DELETE FROM patient_professional_access WHERE professional_id = ?')->execute([$this->nurseId]);
             $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$this->nurseId]);
         }
+        unset($this->db);
         parent::tearDown();
     }
 

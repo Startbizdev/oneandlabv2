@@ -24,7 +24,7 @@ function EmptyAssigneeRating({ label = 'Nouveau' }: { label?: string }) {
             <Star
               key={index}
               size={iconSize['2xs']}
-              color={c.border}
+              color={c.starEmpty}
               fill="transparent"
               strokeWidth={1.5}
             />
@@ -57,7 +57,7 @@ export function CompactAssigneeRating({ summary, showNewWhenEmpty = false }: Pro
             <Star
               key={index}
               size={iconSize['2xs']}
-              color={index < filledStars ? c.star : c.border}
+              color={index < filledStars ? c.star : c.starEmpty}
               fill={index < filledStars ? c.starFill : 'transparent'}
               strokeWidth={1.5}
             />

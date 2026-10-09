@@ -1,3 +1,5 @@
+import type { OpeningHoursMap, PublicProfileSocialLinks } from './public-profile';
+
 /** Statuts commande pharmacie (MVP). */
 export const PHARMACY_ORDER_STATUSES = [
   'en_attente',
@@ -30,6 +32,8 @@ export type PharmacyOrder = {
   pharmacy_id: string;
   patient_id: string;
   relative_id: string | null;
+  /** Dossier patient du proche ; `null` pour le titulaire ou un proche encore sans dossier. */
+  relative_profile_id?: string | null;
   fulfillment_mode: PharmacyFulfillmentMode;
   delivery_address: PharmacyOrderAddress | null;
   delivery_postal_code: string | null;
@@ -50,6 +54,8 @@ export type PharmacyOrder = {
   requester_email?: string | null;
   requester_emploi?: string | null;
   requester_public_slug?: string | null;
+  /** Détail uniquement : le lecteur peut joindre une ordonnance (`PharmacyOrderAccess::canAttachPrescriptions`). */
+  can_attach_prescriptions?: boolean;
 };
 
 export type PharmacyModuleConfig = {
@@ -65,6 +71,26 @@ export type PharmacyModuleUiFlags = {
   can_order: boolean;
   can_receive: boolean;
   is_pharmacy_account: boolean;
+};
+
+export type PharmacyPublicProfile = {
+  id: string;
+  display_name: string;
+  emploi: string;
+  phone: string | null;
+  profile_image_url: string | null;
+  cover_image_url: string | null;
+  biography: string | null;
+  website_url: string | null;
+  opening_hours: OpeningHoursMap | null;
+  social_links: PublicProfileSocialLinks | null;
+  address: PharmacyOrderAddress | null;
+  address_label: string | null;
+  postal_code: string;
+  accepts_click_collect: boolean;
+  accepts_home_delivery: boolean;
+  click_collect_days: number[];
+  home_delivery_days: number[];
 };
 
 export type PharmacyCatalogItem = {
@@ -99,4 +125,6 @@ export type CreatePharmacyOrderPayload = {
   desired_fulfillment_date: string;
   requester_comment?: string | null;
   prescription_document_ids: string[];
+  /** Même clé et même contenu : l'API renvoie la commande déjà créée au lieu d'en créer une autre. */
+  client_request_id?: string;
 };

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatBirthDateFr } from '@oneandlab/shared-utils';
@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { useInBottomSheet } from '@/components/ui/sheet-keyboard-context';
+import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { buildFieldStyles } from '@/components/ui/field-styles';
 
@@ -41,6 +42,13 @@ export function IsoDatePicker({
   const [inlineOpen, setInlineOpen] = useState(false);
   const [androidOpen, setAndroidOpen] = useState(false);
   const [pickerDate, setPickerDate] = useState(() => parseValueToDate(value));
+  const wrapRef = useRef<View>(null);
+  const scrollIntoView = useScrollFocusedFieldIntoView();
+
+  /** Roue ouverte dans la sheet : remonter le champ en haut de la zone visible, sinon elle s'ouvre sous le pied fixe. */
+  useEffect(() => {
+    if (inSheet && inlineOpen) scrollIntoView(wrapRef);
+  }, [inSheet, inlineOpen, scrollIntoView]);
 
   const parsedValid = useMemo(() => dayjs(value, 'YYYY-MM-DD', true).isValid(), [value]);
   const display = parsedValid && value ? formatBirthDateFr(value) : placeholder;
@@ -76,7 +84,7 @@ export function IsoDatePicker({
   }, [onChange, pickerDate]);
 
   return (
-    <View style={styles.wrap}>
+    <View ref={wrapRef} collapsable={false} style={styles.wrap}>
       {label ? (
         <AppText style={styles.label} numberOfLines={1}>
           {label}

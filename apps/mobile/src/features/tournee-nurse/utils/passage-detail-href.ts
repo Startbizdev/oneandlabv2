@@ -14,3 +14,11 @@ export function nursePassageDetailHref(
     },
   };
 }
+
+/** Vue « Documents » du passage : documents du RDV et espace ordonnances. */
+export function nursePassageDocumentsHref(seriesId: string, appointmentId: string): Href {
+  return {
+    pathname: '/(nurse)/passage/[seriesId]/documents',
+    params: { seriesId: seriesId || 'rdv', appointment_id: appointmentId },
+  };
+}

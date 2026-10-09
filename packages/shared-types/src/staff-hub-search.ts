@@ -54,6 +54,8 @@ export type StaffHubRelativeItem = {
   id: string;
   relative_id: string;
   patient_id: string;
+  /** Dossier patient du proche ; absent tant qu'il n'a pas été créé. */
+  profile_id?: string | null;
   relative_name: string;
   patient_name: string;
   relationship_type?: string;

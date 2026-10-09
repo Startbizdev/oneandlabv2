@@ -30,7 +30,7 @@ final class ClinicalVitalService
      */
     public function listForStaff(array $viewer, string $patientId, int $recentLimit = 20): array
     {
-        $this->assertStaffAccess($viewer, $patientId);
+        $this->assertReadAccess($viewer, $patientId);
 
         $latest = [];
         foreach (ClinicalVitalTypes::ALL as $type) {
@@ -54,7 +54,7 @@ final class ClinicalVitalService
      */
     public function historyForType(array $viewer, string $patientId, string $vitalType, int $limit = 50): array
     {
-        $this->assertStaffAccess($viewer, $patientId);
+        $this->assertReadAccess($viewer, $patientId);
         if (!ClinicalVitalTypes::isValid($vitalType)) {
             throw new InvalidArgumentException('Type de constante invalide');
         }
@@ -154,6 +154,15 @@ final class ClinicalVitalService
         }
     }
 
+    /** Lecture : soignant du dossier, ou titulaire consultant le dossier d'un proche (sans écriture). */
+    private function assertReadAccess(array $viewer, string $patientId): void
+    {
+        if (PatientDossierAccess::isRelativeOwner($this->db, $viewer, $patientId)) {
+            return;
+        }
+        $this->assertStaffAccess($viewer, $patientId);
+    }
+
     private function assertStaffAccess(array $viewer, string $patientId): void
     {
         $role = (string) ($viewer['role'] ?? '');
@@ -219,18 +228,7 @@ final class ClinicalVitalService
             }
         }
 
-        $recordedAt = trim((string) ($input['recorded_at'] ?? ''));
-        if ($recordedAt === '') {
-            $recordedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
-        } else {
-            $dt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $recordedAt)
-                ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $recordedAt)
-                ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $recordedAt);
-            if (!$dt) {
-                throw new InvalidArgumentException('Date invalide');
-            }
-            $recordedAt = $dt->format('Y-m-d H:i:s');
-        }
+        $recordedAt = $this->parseRecordedAt(trim((string) ($input['recorded_at'] ?? '')));
 
         $notes = isset($input['notes']) ? trim((string) $input['notes']) : null;
         if ($notes === '') {
@@ -263,6 +261,34 @@ final class ClinicalVitalService
             'context_type' => $contextType,
             'context_id' => $contextId,
         ];
+    }
+
+    /**
+     * Heure de mesure en heure serveur. Accepte l'ISO 8601 avec fuseau (format renvoyé par mapRow,
+     * donc réinjecté tel quel par update) ou une date locale sans fuseau.
+     */
+    private function parseRecordedAt(string $raw): string
+    {
+        $serverZone = new DateTimeZone(date_default_timezone_get());
+        $now = new DateTimeImmutable('now', $serverZone);
+        if ($raw === '') {
+            return $now->format('Y-m-d H:i:s');
+        }
+
+        $dt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:sP', $raw)
+            ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s.vP', $raw)
+            ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $raw, $serverZone)
+            ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $raw, $serverZone)
+            ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $raw, $serverZone);
+        if (!$dt) {
+            throw new InvalidArgumentException('Date invalide');
+        }
+        $dt = $dt->setTimezone($serverZone);
+        if ($dt > $now->modify('+5 minutes')) {
+            throw new InvalidArgumentException('L\'heure de mesure ne peut pas être dans le futur');
+        }
+
+        return $dt->format('Y-m-d H:i:s');
     }
 
     /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../fixtures/MockGrokProvider.php';
+require_once __DIR__ . '/../../lib/ai/LocalMockAiProvider.php';
 require_once __DIR__ . '/../../lib/ai/AIGateway.php';
 require_once __DIR__ . '/../../lib/ai/AiTurnOrchestrator.php';
 require_once __DIR__ . '/../../lib/ai/CaryContextFocus.php';
@@ -19,7 +19,7 @@ final class AiTurnOrchestratorTest extends TestCase
 
     public function testUsesToolsForBookingIntent(): void
     {
-        $mock = new MockGrokProvider();
+        $mock = new LocalMockAiProvider();
         $mock->pushResponse(['content' => 'Parfait, quel créneau vous convient ?']);
         $gateway = new AIGateway(null, $mock); // db null = tests sans MySQL
         $orchestrator = new AiTurnOrchestrator($gateway, new StubAiBookingService());
@@ -41,7 +41,7 @@ final class AiTurnOrchestratorTest extends TestCase
 
     public function testHealthRecordDisablesToolsPath(): void
     {
-        $mock = new MockGrokProvider();
+        $mock = new LocalMockAiProvider();
         $mock->pushResponse(['content' => 'Ouvrez Plus → Mon carnet de santé pour compléter vos questionnaires.']);
         $gateway = new AIGateway(null, $mock); // db null = tests sans MySQL
         $orchestrator = new AiTurnOrchestrator($gateway, new StubAiBookingService());
@@ -63,7 +63,7 @@ final class AiTurnOrchestratorTest extends TestCase
 
     public function testToolLoopGracefulFallback(): void
     {
-        $mock = new MockGrokProvider();
+        $mock = new LocalMockAiProvider();
         for ($i = 0; $i < 9; $i++) {
             $mock->pushResponse([
                 'content' => '',

@@ -118,32 +118,58 @@ final class CaryContextFocus
         );
     }
 
-    /**
-     * @return list<string>
-     */
-    public static function suppressedContextKeys(string $focus): array
-    {
-        return match ($focus) {
-            self::DOCUMENT, self::DOCUMENT_FOLLOWUP => [
-                'health_record_summary',
-            ],
-            self::BOOKING => [
-                'health_record_summary',
-            ],
-            default => [],
-        };
-    }
+    /** Clés utiles à tout tour (cadre temporel, mode, mémoire de conversation). */
+    private const BASE_CONTEXT_KEYS = [
+        'role', 'conversation_type', 'generated_at', 'today_paris', 'today_label_fr', 'tomorrow_paris', 'tomorrow_label_fr',
+        'disclaimer', 'active_intent', 'active_intent_label_fr', 'conversation_mode', 'document_context_mode',
+        'conversation_memory', 'user_memory', 'app_navigation', 'profile', 'patient',
+    ];
+
+    /** Données du dossier transmises au modèle selon le sujet du tour : le strict nécessaire. */
+    private const FOCUS_CONTEXT_KEYS = [
+        self::BOOKING => [
+            'active_booking_draft', 'relatives', 'care_categories', 'profile_documents', 'staff_patients',
+            'accessible_patients_count', 'appointments',
+        ],
+        self::DOCUMENT => ['chat_attachments', 'rag_chunks', 'citation_refs', 'lab_results', 'documents', 'active_booking_draft'],
+        self::DOCUMENT_FOLLOWUP => ['chat_attachments', 'rag_chunks', 'citation_refs', 'lab_results', 'documents', 'active_booking_draft'],
+        self::HEALTH_RECORD => ['health_record_summary', 'health_metrics', 'health_trends'],
+        self::GENERAL => [
+            'appointments', 'lab_results', 'documents', 'pending_documents', 'rag_chunks', 'citation_refs',
+            'medical_memory', 'health_trends', 'health_metrics', 'relatives', 'staff_patients', 'accessible_patients_count',
+            'active_booking_draft',
+        ],
+    ];
+
+    private const HEALTH_RECORD_NAVIGATION_KEYS = ['health_record', 'health_sync_ios', 'health_sync_android'];
 
     /**
-     * @return list<string>
+     * Réduit le contexte envoyé au modèle à ce que le sujet exige ; hors prise de RDV, l'identité se limite
+     * au prénom (pas d'adresse ni de date de naissance).
+     *
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
      */
-    public static function suppressedNavigationKeys(string $focus): array
+    public static function minimizeContext(array $context, string $focus): array
     {
-        return match ($focus) {
-            self::DOCUMENT, self::DOCUMENT_FOLLOWUP => ['health_record', 'health_sync_ios', 'health_sync_android'],
-            self::BOOKING => ['health_record', 'health_sync_ios', 'health_sync_android'],
-            default => [],
-        };
+        $allowed = array_flip([...self::BASE_CONTEXT_KEYS, ...(self::FOCUS_CONTEXT_KEYS[$focus] ?? self::FOCUS_CONTEXT_KEYS[self::GENERAL])]);
+        $minimal = array_intersect_key($context, $allowed);
+
+        if ($focus !== self::BOOKING) {
+            foreach (['profile', 'patient'] as $identityKey) {
+                if (is_array($minimal[$identityKey] ?? null)) {
+                    $minimal[$identityKey] = array_intersect_key(
+                        $minimal[$identityKey],
+                        array_flip($identityKey === 'patient' ? ['id', 'first_name', 'last_name'] : ['first_name']),
+                    );
+                }
+            }
+        }
+        if (in_array($focus, [self::BOOKING, self::DOCUMENT, self::DOCUMENT_FOLLOWUP], true) && is_array($minimal['app_navigation'] ?? null)) {
+            $minimal['app_navigation'] = array_diff_key($minimal['app_navigation'], array_flip(self::HEALTH_RECORD_NAVIGATION_KEYS));
+        }
+
+        return $minimal;
     }
 
     public static function labelFr(string $focus): string

@@ -3,6 +3,8 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/Crypto.php';
 require_once __DIR__ . '/../lib/Logger.php';
+require_once __DIR__ . '/../lib/DatabaseTransaction.php';
+require_once __DIR__ . '/../lib/RelativeProfile.php';
 
 /**
  * Modèle PatientRelative
@@ -49,9 +51,19 @@ class PatientRelative
     }
 
     /**
-     * Crée un nouveau proche
+     * Crée un nouveau proche et son dossier patient (même transaction).
      */
     public function create(array $data, string $patientId, ?array $actor = null): string
+    {
+        return DatabaseTransaction::run($this->db, function () use ($data, $patientId, $actor): string {
+            $id = $this->insertRelative($data, $patientId, $actor);
+            RelativeProfile::ensureProfile($this->db, $id);
+
+            return $id;
+        });
+    }
+
+    private function insertRelative(array $data, string $patientId, ?array $actor): string
     {
         $id = $this->generateUUID();
 
@@ -203,9 +215,9 @@ class PatientRelative
     }
 
     /**
-     * Met à jour un proche
+     * Met à jour un proche ; l'identité est recopiée sur son dossier patient sauf si la modification vient du dossier.
      */
-    public function update(string $id, array $data, string $patientId): bool
+    public function update(string $id, array $data, string $patientId, ?array $actor = null, bool $syncProfile = true): bool
     {
         $relative = $this->getById($id, $patientId);
         if (!$relative) {
@@ -305,13 +317,20 @@ class PatientRelative
         $params[] = $id;
         $params[] = $patientId;
 
-        $stmt = $this->db->prepare($sql);
-        $result = $stmt->execute($params);
+        $profileIdentity = RelativeProfile::identityOf($data);
+        $result = DatabaseTransaction::run($this->db, function () use ($sql, $params, $relative, $profileIdentity, $syncProfile): bool {
+            $done = $this->db->prepare($sql)->execute($params);
+            if ($done && $syncProfile && !empty($relative['profile_id']) && $profileIdentity !== []) {
+                (new User($this->db))->syncRelativeProfileIdentity((string) $relative['profile_id'], $profileIdentity);
+            }
+
+            return $done;
+        });
 
         if ($result) {
             $this->logger->log(
-                $patientId,
-                'patient',
+                (string) ($actor['user_id'] ?? $patientId),
+                (string) ($actor['role'] ?? 'patient'),
                 'update',
                 'patient_relative',
                 $id,
@@ -323,7 +342,8 @@ class PatientRelative
     }
 
     /**
-     * Supprime un proche
+     * Supprime un proche. Son dossier patient (carnet, constantes, transmissions) est conservé :
+     * les soignants qui le suivent gardent l'accès, le titulaire ne le voit plus.
      */
     public function delete(string $id, string $patientId): bool
     {
@@ -334,6 +354,9 @@ class PatientRelative
 
         $stmt = $this->db->prepare('DELETE FROM patient_relatives WHERE id = ? AND patient_id = ?');
         $result = $stmt->execute([$id, $patientId]);
+        if (!empty($relative['profile_id'])) {
+            RelativeProfile::forget((string) $relative['profile_id']);
+        }
 
         if ($result) {
             $this->logger->log(
@@ -357,6 +380,7 @@ class PatientRelative
         return [
             'id' => $relative['id'],
             'patient_id' => $relative['patient_id'],
+            'profile_id' => $relative['profile_id'] ?? null,
             'first_name' => $this->crypto->decryptField(
                 $relative['first_name_encrypted'],
                 $relative['first_name_dek']

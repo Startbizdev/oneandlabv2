@@ -7,11 +7,13 @@ declare(strict_types=1);
  */
 final class AppointmentListCards
 {
+    /** Les passages d'une série infirmier sont des visites distinctes : une carte par passage, jamais un lot. */
     public static function cardKeyExpr(string $alias = 'a'): string
     {
         return "CASE
             WHEN {$alias}.creation_batch_id IS NOT NULL AND {$alias}.creation_batch_id != ''
                  AND {$alias}.type IN ('nursing', 'blood_test')
+                 AND ({$alias}.passage_source IS NULL OR {$alias}.passage_source <> 'nurse_passage')
             THEN CONCAT({$alias}.type, ':', {$alias}.creation_batch_id)
             ELSE CONCAT('single:', {$alias}.id)
         END";
@@ -24,6 +26,7 @@ final class AppointmentListCards
         if (
             is_string($bid) && $bid !== ''
             && in_array($type, ['nursing', 'blood_test'], true)
+            && ($apt['passage_source'] ?? null) !== 'nurse_passage'
         ) {
             return $type . ':' . $bid;
         }
@@ -128,7 +131,8 @@ final class AppointmentListCards
         }
         if ($nursingBatches !== []) {
             $ph = implode(',', array_fill(0, count($nursingBatches), '?'));
-            $parts[] = "(a.type = 'nursing' AND a.creation_batch_id IN ($ph))";
+            $parts[] = "(a.type = 'nursing' AND a.creation_batch_id IN ($ph)"
+                . " AND (a.passage_source IS NULL OR a.passage_source <> 'nurse_passage'))";
             foreach ($nursingBatches as $bid) {
                 $params[] = $bid;
             }

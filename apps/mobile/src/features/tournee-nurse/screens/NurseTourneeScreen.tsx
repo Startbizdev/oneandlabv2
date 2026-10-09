@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Users } from 'lucide-react-native';
+import { HeaderAction } from '@/components/navigation/HeaderAction';
+import { useAuthStore } from '@/store/auth-store';
+import { TourCollaborationsSheet } from '@/features/nurse-collaborations/components/TourCollaborationsSheet';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Row } from '@/components/layout/primitives';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
@@ -17,14 +21,16 @@ import {
 import { PassageSimpleListRow } from '@/features/nurse-passage/components/PassageSimpleListRow';
 import { PatientAbsenceSheet } from '@/features/patient-absence/components/PatientAbsenceSheet';
 import {
+  appointmentDossierPatientId,
   countTourActiveRemainingStops,
   flattenTourStopsWithSlotSections,
   isTourStopAbsent,
   isTourStopDone,
+  tourDateFromParam,
 } from '@oneandlab/shared-utils';
 import { useNurseTour } from '../hooks/use-nurse-tour';
 import { todayTourDate } from '../hooks/nurse-tour-query';
-import { useNurseTourStopCompletion } from '../hooks/use-nurse-tour-stop-status';
+import { useNurseTourStopCompletion, useNurseTourStopItemDone } from '../hooks/use-nurse-tour-stop-status';
 import { NurseNextPassageCard } from '../components/NurseNextPassageCard';
 import { nursePassageDetailHref } from '../utils/passage-detail-href';
 import { useTourStopActions } from '../hooks/use-tour-stop-actions';
@@ -48,7 +54,10 @@ export function NurseTourneeScreen() {
   const styles = useStyles(buildStyles);
   const router = useRouter();
   const { show: showToast } = useToast();
-  const [date, setDate] = useState(todayTourDate);
+  const viewerId = useAuthStore((s) => s.user?.id);
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const [date, setDate] = useState(() => tourDateFromParam(dateParam) ?? todayTourDate());
+  const [collaborationsOpen, setCollaborationsOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [planningSheetOpen, setPlanningSheetOpen] = useState(false);
   const [sortSheetOpen, setSortSheetOpen] = useState(false);
@@ -71,8 +80,10 @@ export function NurseTourneeScreen() {
     nextStop,
   } = useNurseTour(date);
   const { markDone, reopen } = useNurseTourStopCompletion(date);
+  const setItemDone = useNurseTourStopItemDone(date);
   const { openStopActions, actionsSheet, rescheduleStop, closeReschedule, absenceStop, closeAbsence } =
     useTourStopActions(refetch);
+  const absenceDossierId = appointmentDossierPatientId(absenceStop);
   const isToday = date === todayTourDate();
 
   useFocusEffect(
@@ -85,6 +96,11 @@ export function NurseTourneeScreen() {
     setManualOrderActive(false);
   }, [date]);
 
+  useEffect(() => {
+    const fromParam = tourDateFromParam(dateParam);
+    if (fromParam) setDate(fromParam);
+  }, [dateParam]);
+
   const displayStops = useMemo(() => tour?.stops ?? [], [tour?.stops]);
   const { importing: exportingCalendar, importToCalendar } = useTourCalendarImport(
     date,
@@ -94,8 +110,8 @@ export function NurseTourneeScreen() {
     () => flattenTourStopsWithSlotSections(displayStops),
     [displayStops],
   );
-  const showManualReorder =
-    manualOrderActive || tour?.plan.sort_mode === 'manual' || tour?.plan.manual_order_locked;
+  const canReorder = tourListRows.some((row) => row.kind === 'stop' && row.slotTotal > 1);
+  const showManualReorder = canReorder && manualOrderActive;
 
   const handleLocate = useCallback(async () => {
     setLocating(true);
@@ -130,10 +146,9 @@ export function NurseTourneeScreen() {
   );
 
   const handleMove = useCallback(
-    async (id: string, dir: 'up' | 'down') => {
+    async (stopId: string, dir: 'up' | 'down') => {
       try {
-        await moveStop(id, dir);
-        setManualOrderActive(true);
+        await moveStop(stopId, dir);
         showToast('Ordre enregistré', { type: 'success' });
       } catch (e) {
         console.warn('[tour] réordonnancement impossible', e);
@@ -186,6 +201,8 @@ export function NurseTourneeScreen() {
             sortActive={sortFilterActive}
             absentCount={absentCount}
             activeTotal={tour?.summary.total_stops ?? 0}
+            reordering={showManualReorder}
+            onToggleReorder={canReorder ? () => setManualOrderActive((v) => !v) : undefined}
             onOpenFilter={() => setSortSheetOpen(true)}
           />
         ) : null}
@@ -193,11 +210,13 @@ export function NurseTourneeScreen() {
     ),
     [
       absentCount,
+      canReorder,
       displayStops,
       hasStops,
       isToday,
       markDone,
       nextStop,
+      showManualReorder,
       showTourSummary,
       sortFilterActive,
       tour,
@@ -209,6 +228,11 @@ export function NurseTourneeScreen() {
     <StackChromeScreen
       headerRight={
         <Row align="center">
+          <HeaderAction
+            icon={Users}
+            accessibilityLabel="Confrères et remplacements"
+            onPress={() => setCollaborationsOpen(true)}
+          />
           <TourCalendarExportAction
             onPress={() => setCalendarSheetOpen(true)}
             loading={exportingCalendar}
@@ -272,17 +296,15 @@ export function NurseTourneeScreen() {
                 <PassageSimpleListRow
                   stop={stop}
                   index={item.index}
-                  total={displayStops.length}
+                  slotIndex={item.slotIndex}
+                  slotTotal={item.slotTotal}
                   isNext={stop.stop_id === tour.next_stop_id}
                   onPressName={() => openPassageDetail(stop)}
                   onToggleDone={toggleDone}
+                  onToggleItem={(itemId, done) => void setItemDone(stop.stop_id, itemId, done)}
                   onManageAbsence={() => openStopActions(stop)}
-                  onMoveUp={
-                    showManualReorder ? () => void handleMove(stop.appointment_id, 'up') : undefined
-                  }
-                  onMoveDown={
-                    showManualReorder ? () => void handleMove(stop.appointment_id, 'down') : undefined
-                  }
+                  onMoveUp={showManualReorder ? () => void handleMove(stop.stop_id, 'up') : undefined}
+                  onMoveDown={showManualReorder ? () => void handleMove(stop.stop_id, 'down') : undefined}
                 />
               );
             }}
@@ -299,10 +321,10 @@ export function NurseTourneeScreen() {
         onSelect={handlePlanningChoice}
       />
 
-      {absenceStop?.patient_id ? (
+      {absenceStop && absenceDossierId ? (
         <PatientAbsenceSheet
-          visible={Boolean(absenceStop)}
-          patientId={absenceStop.patient_id}
+          visible
+          patientId={absenceDossierId}
           patientName={absenceStop.patient_name}
           defaultStartDate={date}
           existing={absenceStop.patient_absence ?? null}
@@ -334,6 +356,13 @@ export function NurseTourneeScreen() {
       />
 
       <TourStopActionsSheet {...actionsSheet} />
+
+      <TourCollaborationsSheet
+        visible={collaborationsOpen}
+        onClose={() => setCollaborationsOpen(false)}
+        viewerId={viewerId}
+        date={date}
+      />
 
       <TourStopRescheduleSheet
         stop={rescheduleStop}

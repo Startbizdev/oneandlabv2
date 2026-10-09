@@ -19,18 +19,23 @@ $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $c
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 $stmt = $db->query('SELECT id FROM profiles WHERE role = \'patient\' ORDER BY updated_at DESC LIMIT 50');
 $indexed = 0;
+$ragErrors = 0;
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $pid = (string) $row['id'];
     try {
         $indexed += $indexer->indexPatient($pid);
         $memory->upsertMedicalSnapshot($pid, 'documents_index', ['refreshed' => true, 'at' => date('c')]);
-    } catch (Throwable) {
-        // continue
+    } catch (Throwable $e) {
+        $ragErrors++;
+        error_log('ai-patient-followup indexation RAG patient ' . $pid . ' : ' . $e->getMessage());
     }
 }
 
 $logger->log(null, null, 'cron_ai_patient_followup', 'cron', null, [
-    'signals_created' => $result['signals_created'] ?? 0,
+    'signals_created' => $result['signals_created'],
+    'signal_errors' => $result['errors'],
     'rag_points' => $indexed,
+    'rag_errors' => $ragErrors,
 ]);
-echo 'ai-patient-followup: signals=' . ($result['signals_created'] ?? 0) . " rag_points={$indexed}\n";
+echo 'ai-patient-followup: signals=' . $result['signals_created'] . ' errors=' . $result['errors']
+    . " rag_points={$indexed} rag_errors={$ragErrors}\n";

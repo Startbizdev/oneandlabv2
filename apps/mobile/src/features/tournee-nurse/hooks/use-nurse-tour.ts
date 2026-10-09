@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { moveTourStopWithinSlot } from '@oneandlab/shared-utils';
 import {
   fetchNurseTourSummary,
   optimizeNurseTour,
@@ -12,6 +13,7 @@ import {
 } from '../api/nurse-tour.service';
 import {
   NURSE_TOUR_STALE_MS,
+  NURSE_TOUR_SUMMARY_QUERY_ROOT,
   findNextTourStop,
   nurseTourQueryKey,
   nurseTourQueryOptions,
@@ -33,7 +35,7 @@ export function useNurseTour(date: string) {
   const summaryFrom = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   const summaryTo = dayjs().add(FORWARD_SUMMARY_DAYS, 'day').format('YYYY-MM-DD');
   const summaryQuery = useQuery({
-    queryKey: ['nurse-tour-summary', summaryFrom, summaryTo],
+    queryKey: [...NURSE_TOUR_SUMMARY_QUERY_ROOT, summaryFrom, summaryTo],
     queryFn: () => fetchNurseTourSummary(summaryFrom, summaryTo),
     staleTime: NURSE_TOUR_STALE_MS,
   });
@@ -55,17 +57,14 @@ export function useNurseTour(date: string) {
   );
 
   const moveStop = useCallback(
-    async (appointmentId: string, direction: 'up' | 'down') => {
-      const current = tour;
-      if (!current) return;
-
-      const ids = current.stops.map((s) => s.appointment_id);
-      const idx = ids.indexOf(appointmentId);
-      if (idx < 0) return;
-      const swap = direction === 'up' ? idx - 1 : idx + 1;
-      if (swap < 0 || swap >= ids.length) return;
-      [ids[idx], ids[swap]] = [ids[swap]!, ids[idx]!];
-      const updated = await patchNurseTourOrder(date, ids);
+    async (stopId: string, direction: 'up' | 'down') => {
+      if (!tour) return;
+      const reordered = moveTourStopWithinSlot(tour.stops, stopId, direction);
+      if (!reordered) return;
+      const updated = await patchNurseTourOrder(
+        date,
+        reordered.map((s) => s.appointment_id),
+      );
       applyTour(updated);
     },
     [applyTour, date, tour],

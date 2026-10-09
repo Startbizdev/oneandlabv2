@@ -26,6 +26,7 @@ final class ReviewResponseTest extends TestCase
             $this->db->prepare('DELETE FROM reviews WHERE appointment_id = ?')->execute([$this->appointmentId]);
             $this->db->prepare('DELETE FROM appointments WHERE id = ?')->execute([$this->appointmentId]);
         }
+        $this->db = null;
         parent::tearDown();
     }
 

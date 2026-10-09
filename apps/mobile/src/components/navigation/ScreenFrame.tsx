@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, View, type KeyboardAvoidingViewProps } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { ScreenHeader, type ScreenHeaderVariant } from '@/components/navigation/ScreenHeader';
 import { useStyles, type Theme } from '@/theme';
 
@@ -13,10 +14,17 @@ type Props = {
 
 const ScreenHeaderHeightContext = createContext(0);
 
-/** `KeyboardAvoidingView` du corps d'écran : décalé de la hauteur du header au-dessus de lui. */
-export function ScreenKeyboardAvoidingView(props: Omit<KeyboardAvoidingViewProps, 'keyboardVerticalOffset'>) {
+/**
+ * Corps d'écran qui remonte au-dessus du clavier, décalé de la hauteur du header.
+ * Version keyboard-controller : sur Android, celle de React Native (`height`) garde un vide sous le contenu après fermeture du clavier.
+ */
+export function ScreenKeyboardAvoidingView({ style, children }: { style?: StyleProp<ViewStyle>; children: ReactNode }) {
   const headerHeight = useContext(ScreenHeaderHeightContext);
-  return <KeyboardAvoidingView {...props} keyboardVerticalOffset={headerHeight} />;
+  return (
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} style={style}>
+      {children}
+    </KeyboardAvoidingView>
+  );
 }
 
 /** Écran = header dans le flux + corps qui occupe le reste (au-dessus de la tab bar le cas échéant). */

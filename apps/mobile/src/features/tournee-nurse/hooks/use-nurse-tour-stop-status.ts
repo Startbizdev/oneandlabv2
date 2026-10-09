@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import {
+  setNurseTourStopItemDone,
   updateNurseTourStopStatus,
   type NurseTourPayload,
   type NurseTourStop,
@@ -44,6 +45,43 @@ export function useNurseTourStopStatus(date: string) {
       }
     },
     [date, qc],
+  );
+}
+
+/** Soin coché / décoché avec mise à jour optimiste ; le serveur renvoie la tournée (passage coché si tous les soins le sont). */
+export function useNurseTourStopItemDone(date: string) {
+  const qc = useQueryClient();
+  const { show: toast } = useToast();
+
+  return useCallback(
+    async (stopId: string, itemId: string, done: boolean) => {
+      const key = nurseTourQueryKey(date);
+      const current = qc.getQueryData<NurseTourPayload>(key);
+      if (!current) return;
+
+      const doneAt = done ? new Date().toISOString() : null;
+      qc.setQueryData(key, {
+        ...current,
+        stops: current.stops.map((s) =>
+          s.stop_id !== stopId
+            ? s
+            : {
+                ...s,
+                nursing_items: s.nursing_items?.map((item) =>
+                  item.id === itemId ? { ...item, done_at: doneAt } : item,
+                ),
+              },
+        ),
+      });
+
+      try {
+        qc.setQueryData(key, await setNurseTourStopItemDone(stopId, itemId, done));
+      } catch (error) {
+        qc.setQueryData(key, current);
+        handleApiError(error, toast, 'nurse-tour-item-done', 'Soin non enregistré');
+      }
+    },
+    [date, qc, toast],
   );
 }
 

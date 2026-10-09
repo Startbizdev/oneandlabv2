@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../RelativeProfile.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../LabResultsListing.php';
 require_once __DIR__ . '/../PatientDossierDocuments.php';
@@ -34,7 +36,7 @@ final class ContextComposer
             $targetPatientId = $userId;
         } elseif ($targetPatientId !== null && $targetPatientId !== '') {
             if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $targetPatientId)) {
-                throw new RuntimeException('Accès patient refusé');
+                throw HttpStatusException::forbidden('Accès à ce patient refusé');
             }
         }
 
@@ -99,6 +101,8 @@ final class ContextComposer
         try {
             $profile = $this->userModel->getById($patientId, $requesterId, $requesterRole, 'mobile');
         } catch (Throwable $e) {
+            error_log('ContextComposer profil indisponible : ' . $e->getMessage());
+
             return null;
         }
         if (!$profile) {
@@ -203,6 +207,8 @@ final class ContextComposer
 
             return $optionsByCat;
         } catch (Throwable $e) {
+            error_log('ContextComposer options de soins indisponibles : ' . $e->getMessage());
+
             return [];
         }
     }
@@ -256,7 +262,7 @@ final class ContextComposer
                     $ln = trim((string) $crypto->decryptField((string) $row['last_name_encrypted'], (string) $row['last_name_dek']));
                 }
             } catch (Throwable $e) {
-                // ignore
+                error_log('ContextComposer nom du proche illisible : ' . $e->getMessage());
             }
             $displayName = trim($fn . ' ' . $ln) ?: 'Proche';
             $relType = (string) ($row['relationship_type'] ?? '');
@@ -289,14 +295,18 @@ final class ContextComposer
         $todayParis = AppTimezone::sqlStartOfToday();
         $thirtyDaysAgo = AppTimezone::sqlDateTime(AppTimezone::now()->modify('-30 days'));
 
+        // Dossier unique (vue soignant) : RDV du sujet seul — ceux d'un proche relèvent de son dossier.
+        [$patientSql, $patientParams] = $singlePatient
+            ? RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientIds[0])
+            : ["a.patient_id IN ($placeholders)", $patientIds];
         $sqlBase = "
             SELECT a.id, a.type, a.status, a.scheduled_at, a.patient_id, cc.name AS category_name
             FROM appointments a
             LEFT JOIN care_categories cc ON cc.id = a.category_id
-            WHERE a.patient_id IN ($placeholders)
+            WHERE $patientSql
               AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)
         ";
-        $paramsUpcoming = [...$patientIds, $thirtyDaysAgo];
+        $paramsUpcoming = [...$patientParams, $thirtyDaysAgo];
         $sqlUpcoming = $sqlBase . " AND a.status NOT IN ($terminalPh) AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?) ORDER BY a.scheduled_at ASC LIMIT 10";
         $paramsUpcoming = array_merge($paramsUpcoming, $terminal, [$todayParis]);
 
@@ -305,7 +315,7 @@ final class ContextComposer
         $upcoming = $this->mapAppointments($stmt->fetchAll(PDO::FETCH_ASSOC));
 
         $sqlPast = $sqlBase . " AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)) ORDER BY a.scheduled_at DESC LIMIT 10";
-        $paramsPast = array_merge([...$patientIds, $thirtyDaysAgo], $terminal, [$todayParis]);
+        $paramsPast = array_merge([...$patientParams, $thirtyDaysAgo], $terminal, [$todayParis]);
         $stmtPast = $this->db->prepare($sqlPast);
         $stmtPast->execute($paramsPast);
         $past = $this->mapAppointments($stmtPast->fetchAll(PDO::FETCH_ASSOC));
@@ -408,15 +418,19 @@ final class ContextComposer
             return [];
         }
 
-        $stmt = $this->db->prepare('
+        // Patient : tous les RDV qu'il porte ; soignant : RDV du dossier ouvert (proche ou titulaire) uniquement.
+        [$patientSql, $patientParams] = $requesterRole === 'patient'
+            ? ['a.patient_id = ?', [$patientId]]
+            : RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId);
+        $stmt = $this->db->prepare("
             SELECT md.id, md.document_type, md.file_name, md.created_at
             FROM medical_documents md
             INNER JOIN appointments a ON a.id = md.appointment_id
-            WHERE a.patient_id = ?
+            WHERE $patientSql AND md.replaced_by_document_id IS NULL
             ORDER BY md.created_at DESC
             LIMIT 8
-        ');
-        $stmt->execute([$patientId]);
+        ");
+        $stmt->execute($patientParams);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $out = [];
         foreach ($rows as $row) {
@@ -556,6 +570,8 @@ final class ContextComposer
 
             return $summary;
         } catch (Throwable $e) {
+            error_log('ContextComposer données santé indisponibles : ' . $e->getMessage());
+
             return null;
         }
     }

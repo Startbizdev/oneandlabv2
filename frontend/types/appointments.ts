@@ -91,8 +91,11 @@ export interface Appointment {
   id: string;
   type: AppointmentType;
   status: AppointmentStatus;
+  /** Titulaire du compte, y compris pour un RDV pris pour un proche. */
   patient_id?: string;
   relative_id?: string;
+  /** Dossier du proche quand le RDV est pour un proche. */
+  relative_profile_id?: string | null;
   assigned_to?: string;
   assigned_nurse_id?: string;
   assigned_lab_id?: string;

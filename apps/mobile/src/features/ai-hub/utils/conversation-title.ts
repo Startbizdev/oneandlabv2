@@ -7,6 +7,12 @@ const SYSTEM_TITLES: Record<string, string> = {
   health_tracking: 'Mes données santé',
 };
 
+const CONTEXT_TITLES: Record<string, string> = {
+  appointment: 'Rendez-vous',
+  lab_result: "Résultat d'analyse",
+  patient: 'Dossier patient',
+};
+
 /** Titre affiché dans la liste (style ChatGPT). */
 export function resolveConversationTitle(conv: AiConversation): string {
   const custom = conv.custom_title?.trim();
@@ -15,5 +21,5 @@ export function resolveConversationTitle(conv: AiConversation): string {
     const key = conv.system_key ?? '';
     return SYSTEM_TITLES[key] ?? 'Assistant Cary';
   }
-  return 'Nouvelle conversation';
+  return CONTEXT_TITLES[conv.context_type ?? ''] ?? 'Nouvelle conversation';
 }

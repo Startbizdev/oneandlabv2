@@ -10,6 +10,9 @@ type Props = {
   sortActive: boolean;
   absentCount?: number;
   activeTotal?: number;
+  /** Mode « réordonner » (flèches sur chaque passage) ; absent quand il n'y a rien à réordonner. */
+  reordering?: boolean;
+  onToggleReorder?: () => void;
   onOpenFilter: () => void;
 };
 
@@ -17,6 +20,8 @@ export function TourPassageSectionHeader({
   sortActive,
   absentCount = 0,
   activeTotal = 0,
+  reordering = false,
+  onToggleReorder,
   onOpenFilter,
 }: Props) {
   const c = useAppColors();
@@ -32,6 +37,20 @@ export function TourPassageSectionHeader({
           </AppText>
         ) : null}
       </View>
+      {onToggleReorder ? (
+        <Pressable
+          onPress={onToggleReorder}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          style={styles.reorderBtn}
+          accessibilityRole="button"
+          accessibilityState={{ selected: reordering }}
+          accessibilityLabel={reordering ? 'Terminer le réordonnancement' : 'Réordonner les passages'}
+        >
+          <AppText style={[styles.reorderLabel, { color: c.primary }]}>
+            {reordering ? 'Terminer' : 'Réordonner'}
+          </AppText>
+        </Pressable>
+      ) : null}
       <Pressable
         onPress={onOpenFilter}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -59,6 +78,15 @@ function buildStyles({ fontSize }: Theme) {
       fontSize: fontSize.base,
     },
     spacer: { flex: 1, minWidth: 0 },
+    reorderBtn: {
+      minHeight: FILTER_SIZE,
+      paddingHorizontal: spacing[2],
+      justifyContent: 'center' as const,
+    },
+    reorderLabel: {
+      ...font.semiBold,
+      fontSize: fontSize.sm,
+    },
     absentHint: {
       ...font.medium,
       fontSize: fontSize.xs,

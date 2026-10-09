@@ -255,8 +255,9 @@ const handleSave = async () => {
   saving.value = true;
   
   try {
-    const url = props.relative 
-      ? `/patient-relatives/${props.relative.id}`
+    // Staff : le titulaire est désigné dans la query (contrôle d'accès du PUT côté API).
+    const url = props.relative
+      ? `/patient-relatives/${props.relative.id}${props.patientId ? `?patient_id=${encodeURIComponent(props.patientId)}` : ''}`
       : '/patient-relatives';
     
     const method = props.relative ? 'PUT' : 'POST';

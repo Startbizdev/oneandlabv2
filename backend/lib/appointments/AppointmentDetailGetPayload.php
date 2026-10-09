@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
 /** Enrichissement réponse GET /appointments/:id (lot batch + médias profil). */
 final class AppointmentDetailGetPayload
@@ -13,6 +14,7 @@ final class AppointmentDetailGetPayload
      * @return array<string, mixed>|null
      */
     public static function loadWithOptionalBatch(
+        PDO $db,
         Appointment $appointmentModel,
         array $user,
         string $id,
@@ -42,12 +44,20 @@ final class AppointmentDetailGetPayload
         }
 
         $appointment = AppointmentListPayload::enrichProfileMediaForDetail($appointment);
+        $batchAppointments = [];
         if (!empty($appointment['batch_appointments']) && is_array($appointment['batch_appointments'])) {
-            foreach ($appointment['batch_appointments'] as $idx => $batchApt) {
+            foreach ($appointment['batch_appointments'] as $batchApt) {
                 if (is_array($batchApt)) {
-                    $appointment['batch_appointments'][$idx] = AppointmentListPayload::enrichProfileMediaForDetail($batchApt);
+                    $batchAppointments[] = AppointmentListPayload::enrichProfileMediaForDetail($batchApt);
                 }
             }
+        }
+
+        $viewerId = (string) $user['user_id'];
+        $withCollaboration = NurseCollaboration::withCoNurses($db, [$appointment, ...$batchAppointments], $viewerId);
+        $appointment = array_shift($withCollaboration);
+        if ($batchAppointments !== []) {
+            $appointment['batch_appointments'] = $withCollaboration;
         }
 
         return $appointment;

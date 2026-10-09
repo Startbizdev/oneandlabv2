@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/NurseTourService.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../AppTimezone.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
 final class TourVisitService
 {
@@ -62,6 +65,49 @@ final class TourVisitService
     }
 
     /**
+     * Coche / décoche un soin du passage. Tous les soins cochés → passage effectué ;
+     * un soin décoché sur un passage effectué → passage à refaire.
+     *
+     * @return array<string, mixed>
+     */
+    public function setItemDone(string $nurseId, string $stopId, string $itemId, bool $done): array
+    {
+        if (!DbSchemaCache::tableHasColumn($this->db, 'appointment_nursing_items', 'done_at')) {
+            throw new RuntimeException('Migration 120 requise (appointment_nursing_items.done_at)');
+        }
+        $row = $this->loadStopForNurse($nurseId, $stopId);
+        $aptId = (string) ($row['appointment_id'] ?? '');
+        $exists = $this->db->prepare('SELECT 1 FROM appointment_nursing_items WHERE id = ? AND appointment_id = ?');
+        $exists->execute([$itemId, $aptId]);
+        if (!$exists->fetchColumn()) {
+            throw HttpStatusException::notFound('Soin introuvable pour ce passage');
+        }
+        $this->db->prepare('
+            UPDATE appointment_nursing_items
+            SET done_at = IF(?, COALESCE(done_at, ?), NULL)
+            WHERE id = ? AND appointment_id = ?
+        ')->execute([$done ? 1 : 0, date('Y-m-d H:i:s'), $itemId, $aptId]);
+
+        $count = $this->db->prepare('
+            SELECT COUNT(*) AS total, SUM(done_at IS NOT NULL) AS done
+            FROM appointment_nursing_items WHERE appointment_id = ?
+        ');
+        $count->execute([$aptId]);
+        $totals = $count->fetch(PDO::FETCH_ASSOC) ?: [];
+        $allDone = (int) ($totals['total'] ?? 0) > 0 && (int) ($totals['done'] ?? 0) === (int) $totals['total'];
+        $visit = (string) ($row['visit_status'] ?? 'todo');
+
+        if ($done && $allDone && !in_array($visit, ['done', 'skipped'], true)) {
+            return $this->updateStopStatus($nurseId, $stopId, 'done');
+        }
+        if (!$done && $visit === 'done') {
+            return $this->updateStopStatus($nurseId, $stopId, 'todo');
+        }
+
+        return (new NurseTourService($this->db))->getTour($nurseId, (string) ($row['tour_date'] ?? nurse_tour_parse_date(null)));
+    }
+
+    /**
      * @param array<string, mixed>|string|null $availabilityPayload
      * @return array<string, mixed>
      */
@@ -74,14 +120,15 @@ final class TourVisitService
         $row = $this->loadStopForNurse($nurseId, $stopId);
         $aptId = (string) ($row['appointment_id'] ?? '');
 
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
         $stmt = $this->db->prepare("
             SELECT a.*
             FROM appointments a
-            WHERE a.id = ? AND a.type = 'nursing' AND a.assigned_nurse_id = ?
+            WHERE a.id = ? AND a.type = 'nursing' AND {$nurseSql}
               AND a.status IN ('confirmed','inProgress','planned')
             LIMIT 1
         ");
-        $stmt->execute([$aptId, $nurseId]);
+        $stmt->execute([$aptId, ...$nurseParams]);
         $aptRow = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$aptRow) {
             throw new RuntimeException('RDV introuvable ou non assigné');
@@ -170,17 +217,20 @@ final class TourVisitService
      */
     private function loadStopForNurse(string $nurseId, string $stopId): array
     {
-        $stmt = $this->db->prepare('
+        // L'arrêt reste dans le plan jusqu'à la prochaine synchro : l'accès au RDV est revérifié (binôme retiré, RDV réassigné).
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
+        $stmt = $this->db->prepare("
             SELECT s.*, p.nurse_id, p.tour_date
             FROM nurse_tour_stops s
             INNER JOIN nurse_tour_plans p ON p.id = s.tour_plan_id
-            WHERE s.id = ? AND p.nurse_id = ?
+            INNER JOIN appointments a ON a.id = s.appointment_id
+            WHERE s.id = ? AND p.nurse_id = ? AND {$nurseSql}
             LIMIT 1
-        ');
-        $stmt->execute([$stopId, $nurseId]);
+        ");
+        $stmt->execute([$stopId, $nurseId, ...$nurseParams]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
-            throw new RuntimeException('Stop introuvable');
+            throw HttpStatusException::notFound('Stop introuvable');
         }
 
         return $row;
@@ -192,22 +242,12 @@ final class TourVisitService
             return;
         }
 
-        $stmt = $this->db->prepare('
-            SELECT status FROM appointments
-            WHERE id = ? AND assigned_nurse_id = ?
-            LIMIT 1
-        ');
-        $stmt->execute([$aptId, $nurseId]);
-        $current = (string) ($stmt->fetchColumn() ?: '');
-        if ($current !== 'completed') {
-            return;
-        }
-
-        $this->db->prepare('
-            UPDATE appointments
-            SET status = ?, completed_at = NULL, updated_at = NOW()
-            WHERE id = ? AND assigned_nurse_id = ?
-        ')->execute(['confirmed', $aptId, $nurseId]);
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
+        $this->db->prepare("
+            UPDATE appointments a
+            SET a.status = ?, a.completed_at = NULL, a.updated_at = NOW()
+            WHERE a.id = ? AND a.status = 'completed' AND {$nurseSql}
+        ")->execute(['confirmed', $aptId, ...$nurseParams]);
     }
 
     private function maybeNotifyPatientNurseEnRoute(array $row, string $stopId, string $nurseId, string $aptId): void

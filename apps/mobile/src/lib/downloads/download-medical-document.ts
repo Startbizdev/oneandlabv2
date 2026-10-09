@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { getApiBase } from '@/config/env';
 import { getAuthToken } from '@/lib/auth-token';
-import { openLocalFile } from './open-local-file';
+import { exportLocalFile, openLocalFile } from './open-local-file';
 import { inspectMedDocFile, logMedDoc } from '@/lib/uploads/medical-doc-file-debug';
 
 function cacheDir(): string {
@@ -165,6 +165,18 @@ export async function openMedicalDocument(
     return { ok: false, error: downloaded.error };
   }
   return openLocalFile(downloaded.localUri, fileName);
+}
+
+/** Télécharge puis propose l'enregistrement (Fichiers, Drive…) : distinct de l'aperçu, qui ouvre le lecteur. */
+export async function exportMedicalDocument(
+  documentId: string,
+  fileName?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const downloaded = await cacheMedicalDocument(documentId, fileName);
+  if (!downloaded.ok || !downloaded.localUri) {
+    return { ok: false, error: downloaded.error };
+  }
+  return exportLocalFile(downloaded.localUri, fileName);
 }
 
 /** @deprecated Utiliser `openMedicalDocument`. */

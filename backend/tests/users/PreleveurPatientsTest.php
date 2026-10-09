@@ -46,6 +46,7 @@ final class PreleveurPatientsTest extends TestCase
             $this->db->prepare('DELETE FROM patient_professional_access WHERE professional_id = ? AND source = ?')
                 ->execute([TestFixtures::PRELEVEUR, 'lab_assignment']);
         }
+        unset($this->users, $this->db);
         parent::tearDown();
     }
 

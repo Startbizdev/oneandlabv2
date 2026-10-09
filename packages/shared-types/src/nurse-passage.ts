@@ -44,11 +44,23 @@ export interface PassageCustomDatesConfig {
   dates: string[];
 }
 
-export type PassagePlanningConfig =
+/** Clés communes à toutes les planifications ; `excluded_occurrences` et `materialized_until` sont gérées par le serveur. */
+export interface PassagePlanningConfigExtras {
+  time_range?: [number, number];
+  daily_time_slots?: PassageDailyTimeSlot[];
+  /** Occurrences supprimées une à une (« YYYY-MM-DD|créneau »), jamais recréées. */
+  excluded_occurrences?: string[];
+  /** Dernière date générée de la fenêtre glissante. */
+  materialized_until?: string;
+}
+
+export type PassagePlanningConfig = (
   | PassageIntervalConfig
   | PassageWeekdaysConfig
   | PassageCustomDatesConfig
-  | { start_date: string; time_range?: [number, number] };
+  | { start_date: string; end_date?: string | null }
+) &
+  PassagePlanningConfigExtras;
 
 export interface NursePassageNursingItem {
   category_id: string;
@@ -72,6 +84,8 @@ export interface NursePassageSeriesInput {
   at_home?: boolean;
   nursing_items: NursePassageNursingItem[];
   notes?: string | null;
+  /** Clé d'idempotence : un renvoi après échec réseau ne crée pas de doublon. */
+  client_request_id?: string;
 }
 
 export interface NursePassageSeries {
@@ -99,6 +113,13 @@ export interface NursePassageSeriesCreateResult {
   appointment_ids: string[];
   first_date: string | null;
   last_date: string | null;
+}
+
+/** PATCH série : passages à venir mis à jour sur place, créés ou annulés selon le changement. */
+export interface NursePassageSeriesUpdateResult extends NursePassageSeriesCreateResult {
+  updated_appointments: number;
+  canceled_appointments: number;
+  series: NursePassageSeries;
 }
 
 /** Heures nominales Paris (validées produit v1). */

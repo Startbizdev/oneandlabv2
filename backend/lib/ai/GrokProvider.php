@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/AIProviderInterface.php';
+require_once __DIR__ . '/AiProviderUnavailableException.php';
 require_once __DIR__ . '/bootstrap.php';
 
 final class GrokProvider implements AIProviderInterface
@@ -76,7 +77,7 @@ final class GrokProvider implements AIProviderInterface
     private function buildPayload(array $messages, array $options, bool $stream): array
     {
         if ($this->apiKey === '') {
-            throw new RuntimeException('XAI_API_KEY manquante');
+            throw AiProviderUnavailableException::notConfigured('XAI_API_KEY manquante');
         }
 
         $payload = [
@@ -116,12 +117,15 @@ final class GrokProvider implements AIProviderInterface
         curl_close($ch);
 
         if ($raw === false) {
-            throw new RuntimeException('Erreur Grok: ' . $err);
+            throw AiProviderUnavailableException::network('Grok : ' . $err);
         }
         $decoded = json_decode($raw, true);
-        if ($code >= 400 || !is_array($decoded)) {
-            $msg = is_array($decoded) ? ($decoded['error']['message'] ?? $raw) : $raw;
-            throw new RuntimeException('Erreur Grok HTTP ' . $code . ': ' . $msg);
+        if ($code >= 400) {
+            $msg = is_array($decoded) ? (string) ($decoded['error']['message'] ?? $decoded['error'] ?? '') : mb_substr($raw, 0, 300);
+            throw AiProviderUnavailableException::httpStatus($code, 'Grok : ' . $msg);
+        }
+        if (!is_array($decoded)) {
+            throw AiProviderUnavailableException::network('Grok : réponse non JSON (HTTP ' . $code . ')');
         }
 
         return $decoded;
@@ -164,11 +168,15 @@ final class GrokProvider implements AIProviderInterface
                 return strlen($data);
             },
         ]);
-        curl_exec($ch);
+        $ok = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
         curl_close($ch);
+        if ($ok === false) {
+            throw AiProviderUnavailableException::network('Grok stream : ' . $err);
+        }
         if ($code >= 400) {
-            throw new RuntimeException('Erreur Grok stream HTTP ' . $code);
+            throw AiProviderUnavailableException::httpStatus($code, 'Grok stream');
         }
     }
 }

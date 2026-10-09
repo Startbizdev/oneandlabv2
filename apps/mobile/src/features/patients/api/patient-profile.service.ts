@@ -1,7 +1,7 @@
 import { api } from '@/api/client';
 import { uploadMedicalDocument, type UploadedMedicalDocument } from '@/lib/uploads/upload-file';
 import { fetchAppointmentsPaginated } from '@/features/appointments/api/appointments.service';
-import type { Appointment } from '@oneandlab/shared-types';
+import type { DocumentFileRef } from '@/features/appointments/form/types/document-file-ref';
 
 export type PatientProfile = {
   id: string;
@@ -50,6 +50,32 @@ export async function uploadPatientProfileDocument(
   );
 }
 
+export function isPatientProfileUploadType(value: string): value is PatientProfileUploadType {
+  return (PATIENT_PROFILE_UPLOAD_TYPES as readonly string[]).includes(value);
+}
+
+/** Documents choisis à la création du patient : chaque échec est journalisé, le nombre d'échecs est renvoyé. */
+export async function uploadPatientProfileDocuments(
+  patientUserId: string,
+  files: Record<string, DocumentFileRef | undefined>,
+): Promise<number> {
+  let failed = 0;
+  for (const [key, file] of Object.entries(files)) {
+    if (!file || !('uri' in file) || !isPatientProfileUploadType(key)) continue;
+    try {
+      await uploadPatientProfileDocument(patientUserId, key, {
+        uri: file.uri,
+        fileName: file.name,
+        mimeType: file.mimeType ?? 'image/jpeg',
+      });
+    } catch (e) {
+      failed += 1;
+      console.warn('[patients] profile document upload failed', key, e);
+    }
+  }
+  return failed;
+}
+
 export const RELATIVE_PROFILE_UPLOAD_TYPES = [
   'carte_vitale',
   'carte_mutuelle',
@@ -72,12 +98,6 @@ export async function uploadRelativeProfileDocument(
 
 export async function fetchPatientProfile(userId: string) {
   return api.get<PatientProfile>(`/users/${userId}`);
-}
-
-export async function fetchPatientHistory(patientId: string, page = 1, limit = 20) {
-  return api.get<Appointment[]>(
-    `/patient-history?patient_id=${encodeURIComponent(patientId)}&page=${page}&limit=${limit}`,
-  );
 }
 
 /** Historique dossier patient staff — même payload déchiffré que la liste RDV (créneaux, soins, assignés). */

@@ -81,20 +81,6 @@ export function SkeletonRdvInfoCard({
   );
 }
 
-/** Barre d’onglets segmentés (Infos / Documents / Échange). */
-export function SkeletonSegmentBar({ segments = 2 }: { segments?: number }) {
-  const styles = useStyles(buildStyles);
-  return (
-    <View style={styles.segmentBarHost}>
-      <View style={styles.segmentBar}>
-        {Array.from({ length: segments }).map((_, i) => (
-          <Skeleton key={i} height={56} style={styles.segmentItem} borderRadius={radius.md} />
-        ))}
-      </View>
-    </View>
-  );
-}
-
 /** Ligne intervenant (avatar + texte + mini boutons). */
 export function SkeletonEntityRow({ showDivider = false }: { showDivider?: boolean }) {
   const styles = useStyles(buildStyles);
@@ -203,18 +189,14 @@ export function SkeletonPatientList({ count = 8 }: { count?: number }) {
 
 /** Écran détail RDV staff (infirmier / pro / préleveur). */
 export function SkeletonStaffAppointmentDetail({
-  showPhotosTab = false,
   showAssignees = true,
   showActions = true,
 }: {
-  showPhotosTab?: boolean;
   showAssignees?: boolean;
   showActions?: boolean;
 }) {
-  const segmentCount = 2 + (showPhotosTab ? 1 : 0);
   return (
     <SkeletonScreen>
-      <SkeletonSegmentBar segments={segmentCount} />
       <SkeletonRdvInfoCard carePlaceholderCount={3} />
       {showAssignees ? <SkeletonAssigneeCard rows={2} /> : null}
       {showActions ? <SkeletonDetailActionsCard count={3} /> : null}
@@ -223,15 +205,9 @@ export function SkeletonStaffAppointmentDetail({
 }
 
 /** Écran détail RDV patient. */
-export function SkeletonPatientAppointmentDetail({
-  showReviewsTab = false,
-}: {
-  showReviewsTab?: boolean;
-}) {
-  const segmentCount = 2 + (showReviewsTab ? 1 : 0);
+export function SkeletonPatientAppointmentDetail() {
   return (
     <SkeletonScreen>
-      <SkeletonSegmentBar segments={segmentCount} />
       <SkeletonRdvInfoCard carePlaceholderCount={2} showContactButtons />
       <SkeletonAssigneeCard rows={3} />
       <SkeletonDetailActionsCard count={2} />
@@ -337,24 +313,6 @@ function buildStyles({ colors: c }: Theme) {
   buttonCell: {
     minWidth: 0,
     flex: 1,
-  },
-  segmentBarHost: {
-    width: '100%' as const,
-    alignSelf: 'stretch' as const,
-  },
-  segmentBar: {
-    minWidth: 0,
-    width: '100%' as const,
-    flexDirection: 'row' as const,
-    gap: spacing[1],
-    padding: spacing[0.5],
-    borderRadius: radius.lg,
-    backgroundColor: c.surfaceAlt,
-  },
-  segmentItem: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
   },
   entityRow: {
     minWidth: 0,

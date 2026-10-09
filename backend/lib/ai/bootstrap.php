@@ -60,7 +60,36 @@ function ai_require_user(?array $allowedRoles = null): array
     return $user;
 }
 
-function ai_json_response(array $payload, int $code = 200): void
+/** Rôles disposant de l'assistant Cary (chat, voix) ; labo, sous-compte et admin n'en ont pas. */
+const AI_ASSISTANT_ROLES = ['patient', 'pro', 'nurse', 'preleveur'];
+
+function ai_require_assistant_user(): array
+{
+    $user = ai_require_user();
+    if (!in_array((string) ($user['role'] ?? ''), AI_ASSISTANT_ROLES, true)) {
+        ai_json_error('Cary n\'est pas disponible pour votre profil.', 403, 'AI_ROLE_NOT_SUPPORTED');
+    }
+
+    return $user;
+}
+
+/**
+ * Réponse d'erreur sûre (statut, code, Retry-After) ; les erreurs serveur et fournisseur sont journalisées.
+ */
+function ai_respond_error(Throwable $e, string $context): never
+{
+    require_once __DIR__ . '/AiUserFacingError.php';
+    $error = AiUserFacingError::describe($e);
+    if ($error['status'] >= 500) {
+        ApiServerError::log($context, $e);
+    }
+    if ($error['retry_after'] !== null && !headers_sent()) {
+        header('Retry-After: ' . $error['retry_after']);
+    }
+    ai_json_error($error['message'], $error['status'], $error['code']);
+}
+
+function ai_json_response(array $payload, int $code = 200): never
 {
     if (!headers_sent()) {
         header('Content-Type: application/json');
@@ -70,7 +99,7 @@ function ai_json_response(array $payload, int $code = 200): void
     exit;
 }
 
-function ai_json_error(string $message, int $code = 400, ?string $errorCode = null): void
+function ai_json_error(string $message, int $code = 400, ?string $errorCode = null): never
 {
     $payload = ['success' => false, 'error' => $message];
     if ($errorCode !== null) {

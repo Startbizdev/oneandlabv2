@@ -1,6 +1,6 @@
 import { CareIcon } from '@/features/categories/components/CareIcon';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -46,6 +46,8 @@ interface Props {
   loading?: boolean;
   /** Étapes du parcours pour la sélection courante (la sélection des soins est la première). */
   phases: readonly string[];
+  /** Contexte de la réservation sous la progression (soignant présélectionné). */
+  contextBanner?: ReactNode;
 }
 
 function CareListTile({
@@ -110,6 +112,7 @@ export function CareSelectionStep({
   formDataByService,
   loading,
   phases,
+  contextBanner,
 }: Props) {
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
@@ -240,6 +243,8 @@ export function CareSelectionStep({
           label={phases[0]}
         />
 
+        {contextBanner}
+
         {filterTabs.length > 0 ? (
           <CareCategoryFilterBar
             tabs={filterTabs}
@@ -256,6 +261,7 @@ export function CareSelectionStep({
       </View>
     ),
     [
+      contextBanner,
       filterTab,
       filterTabs,
       hasSelection,

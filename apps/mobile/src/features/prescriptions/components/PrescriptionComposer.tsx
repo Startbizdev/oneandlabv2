@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
-import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { cacheMedicalDocument, exportMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { cachePdfFromBase64 } from '@/lib/downloads/cache-pdf-base64';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -284,10 +284,10 @@ export function PrescriptionComposer({
   const downloadMut = useMutation({
     mutationFn: async () => {
       if (!existingOrdonnance?.id) throw new Error('NO_DOC');
-      return openMedicalDocument(existingOrdonnance.id, existingOrdonnance.file_name);
+      return exportMedicalDocument(existingOrdonnance.id, existingOrdonnance.file_name);
     },
     onSuccess: (r) => {
-      if (!r.ok) toast(r.error ?? 'Ouverture impossible', { type: 'error' });
+      if (!r.ok) toast(r.error ?? 'Enregistrement impossible', { type: 'error' });
     },
     onError: (e) => handleApiError(e, toast, 'download-prescription'),
   });

@@ -26,14 +26,18 @@ export type PassagePlanningFormState = {
   customDates: string[];
 };
 
+/** Soin chronique : tous les jours de la semaine, sans date de fin. */
+export const RECURRING_DEFAULT_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
+
 export function defaultPlanningFormState(startDate: string, opts?: { recurring?: boolean }): PassagePlanningFormState {
+  const recurring = Boolean(opts?.recurring);
   return {
-    planningMode: 'single_day',
+    planningMode: recurring ? 'weekdays' : 'single_day',
     startDate,
     everyDays: String(PASSAGE_INTERVAL_DEFAULT_DAYS),
     endDate: '',
-    openEnded: Boolean(opts?.recurring),
-    weekdays: [],
+    openEnded: recurring,
+    weekdays: recurring ? [...RECURRING_DEFAULT_WEEKDAYS] : [],
     customDates: [],
   };
 }
@@ -287,14 +291,14 @@ export function embedTimeRangeInPlanningConfig(
   timeRange: [number, number] | null | undefined,
   dailyTimeSlots?: PassageDailyTimeSlot[],
 ): PassagePlanningConfig {
-  const base = { ...(planningConfig as Record<string, unknown>) };
+  const next: PassagePlanningConfig = { ...planningConfig };
   if (!timeRange) {
-    delete base.time_range;
+    delete next.time_range;
   } else {
-    base.time_range = timeRange;
+    next.time_range = timeRange;
   }
   if (dailyTimeSlots && dailyTimeSlots.length > 0) {
-    base.daily_time_slots = dailyTimeSlots;
+    next.daily_time_slots = dailyTimeSlots;
   }
-  return base as PassagePlanningConfig;
+  return next;
 }

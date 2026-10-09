@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/AvailabilityTimeLabel.php';
 
 /** Cron notifications patient préleveur en route / arrivé. */
 final class NotificationPreleveurPatientCron
@@ -186,14 +187,6 @@ final class NotificationPreleveurPatientCron
 
     private function formatSlotLabel(int $startMinutes, int $endMinutes): string
     {
-        return $this->formatSlotMinute($startMinutes) . ' - ' . $this->formatSlotMinute($endMinutes);
-    }
-
-    private function formatSlotMinute(int $minutes): string
-    {
-        $hour = intdiv($minutes, 60);
-        $minute = $minutes % 60;
-
-        return $minute === 0 ? ($hour . 'h') : ($hour . 'h' . str_pad((string) $minute, 2, '0', STR_PAD_LEFT));
+        return AvailabilityTimeLabel::minutes($startMinutes) . ' - ' . AvailabilityTimeLabel::minutes($endMinutes);
     }
 }

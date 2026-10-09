@@ -14,6 +14,8 @@ export function guessMimeType(fileName: string): string {
   if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.heic')) return 'image/heic';
+  if (lower.endsWith('.txt')) return 'text/plain';
+  if (lower.endsWith('.json')) return 'application/json';
   return 'application/octet-stream';
 }
 

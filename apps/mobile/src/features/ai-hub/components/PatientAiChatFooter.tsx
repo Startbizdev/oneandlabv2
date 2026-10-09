@@ -1,112 +1,65 @@
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { forwardRef, useState, type ComponentProps } from 'react';
+import { StyleSheet, View, type TextInput } from 'react-native';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
-import {
-  PatientAiChatComposer,
-  PATIENT_AI_COMPOSER_DOCK_HEIGHT,
-  type PatientAiPendingAttachment,
-} from './PatientAiChatComposer';
-import { CARY_AI_NOTICE, CaryAiEmergencyLine } from './CaryAiDisclosure';
-import { FONT_SIZE_BASE, H_PADDING, lh, spacing, useStyles, type Theme } from '@/theme';
+import { AppText, H_PADDING, spacing, useStyles, type Theme } from '@/theme';
+import { PatientAiChatComposer } from './PatientAiChatComposer';
+import { CARY_AI_NOTICE } from './CaryAiDisclosure';
 
-interface Props {
-  draft: string;
-  onChangeDraft: (text: string) => void;
-  onSend: () => void;
-  onVoicePress: () => void;
-  onAttachPress?: () => void;
-  onClearAttachment?: () => void;
-  onPreviewPress?: () => void;
-  pendingAttachment?: PatientAiPendingAttachment | null;
-  attaching?: boolean;
-  onFocusInput?: () => void;
-  onFooterLayout?: (height: number) => void;
-  canSend: boolean;
-  disabled?: boolean;
-}
+type Props = ComponentProps<typeof PatientAiChatComposer>;
 
-/** Hauteur estimée du rappel (1 ligne de légende) — la mesure réelle arrive via onLayout. */
-const DISCLAIMER_BLOCK_HEIGHT = spacing[1] + lh(FONT_SIZE_BASE.xs, 1.4);
-
-/** Footer complet : rappel + compositeur (réserve de scroll de la liste). */
-export const PATIENT_AI_FOOTER_HEIGHT_WITH_DISCLAIMER =
-  DISCLAIMER_BLOCK_HEIGHT + PATIENT_AI_COMPOSER_DOCK_HEIGHT;
-
-/** Réserve bas de liste (compositeur + safe area) — paddingBottom sur liste chronologique. */
-export function patientAiChatListBottomPadding(footerHeight: number, bottomInset: number): number {
-  return footerHeight + bottomInset + spacing[3];
-}
-
-/** Dock bas d'écran : rappel médical (masqué pendant la saisie) puis compositeur. */
-export function PatientAiChatFooter({
-  draft,
-  onChangeDraft,
-  onSend,
-  onVoicePress,
-  onAttachPress,
-  onClearAttachment,
-  onPreviewPress,
-  pendingAttachment,
-  attaching,
-  onFocusInput,
-  onFooterLayout,
-  canSend,
-  disabled,
-}: Props) {
+/**
+ * Bas de l'écran Cary, dans le flux (la liste se réduit d'autant) : compositeur, rappel IA
+ * (masqué pendant la saisie), puis réserve clavier / safe area. Seul mécanisme clavier de l'écran.
+ */
+export const PatientAiChatFooter = forwardRef<TextInput, Props>(function PatientAiChatFooter(
+  { onFocus, onBlur, ...composerProps },
+  inputRef,
+) {
   const styles = useStyles(buildStyles);
   const { safeAreaBottom, tabBarHeight } = useSceneBottomInset();
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
   const [inputFocused, setInputFocused] = useState(false);
 
+  const keyboardSpace = useAnimatedStyle(() => ({
+    height: Math.max(safeAreaBottom, -keyboardHeight.value - tabBarHeight),
+  }));
+
   return (
-    <KeyboardStickyView
-      style={[styles.footer, { bottom: safeAreaBottom }]}
-      offset={{ closed: 0, opened: tabBarHeight + safeAreaBottom }}
-    >
-      <View onLayout={(event) => onFooterLayout?.(event.nativeEvent.layout.height)} style={styles.shell}>
-        <PatientAiChatComposer
-          draft={draft}
-          onChangeDraft={onChangeDraft}
-          onSend={onSend}
-          onVoicePress={onVoicePress}
-          onAttachPress={onAttachPress}
-          onClearAttachment={onClearAttachment}
-          onPreviewPress={onPreviewPress}
-          pendingAttachment={pendingAttachment}
-          attaching={attaching}
-          onFocus={() => {
-            setInputFocused(true);
-            onFocusInput?.();
-          }}
-          onBlur={() => setInputFocused(false)}
-          canSend={canSend}
-          disabled={disabled}
-        />
-        {!inputFocused ? (
-          <View style={styles.disclaimerWrap}>
-            <CaryAiEmergencyLine lead={CARY_AI_NOTICE} centered />
-          </View>
-        ) : null}
-      </View>
-    </KeyboardStickyView>
+    <View style={styles.shell}>
+      <PatientAiChatComposer
+        ref={inputRef}
+        {...composerProps}
+        onFocus={() => {
+          setInputFocused(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          setInputFocused(false);
+          onBlur?.();
+        }}
+      />
+      {!inputFocused ? (
+        <AppText variant="caption" style={styles.notice}>
+          {CARY_AI_NOTICE}
+        </AppText>
+      ) : null}
+      <Animated.View style={keyboardSpace} />
+    </View>
   );
-}
+});
 
 function buildStyles({ colors: c }: Theme) {
   return {
-    footer: {
-      position: 'absolute' as const,
-      left: 0,
-      right: 0,
-      zIndex: 2,
-    },
     shell: {
       width: '100%' as const,
       backgroundColor: c.background,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: c.borderLight,
     },
-    disclaimerWrap: {
+    notice: {
+      textAlign: 'center' as const,
       paddingHorizontal: H_PADDING,
       paddingBottom: spacing[1],
     },

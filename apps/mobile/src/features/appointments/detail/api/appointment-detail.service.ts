@@ -9,6 +9,8 @@ export interface MedicalDocumentRow {
   created_at?: string;
   source?: 'appointment' | 'patient_profile' | 'profile';
   profile_newer_than_appointment?: boolean;
+  /** Ordonnance remplacée (archivée) : renseigné par `POST /medical-documents/{id}/replace`. */
+  replaced_by_document_id?: string | null;
 }
 
 export interface CarePhotoComment {

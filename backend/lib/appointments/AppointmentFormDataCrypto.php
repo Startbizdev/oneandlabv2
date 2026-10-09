@@ -39,6 +39,7 @@ final class AppointmentFormDataCrypto
                     'relationship_type' => $appointment['relative_relationship_type'] ?? null,
                     'birth_date' => null,
                     'contact_is_parent' => false,
+                    'profile_id' => $appointment['relative_profile_id'] ?? null,
                 ];
                 if (!empty($appointment['relative_email_encrypted']) && !empty($appointment['relative_email_dek'])) {
                     $appointment['relative']['email'] = $this->crypto->decryptField(
@@ -53,7 +54,12 @@ final class AppointmentFormDataCrypto
                     );
                 }
             } catch (Exception $e) {
-                $appointment['relative'] = ['id' => $appointment['relative_id'], 'first_name' => '', 'last_name' => ''];
+                $appointment['relative'] = [
+                    'id' => $appointment['relative_id'],
+                    'first_name' => '',
+                    'last_name' => '',
+                    'profile_id' => $appointment['relative_profile_id'] ?? null,
+                ];
             }
             foreach ([
                 'relative_first_name_encrypted', 'relative_first_name_dek', 'relative_last_name_encrypted', 'relative_last_name_dek',

@@ -1,6 +1,7 @@
 import type {
   CreatePharmacyOrderPayload,
   PharmacyCatalogItem,
+  PharmacyPublicProfile,
   PharmacyModuleConfig,
   PharmacyModuleUiFlags,
   PharmacyOrder,
@@ -163,6 +164,16 @@ export function usePharmacyModule() {
     return res.data;
   }
 
+  async function fetchPharmacyProfile(pharmacyId: string): Promise<PharmacyPublicProfile> {
+    const res = (await apiFetch(`/pharmacies/${encodeURIComponent(pharmacyId)}`, {
+      method: 'GET',
+    })) as ApiResponse<PharmacyPublicProfile>;
+    if (!res?.success || !res.data) {
+      throw new Error(res?.error || 'Pharmacie introuvable');
+    }
+    return res.data;
+  }
+
   async function fetchPharmacies(postalCode?: string, fulfillmentMode?: string): Promise<PharmacyCatalogItem[]> {
     const params = new URLSearchParams();
     if (postalCode?.trim()) params.set('postal_code', postalCode.trim());
@@ -211,6 +222,7 @@ export function usePharmacyModule() {
     fetchSentStats,
     fetchReceivedStats,
     fetchPharmacies,
+    fetchPharmacyProfile,
     fetchMessages,
     postMessage,
   };

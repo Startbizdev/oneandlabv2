@@ -118,6 +118,7 @@ export function useRescheduleAppointment(opts: {
   basePath: RoleRoutePrefix;
 }) {
   const requestId = useRef(createAppointmentRequestId());
+  const submitLockedRef = useRef(false);
   const { show: toast } = useToast();
   const router = useRouter();
   const qc = useQueryClient();
@@ -275,8 +276,16 @@ export function useRescheduleAppointment(opts: {
       }
       router.replace(appointmentDetailHref(opts.basePath, resultId));
     },
-    onError: (e) => handleApiError(e, toast, 'rescheduleAppointment', undefined, appointmentCreateErrorMessage),
+    onError: (e) => {
+      submitLockedRef.current = false;
+      handleApiError(e, toast, 'rescheduleAppointment', undefined, appointmentCreateErrorMessage);
+    },
   });
+  const submit = () => {
+    if (submitLockedRef.current) return;
+    submitLockedRef.current = true;
+    submitMut.mutate();
+  };
 
   const submitLabel = useMemo(() => {
     if (
@@ -305,7 +314,7 @@ export function useRescheduleAppointment(opts: {
     loadError: appointmentQ.data ? null : appointmentQ.error,
     retryLoad: appointmentQ.refetch,
     saving: submitMut.isPending,
-    submit: () => submitMut.mutate(),
+    submit,
     submitLabel,
   };
 }

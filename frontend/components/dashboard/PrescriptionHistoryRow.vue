@@ -79,6 +79,16 @@
           :loading="downloading"
           @click="emit('download', row)"
         />
+        <UButton
+          v-if="replaceable"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          icon="i-lucide-file-up"
+          aria-label="Remplacer l'ordonnance"
+          :loading="replacing"
+          @click="emit('replace', row)"
+        />
       </div>
     </div>
   </div>
@@ -101,11 +111,15 @@ const props = defineProps<{
   roleBase: string;
   showPatient?: boolean;
   downloading?: boolean;
+  /** Soignant : nouvelle version de l'ordonnance (`POST /medical-documents/{id}/replace`). */
+  replaceable?: boolean;
+  replacing?: boolean;
 }>();
 
 const emit = defineEmits<{
   preview: [row: PrescriptionHistoryRow];
   download: [row: PrescriptionHistoryRow];
+  replace: [row: PrescriptionHistoryRow];
 }>();
 
 const showPatient = computed(() => props.showPatient !== false);

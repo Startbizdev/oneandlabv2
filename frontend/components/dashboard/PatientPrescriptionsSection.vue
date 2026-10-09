@@ -26,8 +26,11 @@
             :role-base="roleBase"
             :show-patient="false"
             :downloading="downloadingId === row.id"
+            :replaceable="canReplace"
+            :replacing="replacingId === row.id"
             @preview="previewRow"
             @download="downloadRow"
+            @replace="replaceRow"
           />
         </li>
       </ul>
@@ -93,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { canReplacePrescriptionRole } from '@oneandlab/shared-utils';
 import { apiFetch } from '~/utils/api';
 import type { Appointment } from '~/types/appointments';
 
@@ -118,6 +122,13 @@ interface PrescriptionRow {
 
 const toast = useAppToast();
 const config = useRuntimeConfig();
+const { user } = useAuth();
+const canReplace = computed(() => canReplacePrescriptionRole(user.value?.role));
+const { replacingId, replace } = useReplacePrescription();
+
+async function replaceRow(row: { id: string }) {
+  if (await replace(row.id)) await fetchPrescriptions();
+}
 
 const prescriptions = ref<PrescriptionRow[]>([]);
 const listLoading = ref(true);

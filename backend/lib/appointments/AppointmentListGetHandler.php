@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
+
 final class AppointmentListGetHandler
 {
     /**
@@ -140,6 +142,9 @@ final class AppointmentListGetHandler
                     $hasMergedColumn
                 );
                 $appointmentModel->enrichListAssigneeReviewStats($decrypted);
+                if (($user['role'] ?? '') === 'nurse') {
+                    $decrypted = NurseCollaboration::withCoNurses($db, $decrypted, (string) $user['user_id']);
+                }
                 $rows = AppointmentListCards::groupIntoRows($decrypted, $cardMeta['keys']);
             } else {
                 $rows = [];

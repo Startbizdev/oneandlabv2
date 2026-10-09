@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { appointmentTimeFrance } from '@oneandlab/shared-utils';
 import type { AppointmentConversationMessage } from '@oneandlab/shared-types';
@@ -192,7 +192,7 @@ export function AppointmentConversationScreen() {
 
   return (
     <StackChromeScreen title={title}>
-    <ScreenKeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
+    <ScreenKeyboardAvoidingView style={styles.root}>
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={c.primary} />
       ) : !data && error ? (

@@ -8,7 +8,7 @@
 - Refactor anti-régression + ménage H0 (MD morts, artefacts, scripts debug PHP racine `backend/`) ; `.sh` deploy conservés.
 - Appointments API : `index.php` ~58 L (handlers).
 - **IAP :** `SubscriptionDisplayTest` (format mobile) ; e2e billing/subscription dans `test:e2e:p1`.
-- **IA Cary :** `AiChatRateLimitTest` ; skips `pdo_mysql` inutiles retirés ; e2e `cary-ai-booking` (mock stream) dans `test:e2e:p1`.
+- **IA Cary :** `AiChatRateLimitTest` ; skips `pdo_mysql` inutiles retirés ; e2e réel `cary-ai.live.spec.ts` (`npm run test:e2e:live`, API et base locales, fournisseur IA local) ; l'ancien e2e `cary-ai-booking` (flux simulé dans le navigateur) est supprimé et retiré de `test:e2e:p1`.
 - **Carnet :** Jest `health-record-display` ; Health* PHP sous Docker MySQL.
 - **Bug app corrigé :** `layouts/dashboard.vue` — `fetchModuleFlags()` sans `.catch` → exception non gérée sur tout l'espace nurse/pro quand la config pharmacie échoue.
 - **Migrations :** les 124 fichiers se rejouent sur base vierge (0 échec) :

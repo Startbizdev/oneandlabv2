@@ -8,6 +8,7 @@ require_once __DIR__ . '/../PatientDossierDocuments.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/AiStaffPatientResolver.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/AiAddressFromMessageResolver.php';
 
 /**
@@ -26,7 +27,7 @@ final class AiDraftPayloadEnricher
     {
         $this->db = $db ?? ai_db();
         $this->userModel = $userModel ?? new User();
-        $this->staffPatientResolver = new AiStaffPatientResolver($this->userModel);
+        $this->staffPatientResolver = new AiStaffPatientResolver($this->userModel, $this->db);
         $this->addressResolver = new AiAddressFromMessageResolver();
     }
 
@@ -43,7 +44,11 @@ final class AiDraftPayloadEnricher
         if ($role === 'patient') {
             $payload['patient_id'] = $userId;
             $payload['patient_mode'] = $payload['patient_mode'] ?? 'self';
+        } elseif (!empty($payload['patient_id'])
+            && !$this->staffPatientResolver->staffCanUsePatient((string) $payload['patient_id'], $user)) {
+            throw HttpStatusException::forbidden('Patient introuvable ou non autorisé');
         }
+        unset($payload['patient_booking_consent']);
 
         $payload = $this->staffPatientResolver->apply($payload, $user);
         $payload = $this->resolveStaffPracticeAddress($payload, $user);
@@ -203,6 +208,8 @@ final class AiDraftPayloadEnricher
         try {
             $relative = (new PatientRelative())->getById($relativeId, $patientId);
         } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $formData;
         }
         if (!$relative) {
@@ -238,6 +245,8 @@ final class AiDraftPayloadEnricher
         try {
             $profile = $this->userModel->getById($patientId, $requesterId, $role, 'mobile');
         } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $formData;
         }
         if (!$profile) {
@@ -407,6 +416,8 @@ final class AiDraftPayloadEnricher
 
             return $lines;
         } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return [];
         }
     }
@@ -468,6 +479,8 @@ final class AiDraftPayloadEnricher
                 'mobile',
             );
         } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $payload;
         }
 
@@ -517,7 +530,9 @@ final class AiDraftPayloadEnricher
                 $role,
                 'mobile',
             );
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $payload;
         }
 
@@ -568,7 +583,9 @@ final class AiDraftPayloadEnricher
                 (string) ($user['role'] ?? ''),
                 'mobile',
             );
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $payload;
         }
 
@@ -606,7 +623,9 @@ final class AiDraftPayloadEnricher
                 (string) ($user['role'] ?? ''),
                 'mobile',
             );
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log('AiDraftPayloadEnricher donnée de profil indisponible : ' . $e->getMessage());
+
             return $payload;
         }
 

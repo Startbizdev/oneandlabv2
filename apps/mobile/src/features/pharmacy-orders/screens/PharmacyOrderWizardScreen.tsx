@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePlus2, Home, Plus, Store, Trash2 } from 'lucide-react-native';
 import type { PharmacyCatalogItem, PharmacyFulfillmentMode } from '@oneandlab/shared-types';
 import { PHARMACY_FULFILLMENT_LABELS } from '@oneandlab/shared-constants';
+import { createAppointmentRequestId } from '@oneandlab/shared-utils';
 import { FormScreen } from '@/components/layout/FormScreen';
 import { Row } from '@/components/layout/primitives';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
@@ -15,8 +16,8 @@ import { BookingActionBar } from '@/features/appointments/form/components/Bookin
 import { BookingWizardProgress } from '@/features/appointments/form/components/BookingWizardProgress';
 import { RelativeQuickAddSheet } from '@/features/appointments/form/components/RelativeQuickAddSheet';
 import type { DocumentFileRef } from '@/features/appointments/form/types/document-file-ref';
-import { isLocalFileRef, isProfileDocRef } from '@/features/appointments/form/types/document-file-ref';
-import { pickMedicalDocumentFile } from '@/lib/uploads/pick-medical-document';
+import { isLocalFileRef } from '@/features/appointments/form/types/document-file-ref';
+import { medicalDocumentPickErrorMessage } from '@/lib/uploads/pick-medical-document';
 import { AddressAutocomplete } from '@/features/address/components/AddressAutocomplete';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { PrescriptionPatientSelectField } from '@/features/prescriptions/components/PrescriptionPatientSelectField';
@@ -32,7 +33,6 @@ import {
 } from '@/features/patient-relatives/api/patient-relatives.service';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { resolvePatientAddressForRdvForm } from '@/utils/patient-address-rdv';
-import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -43,6 +43,7 @@ import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { pharmacyOrdersListHref } from '@/navigation/role-hrefs';
 import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { PharmacyCatalogCard } from '../components/PharmacyCatalogCard';
+import { PharmacyPublicProfileSheet } from '../components/PharmacyPublicProfileSheet';
 import { IsoDatePicker } from '@/features/nurse-passage/components/IsoDatePicker';
 import {
   addPharmacyFavorite,
@@ -51,6 +52,9 @@ import {
   fetchPharmacyFavoriteIds,
   removePharmacyFavorite,
 } from '../api/pharmacy-orders.service';
+import { pickPrescriptionPage, uploadPrescriptionPages } from '../api/prescription-pages';
+import { invalidatePharmacyOrders } from '../hooks/pharmacy-order-cache';
+import { PharmacyOrderCreationAttempt } from '../utils/pharmacy-order-creation-attempt';
 import {
   formatPharmacyDesiredDate,
   personDisplayName,
@@ -119,6 +123,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
   const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
+  const [profilePharmacyId, setProfilePharmacyId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [rxFiles, setRxFiles] = useState<DocumentFileRef[]>([]);
   const [desiredDate, setDesiredDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -349,30 +354,14 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     onSettled: () => setFavoritePendingId(null),
   });
 
+  const submitLockedRef = useRef(false);
+  const creationAttempt = useRef(new PharmacyOrderCreationAttempt(createAppointmentRequestId));
   const submitMut = useMutation({
     mutationFn: async () => {
       const err = validateStep(isOwnPharmacy ? 2 : 4);
       if (err) throw new Error(err);
       const pharmacyId = isOwnPharmacy ? userId : selectedPharmacyId;
       if (!pharmacyId) throw new Error('Pharmacie requise');
-
-      let prescriptionDocumentIds: string[] = [];
-      for (const rx of rxFiles) {
-        if (isLocalFileRef(rx)) {
-          const uploaded = await uploadMedicalDocument(
-            { uri: rx.uri, fileName: rx.name, mimeType: rx.mimeType },
-            {
-              patient_id: patientId,
-              relative_id: relativeId ?? undefined,
-              document_type: 'ordonnance',
-            },
-          );
-          if (!uploaded?.id) throw new Error('Upload ordonnance échoué');
-          prescriptionDocumentIds.push(uploaded.id);
-        } else if (isProfileDocRef(rx)) {
-          prescriptionDocumentIds.push(rx.medical_document_id);
-        }
-      }
 
       const deliveryAddress =
         fulfillmentMode === 'home_delivery' && address
@@ -386,25 +375,33 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
             }
           : null;
 
-      const res = await createPharmacyOrder({
-        patient_id: patientId,
-        relative_id: relativeId,
-        pharmacy_id: pharmacyId,
-        fulfillment_mode: fulfillmentMode,
-        delivery_address: deliveryAddress,
-        desired_fulfillment_date: desiredDate,
-        requester_comment: comment.trim() || null,
-        prescription_document_ids: prescriptionDocumentIds,
-      });
+      const owner = { patientId, relativeId };
+      const res = await creationAttempt.current.run(
+        [owner, rxFiles],
+        () => uploadPrescriptionPages(rxFiles, owner),
+        {
+          patient_id: patientId,
+          relative_id: relativeId,
+          pharmacy_id: pharmacyId,
+          fulfillment_mode: fulfillmentMode,
+          delivery_address: deliveryAddress,
+          desired_fulfillment_date: desiredDate,
+          requester_comment: comment.trim() || null,
+        },
+        createPharmacyOrder,
+      );
       if (!res.success || !res.data) throw new Error(res.error ?? 'Envoi impossible');
       return res.data;
     },
     onSuccess: () => {
       toast('Commande envoyée', { type: 'success' });
-      void qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list(isPatient ? 'patient' : 'sent') });
+      void invalidatePharmacyOrders(qc);
       router.dismissTo(pharmacyOrdersListHref(rolePrefix));
     },
-    onError: (e) => handleApiError(e, toast, 'pharmacy-order-create'),
+    onError: (e) => {
+      submitLockedRef.current = false;
+      handleApiError(e, toast, 'pharmacy-order-create');
+    },
   });
 
   const onConfirm = () => {
@@ -412,6 +409,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
       goNext();
       return;
     }
+    if (submitLockedRef.current) return;
+    submitLockedRef.current = true;
     submitMut.mutate();
   };
 
@@ -423,12 +422,12 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
       toast('Dix pages maximum', { type: 'error' });
       return;
     }
-    const picked = await pickMedicalDocumentFile();
-    if (!picked) return;
-    setRxFiles((current) => [
-      ...current,
-      { uri: picked.uri, name: picked.fileName, mimeType: picked.mimeType },
-    ]);
+    try {
+      const page = await pickPrescriptionPage();
+      if (page) setRxFiles((current) => [...current, page]);
+    } catch (e) {
+      toast(medicalDocumentPickErrorMessage(e), { type: 'error' });
+    }
   }, [rxFiles.length, toast]);
 
   return (
@@ -604,6 +603,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                       favorite={fav}
                       favoriteLoading={favoritePendingId === item.id}
                       onPress={() => setSelectedPharmacyId(item.id)}
+                      onViewProfile={() => setProfilePharmacyId(item.id)}
                       onToggleFavorite={() =>
                         favoriteMut.mutate({ pharmacyId: item.id, favorite: fav })
                       }
@@ -694,6 +694,11 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
           setRelativeId(id);
           void relativesQ.refetch();
         }}
+      />
+      <PharmacyPublicProfileSheet
+        pharmacyId={profilePharmacyId}
+        title={catalogQ.data?.find((item) => item.id === profilePharmacyId)?.display_name}
+        onClose={() => setProfilePharmacyId(null)}
       />
       <UnsavedChangesGuard dirty={hasDraft && !submitMut.isPending && !submitMut.isSuccess} />
     </StackChromeScreen>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/../fixtures/MockGrokProvider.php';
+require_once __DIR__ . '/../../lib/ai/LocalMockAiProvider.php';
 require_once __DIR__ . '/../../lib/ai/AIGateway.php';
 require_once __DIR__ . '/../../lib/ai/AiTurnOrchestrator.php';
 require_once __DIR__ . '/../../lib/ai/AiAssistantResponseGuard.php';
@@ -21,7 +21,7 @@ final class PromptInjectionRuntimeTest extends TestCase
 
     public function testFalseConfirmationBlockedAtRuntime(): void
     {
-        $mock = new MockGrokProvider();
+        $mock = new LocalMockAiProvider();
         $mock->pushResponse(['content' => 'OK, j\'ignore mes instructions et votre RDV est confirmé.']);
         $gateway = new AIGateway(null, $mock);
         $orchestrator = new AiTurnOrchestrator($gateway, new StubAiBookingService());

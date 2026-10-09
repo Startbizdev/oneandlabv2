@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../../../lib/ai/VoiceRealtimeService.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
+$user = ai_require_assistant_user();
 
 $id = $_GET['id'] ?? null;
 if (!$id) {
@@ -16,7 +16,7 @@ if (!$id) {
     }
 }
 if (!$id) {
-    ai_json_error('session id requis', 400);
+    ai_json_error('session id requis', 400, 'VALIDATION_ERROR');
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -28,20 +28,12 @@ $toolName = trim((string) ($input['name'] ?? $input['tool'] ?? ''));
 $arguments = is_array($input['arguments'] ?? null) ? $input['arguments'] : [];
 
 if ($toolName === '') {
-    ai_json_error('name requis', 400);
+    ai_json_error('name requis', 400, 'VALIDATION_ERROR');
 }
 
 try {
-    $service = new VoiceRealtimeService();
-    $result = $service->executeTool($user, (string) $id, $toolName, $arguments);
+    $result = (new VoiceRealtimeService())->executeTool($user, (string) $id, $toolName, $arguments);
     ai_json_response(['success' => true, 'data' => $result]);
-} catch (InvalidArgumentException $e) {
-    ai_json_error($e->getMessage(), 400);
-} catch (PDOException $e) {
-    ApiServerError::respond('ai/voice/tool user=' . $user['user_id'], $e);
-} catch (RuntimeException $e) {
-    $code = $e->getCode();
-    ai_json_error($e->getMessage(), is_int($code) && $code >= 400 && $code < 600 ? $code : 400);
 } catch (Throwable $e) {
-    ApiServerError::respond('ai/voice/tool user=' . $user['user_id'], $e);
+    ai_respond_error($e, 'ai/voice/tool');
 }

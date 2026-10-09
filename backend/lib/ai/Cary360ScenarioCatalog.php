@@ -207,13 +207,10 @@ final class Cary360ScenarioCatalog
     public static function apiProbeEndpoints(): array
     {
         return [
-            ['id' => 'api_hub', 'phase' => 1, 'method' => 'GET', 'path' => '/ai/hub', 'expect_http' => 200],
             ['id' => 'api_suggestions', 'phase' => 1, 'method' => 'GET', 'path' => '/ai/quick-suggestions', 'expect_http' => 200],
             ['id' => 'api_health_sources', 'phase' => 2, 'method' => 'GET', 'path' => '/health/sources', 'expect_http' => 200],
-            ['id' => 'api_trends', 'phase' => 4, 'method' => 'GET', 'path' => '/ai/trends', 'expect_http' => 200],
             ['id' => 'api_search', 'phase' => 4, 'method' => 'GET', 'path' => '/ai/search?q=rdv', 'expect_http' => 200],
             ['id' => 'api_export', 'phase' => 4, 'method' => 'GET', 'path' => '/ai/export', 'expect_http' => 200],
-            ['id' => 'api_signals', 'phase' => 3, 'method' => 'GET', 'path' => '/ai/signals', 'expect_http' => 200],
             ['id' => 'api_patient_docs', 'phase' => 3, 'method' => 'GET', 'path' => '/patient-documents', 'expect_http' => 200],
         ];
     }

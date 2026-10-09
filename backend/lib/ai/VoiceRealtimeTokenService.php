@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/VoiceRealtimeConfig.php';
+require_once __DIR__ . '/AiProviderUnavailableException.php';
 
 /**
  * Crée des jetons éphémères xAI pour connexion WebSocket mobile.
@@ -16,7 +17,7 @@ final class VoiceRealtimeTokenService
     {
         $apiKey = ai_env('XAI_API_KEY');
         if ($apiKey === null || $apiKey === '') {
-            throw new InvalidArgumentException('XAI_API_KEY manquante pour la voix temps réel');
+            throw AiProviderUnavailableException::notConfigured('XAI_API_KEY manquante pour la voix temps réel');
         }
 
         $ttl = VoiceRealtimeConfig::tokenTtlSeconds();
@@ -39,20 +40,22 @@ final class VoiceRealtimeTokenService
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($raw === false || $code >= 400) {
-            error_log('[voice-realtime] client_secrets HTTP ' . $code . ' body=' . substr((string) $raw, 0, 400));
-            throw new RuntimeException('Jeton vocal temps réel indisponible');
+        if ($raw === false) {
+            throw AiProviderUnavailableException::network('client_secrets : réponse vide');
+        }
+        if ($code >= 400) {
+            throw AiProviderUnavailableException::httpStatus($code, 'client_secrets body=' . substr((string) $raw, 0, 400));
         }
 
         $decoded = json_decode((string) $raw, true);
         if (!is_array($decoded)) {
-            throw new RuntimeException('Réponse jeton vocal invalide');
+            throw AiProviderUnavailableException::network('client_secrets : réponse non JSON');
         }
 
         $token = trim((string) ($decoded['value'] ?? $decoded['client_secret']['value'] ?? ''));
         $expiresAt = (int) ($decoded['expires_at'] ?? $decoded['client_secret']['expires_at'] ?? (time() + $ttl));
         if ($token === '') {
-            throw new RuntimeException('Jeton vocal vide');
+            throw AiProviderUnavailableException::network('client_secrets : jeton vide');
         }
 
         return [

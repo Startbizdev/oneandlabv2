@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { sharedAppointmentMention } from '@oneandlab/shared-utils';
 import {
   type AppointmentListRow,
   displayAppointmentForListRow,
@@ -31,12 +32,14 @@ function MaquetteCardBlock({
   role: RdvListCardViewerRole;
   status: string;
 }) {
+  const c = useAppColors();
   const styles = useStyles(buildStyles);
   const maskIdentity = role === 'demande';
   const counterparty = maskIdentity
     ? maskOfferCounterparty(rdvMaquetteAvatarCounterparty(apt, role))
     : rdvMaquetteAvatarCounterparty(apt, role);
   const demandeNotes = role === 'demande' ? offerAppointmentNotes(apt) : '';
+  const sharedLabel = role === 'nurse' ? sharedAppointmentMention(apt) : '';
 
   return (
     <View style={styles.block}>
@@ -61,6 +64,10 @@ function MaquetteCardBlock({
         <AppText style={styles.demandeNotes} numberOfLines={2}>
           {demandeNotes}
         </AppText>
+      ) : null}
+
+      {sharedLabel ? (
+        <AppText style={[styles.sharedMention, { color: c.primary }]}>{sharedLabel}</AppText>
       ) : null}
     </View>
   );
@@ -162,6 +169,10 @@ function buildStyles(t: Theme) {
       ...type.meta,
       fontStyle: 'italic' as const,
       marginTop: spacing[2.5],
+    },
+    sharedMention: {
+      ...type.meta,
+      marginTop: spacing[2],
     },
     multiWrap: {
       paddingBottom: spacing[2],

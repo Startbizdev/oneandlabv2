@@ -35,6 +35,7 @@ final class PreleveurPendingRequestsListTest extends TestCase
         foreach ($this->appointmentIds as $id) {
             $this->db->prepare('DELETE FROM appointments WHERE id = ?')->execute([$id]);
         }
+        unset($this->db);
         parent::tearDown();
     }
 

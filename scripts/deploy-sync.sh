@@ -13,7 +13,8 @@ deploy_sync_dir() {
   local excludes=("$@")
 
   if command -v rsync >/dev/null 2>&1; then
-    rsync -avz --partial "${rsync_delete[@]}" "${excludes[@]}" "$src" "$dest"
+    # Les fichiers déjà en prod sont souvent root: le rsync ubuntu ne les remplace pas.
+    rsync -avz --partial --rsync-path="sudo rsync" "${rsync_delete[@]}" "${excludes[@]}" "$src" "$dest"
     return
   fi
 
@@ -39,7 +40,7 @@ deploy_sync_menuswipe() {
   local local_dir="$1"
   local dest="$2"
   if command -v rsync >/dev/null 2>&1; then
-    rsync -avz --partial "$local_dir/" "$dest/"
+    rsync -avz --partial --rsync-path="sudo rsync" "$local_dir/" "$dest/"
   else
     echo "==> rsync absent — fallback tar+ssh vers ${dest#*:}"
     local remote="${dest%%:*}"

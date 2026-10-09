@@ -1,5 +1,5 @@
 import type { Href } from 'expo-router';
-import type { UserRole } from '@oneandlab/shared-types';
+import type { MobileRole } from '@oneandlab/shared-constants';
 
 export type AiDeepLinkParams = {
   conversation_type?: string;
@@ -11,7 +11,8 @@ export type AiDeepLinkParams = {
 
 type AiTabPathname = '/(pro)/ai' | '/(nurse)/ai' | '/(preleveur)/ai' | '/(patient)/(tabs)/ai';
 
-function aiTabPathname(role: UserRole | string): AiTabPathname {
+/** Laboratoire et admin n'ont pas d'assistant mobile (403 `AI_ROLE_NOT_SUPPORTED`) : aucun repli. */
+function aiTabPathname(role: MobileRole): AiTabPathname {
   switch (role) {
     case 'pro':
       return '/(pro)/ai';
@@ -19,12 +20,12 @@ function aiTabPathname(role: UserRole | string): AiTabPathname {
       return '/(nurse)/ai';
     case 'preleveur':
       return '/(preleveur)/ai';
-    default:
+    case 'patient':
       return '/(patient)/(tabs)/ai';
   }
 }
 
-export function buildAiDeepLink(role: UserRole | string, params: AiDeepLinkParams): Href {
+export function buildAiDeepLink(role: MobileRole, params: AiDeepLinkParams): Href {
   const query: Record<string, string> = {};
   for (const [key, value] of Object.entries(params)) {
     if (value) query[key] = value;

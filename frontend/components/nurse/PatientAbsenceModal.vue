@@ -54,7 +54,7 @@
                 class="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
               />
             </UFormField>
-            <UFormField label="Au">
+            <UFormField label="Au" help="Vide : jusqu'à nouvel ordre">
               <input
                 v-model="form.end_date"
                 type="date"
@@ -128,7 +128,7 @@ watch(
     if (existing) {
       form.absence_type = existing.absence_type;
       form.start_date = existing.start_date.slice(0, 10);
-      form.end_date = existing.end_date.slice(0, 10);
+      form.end_date = existing.end_date?.slice(0, 10) ?? '';
       form.note = existing.note ?? '';
       return;
     }
@@ -144,7 +144,7 @@ function submit() {
   emit('save', {
     absence_type: form.absence_type,
     start_date: form.start_date,
-    end_date: form.end_date,
+    end_date: form.end_date || null,
     note: form.note.trim() || null,
   }, props.existing?.id ?? null);
 }

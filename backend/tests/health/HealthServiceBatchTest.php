@@ -25,6 +25,12 @@ final class HealthServiceBatchTest extends TestCase
         }
     }
 
+    protected function tearDown(): void
+    {
+        $this->db = null;
+        parent::tearDown();
+    }
+
     public function testBatchDedupByExternalId(): void
     {
         $service = new HealthService($this->db);

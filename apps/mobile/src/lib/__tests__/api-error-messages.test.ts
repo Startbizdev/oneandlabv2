@@ -37,6 +37,8 @@ describe('messages d’erreur API par statut et code', () => {
     expect(aiBookingDraftErrorMessage(400, 'DRAFT_EXPIRED')).toMatch(/expiré/);
     expect(aiBookingDraftErrorMessage(409, 'DRAFT_ALREADY_CONFIRMED')).toMatch(/déjà été confirmé/);
     expect(aiBookingDraftErrorMessage(409, 'EMAIL_ALREADY_USED')).toMatch(/e-mail est déjà utilisé/);
+    expect(aiBookingDraftErrorMessage(409, 'PATIENT_ALREADY_EXISTS')).toMatch(/patient existe déjà avec cet e-mail/);
+    expect(aiBookingDraftErrorMessage(400, 'PATIENT_BOOKING_CONSENT_REQUIRED')).toMatch(/consentement du patient/);
     expect(aiBookingDraftErrorMessage(400, 'VALIDATION_ERROR')).toBeNull();
     expect(isAiDraftClosedError('DRAFT_EXPIRED')).toBe(true);
     expect(isAiDraftClosedError('DRAFT_ALREADY_CONFIRMED')).toBe(true);

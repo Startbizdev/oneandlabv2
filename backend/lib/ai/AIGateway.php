@@ -5,9 +5,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/CaryContextFocus.php';
 require_once __DIR__ . '/CaryBookingPromptRules.php';
 require_once __DIR__ . '/AIProviderInterface.php';
-require_once __DIR__ . '/DeepSeekProvider.php';
+require_once __DIR__ . '/AiProviderUnavailableException.php';
 require_once __DIR__ . '/GrokProvider.php';
+require_once __DIR__ . '/LocalMockAiProvider.php';
 require_once __DIR__ . '/AiGrokToolCatalog.php';
+require_once __DIR__ . '/AiBookingAccess.php';
 require_once __DIR__ . '/AiBookingToolExecutor.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
 require_once __DIR__ . '/ProviderRetryPolicy.php';
@@ -133,9 +135,10 @@ final class AIGateway
         ?string $patientId,
         ?array $draftPreview,
     ): array {
+        AiBookingAccess::assertAllowed($user);
         $started = microtime(true);
         $auditId = Uuid::v4();
-        $provider = $this->resolveToolsProvider($taskType);
+        $provider = $this->resolveProvider($taskType);
 
         $context['tools_enabled'] = true;
         if ($draftPreview !== null) {
@@ -175,7 +178,7 @@ final class AIGateway
 
             if ($toolCalls === []) {
                 $content = trim((string) ($result['content'] ?? ''));
-                $this->writeAudit($auditId, $user, $conversationId, $patientId, $taskType, 'grok', [
+                $this->writeAudit($auditId, $user, $conversationId, $patientId, $taskType, $provider->getName(), [
                     'model' => $resultModel,
                     'tokens_input' => $tokensIn,
                     'tokens_output' => $tokensOut,
@@ -241,20 +244,6 @@ final class AIGateway
             'tokens_output' => $tokensOut,
             'tool_loop_exhausted' => true,
         ];
-    }
-
-    private function resolveToolsProvider(string $taskType): AIProviderInterface
-    {
-        if ($this->providerOverride !== null) {
-            return $this->providerOverride;
-        }
-
-        $provider = $this->resolveProvider($taskType);
-        if ($provider instanceof GrokProvider) {
-            return $provider;
-        }
-
-        return new GrokProvider();
     }
 
     /**
@@ -344,7 +333,7 @@ Tu es Cary, assistant santé Cary (OneAndLab). Français, chaleureux, phrases co
 Format mobile (texte brut, PAS de markdown ** # ```) :
 - Aère avec des lignes vides. Listes : « - item ». RDV vocal : 1–2 phrases max.
 
-Sécurité : pas de diagnostic ni prescription. Pas de disclaimer 15/112 dans le texte (déjà affiché dans l'app).
+Sécurité : pas de diagnostic ni prescription. Signe d'urgence vitale (douleur thoracique, malaise, détresse respiratoire, hémorragie, idées suicidaires…) : oriente immédiatement vers le 15 (SAMU) ou le 112, et le 3114 pour des idées suicidaires.
 
 RDV — tools obligatoires (jamais de bloc booking_patch) :
 - update_booking_draft : dès qu'une info est collectée ou modifiée.
@@ -452,7 +441,7 @@ RDV — TOOLS Grok (obligatoire, pas de markdown booking_patch) :
 - Texte visible : court, une question à la fois, sans répéter ce que l'utilisateur vient de dire.
 - Ne dis jamais que le RDV est confirmé : l'utilisateur valide sur la carte récap.
 TOOLS;
-        } else {
+        } elseif (AiBookingAccess::allows(['role' => $role])) {
             $legacyPatchBlock = <<<'LEGACY'
 - Les clés techniques vont UNIQUEMENT dans le bloc ```booking_patch``` (JSON), jamais dans le message visible.
 - Quand tu envoies un booking_patch, inclure booking_step, patient_mode, ordonnance_status.
@@ -520,7 +509,7 @@ Règles strictes :
 - Ordonnance RDV : jointe via + pour ce rendez-vous (pas le dossier profil sauf si remplacement explicite).
 {$documentAttachmentRules}
 - Si l'utilisateur corrige une info, mets à jour via update_booking_draft (mode tools) ou booking_patch (mode legacy).
-- Ne répète JAMAIS le disclaimer ni « en cas d'urgence contactez le 15/112 » dans le texte visible : l'app l'affiche déjà dans le pied de page. Réponds sans cette phrase.
+- N'ajoute pas le disclaimer générique à chaque message : l'app l'affiche déjà. En revanche, devant un signe d'urgence vitale (douleur thoracique, malaise, détresse respiratoire, hémorragie, idées suicidaires…), oriente immédiatement vers le 15 (SAMU) ou le 112, et le 3114 pour des idées suicidaires.
 - Si rag_chunks est présent dans le contexte : appuie-toi sur le contenu textuel des extraits (documents, résultats OCR, RDV). Cite les sources avec [ref:citation_ref] quand pertinent (ex. [ref:doc:uuid:0]).
 - Les rag_chunks contiennent du contenu documentaire réel — utilise-le pour répondre aux questions sur les résultats, ordonnances et bilans (pas seulement les dates).
 {$carnetRules}
@@ -537,10 +526,6 @@ PROMPT;
         }
 
         $providerName = ai_env('ACTIVE_AI_PROVIDER', 'grok') ?? 'grok';
-        if ($this->db === null && $this->providerOverride !== null) {
-            return $this->providerOverride;
-        }
-
         $stmt = $this->db()->prepare('SELECT provider FROM ai_task_routing WHERE task_type = ? AND enabled = 1 LIMIT 1');
         $stmt->execute([$taskType]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -548,8 +533,15 @@ PROMPT;
             $providerName = (string) $row['provider'];
         }
 
-        if (in_array($providerName, ['deepseek', 'openai'], true)) {
-            throw new RuntimeException('Provider IA « ' . $providerName . ' » non disponible — utilisez grok');
+        if ($providerName === LocalMockAiProvider::ROUTING_PROVIDER) {
+            if (!LocalMockAiProvider::isAllowed($this->db())) {
+                throw AiProviderUnavailableException::notConfigured('provider local refusé (clé xAI présente ou base hors test)');
+            }
+
+            return new LocalMockAiProvider();
+        }
+        if ($providerName !== 'grok') {
+            throw AiProviderUnavailableException::notConfigured('provider « ' . $providerName . ' » non disponible');
         }
 
         return new GrokProvider();

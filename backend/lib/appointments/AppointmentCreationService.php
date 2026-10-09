@@ -6,6 +6,7 @@ require_once __DIR__ . '/../Validation.php';
 require_once __DIR__ . '/../PatientUrgencyGuard.php';
 require_once __DIR__ . '/../PendingOfferExpiry.php';
 require_once __DIR__ . '/../AppointmentRequestFingerprint.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/AppointmentCreationValidator.php';
 require_once __DIR__ . '/AppointmentItemsResolver.php';
 
@@ -24,6 +25,8 @@ final class AppointmentCreationService
     }
     public function createWithinTransaction(array $data, string $createdBy, string $createdByRole, bool $verifiedPatientPayment): string
     {
+        $data = RelativeProfile::normalizeSubject($this->db, $data);
+
         // Validation des champs requis
         if (empty($data['type']) || !Validation::appointmentType($data['type'])) {
             throw new InvalidArgumentException('Type de rendez-vous invalide. Doit être "blood_test" ou "nursing".');

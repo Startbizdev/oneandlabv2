@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/ContextComposer.php';
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/AiBookingAccess.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 
 final class AiQuickSuggestionsService
 {
@@ -22,7 +23,11 @@ final class AiQuickSuggestionsService
     {
         try {
             $ctx = $this->composer->compose($user, $patientId);
+        } catch (HttpStatusException $e) {
+            throw $e;
         } catch (Throwable $e) {
+            error_log('AiQuickSuggestionsService contexte indisponible, suggestions par défaut : ' . $e->getMessage());
+
             return $this->fallbackSuggestions((string) ($user['role'] ?? ''));
         }
 
@@ -89,8 +94,8 @@ final class AiQuickSuggestionsService
                         break;
                     }
                 }
-            } catch (Throwable) {
-                /* optional */
+            } catch (Throwable $e) {
+                error_log('AiQuickSuggestionsService carnet indisponible : ' . $e->getMessage());
             }
         }
 

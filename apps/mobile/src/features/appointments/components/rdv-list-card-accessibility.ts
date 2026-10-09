@@ -1,5 +1,5 @@
 import type { Appointment } from '@oneandlab/shared-types';
-import { STATUS_LABELS } from '@oneandlab/shared-utils';
+import { STATUS_LABELS, isNursePassageAppointment } from '@oneandlab/shared-utils';
 import { formatMiniDateCalendarParts } from '@/utils/mini-date-calendar-parts';
 import { maskOfferCounterparty } from '@/utils/offer-privacy-display';
 import { rdvCatalogDisplayLines } from '@/utils/rdv-catalog-lines';
@@ -16,7 +16,7 @@ export function buildRdvListCardAccessibilityLabel(
   role: RdvListCardViewerRole,
   status: string,
 ): string {
-  const segments: string[] = ['Rendez-vous'];
+  const segments: string[] = [isNursePassageAppointment(apt) ? 'Passage' : 'Rendez-vous'];
 
   const dateParts = formatMiniDateCalendarParts(apt.scheduled_at);
   if (dateParts) segments.push(dateParts.accessibilityLabel);

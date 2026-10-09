@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../lib/NurseQuotaGuard.php';
 $db = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $db->exec("CREATE TABLE profiles (id TEXT PRIMARY KEY, role TEXT); INSERT INTO profiles VALUES ('nurse-a','nurse'),('nurse-b','nurse'),('patient','patient')");
-$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, assigned_nurse_id TEXT, status TEXT, scheduled_at TEXT)');
+$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, assigned_nurse_id TEXT, status TEXT, scheduled_at TEXT, passage_source TEXT)');
 $db->exec('CREATE TABLE appointment_status_updates (appointment_id TEXT, actor_id TEXT, actor_role TEXT, status TEXT, created_at TEXT)');
 $now = new DateTimeImmutable('2026-09-15T12:00:00+02:00');
 $checks = 0;
@@ -11,7 +11,7 @@ $check = static function (bool $condition) use (&$checks): void {
     if (!$condition) throw new RuntimeException('Quota transaction regression: ' . ($checks + 1));
     $checks++;
 };
-$insert = $db->prepare('INSERT INTO appointments VALUES (?, ?, ?, ?)');
+$insert = $db->prepare('INSERT INTO appointments (id, assigned_nurse_id, status, scheduled_at) VALUES (?, ?, ?, ?)');
 for ($i = 1; $i <= 9; $i++) $insert->execute(["accepted-$i", 'nurse-a', 'confirmed', '2026-09-16 08:00:00']);
 $insert->execute(['batch-a', null, 'pending', '2026-10-15 08:00:00']);
 $insert->execute(['batch-b', null, 'pending', '2026-10-15 08:00:00']);

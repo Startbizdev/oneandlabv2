@@ -59,6 +59,50 @@ final class TourOrderEngineTest extends TestCase
         $this->assertSame(['early', 'mid', 'late'], $ids);
     }
 
+    public function testSmartKeepsSameAddressApartWhenWindowsDoNotOverlap(): void
+    {
+        $engine = new TourOrderEngine();
+        $home = ['label' => '27 Rue d\'Aubagne, 13001 Marseille'];
+        $appointments = [
+            ['id' => 'home-evening', 'scheduled_at' => '2026-10-06 17:45:00', 'form_data' => ['address' => $home, 'availability' => '{"type":"custom","range":[17,19]}']],
+            ['id' => 'other-noon', 'scheduled_at' => '2026-10-06 11:00:00', 'form_data' => ['address' => ['label' => '45 Boulevard Longchamp'], 'availability' => '{"type":"custom","range":[11,13]}']],
+            ['id' => 'home-morning', 'scheduled_at' => '2026-10-06 08:30:00', 'form_data' => ['address' => $home, 'availability' => '{"type":"custom","range":[8,10]}']],
+        ];
+
+        $ids = $engine->orderIds($appointments, ['sort_mode' => 'smart', 'manual_order_locked' => false]);
+
+        $this->assertSame(['home-morning', 'other-noon', 'home-evening'], $ids);
+    }
+
+    public function testSmartGroupsSameAddressWhenWindowsOverlap(): void
+    {
+        $engine = new TourOrderEngine();
+        $building = ['label' => '12 Rue Paradis, 13001 Marseille'];
+        $appointments = [
+            ['id' => 'other', 'scheduled_at' => '2026-10-06 09:30:00', 'form_data' => ['address' => ['label' => '45 Boulevard Longchamp']]],
+            ['id' => 'flat-a', 'scheduled_at' => '2026-10-06 09:00:00', 'form_data' => ['address' => $building, 'availability' => '{"type":"custom","range":[9,11]}']],
+            ['id' => 'flat-b', 'scheduled_at' => '2026-10-06 10:00:00', 'form_data' => ['address' => $building, 'availability' => '{"type":"custom","range":[10,12]}']],
+        ];
+
+        $ids = $engine->orderIds($appointments, ['sort_mode' => 'smart', 'manual_order_locked' => false]);
+
+        $this->assertSame(['flat-a', 'flat-b', 'other'], $ids);
+    }
+
+    public function testSmartNeverGroupsStopsWithoutAddress(): void
+    {
+        $engine = new TourOrderEngine();
+        $appointments = [
+            ['id' => 'late', 'scheduled_at' => '2026-10-06 16:00:00', 'form_data' => ['availability' => '{"type":"all_day"}']],
+            ['id' => 'mid', 'scheduled_at' => '2026-10-06 12:00:00', 'form_data' => ['address' => ['label' => '45 Boulevard Longchamp']]],
+            ['id' => 'early', 'scheduled_at' => '2026-10-06 08:00:00', 'form_data' => ['availability' => '{"type":"all_day"}']],
+        ];
+
+        $ids = $engine->orderIds($appointments, ['sort_mode' => 'smart', 'manual_order_locked' => false]);
+
+        $this->assertSame(['early', 'mid', 'late'], $ids);
+    }
+
     public function testScheduleModeOrdersEarliestFirst(): void
     {
         $engine = new TourOrderEngine();

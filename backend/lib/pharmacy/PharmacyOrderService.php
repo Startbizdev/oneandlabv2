@@ -9,6 +9,9 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
 require_once __DIR__ . '/../MedicalDocumentAccess.php';
 require_once __DIR__ . '/../MedicalDocumentSubject.php';
+require_once __DIR__ . '/../RelativeProfile.php';
+require_once __DIR__ . '/../DatabaseTransaction.php';
+require_once __DIR__ . '/../AppointmentCreationRequest.php';
 
 /**
  * CRUD et transitions commandes pharmacie.
@@ -17,6 +20,8 @@ final class PharmacyOrderService
 {
     /** @var list<string> */
     public const TERMINAL_STATUSES = ['terminee', 'refusee', 'annulee'];
+
+    private const MAX_PRESCRIPTIONS = 10;
 
     /** @var array<string, list<string>> */
     private const ALLOWED_TRANSITIONS = [
@@ -37,7 +42,13 @@ final class PharmacyOrderService
         return PharmacyOrderConversation::newUuid();
     }
 
-    /** @param array<string, mixed> $input */
+    /**
+     * `client_request_id` rend l'envoi rejouable : même clé et même contenu renvoient la même commande,
+     * un contenu différent lève AppointmentCreationConflict.
+     *
+     * @param array<string, mixed> $input
+     * @return array{order: array<string, mixed>, notify: bool} `notify` est faux quand la réponse a déjà été servie
+     */
     public function create(array $user, array $input): array
     {
         $config = $this->moduleConfig->getConfig();
@@ -45,18 +56,7 @@ final class PharmacyOrderService
             throw new RuntimeException('Commande non autorisée pour ce compte');
         }
 
-        $prescriptionIds = $input['prescription_document_ids'] ?? [];
-        if (!is_array($prescriptionIds)) {
-            throw new InvalidArgumentException('Liste d’ordonnances invalide');
-        }
-        $prescriptionIds = array_values(array_filter(
-            array_map(static fn ($id) => trim((string) $id), $prescriptionIds),
-            static fn (string $id) => $id !== ''
-        ));
-        $prescriptionIds = array_values(array_unique($prescriptionIds));
-        if (count($prescriptionIds) > 10) {
-            throw new InvalidArgumentException('Dix ordonnances maximum');
-        }
+        $prescriptionIds = $this->normalizePrescriptionIds($input['prescription_document_ids'] ?? []);
 
         $fulfillmentMode = (string) ($input['fulfillment_mode'] ?? '');
         if (!in_array($fulfillmentMode, ['click_collect', 'home_delivery'], true)) {
@@ -73,18 +73,21 @@ final class PharmacyOrderService
             throw new InvalidArgumentException('Patient et pharmacie requis');
         }
 
-        $relativeId = isset($input['relative_id']) && $input['relative_id'] !== ''
-            ? trim((string) $input['relative_id'])
-            : null;
-        if ($relativeId !== null) {
-            $this->assertRelativeBelongsToPatient($relativeId, $patientId);
-        }
-
         $userModel = new User();
         $role = (string) ($user['role'] ?? '');
         $isPatientSelf = $role === 'patient' && $uid === $patientId;
         if (!$isPatientSelf && !$userModel->hasProfessionalAccessToPatient($uid, $patientId)) {
             throw new RuntimeException('Accès patient refusé');
+        }
+
+        $subject = RelativeProfile::normalizeSubject($this->db, [
+            'patient_id' => $patientId,
+            'relative_id' => isset($input['relative_id']) ? trim((string) $input['relative_id']) : '',
+        ]);
+        $patientId = (string) $subject['patient_id'];
+        $relativeId = $subject['relative_id'] !== '' ? (string) $subject['relative_id'] : null;
+        if ($relativeId !== null) {
+            $this->assertRelativeBelongsToPatient($relativeId, $patientId);
         }
         $this->assertPrescriptionDocumentsAccessible($user, $prescriptionIds, $patientId, $relativeId);
 
@@ -100,45 +103,90 @@ final class PharmacyOrderService
         }
 
         $desiredDate = trim((string) ($input['desired_fulfillment_date'] ?? ''));
-        if (!$this->isValidFutureDate($desiredDate)) {
-            throw new InvalidArgumentException('Date souhaitée invalide');
+        $comment = isset($input['requester_comment']) ? trim((string) $input['requester_comment']) : null;
+
+        $insert = function () use (
+            $uid, $role, $pharmacyId, $patientId, $relativeId, $fulfillmentMode,
+            $deliveryAddressJson, $deliveryPostalCode, $desiredDate, $comment, $prescriptionIds,
+        ): string {
+            if (!$this->isValidFutureDate($desiredDate)) {
+                throw new InvalidArgumentException('Date souhaitée invalide');
+            }
+            $this->assertPharmacyCanReceive($pharmacyId, $fulfillmentMode, $desiredDate);
+
+            $id = self::newUuid();
+            $this->db->prepare('
+                INSERT INTO pharmacy_orders (
+                    id, requester_id, requester_role, pharmacy_id, patient_id, relative_id,
+                    fulfillment_mode, delivery_address_json, delivery_postal_code,
+                    desired_fulfillment_date, status,
+                    requester_comment, prescription_document_ids, created_by_admin_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ')->execute([
+                $id,
+                $uid,
+                $role,
+                $pharmacyId,
+                $patientId,
+                $relativeId,
+                $fulfillmentMode,
+                $deliveryAddressJson,
+                $deliveryPostalCode !== '' ? $deliveryPostalCode : null,
+                $desiredDate,
+                'en_attente',
+                $comment,
+                json_encode(array_values($prescriptionIds), JSON_UNESCAPED_UNICODE),
+                $role === 'super_admin' ? $uid : null,
+            ]);
+            $this->recordEvent($id, $uid, 'created', null, 'en_attente', null);
+
+            return $id;
+        };
+
+        $requestKey = $input['client_request_id'] ?? null;
+        $responseServed = false;
+        if ($requestKey !== null) {
+            if (!is_string($requestKey) || !AppointmentCreationRequest::isValidKey($requestKey)) {
+                throw new InvalidArgumentException('client_request_id invalide');
+            }
+            $hash = hash('sha256', json_encode([
+                'pharmacy_order', $uid, $pharmacyId, $patientId, $relativeId, $fulfillmentMode,
+                $deliveryAddressJson, $desiredDate, $comment, $prescriptionIds,
+            ], JSON_THROW_ON_ERROR));
+            $id = AppointmentCreationRequest::run(
+                $this->db,
+                $uid,
+                $requestKey,
+                $hash,
+                $insert,
+                function (bool $completed) use (&$responseServed): void {
+                    $responseServed = $completed;
+                },
+            );
+        } else {
+            $id = DatabaseTransaction::run($this->db, $insert);
         }
-
-        $this->assertPharmacyCanReceive($pharmacyId, $fulfillmentMode, $desiredDate);
-
-        $id = self::newUuid();
-        $this->db->prepare('
-            INSERT INTO pharmacy_orders (
-                id, requester_id, requester_role, pharmacy_id, patient_id, relative_id,
-                fulfillment_mode, delivery_address_json, delivery_postal_code,
-                desired_fulfillment_date, status,
-                requester_comment, prescription_document_ids, created_by_admin_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ')->execute([
-            $id,
-            $uid,
-            $role,
-            $pharmacyId,
-            $patientId,
-            $relativeId,
-            $fulfillmentMode,
-            $deliveryAddressJson,
-            $deliveryPostalCode !== '' ? $deliveryPostalCode : null,
-            $desiredDate,
-            'en_attente',
-            isset($input['requester_comment']) ? trim((string) $input['requester_comment']) : null,
-            json_encode(array_values($prescriptionIds), JSON_UNESCAPED_UNICODE),
-            $role === 'super_admin' ? $uid : null,
-        ]);
-
-        $this->recordEvent($id, $uid, 'created', null, 'en_attente', null);
 
         $order = $this->getById($id);
         if ($order === null) {
             throw new RuntimeException('Création commande échouée');
         }
 
-        return $order;
+        return ['order' => $order, 'notify' => !$responseServed];
+    }
+
+    /**
+     * À appeler une fois les notifications de création envoyées : un rejeu ne les renverra pas.
+     *
+     * @param array<string, mixed> $user
+     * @param array<string, mixed> $input
+     */
+    public function markCreationResponseCompleted(array $user, array $input): void
+    {
+        $requestKey = $input['client_request_id'] ?? null;
+        if (is_string($requestKey) && $requestKey !== '') {
+            AppointmentCreationRequest::markResponseCompleted($this->db, (string) ($user['user_id'] ?? ''), $requestKey);
+        }
     }
 
     public function getById(string $id): ?array
@@ -274,6 +322,132 @@ final class PharmacyOrderService
         return $updated;
     }
 
+    /**
+     * Joint des ordonnances à une commande pas encore prise en charge par la pharmacie.
+     * Sur une demande de complément, la commande repasse en attente de la pharmacie.
+     *
+     * @return array<string, mixed> Commande mise à jour
+     */
+    public function attachPrescriptions(array $user, string $orderId, mixed $documentIds): array
+    {
+        $newIds = $this->normalizePrescriptionIds($documentIds);
+        if ($newIds === []) {
+            throw new InvalidArgumentException('Ordonnance requise');
+        }
+        $actorId = (string) ($user['user_id'] ?? '');
+
+        DatabaseTransaction::run($this->db, function () use ($user, $orderId, $newIds, $actorId): void {
+            $stmt = $this->db->prepare('SELECT * FROM pharmacy_orders WHERE id = ? LIMIT 1 FOR UPDATE');
+            $stmt->execute([$orderId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                throw new RuntimeException('Commande introuvable');
+            }
+            if (!PharmacyOrderAccess::isRequesterOrPatient($user, $row)) {
+                throw new RuntimeException('Action non autorisée');
+            }
+            if (!in_array((string) $row['status'], PharmacyOrderAccess::PRESCRIPTION_ATTACHABLE_STATUSES, true)) {
+                throw new DomainException('Cette commande n’accepte plus de nouvelle ordonnance');
+            }
+
+            $existing = $this->mapOrder($row)['prescription_document_ids'];
+            $toAdd = array_values(array_diff($newIds, $existing));
+            if ($toAdd === []) {
+                throw new InvalidArgumentException('Ordonnance déjà jointe à la commande');
+            }
+            if (count($existing) + count($toAdd) > self::MAX_PRESCRIPTIONS) {
+                throw new InvalidArgumentException('Dix ordonnances maximum');
+            }
+            $this->assertPrescriptionDocumentsAccessible(
+                $user,
+                $toAdd,
+                (string) $row['patient_id'],
+                $row['relative_id'] !== null ? (string) $row['relative_id'] : null,
+            );
+
+            $currentStatus = (string) $row['status'];
+            $nextStatus = $currentStatus === 'complement_demande' ? 'en_attente' : $currentStatus;
+            $this->db->prepare('
+                UPDATE pharmacy_orders SET prescription_document_ids = ?, status = ?, updated_at = NOW() WHERE id = ?
+            ')->execute([
+                json_encode(array_values(array_merge($existing, $toAdd)), JSON_UNESCAPED_UNICODE),
+                $nextStatus,
+                $orderId,
+            ]);
+            $this->recordEvent(
+                $orderId,
+                $actorId,
+                'prescriptions_added',
+                null,
+                null,
+                json_encode(['document_ids' => $toAdd], JSON_UNESCAPED_UNICODE),
+            );
+            if ($nextStatus !== $currentStatus) {
+                $this->recordEvent($orderId, $actorId, 'status_change', $currentStatus, $nextStatus, null);
+            }
+        });
+
+        $order = $this->getById($orderId);
+        if ($order === null) {
+            throw new RuntimeException('Mise à jour échouée');
+        }
+
+        return $order;
+    }
+
+    /**
+     * Ordonnance remplacée : la nouvelle prend sa place dans toutes les commandes qui la joignaient.
+     * À appeler dans la transaction du remplacement.
+     *
+     * @return int nombre de commandes mises à jour
+     */
+    public function replacePrescriptionDocument(string $oldDocumentId, string $newDocumentId, string $actorId): int
+    {
+        $stmt = $this->db->prepare('
+            SELECT id, prescription_document_ids FROM pharmacy_orders
+            WHERE JSON_CONTAINS(prescription_document_ids, JSON_QUOTE(?))
+            FOR UPDATE
+        ');
+        $stmt->execute([$oldDocumentId]);
+        $update = $this->db->prepare('UPDATE pharmacy_orders SET prescription_document_ids = ?, updated_at = NOW() WHERE id = ?');
+        $updated = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $ids = array_values(array_unique(array_map(
+                static fn (mixed $id): string => (string) $id === $oldDocumentId ? $newDocumentId : (string) $id,
+                self::decodePrescriptionIds($row['prescription_document_ids']),
+            )));
+            $update->execute([json_encode($ids, JSON_UNESCAPED_UNICODE), (string) $row['id']]);
+            $this->recordEvent(
+                (string) $row['id'],
+                $actorId,
+                'prescription_replaced',
+                null,
+                null,
+                json_encode(['old_document_id' => $oldDocumentId, 'new_document_id' => $newDocumentId], JSON_UNESCAPED_UNICODE),
+            );
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    /** @return list<string> */
+    private function normalizePrescriptionIds(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            throw new InvalidArgumentException('Liste d’ordonnances invalide');
+        }
+        $ids = array_values(array_unique(array_filter(
+            array_map(static fn ($id) => is_scalar($id) ? trim((string) $id) : '', $raw),
+            static fn (string $id) => $id !== ''
+        )));
+        if (count($ids) > self::MAX_PRESCRIPTIONS) {
+            throw new InvalidArgumentException('Dix ordonnances maximum');
+        }
+
+        return $ids;
+    }
+
     private function assertRelativeBelongsToPatient(string $relativeId, string $patientId): void
     {
         $stmt = $this->db->prepare(
@@ -292,29 +466,17 @@ final class PharmacyOrderService
         string $patientId,
         ?string $relativeId,
     ): void {
-        $stmt = $this->db->prepare('
-            SELECT md.*,
-                   a.patient_id AS apt_patient_id,
-                   a.relative_id AS apt_relative_id,
-                   a.assigned_to,
-                   a.assigned_nurse_id,
-                   a.assigned_lab_id,
-                   a.assigned_pro_id,
-                   a.created_by AS apt_created_by
-            FROM medical_documents md
-            LEFT JOIN appointments a ON a.id = md.appointment_id
-            WHERE md.id = ?
-            LIMIT 1
-        ');
-
+        $subjectIds = array_filter([$patientId, MedicalDocumentAccess::subjectDossierId($this->db, $patientId, $relativeId)]);
         foreach ($documentIds as $documentId) {
             if (!preg_match('/^[a-f0-9-]{32,36}$/i', $documentId)) {
                 throw new InvalidArgumentException('Identifiant d’ordonnance invalide');
             }
-            $stmt->execute([$documentId]);
-            $document = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$document || !MedicalDocumentAccess::userCanAccess($this->db, $user, $document)) {
+            $document = MedicalDocumentAccess::loadForAccess($this->db, $documentId);
+            if ($document === null || !MedicalDocumentAccess::userCanAccess($this->db, $user, $document)) {
                 throw new RuntimeException('Accès ordonnance refusé');
+            }
+            if (!empty($document['replaced_by_document_id'])) {
+                throw new InvalidArgumentException('Cette ordonnance a été remplacée : joignez la nouvelle version');
             }
 
             $owner = !empty($document['appointment_id'])
@@ -327,9 +489,9 @@ final class PharmacyOrderService
                 : MedicalDocumentAccess::resolveProfileDocumentOwner($this->db, $documentId);
 
             if ($owner === null && !empty($document['patient_id'])
-                && (string) $document['patient_id'] === $patientId) {
-                // Ordonnance déposée pour la commande : le patient est sur medical_documents,
-                // pas forcément dans patient_documents.
+                && in_array((string) $document['patient_id'], $subjectIds, true)) {
+                // Ordonnance déposée pour la commande ou générée sur le dossier du proche : le patient est sur
+                // medical_documents, pas forcément dans patient_documents.
                 $owner = [
                     'patient_id' => $patientId,
                     'relative_id' => $relativeId,
@@ -463,6 +625,8 @@ final class PharmacyOrderService
             }
         }
 
+        $orders = RelativeProfile::withRelativeProfileIds($this->db, $orders);
+
         return array_map(static function (array $order) use ($names, $relativeNames, $contacts): array {
             $order['patient_display_name'] = $names[(string) $order['patient_id']] ?? null;
             $order['pharmacy_display_name'] = $names[(string) $order['pharmacy_id']] ?? null;
@@ -483,16 +647,21 @@ final class PharmacyOrderService
         }, $orders);
     }
 
+    /** @return list<string> */
+    private static function decodePrescriptionIds(mixed $json): array
+    {
+        if (empty($json)) {
+            return [];
+        }
+        $decoded = json_decode((string) $json, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
     /** @param array<string, mixed> $row */
     private function mapOrder(array $row): array
     {
-        $prescriptionIds = [];
-        if (!empty($row['prescription_document_ids'])) {
-            $decoded = json_decode((string) $row['prescription_document_ids'], true);
-            if (is_array($decoded)) {
-                $prescriptionIds = $decoded;
-            }
-        }
+        $prescriptionIds = self::decodePrescriptionIds($row['prescription_document_ids'] ?? null);
         $deliveryAddress = null;
         if (!empty($row['delivery_address_json'])) {
             $decoded = json_decode((string) $row['delivery_address_json'], true);

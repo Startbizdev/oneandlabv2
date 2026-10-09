@@ -16,6 +16,5 @@ export {
   SkeletonRdvCarePlaceholder,
   SkeletonRdvInfoCard,
   SkeletonScreen,
-  SkeletonSegmentBar,
   SkeletonStaffAppointmentDetail,
 } from '../skeleton-presets';

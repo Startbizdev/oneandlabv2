@@ -31,4 +31,9 @@ class HttpStatusException extends RuntimeException
     {
         return new self($message, 409, $errorCode);
     }
+
+    public static function unprocessable(string $message): self
+    {
+        return new self($message, 422, 'VALIDATION_ERROR');
+    }
 }

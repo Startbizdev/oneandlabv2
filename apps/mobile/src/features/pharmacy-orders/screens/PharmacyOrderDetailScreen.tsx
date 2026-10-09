@@ -1,17 +1,22 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Fragment, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Send, Stethoscope, UserRound, XCircle } from 'lucide-react-native';
+import { FilePlus2, FileText, MessageCircle, Stethoscope, Store, UserRound, XCircle } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import { buildSettingsStyles, type SettingsRowProps } from '@/components/ui/SettingsRow';
-import { pharmacyOrderPrescriptionsHref, type PharmacyOrderDetailMode } from '../utils/prescriptions-route';
+import {
+  pharmacyOrderMessagesHref,
+  pharmacyOrderPrescriptionsHref,
+  type PharmacyOrderDetailMode,
+  type PharmacyOrderRoutePrefix,
+} from '../utils/prescriptions-route';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/Input';
 import { Row } from '@/components/layout/primitives';
@@ -24,15 +29,13 @@ import { useToast } from '@/providers/ToastProvider';
 import { fetchUser } from '@/features/profile/api/profile.service';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { staffPatientHref } from '@/navigation/role-hrefs';
-import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { ScreenKeyboardAvoidingView } from '@/components/navigation/ScreenFrame';
 import { useSceneBottomInset } from '@/navigation/use-scene-bottom-inset';
-import {
-  fetchPharmacyOrder,
-  fetchPharmacyOrderMessages,
-  postPharmacyOrderMessage,
-  updatePharmacyOrderStatus,
-} from '../api/pharmacy-orders.service';
+import { PharmacyPublicProfileSheet } from '../components/PharmacyPublicProfileSheet';
+import { fetchPharmacyOrder, updatePharmacyOrderStatus } from '../api/pharmacy-orders.service';
+import { invalidatePharmacyOrders } from '../hooks/pharmacy-order-cache';
+import { useAttachPrescription } from '../hooks/use-attach-prescription';
+import { PHARMACY_ORDER_POLL_MS, usePharmacyOrderMessages } from '../hooks/use-pharmacy-order-messages';
 import {
   formatPharmacyDesiredDate,
   formatPharmacyOrderDate,
@@ -46,26 +49,14 @@ import {
   pharmacyOrderStatusLabel,
 } from '../utils/order-display';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
-import {
-  ICON_STROKE_WIDTH,
-  MIN_TOUCH_TARGET,
-  radius,
-  spacing,
-  iconSize,
-  AppText,
-  useStyles,
-  font,
-  type Theme,
-} from '@/theme';
+import { spacing, AppText, useStyles, type Theme } from '@/theme';
 
 interface Props {
   mode: PharmacyOrderDetailMode;
-  rolePrefix?: StaffRoutePrefix;
+  rolePrefix: PharmacyOrderRoutePrefix;
 }
 
 type StatusAction = { label: string; status: PharmacyOrderStatus; variant: 'primary' | 'outline' };
-
-const POLL_MS = 15_000;
 
 /** Transitions proposées à la pharmacie (miroir de `PharmacyOrderService::ALLOWED_TRANSITIONS`). */
 function pharmacyStatusActions(status: PharmacyOrderStatus): StatusAction[] {
@@ -84,7 +75,7 @@ function pharmacyStatusActions(status: PharmacyOrderStatus): StatusAction[] {
 
 /** Détail d'une commande pharmacie : envoyée (infirmier / pro) ou reçue (officine). */
 export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
-  const { id, messageId } = useLocalSearchParams<{ id: string; messageId?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const focused = useIsFocused();
   const appActive = useAppActive();
   const orderId = String(id ?? '');
@@ -93,15 +84,13 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const styles = useStyles(buildStyles);
   const sectionStyles = useStyles(buildSettingsStyles);
   const { footerPadding } = useSceneBottomInset();
-  const composerInset = { paddingBottom: Math.max(footerPadding, spacing[3]) };
   const userId = useAuthStore((s) => s.user?.id);
   const isPatientViewer = useAuthStore((s) => s.user?.role === 'patient');
   const qc = useQueryClient();
   const { show: toast } = useToast();
-  const [draft, setDraft] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const [pharmacyProfileOpen, setPharmacyProfileOpen] = useState(false);
 
   const orderQ = useQuery({
     queryKey: queryKeys.pharmacyOrders.detail(orderId),
@@ -111,21 +100,11 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       return res.data;
     },
     enabled: !!orderId,
-    refetchInterval: focusedRefetchInterval(POLL_MS, focused, appActive),
+    refetchInterval: focusedRefetchInterval(PHARMACY_ORDER_POLL_MS, focused, appActive),
     refetchIntervalInBackground: false,
   });
 
-  const messagesQ = useQuery({
-    queryKey: queryKeys.pharmacyOrders.messages(orderId),
-    queryFn: async () => {
-      const res = await fetchPharmacyOrderMessages(orderId);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Messages indisponibles');
-      return res.data;
-    },
-    enabled: !!orderId,
-    refetchInterval: focusedRefetchInterval(POLL_MS, focused, appActive),
-    refetchIntervalInBackground: false,
-  });
+  const messagesQ = usePharmacyOrderMessages(orderId);
 
   const order = orderQ.data;
   const patientId = order?.patient_id ?? '';
@@ -151,6 +130,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     enabled: !!requesterId && hasStaffRequester,
   });
 
+  const statusLockedRef = useRef(false);
   const statusMut = useMutation({
     mutationFn: async (payload: { status: PharmacyOrderStatus; rejection_reason?: string }) => {
       const res = await updatePharmacyOrderStatus(
@@ -163,30 +143,20 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     },
     onSuccess: async () => {
       toast('Statut mis à jour', { type: 'success' });
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.detail(orderId) }),
-        qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list('sent') }),
-        qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.list('received') }),
-      ]);
+      await invalidatePharmacyOrders(qc, orderId);
     },
     onError: (e) => handleApiError(e, toast, 'pharmacy-order-status'),
-  });
-
-  const sendMut = useMutation({
-    mutationFn: async (body: string) => {
-      const res = await postPharmacyOrderMessage(orderId, body);
-      if (!res.success) throw new Error(res.error ?? 'Envoi impossible');
-      return res.data;
+    onSettled: () => {
+      statusLockedRef.current = false;
     },
-    onSuccess: async () => {
-      setDraft('');
-      await qc.invalidateQueries({ queryKey: queryKeys.pharmacyOrders.messages(orderId) });
-    },
-    onError: (e) => handleApiError(e, toast, 'pharmacy-order-message'),
   });
+  const changeStatus = (payload: { status: PharmacyOrderStatus; rejection_reason?: string }) => {
+    if (statusLockedRef.current) return;
+    statusLockedRef.current = true;
+    statusMut.mutate(payload);
+  };
 
-  const messages = useMemo(() => messagesQ.data?.messages ?? [], [messagesQ.data]);
-  const canPost = Boolean(messagesQ.data?.can_post);
+  const attachPrescription = useAttachPrescription(orderId);
   const isReceiver = mode === 'received';
 
   const patientLabel = useMemo(() => {
@@ -202,12 +172,6 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     if (fromApi !== 'Pharmacie') return fromApi;
     return personDisplayName(pharmacyQ.data?.first_name, pharmacyQ.data?.last_name, 'Pharmacie');
   }, [order, pharmacyQ.data]);
-
-  useEffect(() => {
-    if (!messageId || !messages.some((m) => m.id === messageId)) return;
-    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
-    return () => clearTimeout(timer);
-  }, [messageId, messages]);
 
   if (orderQ.isLoading) {
     return (
@@ -260,6 +224,15 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   }
 
   const linkItems: SettingsRowProps[] = [];
+  const messagesHref = pharmacyOrderMessagesHref(rolePrefix, mode, orderId);
+  if (messagesHref) {
+    linkItems.push({
+      icon: MessageCircle,
+      label: 'Messages',
+      value: messagesQ.data ? String(messagesQ.data.messages.length) : undefined,
+      onPress: () => router.push(messagesHref),
+    });
+  }
   const prescriptionCount = order.prescription_document_ids.length;
   const prescriptionsHref = pharmacyOrderPrescriptionsHref(rolePrefix, mode, orderId);
   if (prescriptionCount > 0 && prescriptionsHref) {
@@ -270,11 +243,34 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       onPress: () => router.push(prescriptionsHref),
     });
   }
+  if (order.can_attach_prescriptions) {
+    linkItems.push({
+      icon: FilePlus2,
+      label: 'Ajouter une ordonnance',
+      inlineAction: true,
+      disabled: attachPrescription.pending,
+      trailing: attachPrescription.pending ? <ActivityIndicator color={c.primary} /> : undefined,
+      onPress: () => void attachPrescription.add({ patientId: order.patient_id, relativeId: order.relative_id }),
+    });
+  }
+  if (!isReceiver && pharmacyId) {
+    linkItems.push({
+      icon: Store,
+      label: 'Fiche de la pharmacie',
+      value: pharmacyLabel,
+      onPress: () => setPharmacyProfileOpen(true),
+    });
+  }
   if (isReceiver) {
     linkItems.push({
       icon: UserRound,
       label: 'Fiche patient',
-      onPress: () => router.push(staffPatientHref('/(pro)', order.patient_id)),
+      onPress: () =>
+        router.push(
+          order.relative_profile_id
+            ? staffPatientHref('/(pro)', order.relative_profile_id)
+            : staffPatientHref('/(pro)', order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}),
+        ),
     });
     if (hasStaffRequester) {
       linkItems.push({
@@ -289,7 +285,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
   const confirmCancel = () => {
     Alert.alert('Annuler la commande ?', undefined, [
       { text: 'Non', style: 'cancel' },
-      { text: 'Oui, annuler', style: 'destructive', onPress: () => statusMut.mutate({ status: 'annulee' }) },
+      { text: 'Oui, annuler', style: 'destructive', onPress: () => changeStatus({ status: 'annulee' }) },
     ]);
   };
 
@@ -299,20 +295,17 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       toast('Motif de refus requis', { type: 'error' });
       return;
     }
-    statusMut.mutate({ status: 'refusee', rejection_reason: reason });
+    changeStatus({ status: 'refusee', rejection_reason: reason });
     setShowRejectForm(false);
-  };
-
-  const sendDraft = () => {
-    const text = draft.trim();
-    if (!text || sendMut.isPending) return;
-    sendMut.mutate(text);
   };
 
   return (
     <StackChromeScreen>
-      <ScreenKeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.root}>
-        <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScreenKeyboardAvoidingView style={styles.root}>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: Math.max(footerPadding, spacing[6]) }]}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.hero}>
             <Row justify="between" align="start" gap={spacing[2]}>
               <AppText variant="title" style={styles.heroTitle} accessibilityRole="header">
@@ -342,7 +335,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
                       setShowRejectForm(true);
                       return;
                     }
-                    statusMut.mutate({ status: action.status });
+                    changeStatus({ status: action.status });
                   }}
                 />
               ))}
@@ -357,7 +350,7 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
                   <Row gap={spacing[2]}>
                     <View style={styles.flexCell}>
                       <Button
-                        title="Annuler"
+                        title="Fermer"
                         variant="outline"
                         fullWidth
                         onPress={() => {
@@ -408,6 +401,12 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
 
           {linkItems.length > 0 ? <SettingsSection items={linkItems} /> : null}
 
+          <PharmacyPublicProfileSheet
+            pharmacyId={pharmacyProfileOpen ? pharmacyId : null}
+            title={pharmacyLabel}
+            onClose={() => setPharmacyProfileOpen(false)}
+          />
+
           {canCancel ? (
             <SettingsSection
               items={[
@@ -420,77 +419,13 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
               ]}
             />
           ) : null}
-
-          <View style={sectionStyles.section}>
-            <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
-              Échanges
-            </AppText>
-            {messagesQ.isError && !messagesQ.data ? (
-              <ErrorState
-                title="Échanges indisponibles"
-                error={messagesQ.error}
-                onRetry={() => void messagesQ.refetch()}
-              />
-            ) : messagesQ.isLoading ? (
-              <ActivityIndicator color={c.primary} />
-            ) : !messages.length ? (
-              <AppText variant="secondary" style={styles.threadEmpty}>
-                Aucun message pour le moment.
-              </AppText>
-            ) : (
-              <View style={styles.thread}>
-                {messages.map((msg) => (
-                  <View
-                    key={msg.id}
-                    style={[styles.bubble, msg.author_id === userId ? styles.bubbleMine : styles.bubbleOther]}
-                  >
-                    <AppText variant="caption">{msg.author_name ?? 'Utilisateur'}</AppText>
-                    <AppText variant="body">{msg.body}</AppText>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
         </ScrollView>
-
-        {canPost ? (
-          <View style={[styles.composer, composerInset]}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Votre message…"
-              placeholderTextColor={c.textTertiary}
-              style={styles.input}
-              multiline
-              accessibilityLabel="Votre message"
-            />
-            <Pressable
-              onPress={sendDraft}
-              disabled={!draft.trim() || sendMut.isPending}
-              style={[styles.sendBtn, !draft.trim() && styles.sendBtnDisabled]}
-              accessibilityRole="button"
-              accessibilityLabel="Envoyer"
-            >
-              {sendMut.isPending ? (
-                <ActivityIndicator color={c.onPrimary} size="small" />
-              ) : (
-                <Send size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
-              )}
-            </Pressable>
-          </View>
-        ) : (
-          <View style={[styles.composerClosed, composerInset]}>
-            <AppText variant="secondary" style={styles.composerClosedText}>
-              Conversation fermée pour cette commande.
-            </AppText>
-          </View>
-        )}
       </ScreenKeyboardAvoidingView>
     </StackChromeScreen>
   );
 }
 
-function buildStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
     root: { flex: 1, backgroundColor: c.background },
     content: {
@@ -498,7 +433,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       alignSelf: 'stretch' as const,
       paddingHorizontal: spacing[4],
       paddingTop: spacing[4],
-      paddingBottom: spacing[6],
       gap: spacing[6],
     },
     loader: { marginTop: spacing[8] },
@@ -518,71 +452,5 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       marginLeft: spacing[4],
     },
     errorText: { color: c.error },
-    threadEmpty: { paddingHorizontal: spacing[1] },
-    thread: {
-      width: '100%' as const,
-      alignSelf: 'stretch' as const,
-      gap: spacing[2],
-    },
-    bubble: {
-      maxWidth: '80%' as const,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2],
-      borderRadius: radius.lg,
-      gap: spacing[0.5],
-    },
-    bubbleMine: {
-      alignSelf: 'flex-end' as const,
-      backgroundColor: c.primaryLight,
-    },
-    bubbleOther: {
-      alignSelf: 'flex-start' as const,
-      backgroundColor: c.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.cardBorder,
-    },
-    composer: {
-      flexDirection: 'row' as const,
-      alignItems: 'flex-end' as const,
-      gap: spacing[2],
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-      backgroundColor: c.surface,
-    },
-    input: {
-      flex: 1,
-      minHeight: MIN_TOUCH_TARGET,
-      maxHeight: 120,
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[2.5],
-      borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: c.border,
-      backgroundColor: c.surface,
-      ...font.regular,
-      fontSize: fontSize.base,
-      color: c.textPrimary,
-    },
-    sendBtn: {
-      width: MIN_TOUCH_TARGET,
-      height: MIN_TOUCH_TARGET,
-      borderRadius: radius.full,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      backgroundColor: c.primary,
-    },
-    sendBtnDisabled: { opacity: 0.4 },
-    composerClosed: {
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-      backgroundColor: c.surface,
-    },
-    composerClosedText: {
-      textAlign: 'center' as const,
-    },
   };
 }

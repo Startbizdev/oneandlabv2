@@ -31,9 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
-// Patient : ses documents ; super_admin : documents d'un user via ?user_id=xxx ; pro/nurse/lab/subaccount : même périmètre que upload (created_by / lab / PPA)
+// Patient : ses documents, ou ceux d'un proche (?relative_id ou ?user_id = dossier du proche) ;
+// super_admin : documents d'un user via ?user_id=xxx ; pro/nurse/lab/subaccount : même périmètre que upload (created_by / lab / PPA)
 $targetPatientId = $user['user_id'];
-if ($user['role'] === 'super_admin') {
+if ($user['role'] === 'patient') {
+    $requestedUserId = isset($_GET['user_id']) ? trim((string) $_GET['user_id']) : '';
+    if ($requestedUserId !== '') {
+        $targetPatientId = $requestedUserId;
+    }
+} elseif ($user['role'] === 'super_admin') {
     $requestedUserId = isset($_GET['user_id']) ? trim($_GET['user_id']) : null;
     if ($requestedUserId !== null && $requestedUserId !== '') {
         $targetPatientId = $requestedUserId;
@@ -74,40 +80,21 @@ $db = new PDO($dsn, $config['username'], $config['password'], $config['options']
 $logger = new Logger();
 $userModel = new User();
 
-// Staff / préleveur : même périmètre que patient-history (créateur, PPA, RDV assigné…)
-if ($user['role'] !== 'patient' && $user['role'] !== 'super_admin') {
-    if (!PatientDossierAccess::canAccess($db, $userModel, $user, $targetPatientId)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
-        exit;
-    }
+// Documents d'un proche : stockés sous (titulaire, relative_id), accessibles au titulaire et aux soignants du proche.
+$documentsTarget = PatientDossierAccess::resolveProfileDocumentsTarget($db, $userModel, $user, $targetPatientId, $relativeId);
+if ($documentsTarget === null) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => $relativeId !== null ? 'Proche introuvable ou accès refusé' : 'Accès refusé']);
+    exit;
 }
+$targetPatientId = $documentsTarget['patient_id'];
+$relativeId = $documentsTarget['relative_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
-        if ($relativeId) {
-            if ($user['role'] === 'patient') {
-                $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
-                $checkRel->execute([$relativeId, $user['user_id']]);
-                if (!$checkRel->fetch()) {
-                    http_response_code(403);
-                    echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
-                    exit;
-                }
-                $validDocuments = PatientDossierDocuments::listForRelative($db, $user['user_id'], $relativeId);
-            } else {
-                $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
-                $checkRel->execute([$relativeId, $targetPatientId]);
-                if (!$checkRel->fetch()) {
-                    http_response_code(403);
-                    echo json_encode(['success' => false, 'error' => 'Proche introuvable ou accès refusé']);
-                    exit;
-                }
-                $validDocuments = PatientDossierDocuments::listForRelative($db, $targetPatientId, $relativeId);
-            }
-        } else {
-            $validDocuments = PatientDossierDocuments::listForPatient($db, $targetPatientId);
-        }
+        $validDocuments = $relativeId !== null
+            ? PatientDossierDocuments::listForRelative($db, $targetPatientId, $relativeId)
+            : PatientDossierDocuments::listForPatient($db, $targetPatientId);
 
         $logger->log(
             $user['user_id'],

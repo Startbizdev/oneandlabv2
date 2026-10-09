@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../lib/ai/AiQuickSuggestionsService.php';
 require_once __DIR__ . '/../../lib/ai/AIGateway.php';
 
 ai_handle_options(['GET', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur', 'super_admin']);
+$user = ai_require_assistant_user();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
     ai_json_error('Méthode non autorisée', 405);
@@ -18,13 +18,14 @@ if ($patientId === '') {
     $patientId = null;
 }
 
-$service = new AiQuickSuggestionsService();
-$gateway = new AIGateway();
-
-ai_json_response([
-    'success' => true,
-    'data' => [
-        'suggestions' => $service->suggestionsForUser($user, $patientId),
-        'disclaimer' => $gateway->getDisclaimerPublic(),
-    ],
-]);
+try {
+    ai_json_response([
+        'success' => true,
+        'data' => [
+            'suggestions' => (new AiQuickSuggestionsService())->suggestionsForUser($user, $patientId),
+            'disclaimer' => (new AIGateway())->getDisclaimerPublic(),
+        ],
+    ]);
+} catch (Throwable $e) {
+    ai_respond_error($e, 'ai/quick-suggestions');
+}

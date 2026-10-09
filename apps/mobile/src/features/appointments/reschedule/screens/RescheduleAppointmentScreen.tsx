@@ -98,9 +98,9 @@ export function RescheduleAppointmentScreen({
         footer={
         <View style={[styles.footer, { paddingBottom: footerPadding }]}>
           <Button
-            title={r.saving ? 'Enregistrement…' : r.submitLabel}
+            title={r.submitLabel}
             onPress={r.submit}
-            disabled={r.saving}
+            loading={r.saving}
             fullWidth
             size="lg"
           />

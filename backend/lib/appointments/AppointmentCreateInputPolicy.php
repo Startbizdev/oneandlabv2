@@ -9,6 +9,7 @@ require_once __DIR__ . '/../LabTeamAccess.php';
 require_once __DIR__ . '/../NurseInviteService.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
 require_once __DIR__ . '/../PatientLinkedNurses.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
 
 final class AppointmentCreateInputDenied extends HttpStatusException
@@ -37,7 +38,7 @@ final class AppointmentCreateInputPolicy
         $userId = (string) ($user['user_id'] ?? '');
         $input = self::applyDispatchFlags($db, $role, $userId, $input);
         if ($role === 'super_admin') {
-            return $input;
+            return self::normalizeSubject($db, $input);
         }
         if ($userId === '') {
             throw new AppointmentCreateInputDenied('Session invalide.', 403, 'FORBIDDEN');
@@ -56,17 +57,16 @@ final class AppointmentCreateInputPolicy
         }
         unset($input['status']);
 
-        $input = self::applyPatient($db, $role, $userId, $input);
+        $input = self::normalizeSubject($db, self::applyPatient($db, $role, $userId, $input));
         if ($requested === [] || $role === 'preleveur') {
             return $input;
         }
 
         $type = (string) ($input['type'] ?? '');
-        $patientId = trim((string) ($input['patient_id'] ?? ''));
 
         return match ($role) {
             'patient' => self::patientAssignments($db, $type, $requested, $input),
-            'pro', 'nurse' => self::staffAssignments($db, $role, $userId, $type, $patientId, $requested, $input),
+            'pro', 'nurse' => self::staffAssignments($db, $role, $userId, $type, self::dossierId($db, $input), $requested, $input),
             'lab', 'subaccount' => self::labAssignments($db, $role, $userId, $type, $requested, $input),
             default => throw self::assignmentForbidden(),
         };
@@ -150,7 +150,7 @@ final class AppointmentCreateInputPolicy
     }
 
     /**
-     * Patient : uniquement pour lui-même (ses proches passent par relative_id).
+     * Patient : pour lui-même ou le dossier d'un de ses proches (ses proches passent aussi par relative_id).
      * Professionnel : uniquement un patient dont il a déjà le dossier.
      *
      * @param array<string, mixed> $input
@@ -160,10 +160,12 @@ final class AppointmentCreateInputPolicy
     {
         $patientId = trim((string) ($input['patient_id'] ?? ''));
         if ($role === 'patient') {
-            if ($patientId !== '' && $patientId !== $userId) {
+            if ($patientId !== '' && $patientId !== $userId && !RelativeProfile::isOwner($db, $userId, $patientId)) {
                 throw self::patientAccessDenied();
             }
-            $input['patient_id'] = $userId;
+            if ($patientId === '') {
+                $input['patient_id'] = $userId;
+            }
 
             return $input;
         }
@@ -178,6 +180,32 @@ final class AppointmentCreateInputPolicy
         }
 
         return $input;
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private static function normalizeSubject(PDO $db, array $input): array
+    {
+        try {
+            return RelativeProfile::normalizeSubject($db, $input);
+        } catch (InvalidArgumentException $e) {
+            throw new AppointmentCreateInputDenied($e->getMessage(), 400, 'VALIDATION_ERROR');
+        }
+    }
+
+    /**
+     * Dossier soigné par le RDV normalisé : celui du proche s'il existe, sinon le titulaire.
+     *
+     * @param array<string, mixed> $input
+     */
+    private static function dossierId(PDO $db, array $input): string
+    {
+        $patientId = trim((string) ($input['patient_id'] ?? ''));
+        $relativeId = trim((string) ($input['relative_id'] ?? ''));
+
+        return $relativeId !== '' ? (RelativeProfile::profileIdForRelative($db, $relativeId) ?? $patientId) : $patientId;
     }
 
     /**

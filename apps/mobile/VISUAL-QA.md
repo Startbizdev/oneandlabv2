@@ -118,7 +118,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - [x] états (loading / vide / erreur)
 - [x] validation finale
 
-## patient (25)
+## patient (26)
 
 ### `(patient)/(tabs)/ai.tsx` — RoleAiHubRouteScreen
 - Captures (patient, police 1.0) : `%TEMP%\cary-qa\shots\patient\(tabs)__ai.png`
@@ -389,13 +389,26 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 ### `(patient)/relatives/[id].tsx` — (inline)
 - Passe QA émulateur (2026-10-01, capture après `patient\relative-detail-after.png`) : identité, action principale « Réserver pour ce proche », Documents, suppression en rouge isolée. Aucun défaut en police 1.0.
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\patient\relatives__[id].png` · 1.3 `%TEMP%\cary-qa\shots\patient\relatives__[id]@1.3.png` · err `%TEMP%\cary-qa\shots\patient\relatives__[id]@err.png`. Critique : aucun défaut — nom lisible, plus d'indicateur de rafraîchissement superposé.
+- **QA émulateur en attente (2026-10-06, dossier propre du proche)** : la carte Documents isolée devient une section « Dossier de {prénom} » (Carnet de santé si le proche a un `profile_id`, puis Documents avec compteur ; documents en erreur → ligne « Indisponibles, touchez pour réessayer »). Réserver, Modifier, Supprimer inchangés. À vérifier : Alice → Compte → Mes proches → Jean (section visible, carnet présent), proche sans dossier (pas de ligne Carnet), grande police (titre de section et compteur non coupés).
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
-- [x] capture après
-- [x] grande police (rien de coupé)
-- [x] états (loading / vide / erreur)
-- [x] validation finale
+- [ ] capture après
+- [ ] grande police (rien de coupé)
+- [ ] états (loading / vide / erreur)
+- [ ] validation finale
+
+### `(patient)/relatives/[id]/health-record.tsx` — PatientRelativeHealthRecordScreen
+- Nouvelle vue (2026-10-06) : carnet de santé du proche, même composant que le carnet staff (`HealthRecordDossierScreen` → `PassageFormHealthRecordPanel`) sur le dossier `profile_id` du proche. Titre « Carnet de {prénom} » (catalogue : « Carnet de santé »). Carnet modifiable (PATCH `/patients/:profile_id/health-record`) ; constantes en lecture seule : seules les constantes mesurées apparaissent, appui → historique sans ajout ni modification, « Aucune mesure pour l’instant. » sinon. Pas de légende soignant, pas de « Modifier la fiche patient », aucune transmission.
+- États : proche introuvable → erreur + Réessayer ; proche sans dossier → « Carnet pas encore disponible » ; chargement → squelette.
+- Passe QA émulateur (2026-10-06, `.qa-tmp\shots\proche-2.png` à `proche-6.png`) : Alice → Mes proches → Jean → section « Dossier de Jean » (Carnet de santé, Documents) ; carnet « Carnet de Jean » ; Taille 172 saisie → enregistrée (15 % → 18 %) ; constante FC → historique « 72 bpm · Nina Infirmiere » sans ajout ni modification. Aucun défaut en police 1.0. Reste : grande police, proche sans dossier (aucun en base locale : les 2 proches ont un dossier).
+- [ ] capture avant
+- [ ] défauts listés
+- [ ] corrections
+- [ ] capture après
+- [ ] grande police (rien de coupé)
+- [ ] états (loading / vide / erreur)
+- [ ] validation finale
 
 ### `(patient)/relatives/[id]/documents.tsx` — PatientRelativeDocumentsScreen
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\patient\relatives__[id]__documents.png` · 1.3 `%TEMP%\cary-qa\shots\patient\relatives__[id]__documents@1.3.png` · err `%TEMP%\cary-qa\shots\patient\relatives__[id]__documents@err.png`. Critique : aucun défaut — proche introuvable : erreur seule, plus d'actions d'ajout (corrigé).
@@ -499,6 +512,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Points QA : ouvrir une offre : réseau coupé, 403, 404, déjà prise par un autre ; liste vide ; « Nouveau rendez-vous ».
 - Passe QA émulateur (2026-10-01, `nurse\agenda-after.png`) : en-tête chargé (segments Liste / Calendrier, recherche + filtre, puces de statut, bandeau « Nouveau rendez-vous ») avant le premier rendez-vous. Défaut ouvert (étape défauts restants).
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\nurse\(tabs)__appointments.png` · 1.3 `%TEMP%\cary-qa\shots\nurse\(tabs)__appointments@1.3.png` · err `%TEMP%\cary-qa\shots\nurse\(tabs)__appointments@err.png`. Critique : aucun défaut — en-tête allégé (création via bouton flottant), filtres sur une ligne.
+- Passe retours client (2026-10-06, Nina, `.qa-tmp\shots\nina-agenda-after2.png` / `after3.png`) : défauts relevés : liste triée par date de création (le 7 octobre avant aujourd'hui, RDV passés mêlés) ; passages à heure précise affichés en plage (« Créneau 12:30 - 13:30 »). Corrections : `GET /appointments` infirmier accepte `patient_period` (même filtre que le patient, tri `scheduled_at` croissant pour « à venir », décroissant pour « historique ») ; l'app l'envoie selon le segment (`nurseSegmentPeriod`, préchargement aligné) ; libellé passage = celui de la tournée (`appointmentCreneauLabel` → `formatPassageTourListTimeLabel` : « 12h30 », « Matin · 8h00 — 12h00 »). Tests : `NurseListParisDayBoundaryTest`, `appointment-creneau-label.test.ts`. Après : aujourd'hui d'abord par heure, puis le 7 octobre ; avatars chargés (le cercle gris vu avant était le chargement de l'image DiceBear).
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -513,6 +527,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Points QA : accepter, refuser, reporter une offre ; offre déjà prise ; quota atteint ; liste vide.
 - Passe QA émulateur (2026-10-01, capture après `nurse\demandes-after.png`) : limite de l'offre Découverte avec action unique, état vide illustré. Aucun défaut en police 1.0.
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\nurse\(tabs)__demandes.png` · 1.3 `%TEMP%\cary-qa\shots\nurse\(tabs)__demandes@1.3.png` · err `%TEMP%\cary-qa\shots\nurse\(tabs)__demandes@err.png`. Critique : aucun défaut — quota visible, état vide clair.
+- Passe retours client (2026-10-06, Nina, `.qa-tmp\shots\nina-demandes.png` → `nina-demandes-after3.png`) : défaut : « 53 / 10 ce mois-ci, limite atteinte » : `NurseMonthlyAllowance` comptait les passages que l'infirmier planifie pour ses patients (`passage_source = nurse_passage`) comme des rendez-vous acceptés, ce qui bloquait l'acceptation de vraies demandes en offre Découverte (même compteur côté web). Corrections : passages exclus du quota (test `NurseMonthlyAllowancePassageTest`, fixtures SQLite alignées) ; quota rechargé au tirer-pour-rafraîchir (`QueryFlatList.refresh`), au retour au premier plan et après une acceptation ou un refus pour limite (`OfferAppointmentModal`). Après : 6 / 10, bandeau masqué (affiché à partir de 80 %).
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -553,6 +568,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Points QA : Android : menu d’un passage absent (3 actions, fermeture par glissement / fond) ; passage fait (pas de « Changer le créneau ») ; échec de replanification ; lever une absence ; jour vide ; import calendrier ; grande police.
 - Passe QA émulateur (2026-10-01, capture après `nurse\tournee-after2.png`) : semaine, progression, prochain passage avec Naviguer / Appeler / Terminé, liste des passages. Aucun défaut en police 1.0.
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\nurse\(tabs)__tournee.png` · 1.3 `%TEMP%\cary-qa\shots\nurse\(tabs)__tournee@1.3.png` · err `%TEMP%\cary-qa\shots\nurse\(tabs)__tournee@err.png`. Critique : aucun défaut — progression, prochain passage, actions.
+- Passe retours client (2026-10-06, Nina, `.qa-tmp\shots\nina-tour-2.png` → `nina-tour-after.png`) : défaut : en tri « Intelligent », le soin de Simone à 17h–19h passait « Prochain passage » devant Bruno 11h et Alice 14h30, parce que `TourOrderEngine::orderSmart` regroupait toute la journée derrière le premier passage à la même adresse. Correction : regroupement par adresse seulement si les plages horaires se chevauchent (une seule visite possible), jamais sans adresse ; s'applique aussi à la tournée préleveur (même moteur). Tests `TourOrderEngineTest` (3 nouveaux). Après : 8h30 (fait), 11h, 14h30, 17h45 ; prochain passage = Bruno.
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -812,6 +828,9 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Corrections code : action principale « Créer un rendez-vous », contacts secondaires ; lignes libellé / valeur ; « Modifier » en en-tête ; section « Dossier » (Documents, Ordonnances, Historique, Carnet de santé, pharmacie seulement si `canOrder`) ; « Supprimer le patient » en ligne rouge discrète. Backend : GET / PUT `/users/:id`, DELETE `/patients/:id`.
 - Points QA : « Modifier » dans l’en-tête, trois boutons de contact sur une ligne en grande police, ligne pharmacie absente si module inactif, patient sans téléphone / e-mail.
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\nurse\patient__[id].png` · 1.3 `%TEMP%\cary-qa\shots\nurse\patient__[id]@1.3.png` · err `%TEMP%\cary-qa\shots\nurse\patient__[id]@err.png`. Critique : aucun défaut — contacts sur une ligne, fiche et dossier lisibles.
+- Passe retours client (2026-10-06, Nina sur Bruno, `.qa-tmp\shots\nina-bruno-2.png` → `nina-bruno-phone-after.png`) : « Autres numéros » (lot 5) : ajout d'un numéro « Aidant » de bout en bout (POST `/patients/:id/phones`). Défaut : numéro ajouté affiché brut (« 0611223344 ») sous un principal en paires. Correction : `formatFrenchPhoneDisplay` (shared-utils, test `external-nurse-invite.test.ts`) sur le principal, les autres numéros et la confirmation de suppression ; `created_at` des numéros lu via `UNIX_TIMESTAMP` (voir Transmissions).
+- **QA émulateur en attente (2026-10-06, dossier propre du proche)** : un proche s'ouvre comme un patient normal (son dossier `profile_id`). Hub → résultat « Proche de … » → dossier du proche ; ancien lien `?relative_id=` → redirection vers le dossier du proche (squelette, puis dossier ; « Dossier du proche pas encore disponible » s'il n'en a pas). RDV d'un proche → bouton « Dossier de Jean » (au lieu de « Profil du titulaire · … »). Parcours : Nina → RDV de Jean → Dossier de Jean ; Nina → passage d'un proche → carnet / documents / transmissions sur le dossier du proche. L'ancienne vue `patient/[id]/relative/[relativeId]` est supprimée.
+- Passe QA émulateur (2026-10-06, `.qa-tmp\shots\nina-4.png`, `nina-5.png`) : Nina → Agenda → RDV de Jean (lien Parent, pris par Alice) → « Dossier de Jean Patiente » → fiche de Jean (né le 02/11/1950, son téléphone, e-mail technique masqué « Patient sans email renseigné »), jamais celle d'Alice. Aucun défaut en police 1.0. Reste : passage d'un proche, hub, grande police.
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -819,6 +838,17 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - [x] grande police (rien de coupé)
 - [x] états (loading / vide / erreur)
 - [x] validation finale
+
+### `(nurse)/patient/[id]/transmissions.tsx` — StaffPatientTransmissionsScreen
+- Nouvelle vue (lot 6) : fil des transmissions par jour du soin, « Nouvelle transmission », mention « Pour le médecin », modification par l'auteur sous 24 h. Backend : GET / POST `/patients/:id/transmissions`, PATCH `/patients/:id/transmissions/:tid` (`PatientTransmissionService`, rôles nurse / pro / admin en lecture, accès dossier).
+- Passe retours client (2026-10-06, Nina sur Bruno, `.qa-tmp\shots\nina-bruno-transmissions.png` → `nina-transmissions-after3.png`) : défauts : heure décalée de 2 h (11:39 affiché à 10:35) : `created_at` (TIMESTAMP) relu par PHP comme UTC alors que MySQL le rend dans son fuseau ; même défaut dans `PatientPhoneService` ; heure d'écriture d'aujourd'hui affichée sous « Hier » pour une saisie après coup. Corrections : `UNIX_TIMESTAMP()` + `AppTimezone::iso8601FromUnix` dans les deux services (tests avec fuseau de session `+05:00`) ; `transmissionTimeLabel` (shared-utils) : heure le jour du soin, sinon « Écrite le 6 oct. », mobile et web (`PatientTransmissionsPanel`).
+- [x] capture avant
+- [x] défauts listés
+- [x] corrections
+- [x] capture après
+- [ ] grande police (rien de coupé)
+- [ ] états (loading / vide / erreur)
+- [ ] validation finale
 
 ### `(nurse)/patient/[id]/documents.tsx` — StaffPatientDocumentsScreen
 - Écran `StaffPatientDocumentsScreen` (agent C) : aucune correction agent B sur cette route.
@@ -1020,6 +1050,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Corrections code (agent D, 2026-10-01, à recapturer) : refonte éditoriale Cary IA : réponses sans bulle, bulles utilisateur neutres, suggestions en liste, compositeur 44 pt, avertissement + urgence 15 · 112 affichés une seule fois (pied de page, repli statique si l’API n’en fournit pas), liste des conversations (recherche, état vide illustré, bouton « … » visible), overlay vocal épuré, export RGPD avec alerte d’erreur.
 - Passe QA émulateur (2026-10-01, `pro\ai.png` → `pro\ai-after.png`) : suggestions « Expliquer mes résultats » / « Analyser mes documents » rédigées pour un patient alors que le contexte pro contient les résultats et documents de ses patients. Corrigé : `patient_lab_results` « Résultats récents des patients » et `patient_docs` dans `backend/lib/ai/AiQuickSuggestionsService.php` (+ test `AiQuickSuggestionsServiceTest`), messages dans `ai-hub/utils/ai-navigation.ts`. Réponse indisponible en local (`XAI_API_KEY` absente).
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\pro\ai.png` · 1.3 `%TEMP%\cary-qa\shots\pro\ai@1.3.png`. Critique : aucun défaut — suggestions, saisie en bas.
+- Passe retours client (2026-10-06, Pierre, `.qa-tmp\shots\pro-ai2.png` → `pro-ai3.png`) : défaut : réponse d'urgence (« douleur thoracique… ») affichée deux fois, carte rouge puis le même titre et les mêmes consignes en texte. Le serveur enregistre ces consignes comme contenu du message (historique, copie, export) et les envoie aussi en `metadata.emergency`. Correction : `assistantBubbleText` ne répète pas le texte quand la carte d'urgence est présente (contenu toujours fixe côté serveur : `AiEmergencyDetector::messageContent`) ; test `ai-hub-components.test.tsx`. Après : carte seule, actions copier / régénérer / avis conservées.
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -1226,6 +1257,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Corrections code (agent D, 2026-10-01, à recapturer) : navigation typée `resolveNotificationNavigation(...) : Href | null` (routes inexistantes → pas de navigation), icône alignée en haut du texte. L’emoji relevé vient du contenu serveur (hors UI).
 - Passe QA émulateur (2026-10-01, capture après `pro\notifications.png`) : commande, labo, message, résultats ; chaque tap mène au bon écran (détail commande, Résultats, détail RDV). Libellé « En attente labo » conservé sur les anciennes notifications (non migré, signalé).
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\pro\notifications.png` · 1.3 `%TEMP%\cary-qa\shots\pro\notifications@1.3.png` · err `%TEMP%\cary-qa\shots\pro\notifications@err.png`. Critique : aucun défaut — liste lisible.
+- Passe retours client (2026-10-06, Pierre, `.qa-tmp\shots\pro-notifs.png` → `pro-notif-open.png`) : « Transmission pour le médecin » (écrite par Nina sur Bruno) reçue et ouverte sur les transmissions de Bruno ; badge décrémenté. Aucun défaut.
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -1251,6 +1283,7 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - Points QA : « Modifier » dans l’en-tête, trois boutons de contact sur une ligne en grande police, ligne pharmacie absente si module inactif, patient sans téléphone / e-mail.
 - Passe QA émulateur (2026-10-01, `pro\patient__[id].png` → `pro\patient__[id]-after2.png`) : écran blanc (le `RefreshControl` Android cloné perdait `style` et `children`) puis carte Informations avec double marge. Corrigé : `AppRefreshControl.tsx` (transmet `style` et `children`), `Card padding="none"` dans `PatientDetailScreen.tsx`.
 - Passe auto (2026-10-01, `%TEMP%\cary-qa3\run.ps1`) : 1.0 `%TEMP%\cary-qa\shots\pro\patient__[id].png` · 1.3 `%TEMP%\cary-qa\shots\pro\patient__[id]@1.3.png`. Critique : aucun défaut — contacts sur une ligne, fiche et dossier lisibles.
+- **QA émulateur en attente (2026-10-06)** : mêmes points que `(nurse)/patient/[id].tsx` (proche = dossier propre, redirection `?relative_id=`, « Dossier de … » depuis un RDV ou une commande pharmacie pour un proche).
 - [x] capture avant
 - [x] défauts listés
 - [x] corrections
@@ -1259,6 +1292,16 @@ Propriétaire : agent QA de la refonte premium (seul à piloter l'émulateur et 
 - États (2026-10-02) : erreur vérifiée sur planche `%TEMP%\cary-qa3\sheets\err-detail-0*.jpg` (identifiant inconnu ou API coupée) : message clair et « Réessayer ».
 - [x] états (loading / vide / erreur)
 - [x] validation finale
+
+### `(pro)/patient/[id]/transmissions.tsx` — StaffPatientTransmissionsScreen
+- Passe retours client (2026-10-06, Pierre sur Bruno, `.qa-tmp\shots\pro-notif-open.png`) : même écran que l'infirmier (voir `(nurse)/patient/[id]/transmissions.tsx`) : fil par jour, auteur et rôle, mention « Pour le médecin », heure d'écriture ou « Écrite le 6 oct. ». Le médecin lit les transmissions de Nina sans pouvoir les modifier (droit réservé à l'auteur pendant 24 h, `PatientTransmissionService`) et peut en écrire. Aucun défaut en police 1.0.
+- [x] capture avant
+- [x] défauts listés
+- [x] corrections
+- [x] capture après
+- [ ] grande police (rien de coupé)
+- [ ] états (loading / vide / erreur)
+- [ ] validation finale
 
 ### `(pro)/patient/[id]/documents.tsx` — StaffPatientDocumentsScreen
 - Critique (agent C, 2026-10-01, capture après à faire) : requête profil chargée uniquement pour un titre long « Documents de X ».
@@ -1850,3 +1893,17 @@ Défaut signalé : le patient ne peut pas passer de commande pharmacie.
 - Backend vérifié : `PharmacyModuleConfig::canOrder` inclut `patient` ; `PharmacyOrderService::create` accepte le patient pour lui-même (`isPatientSelf`). Seul le mobile bloquait (`newOrderHref` à `null` pour le patient).
 - Correction : bouton « + » / « Commander en pharmacie » piloté par `can_order` du serveur ; route `(patient)/traitements/new` → `PharmacyOrderWizardScreen` en mode patient (bénéficiaire « Moi » ou un proche, pas de choix de patient, textes à la 2ᵉ personne, retour à « Mes traitements »).
 - Vérifié après sur emulator-5600 (Alice) : Click & collect → Moi → Pharmacie du Vieux-Port → récap « Pour : Moi » → commande envoyée, en tête de « Mes traitements » ; en base : `requester_role = patient`, patient = demandeur, `en_attente`.
+
+## Binôme infirmier, messages pharmacie, remplacer une ordonnance (2026-10-06) — QA émulateur en attente
+
+Vues ajoutées ou modifiées, sans capture avant / après à ce stade (QA émulateur faite par l'utilisateur) :
+
+- Fiche RDV infirmier : section « Infirmiers » (lignes confrères avec avatar + portée, « Ajouter un confrère ») ; vue confrère « Partagé par X » + « Me retirer », sans Partager / Redispatcher / Annuler. À vérifier : troncature des noms longs, bouton « Retirer » en grande police.
+- Sheet « Ajouter un confrère » : recherche → résultat → portée en segments pleine largeur → deux sélecteurs de date pour une période. À vérifier : hauteur de la sheet avec clavier ouvert, segments à 3 libellés en grande police.
+- Tournée : icône « Confrères et remplacements » en tête de l'en-tête, sheet « Confrères » (vide : « Aucun partage en cours ») ; mention « Avec X » / « Partagé avec vous » sur les arrêts. À vérifier : nombre d'icônes d'en-tête sur petit écran.
+- Fiche passage : section « Infirmiers » avec portée « Toute la série » ; suppression masquée pour le confrère.
+- Fiche commande pharmacie : ligne « Messages » + compteur à la place de la conversation ; nouvelle vue Messages (bulles, composer, « Conversation fermée pour cette commande. »), défilement au message notifié.
+- Patient : « Ordonnances » d'un traitement ouvre `(patient)/traitements/[id]/ordonnances`.
+- Remplacer une ordonnance : bouton « Remplacer » sur l'ordonnance (documents RDV, historique, commande) → fichier → confirmation → toast « Ordonnance remplacée ».
+
+Web (même périmètre) : panneau « Infirmiers » sur la fiche RDV et la fiche passage infirmier, bouton « Confrères » sur la tournée (`?date=`), pages Messages des commandes (pro envoyées / reçues, infirmier, patient, admin en lecture seule), page ordonnances patient, « Remplacer » sur les ordonnances.

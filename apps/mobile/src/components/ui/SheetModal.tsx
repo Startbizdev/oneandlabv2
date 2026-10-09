@@ -23,7 +23,7 @@ interface BaseProps {
   subtitle?: string;
   onBack?: () => void;
   children: React.ReactNode;
-  /** Actions en bas du scroll (après `children`). */
+  /** Actions sous `children` : fixées en bas sur des `snapPoints`, en fin de scroll sinon. */
   footer?: React.ReactNode;
   contentStyle?: ViewStyle;
   /** `false` pendant un envoi : ni geste iOS, ni retour Android ne ferment la sheet. */

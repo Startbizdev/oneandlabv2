@@ -15,10 +15,13 @@ export default function ProLayout() {
         <Stack.Screen name="appointment/[id]/care-photo/[photoId]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="appointment/[id]/exchange" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="appointment/[id]/prescription" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="appointment/[id]/documents" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions(theme)} />
         <Stack.Screen name="ai" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="commandes-pharmacie/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="commandes-recues/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="commandes-pharmacie/[id]/messages" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="commandes-recues/[id]/messages" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </View>
   );

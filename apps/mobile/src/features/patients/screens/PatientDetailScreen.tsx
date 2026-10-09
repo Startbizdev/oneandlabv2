@@ -1,13 +1,13 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Fragment, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Linking, ScrollView, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { LucideIcon } from 'lucide-react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ageFromBirthDate } from '@oneandlab/shared-utils';
 import {
   ClipboardList,
@@ -16,6 +16,7 @@ import {
   HeartPulse,
   Mail,
   MessageCircle,
+  NotebookPen,
   Phone,
   Pill,
   Trash2,
@@ -23,10 +24,9 @@ import {
 import { queryKeys } from '@/lib/query-keys';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SettingsSection } from '@/components/ui/SettingsSection';
-import { buildSettingsStyles, type SettingsRowProps } from '@/components/ui/SettingsRow';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import {
   fetchPatientDocuments,
@@ -40,7 +40,10 @@ import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { resolvePatientContactEmail } from '@/utils/patient-email-display';
 import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
-import { patientAddressLines, patientBirthLine, patientGenderLabel } from '../utils/patient-profile-display';
+import { routeRelativeId } from '../utils/staff-hub-navigation';
+import { StaffRelativeDossierRedirect } from '../components/StaffRelativeDossierRedirect';
+import { identityInfoLines } from '../utils/patient-profile-display';
+import { PatientInfoCard } from '../components/PatientInfoCard';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { ICON_STROKE_WIDTH, spacing, iconSize, avatarSize, AppText, useStyles, type Theme } from '@/theme';
@@ -48,6 +51,7 @@ import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { bookingNewHref, pharmacyOrderNewHref, staffPatientHref } from '@/navigation/role-hrefs';
 import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { StaffPatientEditSheet } from '../components/StaffPatientEditSheet';
+import { PatientPhonesSection } from '../components/PatientPhonesSection';
 
 interface Props {
   rolePrefix?: StaffRoutePrefix;
@@ -60,21 +64,26 @@ type ContactAction = {
   url: string;
 };
 
-type InfoLine = { label: string; value: string; secondary?: string };
-
 /** Fiche patient vue par l'infirmier ou le pro : identité, contact, dossier, création de RDV. */
 export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
+  const { id, relative_id } = useLocalSearchParams<{ id: string; relative_id?: string }>();
+  const patientId = id ?? '';
+  const relativeId = routeRelativeId(relative_id);
+  if (relativeId) {
+    return <StaffRelativeDossierRedirect rolePrefix={rolePrefix} holderId={patientId} relativeId={relativeId} />;
+  }
+  return <PatientDossier rolePrefix={rolePrefix} patientId={patientId} />;
+}
+
+function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefix; patientId: string }) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const sectionStyles = useStyles(buildSettingsStyles);
-
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const patientId = id ?? '';
   const router = useRouter();
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
   const { canOrder } = usePharmacyModuleEnabled();
+  const qc = useQueryClient();
 
   const profileQ = useStaffPatientProfile(patientId);
 
@@ -98,7 +107,12 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   });
 
   const pullRefresh = useManualRefresh(async () => {
-    await Promise.all([profileQ.refetch(), historyQ.refetch(), docsQ.refetch()]);
+    await Promise.all([
+      profileQ.refetch(),
+      historyQ.refetch(),
+      docsQ.refetch(),
+      qc.invalidateQueries({ queryKey: queryKeys.patients.phones(patientId) }),
+    ]);
   });
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTopOnPop(scrollRef);
@@ -162,24 +176,14 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
   const docCount = docsQ.data?.length ?? 0;
   const histCount = historyQ.data ?? 0;
   const tel = p.phone?.replace(/\s/g, '') ?? '';
-  const address = patientAddressLines(p.address);
-  const birthLine = patientBirthLine(p.birth_date, age);
-  const genderLine = patientGenderLabel(p.gender);
-  const nir = p.nir?.trim();
-
-  const infoLines: InfoLine[] = [];
-  if (birthLine) infoLines.push({ label: 'Date de naissance', value: birthLine });
-  if (genderLine) infoLines.push({ label: 'Genre', value: genderLine });
-  if (nir) infoLines.push({ label: 'N° de sécurité sociale', value: nir });
-  if (address) {
-    infoLines.push({
-      label: 'Adresse',
-      value: address.main,
-      ...(address.complement ? { secondary: address.complement } : {}),
-    });
-  }
-  if (p.phone) infoLines.push({ label: 'Téléphone', value: p.phone });
-  if (email.text) infoLines.push({ label: 'E-mail', value: email.text });
+  const infoLines = identityInfoLines({
+    birthDate: p.birth_date,
+    gender: p.gender,
+    nir: p.nir,
+    address: p.address,
+    phone: p.phone,
+    email: email.text,
+  });
 
   const contactActions: ContactAction[] = [];
   if (tel) {
@@ -192,6 +196,7 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
     contactActions.push({ key: 'email', label: 'E-mail', icon: Mail, url: email.href });
   }
 
+  const isCareStaff = user?.role === 'pro' || user?.role === 'nurse';
   const dossierItems: SettingsRowProps[] = [
     {
       icon: FolderOpen,
@@ -200,26 +205,31 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
       onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'documents')),
     },
   ];
-  if (user?.role === 'pro' || user?.role === 'nurse') {
+  if (isCareStaff) {
     dossierItems.push({
       icon: FilePenLine,
       label: 'Ordonnances',
       onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'prescriptions')),
     });
   }
-  dossierItems.push(
-    {
-      icon: ClipboardList,
-      label: 'Historique',
-      ...(histCount > 0 ? { value: String(histCount) } : {}),
-      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'history')),
-    },
-    {
-      icon: HeartPulse,
-      label: 'Carnet de santé',
-      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'health-record')),
-    },
-  );
+  dossierItems.push({
+    icon: ClipboardList,
+    label: 'Historique',
+    ...(histCount > 0 ? { value: String(histCount) } : {}),
+    onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'history')),
+  });
+  if (isCareStaff) {
+    dossierItems.push({
+      icon: NotebookPen,
+      label: 'Transmissions',
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'transmissions')),
+    });
+  }
+  dossierItems.push({
+    icon: HeartPulse,
+    label: 'Carnet de santé',
+    onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'health-record')),
+  });
   if (canOrder) {
     dossierItems.push({
       icon: Pill,
@@ -278,25 +288,13 @@ export function PatientDetailScreen({ rolePrefix = '/(nurse)' }: Props) {
           ) : null}
         </View>
 
-        {infoLines.length > 0 ? (
-          <View style={sectionStyles.section}>
-            <AppText style={sectionStyles.sectionTitle} accessibilityRole="header">
-              Informations
-            </AppText>
-            <Card padding="none">
-              {infoLines.map((line, index) => (
-                <Fragment key={line.label}>
-                  {index > 0 ? <View style={styles.rowDivider} /> : null}
-                  <View style={styles.infoRow}>
-                    <AppText variant="caption">{line.label}</AppText>
-                    <AppText variant="body">{line.value}</AppText>
-                    {line.secondary ? <AppText variant="secondary">{line.secondary}</AppText> : null}
-                  </View>
-                </Fragment>
-              ))}
-            </Card>
-          </View>
-        ) : null}
+        <PatientInfoCard lines={infoLines} />
+
+        <PatientPhonesSection
+          patientId={patientId}
+          canEdit={user?.role === 'nurse' || user?.role === 'pro' || user?.role === 'super_admin'}
+          onCall={(phone) => openContact(`tel:${phone.replace(/\s/g, '')}`)}
+        />
 
         <SettingsSection title="Dossier" items={dossierItems} />
 
@@ -360,16 +358,6 @@ function buildStyles({ colors: c }: Theme) {
     },
     actions: {
       gap: spacing[3],
-    },
-    infoRow: {
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[3],
-      gap: spacing[0.5],
-    },
-    rowDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: c.borderLight,
-      marginLeft: spacing[4],
     },
     buttonCell: {
       flexGrow: 1,

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../DbSchemaCache.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 
 /** Liens patient ↔ professionnel (PPA) et règles d’accès staff aux dossiers patients. */
 final class PatientProfessionalAccessService
@@ -53,9 +54,20 @@ final class PatientProfessionalAccessService
         }
 
         $linkIds = array_values(array_unique(array_filter($linkIds)));
+        if ($linkIds === []) {
+            return;
+        }
+        $relativeId = trim((string) ($appointmentInput['relative_id'] ?? ''));
+        try {
+            $dossierId = RelativeProfile::ensureAppointmentSubject($this->db, $patientId, $relativeId !== '' ? $relativeId : null);
+        } catch (Throwable $e) {
+            error_log('linkPatientAccessAfterAppointmentCreate (dossier proche): ' . $e->getMessage());
+
+            return;
+        }
         foreach ($linkIds as $profId) {
             try {
-                $this->linkPatientProfessional($patientId, $profId, $appointmentId, 'appointment_linked');
+                $this->linkPatientProfessional($dossierId, $profId, $appointmentId, 'appointment_linked');
             } catch (Throwable $e) {
                 error_log('linkPatientAccessAfterAppointmentCreate: ' . $e->getMessage());
             }
@@ -373,30 +385,24 @@ final class PatientProfessionalAccessService
         string $professionalId,
         string $professionalRole
     ): bool {
-        if ($professionalRole === 'nurse') {
-            $stmt = $this->db->prepare(
-                'SELECT 1 FROM appointments
-                 WHERE patient_id = ? AND assigned_nurse_id = ?
-                 AND status IN (\'confirmed\', \'planned\', \'inProgress\')
-                 LIMIT 1'
-            );
-            $stmt->execute([$patientId, $professionalId]);
-
-            return (bool) $stmt->fetchColumn();
+        $assigneeColumn = match (true) {
+            $professionalRole === 'nurse' => 'assigned_nurse_id',
+            in_array($professionalRole, ['lab', 'subaccount'], true) => 'assigned_lab_id',
+            default => null,
+        };
+        if ($assigneeColumn === null) {
+            return false;
         }
-        if (in_array($professionalRole, ['lab', 'subaccount'], true)) {
-            $stmt = $this->db->prepare(
-                'SELECT 1 FROM appointments
-                 WHERE patient_id = ? AND assigned_lab_id = ?
-                 AND status IN (\'confirmed\', \'planned\', \'inProgress\')
-                 LIMIT 1'
-            );
-            $stmt->execute([$patientId, $professionalId]);
+        [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId);
+        $stmt = $this->db->prepare(
+            "SELECT 1 FROM appointments a
+             WHERE $subjectSql AND a.$assigneeColumn = ?
+             AND a.status IN ('confirmed', 'planned', 'inProgress')
+             LIMIT 1"
+        );
+        $stmt->execute([...$subjectParams, $professionalId]);
 
-            return (bool) $stmt->fetchColumn();
-        }
-
-        return false;
+        return (bool) $stmt->fetchColumn();
     }
 
     private function getRoleById(string $id): ?string

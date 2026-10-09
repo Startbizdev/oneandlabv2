@@ -89,6 +89,110 @@ final class PharmacyCatalogService
         return $items;
     }
 
+    /**
+     * Fiche visible au moment de commander ou sur une commande déjà passée.
+     * Le catalogue ouvert suffit pour qui peut commander ; sinon il faut un lien (soi-même, commande, admin).
+     */
+    public static function mayViewPublicProfile(
+        bool $catalogVisible,
+        bool $isSelf,
+        bool $hasOrder,
+        bool $isSuperAdmin,
+        bool $canOrder,
+    ): bool {
+        if ($isSelf || $hasOrder || $isSuperAdmin) {
+            return true;
+        }
+
+        return $canOrder && $catalogVisible;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function publicProfile(string $pharmacyId): ?array
+    {
+        $pharmacyId = trim($pharmacyId);
+        if ($pharmacyId === '') {
+            return null;
+        }
+
+        $config = $this->moduleConfig->getConfig();
+        $receiverEmplois = $config['pharmacy_receiver_emplois'] ?? ['Pharmacien'];
+        if (!is_array($receiverEmplois) || $receiverEmplois === []) {
+            $receiverEmplois = ['Pharmacien'];
+        }
+        $placeholders = implode(',', array_fill(0, count($receiverEmplois), '?'));
+        $params = array_merge([$pharmacyId], $receiverEmplois);
+
+        $sql = "
+            SELECT p.id, p.emploi, p.role, p.profile_image_url, p.cover_image_url, p.biography,
+                   p.website_url, p.opening_hours, p.social_links,
+                   p.company_name_encrypted, p.company_name_dek,
+                   p.first_name_encrypted, p.first_name_dek,
+                   p.last_name_encrypted, p.last_name_dek,
+                   p.phone_encrypted, p.phone_dek,
+                   p.address_encrypted, p.address_dek,
+                   p.pharmacy_accepts_click_collect, p.pharmacy_accepts_home_delivery,
+                   p.pharmacy_orders_paused, p.pharmacy_orders_enabled,
+                   p.pharmacy_click_collect_days_json, p.pharmacy_home_delivery_days_json
+            FROM profiles p
+            WHERE p.id = ?
+              AND p.role = 'pro'
+              AND p.emploi IN ($placeholders)
+            LIMIT 1
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $item = $this->mapPharmacyRow($row);
+        $address = $item['address'];
+        $formatted = '';
+        if (is_array($address)) {
+            $formatted = trim((string) ($address['formatted_address'] ?? $address['label'] ?? ''));
+        }
+
+        return [
+            'id' => $item['id'],
+            'display_name' => $item['display_name'],
+            'emploi' => $item['emploi'],
+            'phone' => $this->decryptOptional($row, 'phone'),
+            'profile_image_url' => $this->nullableString($row['profile_image_url'] ?? null),
+            'cover_image_url' => $this->nullableString($row['cover_image_url'] ?? null),
+            'biography' => $this->nullableString($row['biography'] ?? null),
+            'website_url' => $this->nullableString($row['website_url'] ?? null),
+            'opening_hours' => $this->decodeJsonObject($row['opening_hours'] ?? null),
+            'social_links' => $this->decodeJsonObject($row['social_links'] ?? null),
+            'address' => $address,
+            'address_label' => $formatted !== '' ? $formatted : null,
+            'postal_code' => $item['postal_code'],
+            'accepts_click_collect' => $item['accepts_click_collect'],
+            'accepts_home_delivery' => $item['accepts_home_delivery'],
+            'click_collect_days' => $item['click_collect_days'],
+            'home_delivery_days' => $item['home_delivery_days'],
+            'catalog_visible' => !empty($row['pharmacy_orders_enabled']) && empty($row['pharmacy_orders_paused']),
+        ];
+    }
+
+    public function viewerHasPharmacyOrder(string $viewerId, string $pharmacyId): bool
+    {
+        if ($viewerId === '' || $pharmacyId === '') {
+            return false;
+        }
+        $stmt = $this->db->prepare('
+            SELECT 1 FROM pharmacy_orders
+            WHERE pharmacy_id = ? AND (requester_id = ? OR patient_id = ?)
+            LIMIT 1
+        ');
+        $stmt->execute([$pharmacyId, $viewerId, $viewerId]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
     /** @return list<string> */
     private function favoritePharmacyIds(string $userId): array
     {
@@ -168,6 +272,47 @@ final class PharmacyCatalogService
             (string) $row['address_dek']
         );
         $decoded = json_decode($json, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function decryptOptional(array $row, string $field): ?string
+    {
+        $encrypted = $row[$field . '_encrypted'] ?? null;
+        $dek = $row[$field . '_dek'] ?? null;
+        if (!is_string($encrypted) || $encrypted === '' || !is_string($dek) || $dek === '') {
+            return null;
+        }
+        try {
+            $value = trim($this->crypto->decryptField($encrypted, $dek));
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function decodeJsonObject(mixed $raw): ?array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (!is_string($raw) || trim($raw) === '') {
+            return null;
+        }
+        $decoded = json_decode($raw, true);
 
         return is_array($decoded) ? $decoded : null;
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Uuid.php';
+require_once __DIR__ . '/../Validation.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 
 final class AiFeedbackService
 {
@@ -23,6 +25,14 @@ final class AiFeedbackService
         if ($rating < 1 || $rating > 5) {
             throw new InvalidArgumentException('rating 1–5 requis');
         }
+        $conversationId = self::optionalId($input['conversation_id'] ?? null);
+        $messageId = self::optionalId($input['message_id'] ?? null);
+        if ($messageId !== null && $conversationId === null) {
+            throw new InvalidArgumentException('conversation_id requis avec message_id');
+        }
+        if ($conversationId !== null) {
+            $this->assertOwnsConversation((string) $user['user_id'], $conversationId, $messageId);
+        }
         $id = Uuid::v4();
         $this->db->prepare('
             INSERT INTO ai_feedback (id, user_id, conversation_id, message_id, rating, comment)
@@ -30,13 +40,43 @@ final class AiFeedbackService
         ')->execute([
             $id,
             $user['user_id'],
-            $input['conversation_id'] ?? null,
-            $input['message_id'] ?? null,
+            $conversationId,
+            $messageId,
             $rating,
             isset($input['comment']) ? mb_substr((string) $input['comment'], 0, 500) : null,
         ]);
 
         return ['id' => $id, 'rating' => $rating];
+    }
+
+    private function assertOwnsConversation(string $userId, string $conversationId, ?string $messageId): void
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM ai_conversations WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute([$conversationId, $userId]);
+        if ($stmt->fetchColumn() === false) {
+            throw HttpStatusException::notFound('Conversation introuvable');
+        }
+        if ($messageId === null) {
+            return;
+        }
+        $stmt = $this->db->prepare('SELECT 1 FROM ai_messages WHERE id = ? AND conversation_id = ? LIMIT 1');
+        $stmt->execute([$messageId, $conversationId]);
+        if ($stmt->fetchColumn() === false) {
+            throw HttpStatusException::notFound('Message introuvable');
+        }
+    }
+
+    private static function optionalId(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $id = trim((string) $value);
+        if (!Validation::uuid($id)) {
+            throw new InvalidArgumentException('Identifiant invalide');
+        }
+
+        return $id;
     }
 
     /**

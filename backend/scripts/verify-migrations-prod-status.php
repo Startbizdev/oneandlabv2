@@ -25,9 +25,22 @@ $checks = [
     '093 nurse_passage_series' => "SHOW TABLES LIKE 'nurse_passage_series'",
     '093 appointments.passage_series_id' => "SHOW COLUMNS FROM appointments LIKE 'passage_series_id'",
     '093 appointments.passage_source' => "SHOW COLUMNS FROM appointments LIKE 'passage_source'",
+    '118 nurse_passage_series.time_slot all_day' => "
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'nurse_passage_series'
+          AND COLUMN_NAME = 'time_slot' AND COLUMN_TYPE LIKE '%''all_day''%'
+    ",
+    '120 appointment_nursing_items.done_at' => "SHOW COLUMNS FROM appointment_nursing_items LIKE 'done_at'",
     '094 notif_nurse_en_route_sent_at' => "SHOW COLUMNS FROM nurse_tour_stops LIKE 'notif_nurse_en_route_sent_at'",
     '095 patient_clinical_vitals' => "SHOW TABLES LIKE 'patient_clinical_vitals'",
     '096 patient_absences' => "SHOW TABLES LIKE 'patient_absences'",
+    '119 patient_absences.end_date nullable' => "
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'patient_absences'
+          AND COLUMN_NAME = 'end_date' AND IS_NULLABLE = 'YES'
+    ",
+    '121 patient_phones' => "SHOW TABLES LIKE 'patient_phones'",
+    '122 patient_transmissions' => "SHOW TABLES LIKE 'patient_transmissions'",
     '097 offer_modal_snoozed_until' => "SHOW COLUMNS FROM appointment_offers LIKE 'modal_snoozed_until'",
     '098 preleveur_tour_plans' => "SHOW TABLES LIKE 'preleveur_tour_plans'",
     '098 preleveur_tour_stops' => "SHOW TABLES LIKE 'preleveur_tour_stops'",
@@ -42,6 +55,14 @@ $checks = [
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'patient_professional_access'
           AND COLUMN_NAME = 'source' AND COLUMN_TYPE LIKE '%''lab_assignment''%'
     ",
+    '124 ai_messages.seq' => "SHOW COLUMNS FROM ai_messages LIKE 'seq'",
+    '124 ai_messages.client_message_id' => "SHOW COLUMNS FROM ai_messages LIKE 'client_message_id'",
+    '124 ai_messages.reply_to_message_id' => "SHOW COLUMNS FROM ai_messages LIKE 'reply_to_message_id'",
+    '125 ai_conversations.context_type' => "SHOW COLUMNS FROM ai_conversations LIKE 'context_type'",
+    '125 ai_conversations.context_id' => "SHOW COLUMNS FROM ai_conversations LIKE 'context_id'",
+    '126 patient_relatives.profile_id' => "SHOW COLUMNS FROM patient_relatives LIKE 'profile_id'",
+    '127 nurse_collaborations' => "SHOW TABLES LIKE 'nurse_collaborations'",
+    '128 medical_documents.replaced_by_document_id' => "SHOW COLUMNS FROM medical_documents LIKE 'replaced_by_document_id'",
     '109 Pansement-plaie wound_type lourd' => "
         SELECT 1
         FROM care_category_options cco

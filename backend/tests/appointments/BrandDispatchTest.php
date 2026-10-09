@@ -86,6 +86,7 @@ final class BrandDispatchTest extends TestCase
                 $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$labId]);
             }
         }
+        unset($this->notifications, $this->dispatch, $this->brands, $this->crypto, $this->db);
         parent::tearDown();
     }
 

@@ -13,6 +13,8 @@ export const NURSE_TOUR_STALE_MS = 60_000;
 /** La position ne sert qu'au calcul de l'ordre : elle n'entre pas dans la clé, sinon chaque variation GPS vide le cache. */
 export const NURSE_TOUR_QUERY_ROOT = ['nurse-tour'] as const;
 
+export const NURSE_TOUR_SUMMARY_QUERY_ROOT = ['nurse-tour-summary'] as const;
+
 export function nurseTourQueryKey(date: string) {
   return [...NURSE_TOUR_QUERY_ROOT, date] as const;
 }
@@ -20,7 +22,6 @@ export function nurseTourQueryKey(date: string) {
 export function todayTourDate(): string {
   return dayjs().format('YYYY-MM-DD');
 }
-
 export function withDerivedSummary(tour: NurseTourPayload): NurseTourPayload {
   const summary = computeTourSummaryFromStops(tour.stops, tour.summary.estimated_km);
   return {

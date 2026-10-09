@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 /**
  * Évite les réponses vocales qui répètent l'utilisateur ou bouclent sur la même question.
+ * Les fausses confirmations sont traitées en amont par AiAssistantResponseGuard.
  */
 final class AiVoiceAssistantGuard
 {
@@ -14,7 +15,7 @@ final class AiVoiceAssistantGuard
             return self::fallbackForDraft($draft) ?? 'Comment puis-je vous aider ?';
         }
 
-        if (self::echoesUser($userTranscript, $assistant)) {
+        if (self::isNearExactEcho($userTranscript, $assistant)) {
             $fallback = self::fallbackForDraft($draft);
             if ($fallback !== null) {
                 return $fallback;
@@ -28,46 +29,38 @@ final class AiVoiceAssistantGuard
             }
         }
 
-        if (self::claimsConfirmedWithoutDraft($assistant, $draft)) {
-            if (($draft['status'] ?? '') === 'ready') {
-                return 'Voici le récap — appuyez sur Valider pour créer le rendez-vous.';
-            }
-
-            return 'Presque fini — complétez le récap à l\'écran puis appuyez sur Valider.';
-        }
-
         return $assistant;
     }
 
-    private static function claimsConfirmedWithoutDraft(string $assistant, ?array $draft): bool
-    {
-        if (!is_array($draft) || ($draft['status'] ?? '') === 'confirmed') {
-            return false;
-        }
-
-        $a = mb_strtolower($assistant);
-
-        return (bool) preg_match(
-            '/\b(?:c[\']?est enregistr[ée]|enregistr[ée]|confirm[ée]|cr[ée][ée]|valid[ée])\b/u',
-            $a,
-        );
-    }
-
-    private static function echoesUser(string $user, string $assistant): bool
+    /**
+     * Réponse qui recopie (quasi) mot pour mot le message utilisateur. Une réponse utile qui reprend
+     * quelques mots ou cite la demande dans une phrase plus longue n'est pas une recopie.
+     */
+    public static function isNearExactEcho(string $user, string $assistant): bool
     {
         $u = self::normalizeText($user);
         $a = self::normalizeText($assistant);
-        if ($u === '' || mb_strlen($u) < 10) {
+        $userLength = mb_strlen($u);
+        if ($u === '' || $userLength < 10) {
             return false;
         }
-
-        if (str_contains($a, $u)) {
+        if ($a === $u) {
             return true;
         }
 
+        $extra = mb_strlen($a) - $userLength;
+        $maxExtra = max(15, (int) floor($userLength * 0.25));
+        if ($extra > 0 && $extra <= $maxExtra && (str_starts_with($a, $u) || str_ends_with($a, $u))) {
+            return true;
+        }
+
+        $ratio = mb_strlen($a) / $userLength;
+        if ($ratio < 0.85 || $ratio > 1.15) {
+            return false;
+        }
         similar_text($u, $a, $pct);
 
-        return $pct >= 50;
+        return $pct >= 90;
     }
 
     private static function repeatsBlockedQuestion(string $assistant, ?array $draft): bool

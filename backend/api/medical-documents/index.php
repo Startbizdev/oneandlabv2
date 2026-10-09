@@ -4,7 +4,6 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/upload-limits.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
@@ -12,7 +11,7 @@ require_once __DIR__ . '/../../lib/NotificationService.php';
 require_once __DIR__ . '/../../lib/EmailQueue.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/medical-documents/bootstrap.php';
-require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../lib/AppTimezone.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
 
@@ -71,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Vérifier les permissions (patient, professionnel assigné, ou admin) - inclure relative_id
         $stmt = $db->prepare('
             SELECT 
+                id,
                 patient_id,
                 relative_id,
                 assigned_to,
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         } else {
             // Vérifier les permissions (inclure relative_id pour documents proche)
             $stmt = $db->prepare('
-                SELECT patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, assigned_pro_id, created_by, created_by_role
+                SELECT id, patient_id, relative_id, assigned_to, assigned_nurse_id, assigned_lab_id, assigned_pro_id, created_by, created_by_role
                 FROM appointments
                 WHERE id = ?
             ');
@@ -190,73 +190,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
         
-        // Validation du fichier
-        $file = $_FILES['file'];
-        $maxSize = ONEANDLAB_MAX_UPLOAD_BYTES;
-        $allowedTypes = UploadMimeTypes::MEDICAL_DOCUMENT;
-        
-        if ($file['size'] > $maxSize) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Fichier trop volumineux (max 25 Mo)']);
-            exit;
-        }
-        
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        // finfo_close($finfo); // Deprecated in PHP 8.5, freed automatically
-        
-        if (!in_array($mimeType, $allowedTypes, true)) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Type de fichier non autorisé']);
-            exit;
-        }
-        
-        // Lire le contenu du fichier
-        $fileContent = file_get_contents($file['tmp_name']);
-        if ($fileContent === false) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Erreur lors de la lecture du fichier']);
-            exit;
-        }
-        
-        // Chiffrer le fichier
-        $encryptedData = $crypto->encryptFile($fileContent);
-        
-        // Créer le dossier d'upload s'il n'existe pas (backend/uploads/medical/ pour cohérence avec patient-documents)
-        $backendDir = realpath(__DIR__ . '/../../');
-        if ($backendDir === false) {
-            $backendDir = __DIR__ . '/../../';
-        }
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-        
-        // Générer un ID unique pour le fichier
-        $id = bin2hex(random_bytes(16));
-        $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
-        
-        // Créer le dossier pour ce document
-        $documentDir = $uploadDir . $id . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-        
-        // Sauvegarder le fichier chiffré
-        $filePath = $documentDir . $fileName . '.encrypted';
-        $decryptedContent = base64_decode($encryptedData['encrypted']);
-        if ($decryptedContent === false) {
-            throw new Exception('Erreur lors du décodage base64 du fichier');
-        }
-        
-        $writeResult = file_put_contents($filePath, $decryptedContent);
-
-        if ($writeResult === false || !file_exists($filePath)) {
-            throw new Exception('Erreur lors de l\'écriture du fichier sur le serveur. Vérifiez les permissions du dossier uploads/medical/');
-        }
-        
-        // Stocker les métadonnées en base
-        $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
+        $stored = MedicalDocumentsInternal::storeUploadedFile($_FILES['file'], $crypto);
+        $id = $stored['id'];
+        $fileName = $stored['file_name'];
+        $mimeType = $stored['mime_type'];
 
         $prescriptionKind = null;
         if ($documentType === 'ordonnance' && isset($_POST['prescription_kind'])) {
@@ -301,8 +238,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $patientIdForDoc,
             $user['user_id'],
             $fileName,
-            $relativePath,
-            $file['size'],
+            $stored['file_path'],
+            $stored['file_size'],
             $mimeType,
             $documentType,
             $prescriptionKind,
@@ -310,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $prescriptionNumber,
             $generatedAt,
             1,
-            $encryptedData['dek'],
+            $stored['file_dek'],
         ]);
 
         // Logger l'upload
@@ -323,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             [
                 'appointment_id' => $appointmentId,
                 'file_name' => $fileName,
-                'file_size' => $file['size'],
+                'file_size' => $stored['file_size'],
                 'mime_type' => $mimeType,
             ]
         );
@@ -554,13 +491,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         
         echo json_encode([
             'success' => true,
-            'data' => [
-                'id' => $id,
-                'file_name' => $fileName,
-                'file_size' => $file['size'],
-                'mime_type' => $mimeType,
-            ],
+            'data' => MedicalDocumentsInternal::uploadPayload($stored),
         ]);
+    } catch (HttpStatusException $e) {
+        http_response_code($e->httpStatus);
+        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'code' => $e->errorCode]);
     } catch (Exception $e) {
         ApiServerError::respond('upload document médical user=' . $user['user_id'], $e, 'L’envoi du document a échoué. Réessayez plus tard.');
     }

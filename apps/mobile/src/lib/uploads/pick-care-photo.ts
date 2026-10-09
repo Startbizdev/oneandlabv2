@@ -136,8 +136,8 @@ const SOURCES: readonly { source: CarePhotoPickSource; label: string; icon: Luci
   { source: 'file', label: 'Fichier', icon: FileUp },
 ];
 
-async function chooseSource(): Promise<CarePhotoPickSource | null> {
-  const index = await showActionSheet('Ajouter un fichier', SOURCES);
+async function chooseSource(title: string): Promise<CarePhotoPickSource | null> {
+  const index = await showActionSheet(title, SOURCES);
   return index === null ? null : (SOURCES[index]?.source ?? null);
 }
 
@@ -152,8 +152,8 @@ export async function pickCarePhotoFromSource(
 }
 
 /** Image ou PDF : appareil, galerie ou fichier (max 25 Mo). */
-export async function pickCarePhoto(): Promise<CarePhotoPickResult | null> {
-  const source = await chooseSource();
+export async function pickCarePhoto(title = 'Ajouter un fichier'): Promise<CarePhotoPickResult | null> {
+  const source = await chooseSource(title);
   if (!source) return null;
   return pickCarePhotoFromSource(source);
 }

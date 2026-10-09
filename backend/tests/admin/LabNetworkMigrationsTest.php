@@ -28,6 +28,12 @@ final class LabNetworkMigrationsTest extends TestCase
         $this->migrationsDir = dirname(__DIR__, 3) . '/database/migrations';
     }
 
+    protected function tearDown(): void
+    {
+        unset($this->db);
+        parent::tearDown();
+    }
+
     public function testReplayOnMigratedSchemaKeepsExistingAccessRows(): void
     {
         $before = $this->db->query('SELECT COUNT(*) FROM patient_professional_access')->fetchColumn();

@@ -2,6 +2,7 @@ import { api } from '@/api/client';
 import type {
   CreatePharmacyOrderPayload,
   PharmacyCatalogItem,
+  PharmacyPublicProfile,
   PharmacyModuleUiFlags,
   PharmacyOrder,
   PharmacyOrderMessage,
@@ -26,6 +27,12 @@ export async function fetchPharmacyCatalog(params: {
   if (params.fulfillment_mode?.trim()) q.set('fulfillment_mode', params.fulfillment_mode.trim());
   const suffix = q.toString() ? `?${q.toString()}` : '';
   return api.get<PharmacyCatalogItem[]>(`/pharmacies${suffix}`);
+}
+
+export async function fetchPharmacyPublicProfile(pharmacyId: string) {
+  const res = await api.get<PharmacyPublicProfile>(`/pharmacies/${encodeURIComponent(pharmacyId)}`);
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Pharmacie introuvable');
+  return res.data;
 }
 
 export async function fetchPharmacyFavoriteIds() {
@@ -60,6 +67,12 @@ export async function updatePharmacyOrderStatus(
   return api.patch<PharmacyOrder>(`/pharmacy-orders/${encodeURIComponent(orderId)}`, {
     status,
     ...patch,
+  });
+}
+
+export async function attachPharmacyOrderPrescriptions(orderId: string, documentIds: string[]) {
+  return api.post<PharmacyOrder>(`/pharmacy-orders/${encodeURIComponent(orderId)}/prescriptions`, {
+    document_ids: documentIds,
   });
 }
 

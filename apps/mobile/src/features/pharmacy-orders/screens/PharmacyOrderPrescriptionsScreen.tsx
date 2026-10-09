@@ -2,7 +2,10 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { Download, Eye, FileText } from 'lucide-react-native';
+import { Download, Eye, FileText, FileUp } from 'lucide-react-native';
+import { canReplacePrescriptionDocument } from '@oneandlab/shared-utils';
+import { useReplacePrescription } from '@/features/documents/hooks/use-replace-prescription';
+import { useAuthStore } from '@/store/auth-store';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -10,21 +13,22 @@ import { Row } from '@/components/layout/primitives';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { queryKeys } from '@/lib/query-keys';
-import { openMedicalDocument, cacheMedicalDocument } from '@/lib/downloads/download-medical-document';
-import { exportLocalFile } from '@/lib/downloads/open-local-file';
+import { exportMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
 import { fetchPharmacyOrder } from '../api/pharmacy-orders.service';
 import { fetchMedicalDocumentById } from '@/features/appointments/api/medical-documents.service';
 import { formatDocumentFileSubtitle } from '@/utils/document-display-name';
 import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
-/** Ordonnances jointes à une commande pharmacie : aperçu et téléchargement. */
+/** Ordonnances jointes à une commande pharmacie : aperçu, téléchargement, remplacement (soignants). */
 export function PharmacyOrderPrescriptionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = String(id ?? '');
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
+  const role = useAuthStore((s) => s.user?.role);
+  const { replace: replacePrescription, replacingId } = useReplacePrescription();
 
   const orderQ = useQuery({
     queryKey: queryKeys.pharmacyOrders.detail(orderId),
@@ -40,7 +44,7 @@ export function PharmacyOrderPrescriptionsScreen() {
 
   const docsQ = useQueries({
     queries: docIds.map((documentId) => ({
-      queryKey: ['medical-document', documentId] as const,
+      queryKey: queryKeys.documents.byId(documentId),
       queryFn: async () => {
         const res = await fetchMedicalDocumentById(documentId);
         if (!res.success || !res.data) throw new Error(res.error ?? 'Document introuvable');
@@ -58,13 +62,8 @@ export function PharmacyOrderPrescriptionsScreen() {
   };
 
   const downloadDoc = async (documentId: string, fileName?: string) => {
-    const cached = await cacheMedicalDocument(documentId, fileName);
-    if (!cached.ok || !cached.localUri) {
-      toast(cached.error ?? 'Téléchargement impossible', { type: 'error' });
-      return;
-    }
-    const exported = await exportLocalFile(cached.localUri, fileName);
-    if (!exported.ok) toast(exported.error ?? 'Enregistrement impossible', { type: 'error' });
+    const res = await exportMedicalDocument(documentId, fileName);
+    if (!res.ok) toast(res.error ?? 'Enregistrement impossible', { type: 'error' });
   };
 
   if (orderQ.isError && !orderQ.data) {
@@ -132,6 +131,18 @@ export function PharmacyOrderPrescriptionsScreen() {
                         >
                           <Download size={iconSize.md} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
                         </IconActionButton>
+                        {canReplacePrescriptionDocument(role, meta) ? (
+                          <IconActionButton
+                            label={`Remplacer ${title}`}
+                            variant="muted"
+                            loading={replacingId === documentId}
+                            onPress={() => {
+                              void replacePrescription(documentId);
+                            }}
+                          >
+                            <FileUp size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+                          </IconActionButton>
+                        ) : null}
                       </Row>
                     }
                   />

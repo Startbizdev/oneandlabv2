@@ -1,4 +1,5 @@
 import type { AiAppointmentDraft } from '@oneandlab/shared-types';
+import { isPatientProfileUploadType } from '@/features/patients/api/patient-profile.service';
 
 export type AiDraftDocumentEntry = {
   type: string;
@@ -7,8 +8,6 @@ export type AiDraftDocumentEntry = {
   medical_document_id: string;
   file_name?: string | null;
 };
-
-const PROFILE_DOC_TYPES = ['carte_vitale', 'carte_mutuelle', 'attestation_droits_ame', 'autres_assurances'] as const;
 
 const DOC_LABELS: Record<string, string> = {
   carte_vitale: 'Carte Vitale',
@@ -28,12 +27,10 @@ function fileRefToEntry(type: string, ref: unknown): AiDraftDocumentEntry | null
   if (!row) return null;
   const medId = typeof row.medical_document_id === 'string' ? row.medical_document_id.trim() : '';
   if (!medId) return null;
-  const isProfile = (PROFILE_DOC_TYPES as readonly string[]).includes(type);
-
   return {
     type,
     label: DOC_LABELS[type] ?? type,
-    source: isProfile ? 'profile' : 'appointment',
+    source: isPatientProfileUploadType(type) ? 'profile' : 'appointment',
     medical_document_id: medId,
     file_name: typeof row.file_name === 'string' ? row.file_name : null,
   };
@@ -76,4 +73,4 @@ export function getAiDraftDocumentEntries(draft: AiAppointmentDraft): AiDraftDoc
   return entries;
 }
 
-export { DOC_LABELS as AI_DRAFT_DOC_LABELS, PROFILE_DOC_TYPES as AI_PROFILE_DOC_TYPES };
+export { DOC_LABELS as AI_DRAFT_DOC_LABELS };

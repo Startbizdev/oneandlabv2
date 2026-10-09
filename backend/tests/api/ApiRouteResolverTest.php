@@ -24,6 +24,7 @@ final class ApiRouteResolverTest extends TestCase
             'slug' => ['public/nurse/mon-cabinet', 'public/nurse/[slug].php', ['slug' => 'mon-cabinet']],
             'id' => ['users/abc', 'users/[id].php', ['id' => 'abc']],
             'action après id' => ['medical-documents/abc/download', 'medical-documents/[id]/download.php', ['id' => 'abc']],
+            'ordonnances commande pharmacie' => ['pharmacy-orders/abc/prescriptions', 'pharmacy-orders/[id]/prescriptions.php', ['id' => 'abc']],
             'snooze offre infirmier' => ['appointments/abc/offer/snooze', 'appointments/[id]/offer/snooze.php', ['id' => 'abc']],
             'action imbriquée mot de passe' => ['users/abc/password/reset-email', 'users/[id]/password/reset-email.php', ['id' => 'abc']],
             'double dynamique' => ['nurse/patients/abc/absences/def', 'nurse/patients/[id]/absences/[absenceId].php', ['id' => 'abc', 'absenceId' => 'def']],

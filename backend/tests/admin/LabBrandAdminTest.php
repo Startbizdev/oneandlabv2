@@ -55,6 +55,7 @@ final class LabBrandAdminTest extends TestCase
                 $restore->execute([$order, $id]);
             }
         }
+        unset($this->brands, $this->db);
         parent::tearDown();
     }
 

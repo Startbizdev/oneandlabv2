@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/CaryBookingPromptRules.php';
 require_once __DIR__ . '/AiBookingIdentityParser.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/bootstrap.php';
 
 /**
  * Résout patient existant depuis le patch Grok (pas de re-parse du message utilisateur).
@@ -12,10 +14,22 @@ require_once __DIR__ . '/../../models/User.php';
 final class AiStaffPatientResolver
 {
     private User $userModel;
+    private ?PDO $db;
 
-    public function __construct(?User $userModel = null)
+    public function __construct(?User $userModel = null, ?PDO $db = null)
     {
         $this->userModel = $userModel ?? new User();
+        $this->db = $db;
+    }
+
+    /** Même règle que la fiche patient : le professionnel doit avoir accès au dossier. */
+    public function staffCanUsePatient(string $patientId, array $user): bool
+    {
+        if ($patientId === '' || (string) ($user['user_id'] ?? '') === '') {
+            return false;
+        }
+
+        return PatientDossierAccess::canAccess($this->db ??= ai_db(), $this->userModel, $user, $patientId);
     }
 
     /**
@@ -31,7 +45,7 @@ final class AiStaffPatientResolver
         }
 
         $payload = AiBookingIdentityParser::sanitizeIdentityFields($payload);
-        $payload = $this->resolveByEmail($payload, $user, $role);
+        $payload = $this->resolveByEmail($payload, $user);
         $payload = $this->inferPatientMode($payload);
 
         return $payload;
@@ -70,7 +84,7 @@ final class AiStaffPatientResolver
      * @param array<string, mixed> $user
      * @return array<string, mixed>
      */
-    private function resolveByEmail(array $payload, array $user, string $role): array
+    private function resolveByEmail(array $payload, array $user): array
     {
         $form = is_array($payload['form_data'] ?? null) ? $payload['form_data'] : [];
         $email = strtolower(trim((string) ($payload['email'] ?? $form['email'] ?? '')));
@@ -83,7 +97,7 @@ final class AiStaffPatientResolver
             return $payload;
         }
 
-        if (!$this->staffCanUsePatient($existingId, $user, $role)) {
+        if (!$this->staffCanUsePatient($existingId, $user)) {
             return $payload;
         }
 
@@ -92,60 +106,5 @@ final class AiStaffPatientResolver
         $payload['booking_step'] = $payload['booking_step'] ?? 'services';
 
         return $payload;
-    }
-
-    private function staffCanUsePatient(string $patientId, array $user, string $role): bool
-    {
-        $staffId = (string) ($user['user_id'] ?? '');
-        if ($staffId === '') {
-            return false;
-        }
-
-        foreach ($this->listStaffPatients($user, $role) as $patient) {
-            if ((string) ($patient['id'] ?? '') === $patientId) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, mixed> $user
-     * @return list<array{id: string, display_name: string, first_name: ?string, last_name: ?string}>
-     */
-    private function listStaffPatients(array $user, string $role): array
-    {
-        $requesterId = (string) ($user['user_id'] ?? '');
-        if ($requesterId === '') {
-            return [];
-        }
-
-        $filters = ['role' => 'patient', 'created_by' => $requesterId];
-        $out = [];
-        $page = 1;
-        do {
-            $result = $this->userModel->getAll($filters, $page, 50, $requesterId, $role);
-            foreach ($result['data'] ?? [] as $row) {
-                if (empty($row['id'])) {
-                    continue;
-                }
-                $fn = trim((string) ($row['first_name'] ?? ''));
-                $ln = trim((string) ($row['last_name'] ?? ''));
-                $out[] = [
-                    'id' => (string) $row['id'],
-                    'first_name' => $fn !== '' ? $fn : null,
-                    'last_name' => $ln !== '' ? $ln : null,
-                    'display_name' => trim($fn . ' ' . $ln) ?: 'Patient',
-                ];
-                if (count($out) >= 20) {
-                    break 2;
-                }
-            }
-            $pages = (int) ($result['pages'] ?? 1);
-            $page++;
-        } while ($page <= $pages && $page <= 4);
-
-        return $out;
     }
 }

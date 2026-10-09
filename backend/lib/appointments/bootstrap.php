@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/AppointmentFormDataCrypto.php';
+require_once __DIR__ . '/AppointmentAddressFields.php';
 require_once __DIR__ . '/AppointmentReviewStats.php';
 require_once __DIR__ . '/AppointmentListQuery.php';
 require_once __DIR__ . '/AppointmentListSqlResult.php';

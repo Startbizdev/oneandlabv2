@@ -62,25 +62,30 @@ final class TourOrderEngine
      */
     public function orderSmart(array $appointments, ?array $origin): array
     {
-        $byAddress = [];
-        foreach ($appointments as $apt) {
-            $key = TourProximity::addressKey($apt);
-            $byAddress[$key][] = $apt;
-        }
+        $chronological = $appointments;
+        usort($chronological, fn (array $a, array $b): int => $this->scheduleTimestamp($a) <=> $this->scheduleTimestamp($b));
 
         $groups = [];
-        foreach ($byAddress as $rows) {
-            usort($rows, [$this, 'compareSchedule']);
-            $groups[] = [
-                'anchor' => $this->scheduleTimestamp($rows[0] ?? []),
-                'rows' => $rows,
+        foreach ($chronological as $apt) {
+            $key = TourProximity::addressKey($apt);
+            $window = $this->timeWindow($apt);
+            $target = $key === '' ? null : $this->findVisitGroup($groups, $key, $window);
+            if ($target === null) {
+                $groups[] = ['key' => $key, 'window' => $window, 'rows' => [$apt]];
+                continue;
+            }
+            $groups[$target]['rows'][] = $apt;
+            $groups[$target]['window'] = [
+                min($groups[$target]['window'][0], $window[0]),
+                max($groups[$target]['window'][1], $window[1]),
             ];
         }
-        usort($groups, static fn ($a, $b) => $a['anchor'] <=> $b['anchor']);
 
         $flat = [];
         foreach ($groups as $group) {
-            foreach ($group['rows'] as $row) {
+            $rows = $group['rows'];
+            usort($rows, [$this, 'compareSchedule']);
+            foreach ($rows as $row) {
                 $flat[] = $row;
             }
         }
@@ -132,6 +137,60 @@ final class TourOrderEngine
         }
 
         return $ordered;
+    }
+
+    /**
+     * Groupe à la même adresse dont la plage horaire chevauche : les soins se font en une seule visite.
+     *
+     * @param list<array{key: string, window: array{0: float, 1: float}, rows: list<array<string, mixed>>}> $groups
+     * @param array{0: float, 1: float} $window
+     */
+    private function findVisitGroup(array $groups, string $key, array $window): ?int
+    {
+        foreach ($groups as $index => $group) {
+            if ($group['key'] === $key && $window[0] < $group['window'][1] && $group['window'][0] < $window[1]) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Plage (heures décimales, Paris) pendant laquelle le soin peut être fait :
+     * disponibilité, journée entière, sinon une heure à partir de l'heure planifiée.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function timeWindow(array $apt): array
+    {
+        $fd = is_array($apt['form_data'] ?? null) ? $apt['form_data'] : [];
+        $raw = $fd['availability'] ?? null;
+        $availability = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (is_array($availability)) {
+            if (($availability['type'] ?? '') === 'all_day') {
+                return [0.0, 24.0];
+            }
+            $range = $availability['range'] ?? null;
+            if (
+                is_array($range)
+                && count($range) >= 2
+                && is_numeric($range[0])
+                && is_numeric($range[1])
+                && (float) $range[1] > (float) $range[0]
+            ) {
+                return [(float) $range[0], (float) $range[1]];
+            }
+        }
+
+        $timestamp = $this->scheduleTimestamp($apt);
+        if ($timestamp === PHP_INT_MAX) {
+            return [0.0, 24.0];
+        }
+        $local = (new \DateTimeImmutable('@' . $timestamp))->setTimezone(new \DateTimeZone('Europe/Paris'));
+        $hour = (int) $local->format('G') + (int) $local->format('i') / 60;
+
+        return [$hour, $hour + 1.0];
     }
 
     /**

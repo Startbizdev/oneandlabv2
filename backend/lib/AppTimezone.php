@@ -31,6 +31,15 @@ class AppTimezone
         return self::format('Y-m-d\TH:i:sP', $instant);
     }
 
+    /**
+     * Colonne TIMESTAMP lue via UNIX_TIMESTAMP() : l'instant ne dépend ni du fuseau de la connexion MySQL
+     * ni du fuseau par défaut de PHP.
+     */
+    public static function iso8601FromUnix(int|string $timestamp): string
+    {
+        return self::iso8601(new DateTimeImmutable('@' . (int) $timestamp));
+    }
+
     public static function sqlDateTime(?DateTimeInterface $instant = null): string
     {
         return self::format('Y-m-d H:i:s', $instant);

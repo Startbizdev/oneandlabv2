@@ -20,6 +20,11 @@ fi
 
 echo "==> Migrations prod (093–109) sur $SSH_HOST..."
 
+echo "==> Copie des fichiers SQL (aucune donnée effacée)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p $REMOTE_BASE/database/migrations"
+tar -C "$REPO_ROOT/database/migrations" -czf - . \
+  | ssh "${SSH_OPTS[@]}" "$SSH_HOST" "tar -xzf - -C $REMOTE_BASE/database/migrations"
+
 echo "==> Vérification état actuel..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php" || true
 
@@ -73,6 +78,36 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 
 echo "==> Migration 117 (origine lab_assignment patients)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-117.php"
+
+echo "==> Migration 118 (créneau journée entière)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-118.php"
+
+echo "==> Migration 119 (absence patient sans date de fin)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-119.php"
+
+echo "==> Migration 120 (soin coché)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-120.php"
+
+echo "==> Migration 121 (téléphones supplémentaires patient)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-121.php"
+
+echo "==> Migration 122 (transmissions de l'équipe soignante)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-122.php"
+
+echo "==> Migration 124 (messages Cary)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-124.php"
+
+echo "==> Migration 125 (contexte des conversations Cary)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-125.php"
+
+echo "==> Migration 126 (dossier patient des proches + backfill)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-126.php"
+
+echo "==> Migration 127 (binôme infirmier)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-127.php"
+
+echo "==> Migration 128 (archive d'ordonnance remplacée)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-128.php"
 
 echo "==> Vérification finale..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php"

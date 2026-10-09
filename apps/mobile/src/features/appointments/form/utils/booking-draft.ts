@@ -1,11 +1,12 @@
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   bloodTestNeedsLabPreferenceStep,
+  type DirectedProvider,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { AddressPayload } from '../types';
 import type { NurseAssignmentMode } from './pro-nurse-assignment';
-import { skipsLabPreferenceStepForBookingRole } from './booking-wizard-role-rules';
+import { skipsLabPreferenceStep } from './booking-wizard-role-rules';
 
 /** Un brouillon de réservation n'est proposé à la reprise que pendant 24 h. */
 export const BOOKING_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +40,8 @@ export type BookingDraftData = {
   nurseAssignmentMode: NurseAssignmentMode;
   proLinkedNurseId: string;
   externalNursePhone: string;
+  /** Soignant présélectionné ; absent des brouillons enregistrés avant son ajout. */
+  directedProvider?: DirectedProvider | null;
 };
 
 export type BookingDraft = { savedAt: number; data: BookingDraftData };
@@ -99,10 +102,14 @@ export function sanitizeDraftFormDataByService(
 }
 
 /** Étape restaurée, bornée à ce que la sélection de soins permet d'atteindre. */
-export function restoredBookingStep(data: BookingDraftData, role: string): number {
+export function restoredBookingStep(
+  data: BookingDraftData,
+  role: string,
+  provider: DirectedProvider | null = null,
+): number {
   if (!hasBookingDraftContent(data)) return 0;
   const needsLab = bloodTestNeedsLabPreferenceStep(data.selectedServices, {
-    skipForProviderBooking: skipsLabPreferenceStepForBookingRole(role),
+    skipForProviderBooking: skipsLabPreferenceStep(role, provider),
   });
   const maxStep = needsLab ? 2 : 1;
   const step = Math.trunc(Number(data.step) || 0);

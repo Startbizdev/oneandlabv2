@@ -3,7 +3,6 @@ import type { PatientProfile } from '../api/patient-profile.service';
 import { beneficiaryFirstName, beneficiaryLastName } from '@/utils/beneficiary-display-name';
 
 type HistoryAppointment = Appointment & {
-  relative?: { first_name?: string; last_name?: string };
   beneficiary_profile_image_url?: string | null;
   beneficiary_gender?: string | null;
 };

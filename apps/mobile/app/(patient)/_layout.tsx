@@ -13,6 +13,9 @@ export default function PatientLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
         <Stack.Screen name="booking/new" options={bookingWizardScreenOptions(theme)} />
+        <Stack.Screen name="appointment/[id]/documents" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="traitements/[id]/ordonnances" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="traitements/[id]/messages" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </View>
   );

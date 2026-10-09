@@ -41,12 +41,16 @@ if ($method === 'PATCH') {
         echo json_encode(['success' => false, 'error' => 'task_type requis']);
         exit;
     }
-    $service->updateRouting(
-        (string) $body['task_type'],
-        (string) ($body['provider'] ?? 'grok'),
-        isset($body['model']) ? (string) $body['model'] : null,
-        (bool) ($body['enabled'] ?? true),
-    );
+    try {
+        $service->updateRouting(
+            (string) $body['task_type'],
+            (string) ($body['provider'] ?? 'grok'),
+            isset($body['model']) ? (string) $body['model'] : null,
+            (bool) ($body['enabled'] ?? true),
+        );
+    } catch (InvalidArgumentException $e) {
+        ai_json_error($e->getMessage(), 400, 'VALIDATION_ERROR');
+    }
     header('Content-Type: application/json');
     echo json_encode(['success' => true, 'data' => $service->listRouting()]);
     exit;

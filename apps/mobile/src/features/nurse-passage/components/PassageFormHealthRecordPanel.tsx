@@ -32,7 +32,9 @@ export function PassageFormHealthRecordPanel({
 }: Props) {
   const styles = useStyles(variant === 'screen' ? buildScreenStyles : buildPassageStyles);
   const userRole = useAuthStore((s) => s.user?.role);
-  const showClinicalVitals = userRole === 'nurse' || userRole === 'pro';
+  /** Titulaire sur le dossier d'un proche : carnet modifiable, constantes en lecture, identité gérée par sa fiche. */
+  const relativeOwner = userRole === 'patient';
+  const showClinicalVitals = userRole === 'nurse' || userRole === 'pro' || relativeOwner;
   const [editSectionId, setEditSectionId] = useState<string | null>(null);
   const [editSectionOpen, setEditSectionOpen] = useState(false);
   const [editPatientOpen, setEditPatientOpen] = useState(false);
@@ -74,13 +76,16 @@ export function PassageFormHealthRecordPanel({
               <AppText variant="secondary">{heroSubtitle}</AppText>
             </View>
           </Row>
-          <AppText variant="caption">Déclaré par le patient, vous pouvez le compléter.</AppText>
+          {relativeOwner ? null : (
+            <AppText variant="caption">Déclaré par le patient, vous pouvez le compléter.</AppText>
+          )}
         </View>
 
         {showClinicalVitals ? (
           <ClinicalVitalsPanel
             patientId={patientId}
             context={clinicalVitalContext ?? (variant === 'passage' ? { type: 'passage' } : { type: 'general' })}
+            readOnly={relativeOwner}
           />
         ) : null}
 
@@ -95,7 +100,9 @@ export function PassageFormHealthRecordPanel({
           />
         ))}
 
-        <Button title="Modifier la fiche patient" variant="secondary" onPress={() => setEditPatientOpen(true)} />
+        {relativeOwner ? null : (
+          <Button title="Modifier la fiche patient" variant="secondary" onPress={() => setEditPatientOpen(true)} />
+        )}
 
         {data?.disclaimer_fr ? <AppText variant="caption">{data.disclaimer_fr}</AppText> : null}
       </View>
@@ -107,12 +114,14 @@ export function PassageFormHealthRecordPanel({
         onClose={() => setEditSectionOpen(false)}
       />
 
-      <StaffPatientEditSheet
-        visible={editPatientOpen}
-        patientId={patientId}
-        onClose={() => setEditPatientOpen(false)}
-        onSaved={() => void refetch()}
-      />
+      {relativeOwner ? null : (
+        <StaffPatientEditSheet
+          visible={editPatientOpen}
+          patientId={patientId}
+          onClose={() => setEditPatientOpen(false)}
+          onSaved={() => void refetch()}
+        />
+      )}
     </>
   );
 }

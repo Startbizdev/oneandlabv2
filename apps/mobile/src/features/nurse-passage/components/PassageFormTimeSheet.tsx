@@ -20,6 +20,8 @@ import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 /** Sélection UI — « range » = créneau horaire avec slider. */
 type DraftSelection = PassageTimeSlot | 'range';
 
+const PASSAGE_RANGE_STEP = 0.25;
+
 const SLOT_OPTIONS: Array<{ id: DraftSelection; label: string }> = [
   { id: 'morning', label: PASSAGE_TIME_SLOT_LABELS.morning },
   { id: 'noon', label: PASSAGE_TIME_SLOT_LABELS.noon },
@@ -94,7 +96,7 @@ export function PassageFormTimeSheet({
 
   useEffect(() => {
     if (draftSelection !== 'range') return;
-    setDraftRange((prev) => clampAvailabilityRange(prev[0], prev[1], maxHour, minHour));
+    setDraftRange((prev) => clampAvailabilityRange(prev[0], prev[1], maxHour, minHour, PASSAGE_RANGE_STEP));
   }, [draftSelection, maxHour, minHour]);
 
   return (
@@ -109,7 +111,7 @@ export function PassageFormTimeSheet({
             if (draftSelection === 'all_day') {
               onConfirm('all_day', '', null);
             } else if (draftSelection === 'range') {
-              const range = clampAvailabilityRange(draftRange[0], draftRange[1], maxHour, minHour);
+              const range = clampAvailabilityRange(draftRange[0], draftRange[1], maxHour, minHour, PASSAGE_RANGE_STEP);
               const inferred = passageSlotFromRange(range);
               const slot = inferred !== 'custom' ? inferred : 'custom';
               onConfirm(slot, passageCustomTimeFromHour(range[0]), range);
@@ -163,6 +165,7 @@ export function PassageFormTimeSheet({
             max={maxHour}
             range={draftRange}
             onChange={setDraftRange}
+            step={PASSAGE_RANGE_STEP}
           />
         ) : null}
       </View>

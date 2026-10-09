@@ -51,7 +51,9 @@ deploy_sync_dir \
   --exclude=node_modules \
   --exclude=.output \
   --exclude=.nuxt \
-  --exclude=.git
+  --exclude=.git \
+  --exclude=.env \
+  --exclude='.env.*'
 
 echo "==> Sync backend..."
 deploy_sync_dir \
@@ -67,6 +69,9 @@ deploy_sync_dir \
 
 echo "==> Liens runtime backend (uploads persistent)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "bash -s" < "$SCRIPT_DIR/ensure-backend-runtime-links.sh"
+
+echo "==> Rechargement PHP (opcache)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "sudo systemctl reload php8.2-fpm"
 
 echo "==> Redémarrage PM2 (sans rebuild serveur)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" bash -s <<REMOTE

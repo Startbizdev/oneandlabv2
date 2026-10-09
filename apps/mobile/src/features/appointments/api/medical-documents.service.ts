@@ -1,8 +1,15 @@
+import { medicalDocumentReplacePath } from '@oneandlab/shared-utils';
 import { api } from '@/api/client';
+import { uploadMedicalDocument, type UploadFileInput } from '@/lib/uploads/upload-file';
 import type { MedicalDocumentRow } from '@/features/appointments/detail/api/appointment-detail.service';
 
 export async function fetchMedicalDocumentById(documentId: string) {
   return api.get<MedicalDocumentRow>(`/medical-documents/${encodeURIComponent(documentId)}`);
+}
+
+/** Nouvelle version d'une ordonnance ; l'ancienne est archivée côté serveur. */
+export async function replaceMedicalDocument(documentId: string, file: UploadFileInput) {
+  return uploadMedicalDocument(file, {}, medicalDocumentReplacePath(documentId));
 }
 
 export async function copyMedicalDocumentToAppointment(

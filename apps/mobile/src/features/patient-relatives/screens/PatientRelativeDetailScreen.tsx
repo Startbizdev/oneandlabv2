@@ -2,19 +2,17 @@ import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Trash2 } from 'lucide-react-native';
+import { FileText, HeartPulse, Trash2 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SettingsSection } from '@/components/ui/SettingsSection';
+import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { SkeletonProfileScreen } from '@/components/ui/skeletons';
-import {
-  deletePatientRelative,
-  fetchPatientRelative,
-  updatePatientRelative,
-} from '../api/patient-relatives.service';
+import { deletePatientRelative, updatePatientRelative } from '../api/patient-relatives.service';
 import { PatientRelativeFormSheet } from '../components/PatientRelativeFormSheet';
 import { relationshipLabel } from '../constants/relationship-types';
+import { usePatientRelative } from '../hooks/use-patient-relative';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { bookingNewHref } from '@/navigation/role-hrefs';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
@@ -37,15 +35,7 @@ export function PatientRelativeDetailScreen() {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const q = useQuery({
-    queryKey: ['patient-relatives', id],
-    queryFn: async () => {
-      const res = await fetchPatientRelative(id!);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Proche introuvable');
-      return res.data;
-    },
-    enabled: Boolean(id),
-  });
+  const q = usePatientRelative(id);
 
   const docsQ = useQuery({
     queryKey: queryKeys.documents.relative(id ?? ''),
@@ -116,6 +106,30 @@ export function PatientRelativeDetailScreen() {
     .join(' · ');
   const contact = [r.phone, r.email].filter(Boolean).join('\n');
   const documentsCount = docsQ.data?.length ?? 0;
+  const firstName = r.first_name?.trim() || name;
+  const dossierItems: SettingsRowProps[] = [];
+  if (r.profile_id) {
+    dossierItems.push({
+      icon: HeartPulse,
+      label: 'Carnet de santé',
+      onPress: () => router.push({ pathname: '/(patient)/relatives/[id]/health-record', params: { id: r.id } }),
+    });
+  }
+  if (docsQ.isError && !docsQ.data) {
+    dossierItems.push({
+      icon: FileText,
+      label: 'Documents',
+      description: 'Indisponibles, touchez pour réessayer',
+      onPress: () => void docsQ.refetch(),
+    });
+  } else {
+    dossierItems.push({
+      icon: FileText,
+      label: 'Documents',
+      value: documentsCount > 0 ? String(documentsCount) : undefined,
+      onPress: () => router.push({ pathname: '/(patient)/relatives/[id]/documents', params: { id: r.id } }),
+    });
+  }
 
   return (
     <StackChromeScreen
@@ -144,25 +158,7 @@ export function PatientRelativeDetailScreen() {
           size="lg"
         />
 
-        {docsQ.isError && !docsQ.data ? (
-          <ErrorState
-            error={docsQ.error}
-            title="Documents indisponibles"
-            onRetry={() => void docsQ.refetch()}
-          />
-        ) : (
-          <SettingsSection
-            items={[
-              {
-                icon: FileText,
-                label: 'Documents',
-                value: documentsCount > 0 ? String(documentsCount) : undefined,
-                onPress: () =>
-                  router.push({ pathname: '/(patient)/relatives/[id]/documents', params: { id: r.id } }),
-              },
-            ]}
-          />
-        )}
+        <SettingsSection title={firstName ? `Dossier de ${firstName}` : 'Dossier'} items={dossierItems} />
 
         <SettingsSection
           items={[

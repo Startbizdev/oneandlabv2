@@ -25,7 +25,11 @@ final class AiPatientIsolationTest extends TestCase
         $db = TestDatabase::pdo();
         $user = ['user_id' => $patientA, 'role' => 'patient'];
         $search = new RagSearchService($db);
-        $this->expectException(RuntimeException::class);
-        $search->searchForUser($user, $patientB, 'glycémie');
+        try {
+            $search->searchForUser($user, $patientB, 'glycémie');
+            $this->fail('La recherche RAG sur un autre patient doit être refusée');
+        } catch (HttpStatusException $e) {
+            $this->assertSame(403, $e->httpStatus);
+        }
     }
 }

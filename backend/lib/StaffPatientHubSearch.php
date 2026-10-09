@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/CarePhotoGallery.php';
 require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/DbSchemaCache.php';
+require_once __DIR__ . '/PatientDossierAccess.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -79,7 +81,7 @@ final class StaffPatientHubSearch
             : $this->loadExchangeItems($user, $patientIds, $patientMap, $q, $matchedPatientIds, false);
         $relativeItems = $recentOnly
             ? []
-            : $this->loadRelativeItems($patientIds, $patientMap, $q);
+            : $this->loadRelativeItems($user, $patientIds, $patientMap, $q);
 
         $items = array_merge($items, $relativeItems, $docItems, $exchangeItems);
 
@@ -161,39 +163,36 @@ final class StaffPatientHubSearch
             }
         }
 
-        // Documents proches
+        // Documents proches : visibles dans le dossier du proche (stockés sous le titulaire + relative_id)
         $relTable = $this->db->query("SHOW TABLES LIKE 'patient_relative_documents'")->rowCount() > 0;
-        if ($relTable) {
+        if ($relTable && DbSchemaCache::tableHasColumn($this->db, 'patient_relatives', 'profile_id')) {
             $relStmt = $this->db->prepare("
                 SELECT
                     prd.id AS patient_document_id,
-                    prd.patient_id,
+                    pr.profile_id AS patient_id,
                     prd.relative_id,
                     prd.document_type,
                     prd.updated_at,
                     md.id AS medical_document_id,
                     md.file_name,
-                    md.created_at AS uploaded_at,
-                    pr.first_name_encrypted,
-                    pr.first_name_dek,
-                    pr.last_name_encrypted,
-                    pr.last_name_dek
+                    md.created_at AS uploaded_at
                 FROM patient_relative_documents prd
                 LEFT JOIN medical_documents md ON prd.medical_document_id = md.id
-                LEFT JOIN patient_relatives pr ON pr.id = prd.relative_id
-                WHERE prd.patient_id IN ($placeholders)
+                INNER JOIN patient_relatives pr ON pr.id = prd.relative_id AND pr.patient_id = prd.patient_id
+                WHERE pr.profile_id IN ($placeholders)
             ");
             $relStmt->execute($patientIds);
             foreach ($relStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $relativeName = $this->decryptRelativeName($row);
-                $mapped = $this->mapDocumentRow($row, $patientMap, 'relative', $relativeName, $q, $matchedPatientIds, $recentOnly);
+                // Le dossier listé est celui du proche : son nom est déjà le nom du patient.
+                $mapped = $this->mapDocumentRow($row, $patientMap, 'relative', null, $q, $matchedPatientIds, $recentOnly);
                 if ($mapped) {
                     $items[] = $mapped;
                 }
             }
         }
 
-        // Documents RDV (hors care_photo — traitées comme échanges si commentées)
+        // Documents RDV (hors care_photo — traitées comme échanges si commentées), rangés dans le dossier du RDV (proche ou titulaire)
+        [$dossierColumn, $dossierJoin, $dossierWhere, $dossierParams] = $this->appointmentDossierScope($patientIds);
         $aptStmt = $this->db->prepare("
             SELECT
                 md.id AS medical_document_id,
@@ -201,14 +200,16 @@ final class StaffPatientHubSearch
                 md.document_type,
                 md.file_name,
                 md.created_at AS uploaded_at,
-                a.patient_id
+                $dossierColumn AS patient_id
             FROM medical_documents md
             INNER JOIN appointments a ON a.id = md.appointment_id
-            WHERE a.patient_id IN ($placeholders)
+            $dossierJoin
+            WHERE $dossierWhere
               AND md.document_type IS NOT NULL
               AND md.document_type <> 'care_photo'
+              AND md.replaced_by_document_id IS NULL
         ");
-        $aptStmt->execute($patientIds);
+        $aptStmt->execute($dossierParams);
         foreach ($aptStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $mapped = $this->mapDocumentRow($row, $patientMap, 'appointment', null, $q, $matchedPatientIds, $recentOnly);
             if ($mapped) {
@@ -224,14 +225,15 @@ final class StaffPatientHubSearch
                 md.document_type,
                 md.file_name,
                 md.created_at AS uploaded_at,
-                a.patient_id,
+                $dossierColumn AS patient_id,
                 (SELECT COUNT(*) FROM appointment_care_photo_comments c WHERE c.medical_document_id = md.id) AS comment_count
             FROM medical_documents md
             INNER JOIN appointments a ON a.id = md.appointment_id
-            WHERE a.patient_id IN ($placeholders)
+            $dossierJoin
+            WHERE $dossierWhere
               AND md.document_type = 'care_photo'
         ");
-        $photoStmt->execute($patientIds);
+        $photoStmt->execute($dossierParams);
         foreach ($photoStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             if ((int) ($row['comment_count'] ?? 0) > 0) {
                 continue;
@@ -252,23 +254,48 @@ final class StaffPatientHubSearch
     }
 
     /**
+     * RDV des dossiers listés : ceux d'un proche relèvent de son dossier, pas de celui du titulaire.
+     *
+     * @param list<string> $patientIds
+     * @return array{0: string, 1: string, 2: string, 3: list<string>} colonne dossier, jointure, filtre, paramètres
+     */
+    private function appointmentDossierScope(array $patientIds): array
+    {
+        $placeholders = implode(',', array_fill(0, count($patientIds), '?'));
+        if (!DbSchemaCache::tableHasColumn($this->db, 'patient_relatives', 'profile_id')) {
+            return ['a.patient_id', '', "(a.relative_id IS NULL AND a.patient_id IN ($placeholders))", $patientIds];
+        }
+
+        return [
+            'CASE WHEN a.relative_id IS NULL THEN a.patient_id ELSE pr_dossier.profile_id END',
+            'LEFT JOIN patient_relatives pr_dossier ON pr_dossier.id = a.relative_id',
+            "((a.relative_id IS NULL AND a.patient_id IN ($placeholders)) OR pr_dossier.profile_id IN ($placeholders))",
+            [...$patientIds, ...$patientIds],
+        ];
+    }
+
+    /**
+     * Proches des patients listés, ouvrables uniquement par leur dossier : seuls ceux dont le soignant a le dossier
+     * sont proposés, et pas ceux déjà listés comme patients.
+     *
+     * @param array<string, mixed> $user
      * @param list<string> $patientIds
      * @param array<string, array<string, mixed>> $patientMap
      * @return list<array<string, mixed>>
      */
-    private function loadRelativeItems(array $patientIds, array $patientMap, string $q): array
+    private function loadRelativeItems(array $user, array $patientIds, array $patientMap, string $q): array
     {
-        if ($patientIds === [] || $q === '') {
+        if ($patientIds === [] || $q === '' || !DbSchemaCache::tableHasColumn($this->db, 'patient_relatives', 'profile_id')) {
             return [];
         }
 
         $placeholders = implode(',', array_fill(0, count($patientIds), '?'));
         $stmt = $this->db->prepare("
-            SELECT id, patient_id, relationship_type, updated_at,
+            SELECT id, patient_id, profile_id, relationship_type, updated_at,
                    first_name_encrypted, first_name_dek,
                    last_name_encrypted, last_name_dek
             FROM patient_relatives
-            WHERE patient_id IN ($placeholders)
+            WHERE patient_id IN ($placeholders) AND profile_id IS NOT NULL
         ");
         $stmt->execute($patientIds);
 
@@ -276,7 +303,8 @@ final class StaffPatientHubSearch
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $patientId = (string) ($row['patient_id'] ?? '');
             $holder = $patientMap[$patientId] ?? null;
-            if (!$holder) {
+            $profileId = (string) $row['profile_id'];
+            if (!$holder || isset($patientMap[$profileId])) {
                 continue;
             }
             $relativeName = $this->decryptRelativeName($row);
@@ -290,11 +318,15 @@ final class StaffPatientHubSearch
             if (!str_contains($haystack, $q)) {
                 continue;
             }
+            if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $profileId)) {
+                continue;
+            }
             $items[] = [
                 'kind' => 'relative',
                 'id' => 'relative:' . (string) $row['id'],
                 'relative_id' => (string) $row['id'],
                 'patient_id' => $patientId,
+                'profile_id' => $profileId,
                 'relative_name' => $relativeName,
                 'patient_name' => $holderName,
                 'relationship_type' => (string) ($row['relationship_type'] ?? ''),
@@ -327,13 +359,13 @@ final class StaffPatientHubSearch
 
         $uid = (string) ($user['user_id'] ?? '');
         $role = (string) ($user['role'] ?? '');
-        $placeholders = implode(',', array_fill(0, count($patientIds), '?'));
 
+        [$dossierColumn, $dossierJoin, $dossierWhere, $params] = $this->appointmentDossierScope($patientIds);
         $sql = "
             SELECT
                 md.id AS medical_document_id,
                 md.appointment_id,
-                a.patient_id,
+                $dossierColumn AS patient_id,
                 a.assigned_nurse_id,
                 a.created_by,
                 MAX(c.created_at) AS last_at,
@@ -347,7 +379,8 @@ final class StaffPatientHubSearch
             FROM appointment_care_photo_comments c
             INNER JOIN medical_documents md ON md.id = c.medical_document_id
             INNER JOIN appointments a ON a.id = md.appointment_id
-            WHERE a.patient_id IN ($placeholders)
+            $dossierJoin
+            WHERE $dossierWhere
               AND a.type = 'nursing'
               AND a.created_by_role = 'pro'
         ";
@@ -356,22 +389,21 @@ final class StaffPatientHubSearch
             $sql .= ' AND a.assigned_nurse_id = ?';
         } elseif ($role === 'pro') {
             if ($this->hasPatientProfessionalAccessTable()) {
-                $sql .= ' AND (a.created_by = ? OR EXISTS (
+                $sql .= " AND (a.created_by = ? OR EXISTS (
                     SELECT 1 FROM patient_professional_access ppa
-                    WHERE ppa.patient_id = a.patient_id AND ppa.professional_id = ?
-                ))';
+                    WHERE ppa.patient_id = $dossierColumn AND ppa.professional_id = ?
+                ))";
             } else {
                 $sql .= ' AND a.created_by = ?';
             }
         }
 
-        $sql .= '
-            GROUP BY md.id, md.appointment_id, a.patient_id, a.assigned_nurse_id, a.created_by
+        $sql .= "
+            GROUP BY md.id, md.appointment_id, $dossierColumn, a.assigned_nurse_id, a.created_by
             ORDER BY last_at DESC
             LIMIT 120
-        ';
+        ";
 
-        $params = $patientIds;
         if ($role === 'nurse') {
             $params[] = $uid;
         } elseif ($role === 'pro') {

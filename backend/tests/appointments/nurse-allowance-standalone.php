@@ -3,7 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../../lib/NurseMonthlyAllowance.php';
 $db = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, assigned_nurse_id TEXT, status TEXT, scheduled_at TEXT)');
+$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, assigned_nurse_id TEXT, status TEXT, scheduled_at TEXT, passage_source TEXT)');
 $db->exec('CREATE TABLE appointment_status_updates (appointment_id TEXT, actor_id TEXT, actor_role TEXT, status TEXT, created_at TEXT)');
 $now = new DateTimeImmutable('2026-09-15T12:00:00+02:00');
 $count = static fn (?string $exclude = null): int => NurseMonthlyAllowance::count($db, 'nurse-a', $now, $exclude);
@@ -13,7 +13,7 @@ $check = static function (bool $condition) use (&$checks): void {
     $checks++;
 };
 $check($count() === 0);
-$insert = $db->prepare('INSERT INTO appointments VALUES (?, ?, ?, ?)');
+$insert = $db->prepare('INSERT INTO appointments (id, assigned_nurse_id, status, scheduled_at) VALUES (?, ?, ?, ?)');
 for ($i = 1; $i <= 9; $i++) $insert->execute(["accepted-$i", 'nurse-a', 'confirmed', '2026-09-16 08:00:00']);
 $check($count() === 9);
 $insert->execute(['pending', 'nurse-a', 'pending', '2026-09-16 08:00:00']);

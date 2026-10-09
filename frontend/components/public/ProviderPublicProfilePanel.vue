@@ -172,7 +172,7 @@ import type {
   PublicNurseProfile,
   PublicProfileSocialLinks,
 } from '@oneandlab/shared-types';
-import { formatAddressWithArrondissement } from '~/utils/address-display';
+import { addressAreaLabel } from '@oneandlab/shared-utils';
 import { formatReviewerNameForDisplay } from '~/utils/reviewer-display';
 
 const props = defineProps<
@@ -244,7 +244,7 @@ const services = computed(() => {
 
 const addressLabel = computed(() => {
   const raw = props.profile.address ?? props.profile.city_plain ?? '';
-  return raw ? formatAddressWithArrondissement(raw) : '';
+  return addressAreaLabel(raw);
 });
 
 const radiusKm = computed(() => {

@@ -2,21 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { CalendarOff, History } from 'lucide-react-native';
 import { PATIENT_ABSENCE_TYPE_OPTIONS } from '@oneandlab/shared-constants';
 import type { PatientAbsence, PatientAbsenceType } from '@oneandlab/shared-types';
-import { formatBirthDateFr } from '@oneandlab/shared-utils';
+import { Row } from '@/components/layout/primitives';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ErrorState } from '@/components/ui/ErrorState';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
-import { SettingsSection } from '@/components/ui/SettingsSection';
-import { SkeletonList } from '@/components/ui/skeletons';
+import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { IsoDatePicker } from '@/features/nurse-passage/components/IsoDatePicker';
+import { PatientAbsenceHistoryList } from './PatientAbsenceHistoryList';
 import {
   createPatientAbsence,
   deletePatientAbsence,
@@ -41,24 +38,8 @@ type Props = {
 
 const ABSENCE_TYPE_OPTIONS = PATIENT_ABSENCE_TYPE_OPTIONS.map((o) => ({ label: o.label, value: o.value }));
 
-function isAbsenceActive(absence: PatientAbsence, today = dayjs().format('YYYY-MM-DD')): boolean {
-  const start = absence.start_date.slice(0, 10);
-  const end = absence.end_date.slice(0, 10);
-  return start <= today && end >= today;
-}
-
-function formatAbsencePeriod(absence: PatientAbsence): string {
-  const start = formatBirthDateFr(absence.start_date.slice(0, 10));
-  const end = formatBirthDateFr(absence.end_date.slice(0, 10));
-  return `Du ${start} au ${end}`;
-}
-
-function absenceDescription(absence: PatientAbsence): string {
-  const parts = [formatAbsencePeriod(absence)];
-  if (isAbsenceActive(absence)) parts.push('En cours');
-  const note = absence.note?.trim();
-  if (note) parts.push(note);
-  return parts.join(' · ');
+function todayIso(): string {
+  return dayjs().format('YYYY-MM-DD');
 }
 
 export function PatientAbsenceSheet({
@@ -78,6 +59,7 @@ export function PatientAbsenceSheet({
   const [absenceType, setAbsenceType] = useState<PatientAbsenceType>('hospitalization');
   const [startDate, setStartDate] = useState(defaultStartDate);
   const [endDate, setEndDate] = useState(defaultStartDate);
+  const [openEnded, setOpenEnded] = useState(false);
   const [note, setNote] = useState('');
   const [confirmLiftOpen, setConfirmLiftOpen] = useState(false);
 
@@ -86,21 +68,23 @@ export function PatientAbsenceSheet({
     queryFn: () => (patientId ? fetchPatientAbsences(patientId, false) : Promise.resolve([])),
     enabled: visible && Boolean(patientId),
   });
-  const history = historyQ.data ?? [];
 
   const resetFormForNew = useCallback(() => {
     setEditingAbsence(null);
     setAbsenceType('hospitalization');
     setStartDate(defaultStartDate);
     setEndDate(defaultStartDate);
+    setOpenEnded(false);
     setNote('');
   }, [defaultStartDate]);
 
   const applyAbsenceToForm = useCallback((absence: PatientAbsence) => {
+    const start = absence.start_date.slice(0, 10);
     setEditingAbsence(absence);
     setAbsenceType(absence.absence_type);
-    setStartDate(absence.start_date.slice(0, 10));
-    setEndDate(absence.end_date.slice(0, 10));
+    setStartDate(start);
+    setEndDate(absence.end_date?.slice(0, 10) ?? start);
+    setOpenEnded(absence.end_date === null);
     setNote(absence.note ?? '');
   }, []);
 
@@ -120,13 +104,19 @@ export function PatientAbsenceSheet({
     await qc.invalidateQueries({ queryKey: ['patient-absences', patientId] });
   }, [patientId, qc]);
 
+  const afterChange = useCallback(async () => {
+    await invalidateAbsenceQueries();
+    onSaved();
+    onClose();
+  }, [invalidateAbsenceQueries, onClose, onSaved]);
+
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!patientId) throw new Error('Patient requis');
       const payload = {
         absence_type: absenceType,
         start_date: startDate,
-        end_date: endDate,
+        end_date: openEnded ? null : endDate,
         note: note.trim() || null,
       };
       if (editingAbsence?.id) {
@@ -134,12 +124,17 @@ export function PatientAbsenceSheet({
       }
       return createPatientAbsence(patientId, payload);
     },
-    onSuccess: async () => {
-      await invalidateAbsenceQueries();
-      onSaved();
-      onClose();
-    },
+    onSuccess: afterChange,
     onError: (err) => handleApiError(err, toast, 'patient-absence-save', 'Enregistrement impossible'),
+  });
+
+  const endTodayMut = useMutation({
+    mutationFn: async () => {
+      if (!patientId || !editingAbsence?.id) throw new Error('Absence introuvable');
+      return updatePatientAbsence(patientId, editingAbsence.id, { end_date: todayIso() });
+    },
+    onSuccess: afterChange,
+    onError: (err) => handleApiError(err, toast, 'patient-absence-end', 'Mise à jour impossible'),
   });
 
   const deleteMut = useMutation({
@@ -149,9 +144,7 @@ export function PatientAbsenceSheet({
     },
     onSuccess: async () => {
       setConfirmLiftOpen(false);
-      await invalidateAbsenceQueries();
-      onSaved();
-      onClose();
+      await afterChange();
     },
     onError: (err) => handleApiError(err, toast, 'patient-absence-delete', 'Suppression impossible'),
   });
@@ -174,6 +167,11 @@ export function PatientAbsenceSheet({
     [editingAbsence, resetFormForNew],
   );
 
+  const handleStartDateChange = useCallback((iso: string) => {
+    setStartDate(iso);
+    setEndDate((end) => (end < iso ? iso : end));
+  }, []);
+
   const segments = useMemo(
     () => [
       { id: 'declare' as const, label: editingAbsence ? 'Modifier' : 'Déclarer' },
@@ -183,13 +181,14 @@ export function PatientAbsenceSheet({
   );
 
   const isEditing = Boolean(editingAbsence?.id);
-
-  const historyRows = history.map((absence) => ({
-    icon: CalendarOff,
-    label: absence.type_label_fr,
-    description: absenceDescription(absence),
-    onPress: () => handleSelectHistoryItem(absence),
-  }));
+  const busy = saveMut.isPending || endTodayMut.isPending || deleteMut.isPending;
+  /** Une absence sans fin déjà commencée se clôt aujourd'hui (le patient rentre). */
+  const canEndToday =
+    editingAbsence !== null &&
+    editingAbsence.end_date === null &&
+    editingAbsence.start_date.slice(0, 10) <= todayIso();
+  const endTodayLabel =
+    editingAbsence?.absence_type === 'hospitalization' ? 'Fin de l’hospitalisation' : 'Fin de l’absence';
 
   return (
     <>
@@ -198,15 +197,25 @@ export function PatientAbsenceSheet({
         onClose={onClose}
         title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
         snapPoints={['92%']}
+        dismissible={!busy}
+        footer={
+          tab === 'declare' ? (
+            <Button
+              title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
+              onPress={() => saveMut.mutate()}
+              loading={saveMut.isPending}
+              disabled={busy && !saveMut.isPending}
+              fullWidth
+            />
+          ) : undefined
+        }
       >
         <View style={styles.body}>
           <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
 
           {tab === 'declare' ? (
             <View style={styles.tabBody}>
-              <AppText variant="secondary">
-                Le passage reste sur la tournée, grisé jusqu’à la date de fin.
-              </AppText>
+              <AppText variant="secondary">Le passage reste sur la tournée, grisé pendant l’absence.</AppText>
 
               <SelectField
                 label="Motif"
@@ -215,13 +224,27 @@ export function PatientAbsenceSheet({
                 onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
               />
 
-              <IsoDatePicker label="Du" value={startDate} onChange={setStartDate} />
-              <IsoDatePicker
-                label="Au"
-                value={endDate}
-                onChange={setEndDate}
-                minimumDate={new Date(`${startDate}T12:00:00`)}
-              />
+              <IsoDatePicker label="Du" value={startDate} onChange={handleStartDateChange} />
+
+              <Row gap={spacing[3]} style={styles.toggleRow}>
+                <AppText variant="body" style={styles.toggleLabel}>
+                  Jusqu’à nouvel ordre
+                </AppText>
+                <ToggleSwitch
+                  value={openEnded}
+                  onValueChange={setOpenEnded}
+                  accessibilityLabel="Absence jusqu’à nouvel ordre, sans date de fin"
+                />
+              </Row>
+
+              {openEnded ? null : (
+                <IsoDatePicker
+                  label="Au"
+                  value={endDate}
+                  onChange={setEndDate}
+                  minimumDate={new Date(`${startDate}T12:00:00`)}
+                />
+              )}
 
               <Input
                 label="Précision (optionnel)"
@@ -231,21 +254,23 @@ export function PatientAbsenceSheet({
                 multiline
               />
 
-              <Button
-                title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
-                onPress={() => saveMut.mutate()}
-                loading={saveMut.isPending}
-                disabled={deleteMut.isPending}
-                fullWidth
-              />
-
               {isEditing ? (
                 <>
+                  {canEndToday ? (
+                    <Button
+                      title={endTodayLabel}
+                      variant="outline"
+                      onPress={() => endTodayMut.mutate()}
+                      loading={endTodayMut.isPending}
+                      disabled={busy && !endTodayMut.isPending}
+                      fullWidth
+                    />
+                  ) : null}
                   <Button
                     title="Patient de retour"
                     variant="dangerOutline"
                     onPress={() => setConfirmLiftOpen(true)}
-                    disabled={saveMut.isPending}
+                    disabled={busy}
                     fullWidth
                   />
                   <Button title="Nouvelle absence" variant="ghost" onPress={resetFormForNew} fullWidth />
@@ -254,27 +279,14 @@ export function PatientAbsenceSheet({
             </View>
           ) : (
             <View style={styles.tabBody}>
-              {historyQ.isLoading ? (
-                <SkeletonList count={4} />
-              ) : historyQ.isError ? (
-                <ErrorState
-                  title="Historique indisponible"
-                  error={historyQ.error}
-                  onRetry={() => void historyQ.refetch()}
-                />
-              ) : history.length === 0 ? (
-                <EmptyState
-                  title="Aucune absence"
-                  Icon={History}
-                  actionLabel="Déclarer une absence"
-                  onAction={() => {
-                    resetFormForNew();
-                    setTab('declare');
-                  }}
-                />
-              ) : (
-                <SettingsSection items={historyRows} />
-              )}
+              <PatientAbsenceHistoryList
+                historyQ={historyQ}
+                onSelect={handleSelectHistoryItem}
+                onDeclare={() => {
+                  resetFormForNew();
+                  setTab('declare');
+                }}
+              />
             </View>
           )}
         </View>
@@ -298,5 +310,7 @@ function buildStyles() {
   return {
     body: { gap: spacing[3], paddingBottom: spacing[4] },
     tabBody: { gap: spacing[3] },
+    toggleRow: { alignItems: 'center' as const, minWidth: 0 },
+    toggleLabel: { flex: 1, minWidth: 0 },
   };
 }

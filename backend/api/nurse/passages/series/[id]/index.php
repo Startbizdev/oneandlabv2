@@ -45,8 +45,10 @@ try {
 
     if ($method === 'DELETE') {
         CSRFMiddleware::handle();
-        $service->delete($id, $nurseId);
-        nurse_passage_json_response(['success' => true, 'data' => null]);
+        nurse_passage_json_response([
+            'success' => true,
+            'data' => ['canceled_appointments' => $service->delete($id, $nurseId)],
+        ]);
     }
 
     nurse_passage_json_error('Méthode non autorisée', 405);

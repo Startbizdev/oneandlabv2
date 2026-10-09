@@ -3,8 +3,11 @@ import {
   CalendarPlus,
   Car,
   CheckCircle2,
+  AlarmClockOff,
   FileText,
   Layers,
+  MessageSquarePlus,
+  NotebookPen,
   Trash2,
   UserX,
 } from 'lucide-react-native';
@@ -25,16 +28,22 @@ type Props = {
   markDoneLoading: boolean;
   deleteOneLoading: boolean;
   deleteSeriesLoading: boolean;
+  removeSlotLoading?: boolean;
   showDeleteSeries?: boolean;
   showDeleteOne?: boolean;
+  /** Série à plusieurs créneaux par jour : retirer le créneau de ce passage. */
+  showRemoveSlot?: boolean;
   hasPatient?: boolean;
   isPatientAbsent?: boolean;
   onMaterialize: () => void;
   onEnRoute: () => void;
   onMarkDone: () => void;
   onManageAbsence?: () => void;
+  onAddTransmission?: () => void;
+  onOpenTransmissions?: () => void;
   onOpenFullAppointment: () => void;
   onDeleteOne: () => void;
+  onRemoveSlot?: () => void;
   onDeleteSeries: () => void;
 };
 
@@ -48,16 +57,21 @@ export function PassageDetailActionsSheet({
   markDoneLoading,
   deleteOneLoading,
   deleteSeriesLoading,
+  removeSlotLoading = false,
   showDeleteSeries = true,
   showDeleteOne = true,
+  showRemoveSlot = false,
   hasPatient = false,
   isPatientAbsent = false,
   onMaterialize,
   onEnRoute,
   onMarkDone,
   onManageAbsence,
+  onAddTransmission,
+  onOpenTransmissions,
   onOpenFullAppointment,
   onDeleteOne,
+  onRemoveSlot,
   onDeleteSeries,
 }: Props) {
   const { closeThen, onDismissed } = useAfterSheetDismiss(onClose);
@@ -112,6 +126,28 @@ export function PassageDetailActionsSheet({
       });
     }
 
+    if (hasPatient && onAddTransmission) {
+      items.push({
+        key: 'add_transmission',
+        label: 'Ajouter une transmission',
+        icon: MessageSquarePlus,
+        tone: 'neutral',
+        showChevron: false,
+        onPress: () => closeThen(onAddTransmission),
+      });
+    }
+
+    if (hasPatient && onOpenTransmissions) {
+      items.push({
+        key: 'transmissions',
+        label: 'Transmissions du patient',
+        icon: NotebookPen,
+        tone: 'neutral',
+        showChevron: false,
+        onPress: () => closeThen(onOpenTransmissions),
+      });
+    }
+
     items.push({
       key: 'full_appointment',
       label: 'Voir fiche RDV complète',
@@ -121,6 +157,8 @@ export function PassageDetailActionsSheet({
       onPress: () => closeThen(onOpenFullAppointment),
     });
 
+    const deleting = deleteOneLoading || deleteSeriesLoading || removeSlotLoading;
+
     if (showDeleteOne) {
       items.push({
         key: 'delete_one',
@@ -128,9 +166,22 @@ export function PassageDetailActionsSheet({
         icon: Trash2,
         tone: 'destructive',
         loading: deleteOneLoading,
-        disabled: deleteOneLoading || deleteSeriesLoading,
+        disabled: deleting,
         showChevron: false,
         onPress: () => closeThen(onDeleteOne),
+      });
+    }
+
+    if (showRemoveSlot && onRemoveSlot) {
+      items.push({
+        key: 'remove_slot',
+        label: 'Retirer ce créneau de la série',
+        icon: AlarmClockOff,
+        tone: 'destructive',
+        loading: removeSlotLoading,
+        disabled: deleting,
+        showChevron: false,
+        onPress: () => closeThen(onRemoveSlot),
       });
     }
 
@@ -141,7 +192,7 @@ export function PassageDetailActionsSheet({
         icon: Layers,
         tone: 'destructive',
         loading: deleteSeriesLoading,
-        disabled: deleteOneLoading || deleteSeriesLoading,
+        disabled: deleting,
         showChevron: false,
         onPress: () => closeThen(onDeleteSeries),
       });
@@ -152,6 +203,9 @@ export function PassageDetailActionsSheet({
     closeThen,
     deleteOneLoading,
     deleteSeriesLoading,
+    removeSlotLoading,
+    showRemoveSlot,
+    onRemoveSlot,
     enRouteLoading,
     hasStop,
     markDoneLoading,
@@ -161,6 +215,8 @@ export function PassageDetailActionsSheet({
     onEnRoute,
     onMarkDone,
     onManageAbsence,
+    onAddTransmission,
+    onOpenTransmissions,
     onMaterialize,
     onOpenFullAppointment,
     hasPatient,

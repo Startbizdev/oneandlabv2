@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/AvailabilityTimeLabel.php';
+
 /**
  * Libellés courts pour notifications cloche / push — créneaux patient (form_data.availability),
  * pas l’heure technique scheduled_at (souvent minuit).
@@ -91,7 +93,7 @@ class NotificationMessageFormatter
                 if ($h2 - $h1 >= 6 && $h1 <= 9 && $h2 >= 17) {
                     return 'Toute la journée';
                 }
-                return $h1 . 'h-' . $h2 . 'h';
+                return AvailabilityTimeLabel::range([$start, $end], '-');
             }
         }
 
@@ -483,8 +485,8 @@ class NotificationMessageFormatter
             && is_array($av['range'])
             && count($av['range']) >= 2
         ) {
-            $start = (int) $av['range'][0];
-            $end = (int) $av['range'][1];
+            $start = (float) $av['range'][0];
+            $end = (float) $av['range'][1];
             $rangeToSuffix = [
                 '8-12' => ' le matin',
                 '12-14' => ' à midi',
@@ -494,7 +496,7 @@ class NotificationMessageFormatter
             ];
             $key = $start . '-' . $end;
 
-            return $rangeToSuffix[$key] ?? (' à ' . $start . 'h - ' . $end . 'h');
+            return $rangeToSuffix[$key] ?? (' à ' . AvailabilityTimeLabel::range([$start, $end]));
         }
 
         return '';

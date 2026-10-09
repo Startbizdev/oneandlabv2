@@ -23,6 +23,8 @@ try {
     ], 201);
 } catch (InvalidArgumentException $e) {
     nurse_passage_json_error($e->getMessage(), 400);
+} catch (AppointmentCreationConflict $e) {
+    nurse_passage_json_error($e->getMessage(), 409, 'PASSAGE_REQUEST_CONFLICT');
 } catch (HttpStatusException $e) {
     nurse_passage_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
 } catch (Throwable $e) {

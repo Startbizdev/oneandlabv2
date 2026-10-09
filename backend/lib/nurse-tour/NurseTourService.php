@@ -10,6 +10,9 @@ require_once __DIR__ . '/PatientAbsenceService.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
+require_once __DIR__ . '/../RelativeProfile.php';
+require_once __DIR__ . '/../nurse-passage/NursePassageSeriesService.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
 final class NurseTourService
 {
@@ -30,6 +33,11 @@ final class NurseTourService
      */
     public function getTour(string $nurseId, string $tourDate, ?array $origin = null): array
     {
+        $seriesService = new NursePassageSeriesService($this->db);
+        $seriesService->extendHorizon($nurseId, $tourDate);
+        foreach (NurseCollaboration::ownerIdsSharingDate($this->db, $nurseId, $tourDate) as $ownerId) {
+            $seriesService->extendHorizon($ownerId, $tourDate);
+        }
         $appointments = $this->loadAppointmentsForDate($nurseId, $tourDate);
         $plan = $this->ensurePlan($nurseId, $tourDate);
         $this->syncStops((string) $plan['id'], $appointments);
@@ -77,18 +85,19 @@ final class NurseTourService
      */
     public function getSummaryRange(string $nurseId, string $fromDate, string $toDate): array
     {
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
         $stmt = $this->db->prepare("
             SELECT DATE(a.scheduled_at) AS tour_day,
                    COUNT(*) AS cnt
             FROM appointments a
             WHERE a.type = 'nursing'
-              AND a.assigned_nurse_id = ?
+              AND {$nurseSql}
               AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
               AND DATE(a.scheduled_at) BETWEEN ? AND ?
             GROUP BY tour_day
         ");
-        $stmt->execute([$nurseId, $fromDate, $toDate]);
+        $stmt->execute([...$nurseParams, $fromDate, $toDate]);
         $out = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
             $day = (string) ($row['tour_day'] ?? '');
@@ -189,18 +198,19 @@ final class NurseTourService
      */
     private function loadAppointmentsForDate(string $nurseId, string $tourDate): array
     {
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
         $stmt = $this->db->prepare("
             SELECT a.*, c.name AS category_name, c.icon AS category_icon, c.image_url AS category_image_url
             FROM appointments a
             LEFT JOIN care_categories c ON c.id = a.category_id
             WHERE a.type = 'nursing'
-              AND a.assigned_nurse_id = ?
+              AND {$nurseSql}
               AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
               AND a.scheduled_at IS NOT NULL
               AND DATE(a.scheduled_at) = ?
             ORDER BY a.scheduled_at ASC
         ");
-        $stmt->execute([$nurseId, $tourDate]);
+        $stmt->execute([...$nurseParams, $tourDate]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $hasMergedColumn = DbSchemaCache::tableHasColumn($this->db, 'appointments', 'merged_into_appointment_id');
         $decoded = AppointmentListPayload::decryptRowsForList($this->appointments, $rows, $nurseId, 'nurse');
@@ -320,7 +330,7 @@ final class NurseTourService
         string $tourDate,
     ): array {
         $byId = [];
-        foreach ($appointments as $apt) {
+        foreach (RelativeProfile::withRelativeProfileIds($this->db, $appointments) as $apt) {
             $byId[(string) ($apt['id'] ?? '')] = $apt;
         }
 
@@ -334,23 +344,22 @@ final class NurseTourService
             $stopMeta[(string) $row['appointment_id']] = $row;
         }
 
-        $patientIds = [];
+        $dossierIds = [];
         foreach ($orderIds as $aptId) {
-            if (!isset($byId[$aptId])) {
-                continue;
-            }
-            $pid = $byId[$aptId]['patient_id'] ?? null;
-            if ($pid) {
-                $patientIds[] = (string) $pid;
+            $dossierId = isset($byId[$aptId]) ? self::stopDossierId($byId[$aptId]) : null;
+            if ($dossierId !== null) {
+                $dossierIds[] = $dossierId;
             }
         }
         $absenceMap = [];
         try {
-            $absenceMap = (new PatientAbsenceService($this->db))->activeMapForDate($nurseId, $patientIds, $tourDate);
+            $absenceMap = (new PatientAbsenceService($this->db))->activeMapForDate($nurseId, $dossierIds, $tourDate);
         } catch (Throwable $e) {
             error_log('[nurse-tour] patient absences: ' . $e->getMessage());
         }
 
+        $itemDoneAt = $this->loadNursingItemDoneAt(array_keys($byId));
+        $collaborationsByApt = NurseCollaboration::collaborationsByAppointmentIds($this->db, array_keys($byId));
         $cursor = $origin;
         $position = 0;
         $stops = [];
@@ -387,14 +396,20 @@ final class NurseTourService
                 $addressComplement = trim((string) $fd['address']['complement']);
             }
 
-            $batchSiblingCount = $this->resolveBatchSiblingCount($apt, $batchSiblingCountCache);
+            // Chaque passage d'une série est une visite distincte : ni lot, ni fusion des soins entre passages.
+            $isPassage = !empty($apt['passage_series_id']);
+            $batchSiblingCount = $isPassage ? 0 : $this->resolveBatchSiblingCount($apt, $batchSiblingCountCache);
             $careOptions = is_array($fd['care_options'] ?? null) ? $fd['care_options'] : null;
-            $nursingItems = is_array($apt['nursing_items'] ?? null) ? $apt['nursing_items'] : [];
-            $nursingItemsDisplay = is_array($apt['nursing_items_display'] ?? null)
-                ? $apt['nursing_items_display']
+            $nursingItems = $this->withItemDoneAt(
+                is_array($apt['nursing_items'] ?? null) ? $apt['nursing_items'] : [],
+                $itemDoneAt,
+            );
+            $nursingItemsDisplay = !$isPassage && is_array($apt['nursing_items_display'] ?? null)
+                ? $this->withItemDoneAt($apt['nursing_items_display'], $itemDoneAt)
                 : $nursingItems;
-            $patientId = !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null;
-            $patientAbsence = ($patientId && isset($absenceMap[$patientId])) ? $absenceMap[$patientId] : null;
+            $dossierId = self::stopDossierId($apt);
+            $patientAbsence = $dossierId !== null ? ($absenceMap[$dossierId] ?? null) : null;
+            $collaboration = NurseCollaboration::decorate($apt, $collaborationsByApt[$aptId] ?? null, $nurseId);
 
             $stops[] = [
                 'stop_id' => (string) ($meta['id'] ?? ''),
@@ -404,7 +419,9 @@ final class NurseTourService
                 'visited_at' => $meta['visited_at'] ?? null,
                 'skip_reason' => $meta['skip_reason'] ?? null,
                 'patient_name' => $patientName,
-                'patient_id' => $patientId,
+                'patient_id' => !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null,
+                'relative_id' => !empty($apt['relative_id']) ? (string) $apt['relative_id'] : null,
+                'relative_profile_id' => $apt['relative_profile_id'],
                 'is_patient_absent_today' => $patientAbsence !== null,
                 'patient_absence' => $patientAbsence,
                 'patient_gender' => $apt['beneficiary_gender'] ?? null,
@@ -437,6 +454,9 @@ final class NurseTourService
                 'distance_km_from_prev' => round($distanceKm, 2),
                 'drive_min_from_prev' => TourProximity::estimateDriveMin($distanceKm),
                 'phone' => (string) ($fd['phone'] ?? ''),
+                'co_nurses' => $collaboration['co_nurses'],
+                'is_co_nurse' => $collaboration['is_co_nurse'],
+                'shared_by_name' => $collaboration['shared_by_name'],
             ];
             $position++;
             if ($coords !== null) {
@@ -445,6 +465,57 @@ final class NurseTourService
         }
 
         return $stops;
+    }
+
+    /**
+     * Dossier soigné à l'arrêt (absences, fiche patient) : celui du proche pour un RDV de proche
+     * (null s'il n'a pas encore de dossier), sinon le titulaire.
+     *
+     * @param array<string, mixed> $apt ligne enrichie par RelativeProfile::withRelativeProfileIds
+     */
+    private static function stopDossierId(array $apt): ?string
+    {
+        if (!empty($apt['relative_id'])) {
+            return $apt['relative_profile_id'] ?? null;
+        }
+
+        return !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null;
+    }
+
+    /**
+     * @param list<string> $appointmentIds
+     * @return array<string, ?string> id du soin → done_at
+     */
+    private function loadNursingItemDoneAt(array $appointmentIds): array
+    {
+        $appointmentIds = array_values(array_filter($appointmentIds, static fn (string $id): bool => $id !== ''));
+        if ($appointmentIds === [] || !DbSchemaCache::tableHasColumn($this->db, 'appointment_nursing_items', 'done_at')) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($appointmentIds), '?'));
+        $stmt = $this->db->prepare("SELECT id, done_at FROM appointment_nursing_items WHERE appointment_id IN ($placeholders)");
+        $stmt->execute($appointmentIds);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $out[(string) $row['id']] = $row['done_at'] !== null ? (string) $row['done_at'] : null;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     * @param array<string, ?string> $doneAt
+     * @return list<array<string, mixed>>
+     */
+    private function withItemDoneAt(array $items, array $doneAt): array
+    {
+        return array_map(static function (array $item) use ($doneAt): array {
+            $id = isset($item['id']) ? (string) $item['id'] : '';
+            $item['done_at'] = $id !== '' ? ($doneAt[$id] ?? null) : null;
+
+            return $item;
+        }, array_values(array_filter($items, 'is_array')));
     }
 
     /**

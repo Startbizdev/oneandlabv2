@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { canShowReceiveTab, notificationShouldRefreshAppointmentsList } from '@oneandlab/shared-utils';
 import { pharmacyModuleFlagsQueryOptions } from '@/features/pharmacy-orders/hooks/pharmacy-module-flags-query';
+import { invalidatePharmacyOrders } from '@/features/pharmacy-orders/hooks/pharmacy-order-cache';
 import { queryClient } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -57,10 +58,18 @@ function maybeRefreshAppointmentsFromPush(data: Record<string, unknown>) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
 }
 
+function maybeRefreshPharmacyOrdersFromPush(data: Record<string, unknown>) {
+  const orderId = data.pharmacy_order_id != null ? String(data.pharmacy_order_id).trim() : '';
+  if (!orderId) return;
+  void invalidatePharmacyOrders(queryClient, orderId);
+  void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unread });
+}
+
 export function registerNotificationHandlers() {
   Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as Record<string, unknown>;
     maybeRefreshAppointmentsFromPush(data);
+    maybeRefreshPharmacyOrdersFromPush(data);
   });
 
   Notifications.addNotificationResponseReceivedListener((response) => {

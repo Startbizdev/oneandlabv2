@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { SheetModal } from '@/components/ui/SheetModal';
-import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { PatientDuplicatePrompt } from '@/features/appointments/form/components/PatientDuplicatePrompt';
 import { usePatientDuplicateDetection } from '@/features/patients/hooks/use-patient-duplicate-detection';
@@ -19,14 +18,18 @@ import {
   patientAdoptErrorMessage,
   patientCreateErrorMessage,
 } from '@oneandlab/shared-api';
+import { isPatientPhoneOptionalForCreator } from '@oneandlab/shared-constants';
 import { ApiRequestError } from '@/lib/errors/api-request-error';
 import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 import { queryKeys } from '@/lib/query-keys';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  uploadPatientProfileDocument,
-  type PatientProfileUploadType,
-} from '../api/patient-profile.service';
+import { useAuthStore } from '@/store/auth-store';
+import { useToast } from '@/providers/ToastProvider';
+import { uploadPatientProfileDocuments } from '../api/patient-profile.service';
+import { createPatientBody } from '../utils/create-patient-body';
+import type { PatientContactDraft } from '@/lib/contacts/patient-draft-from-contact';
+import { PatientContactImportButton } from './PatientContactImportButton';
+import { EMPTY_PATIENT_CONTACT, PatientContactFields, type PatientContactValues } from './PatientContactFields';
 import { StaffPatientBookingConsentRow } from '@/features/patients/components/StaffPatientBookingConsentRow';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -45,21 +48,6 @@ type Props = {
   detectDuplicates?: boolean;
 };
 
-function addressForApi(
-  address: AddressPayload | null,
-  complement: string,
-): Record<string, unknown> | undefined {
-  if (!address?.label?.trim()) return undefined;
-  return {
-    label: address.label.trim(),
-    lat: address.lat,
-    lng: address.lng,
-    ...(address.city ? { city: address.city } : {}),
-    ...(address.postal_code ? { postal_code: address.postal_code } : {}),
-    ...(complement.trim() ? { complement: complement.trim() } : {}),
-  };
-}
-
 export function CreatePatientModal({
   visible,
   onClose,
@@ -69,12 +57,13 @@ export function CreatePatientModal({
 }: Props) {
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const { show: toast } = useToast();
+  const phoneOptional = isPatientPhoneOptionalForCreator(useAuthStore((s) => s.user?.role));
+  const [contact, setContact] = useState<PatientContactValues>(EMPTY_PATIENT_CONTACT);
+  const { firstName, lastName, email, phone } = contact;
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
+  const [addressPrefill, setAddressPrefill] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [personalFiles, setPersonalFiles] = useState<
@@ -92,12 +81,10 @@ export function CreatePatientModal({
   );
 
   const reset = useCallback(() => {
-    setFirstName('');
-    setLastName('');
-    setEmail('');
-    setPhone('');
+    setContact(EMPTY_PATIENT_CONTACT);
     setAddress(null);
     setAddressComplement('');
+    setAddressPrefill('');
     setPersonalFiles({});
     setPatientBookingConsent(false);
     setConsentError(false);
@@ -112,6 +99,16 @@ export function CreatePatientModal({
   const toggleConsent = () => {
     setPatientBookingConsent((v) => !v);
     setConsentError(false);
+  };
+
+  const applyContactDraft = ({ addressQuery, ...draftContact }: PatientContactDraft) => {
+    setContact(draftContact);
+    if (addressQuery) {
+      setAddress(null);
+      setAddressComplement('');
+      setAddressPrefill(addressQuery);
+    }
+    setError(null);
   };
 
   const adoptExistingPatient = async () => {
@@ -153,13 +150,26 @@ export function CreatePatientModal({
     }
   };
 
+  /** Documents envoyés après la création : un échec n'annule pas le patient, il est signalé. */
+  const uploadPersonalFiles = async (patientId: string) => {
+    const failed = await uploadPatientProfileDocuments(patientId, personalFiles);
+    if (failed > 0) {
+      toast(
+        failed === 1
+          ? 'Patient créé, mais un document n’a pas pu être envoyé. Ajoutez-le depuis sa fiche.'
+          : 'Patient créé, mais des documents n’ont pas pu être envoyés. Ajoutez-les depuis sa fiche.',
+        { type: 'warning' },
+      );
+    }
+  };
+
   const submit = async () => {
     if (duplicate) {
       setError('Ce patient existe déjà — utilisez le dossier existant.');
       return;
     }
-    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-      setError('Prénom, nom et téléphone sont requis.');
+    if (!firstName.trim() || !lastName.trim() || (!phoneOptional && !phone.trim())) {
+      setError(phoneOptional ? 'Prénom et nom sont requis.' : 'Prénom, nom et téléphone sont requis.');
       return;
     }
     if (!patientBookingConsent) {
@@ -170,38 +180,21 @@ export function CreatePatientModal({
     setLoading(true);
     setError(null);
     try {
-      const addr = addressForApi(address, addressComplement);
-      const res = await createPatient({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone.trim(),
-        ...(email.trim() ? { email: email.trim() } : {}),
-        ...(addr ? { address: addr } : {}),
-        patient_booking_consent: true,
-      });
+      const res = await createPatient(
+        createPatientBody({
+          ...contact,
+          address,
+          addressComplement,
+        }),
+      );
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
       const patientId = res.data.id;
-      for (const [key, file] of Object.entries(personalFiles)) {
-        if (!file || !('uri' in file)) continue;
-        try {
-          await uploadPatientProfileDocument(
-            patientId,
-            key as PatientProfileUploadType,
-            {
-              uri: file.uri,
-              fileName: file.name,
-              mimeType: file.mimeType ?? 'image/jpeg',
-            },
-          );
-        } catch {
-          /* non bloquant */
-        }
-      }
+      await uploadPersonalFiles(patientId);
       const created: CreatedPatientResult = {
         id: patientId,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        phone: phone.trim(),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
         ...(email.trim() ? { email: email.trim() } : {}),
       };
       reset();
@@ -237,6 +230,20 @@ export function CreatePatientModal({
       }}
       dismissible={!loading && !adopting}
       title="Nouveau patient"
+      snapPoints={['92%']}
+      footer={
+        <>
+          {duplicate ? null : errorText}
+          <Row gap={spacing[3]}>
+            <View style={styles.actionBtn}>
+              <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
+            </View>
+            <View style={styles.actionBtn}>
+              <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth size="lg" />
+            </View>
+          </Row>
+        </>
+      }
     >
       {duplicate ? (
         <PatientDuplicatePrompt
@@ -250,21 +257,12 @@ export function CreatePatientModal({
           {errorText}
         </PatientDuplicatePrompt>
       ) : null}
+      <PatientContactImportButton onImported={applyContactDraft} />
       <View style={styles.fields}>
-        <Input label="Prénom" value={firstName} onChangeText={setFirstName} autoCapitalize="words" />
-        <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
-        <Input
-          label="Téléphone"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
-        <Input
-          label="Email (optionnel)"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
+        <PatientContactFields
+          values={contact}
+          phoneOptional={phoneOptional}
+          onChange={(patch) => setContact((prev) => ({ ...prev, ...patch }))}
         />
         <AddressAutocomplete
           label="Adresse (optionnel)"
@@ -272,6 +270,7 @@ export function CreatePatientModal({
           complement={addressComplement}
           onChange={setAddress}
           onComplementChange={setAddressComplement}
+          prefillQuery={addressPrefill}
         />
       </View>
 
@@ -284,36 +283,21 @@ export function CreatePatientModal({
       />
 
       {duplicate ? null : consentRow}
-      {duplicate ? null : errorText}
-
-      <Row gap={spacing[3]} style={styles.actions}>
-        <View style={styles.actionBtn}>
-          <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
-        </View>
-        <View style={styles.actionBtn}>
-          <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth size="lg" />
-        </View>
-      </Row>
-
     </SheetModal>
   );
 }
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-  fields: { gap: spacing[3] },
-  errorText: {
-    ...font.medium,
-    fontSize: fontSize.sm,
-    color: c.error,
-  },
-  actions: {
-    marginTop: spacing[2],
-  },
-  actionBtn: {
-    minWidth: 0,
-    flex: 1,
-  },
-};
+    fields: { gap: spacing[3] },
+    errorText: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.error,
+    },
+    actionBtn: {
+      minWidth: 0,
+      flex: 1,
+    },
+  };
 }
-

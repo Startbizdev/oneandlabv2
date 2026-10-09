@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, type ScrollView } from 'react-native';
+import type { ScrollView } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
@@ -14,11 +14,9 @@ import { SkeletonStaffAppointmentDetail } from '@/components/ui/skeletons';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
-import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { DetailSidebarActions } from '../detail/components/DetailSidebarActions';
 import { fetchCarePhotos } from '../detail/api/appointment-detail.service';
 import { useCarePhotoUnread } from '../detail/hooks/use-care-photo-unread';
-import { appointmentDetailTabLabels } from '../detail/utils/care-photo-copy';
 import { CancelAppointmentSheet } from '../detail/components/blocks/CancelAppointmentSheet';
 import {
   appointmentPrescriptionHref,
@@ -29,20 +27,24 @@ import { carePhotoDiscussionHint } from '../detail/utils/care-photo-copy';
 import { ProPatientReviewSection } from '../detail/components/ProPatientReviewSection';
 import { StaffPatientKvSection } from '../detail/components/StaffPatientKvSection';
 import { PatientAssigneeRows } from '../detail/components/patient/PatientAssigneeRows';
+import { CoNursesSection } from '@/features/nurse-collaborations/components/CoNursesSection';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
-import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
-import { isCarePhotoGalleryContext } from '../detail/utils/care-photo-rules';
 import {
   parseCarePhotoDeepLinkParams,
 } from '../detail/utils/care-photo-deep-link';
-import { appointmentEditHref } from '@/navigation/role-hrefs';
+import {
+  appointmentDocumentsOmitCarePhotos,
+  appointmentHasCareGallery,
+  appointmentListDocuments,
+} from '../detail/utils/appointment-documents-list';
+import { appointmentDocumentsRow } from '../detail/utils/appointment-documents-row';
+import { appointmentDocumentsHref, appointmentEditHref } from '@/navigation/role-hrefs';
 import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 import { carePhotoDiscussionHref, isCarePhotoExchangeRole } from '../detail/utils/care-photo-navigation';
 import { appointmentConversationHref } from '../detail/utils/conversation-navigation';
 import { useOfferQueueStore } from '@/features/appointments/store/offer-queue-store';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
-import { filterListDocuments } from '../detail/utils/document-labels';
 import { staffPatientProfileHref } from '@/features/patients/utils/staff-hub-navigation';
 import { beneficiaryDisplayName } from '@/utils/beneficiary-display-name';
 import { SceneScrollView } from '@/components/navigation/SceneScrollView';
@@ -55,8 +57,6 @@ import { FilePenLine, HeartPulse, MessageCircle } from 'lucide-react-native';
 interface Props {
   role: string;
 }
-
-type SegmentId = 'infos' | 'documents';
 
 export function AppointmentDetailScreen({ role }: Props) {
   const styles = useStyles(buildStyles);
@@ -75,7 +75,6 @@ export function AppointmentDetailScreen({ role }: Props) {
   const focused = useIsFocused();
   const appActive = useAppActive();
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [segment, setSegment] = useState<SegmentId>('infos');
 
   const s = useAppointmentDetailScreen(role, id, user?.id);
   const openIncomingOffer = useOfferQueueStore((st) => st.openIncomingOffer);
@@ -93,12 +92,7 @@ export function AppointmentDetailScreen({ role }: Props) {
       router.replace('/(nurse)/(tabs)/demandes');
     })();
   }, [id, openIncomingOffer, primary, role, router, s.detailFetching, user?.id]);
-  const showCareFollowUp = Boolean(
-    config.showCarePhotosBlock && primary && isCarePhotoExchangeRole(role),
-  );
-  const hasCareGallery = Boolean(
-    showCareFollowUp && primary && isCarePhotoGalleryContext(primary),
-  );
+  const hasCareGallery = appointmentHasCareGallery(role, primary);
 
   const carePhotosQ = useQuery({
     queryKey: ['appointments', 'care-photos', id] as const,
@@ -133,12 +127,7 @@ export function AppointmentDetailScreen({ role }: Props) {
     if ((raw === 'photos' || raw === 'exchange') && id && hasCareGallery && isCarePhotoExchangeRole(role)) {
       router.setParams({ segment: undefined });
       router.push(carePhotoDiscussionHref(role, id));
-      return;
     }
-    const normalized = raw === 'documents' ? 'documents' : null;
-    if (!normalized) return;
-    setSegment(normalized);
-    router.setParams({ segment: undefined });
   }, [segmentParam, id, router, role, hasCareGallery]);
   const terminal = primary
     ? getAppointmentSidebarTerminalEmpty(primary.status)
@@ -146,31 +135,9 @@ export function AppointmentDetailScreen({ role }: Props) {
   const showActionsBlock = config.showActionsBlock && !terminal;
 
   const docList = useMemo(
-    () =>
-      filterListDocuments(
-        s.allDocuments.filter((d) =>
-          role === 'patient' ? d.document_type !== 'cancellation_photo' : true,
-        ),
-        { omitCarePhotos: hasCareGallery },
-      ),
-    [s.allDocuments, role, hasCareGallery],
+    () => appointmentListDocuments(s.allDocuments, role, appointmentDocumentsOmitCarePhotos(role, primary)),
+    [s.allDocuments, role, primary],
   );
-
-  const segments = useMemo(() => {
-    const items: { id: SegmentId; label: string; badge?: number }[] = [
-      { id: 'infos', label: appointmentDetailTabLabels.infos },
-    ];
-    if (config.showDocumentsBlock) {
-      items.push({
-        id: 'documents',
-        label: appointmentDetailTabLabels.documents,
-        badge: docList.length || undefined,
-      });
-    }
-    return items;
-  }, [config.showDocumentsBlock, docList.length]);
-
-  const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
 
   const isIncomingOffer =
     role === 'nurse' &&
@@ -211,7 +178,6 @@ export function AppointmentDetailScreen({ role }: Props) {
     return (
       <StackChromeScreen>
         <SkeletonStaffAppointmentDetail
-          showPhotosTab={config.showCarePhotosBlock}
           showAssignees
           showActions={config.showActionsBlock}
         />
@@ -228,31 +194,29 @@ export function AppointmentDetailScreen({ role }: Props) {
   }
 
   const { batchSorted, isMultiBatch, canceled } = s;
-  const editHref = config.canReschedule ? appointmentEditHref(roleRoutePrefix(role), id) : null;
-  const patientProfileHref = staffPatientProfileHref(role, primary?.patient_id);
+  const patientProfileHref = staffPatientProfileHref(role, s.dossierPatientId);
   const openPatientProfile = patientProfileHref
     ? () => router.push(patientProfileHref)
     : undefined;
-  // Bénéficiaire ≠ titulaire du compte (proche ou nom saisi dans le formulaire) :
-  // le bouton ouvre la fiche du titulaire, on l’annonce explicitement.
-  const accountHolderName = [
-    s.patientAccountProfile?.first_name,
-    s.patientAccountProfile?.last_name,
-  ]
+  // RDV d'un proche, ou nom saisi différent du dossier : le bouton nomme le dossier ouvert.
+  const dossierName = [s.dossierProfile?.first_name, s.dossierProfile?.last_name]
     .filter(Boolean)
     .join(' ')
     .trim();
   const normalizeName = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase();
   const beneficiaryName = beneficiaryDisplayName(primary);
-  const beneficiaryDiffersFromHolder = Boolean(
-    accountHolderName &&
-      beneficiaryName &&
-      beneficiaryName !== '—' &&
-      normalizeName(accountHolderName) !== normalizeName(beneficiaryName),
+  const knownBeneficiaryName = beneficiaryName !== '—' ? beneficiaryName : '';
+  const forRelative = Boolean(primary.relative_id?.trim() || primary.relative?.id);
+  const nameDiffersFromDossier = Boolean(
+    dossierName &&
+      knownBeneficiaryName &&
+      normalizeName(dossierName) !== normalizeName(knownBeneficiaryName),
   );
-  const viewPatientProfileLabel = beneficiaryDiffersFromHolder
-    ? `Profil du titulaire · ${accountHolderName}`
-    : undefined;
+  const dossierLabelName = dossierName || knownBeneficiaryName;
+  const viewPatientProfileLabel =
+    dossierLabelName && (forRelative || nameDiffersFromDossier)
+      ? `Dossier de ${dossierLabelName}`
+      : undefined;
   const showPrescription =
     (role === 'pro' || role === 'nurse') &&
     config.showPrescriptionBlock &&
@@ -267,6 +231,16 @@ export function AppointmentDetailScreen({ role }: Props) {
       onPress: () => router.push(appointmentConversationHref(role, id)),
     },
   ];
+  const documentsRow = config.showDocumentsBlock
+    ? appointmentDocumentsRow({
+        documents: docList,
+        loading: s.docsLoading,
+        failed: Boolean(s.docsError),
+        appointmentStatus: primary.status,
+        onPress: () => router.push(appointmentDocumentsHref(roleRoutePrefix(role), id)),
+      })
+    : null;
+  if (documentsRow) followUpRows.push(documentsRow);
   if (hasCareGallery && isCarePhotoExchangeRole(role)) {
     followUpRows.push({
       icon: HeartPulse,
@@ -294,57 +268,42 @@ export function AppointmentDetailScreen({ role }: Props) {
           refreshing={pullRefresh.refreshing}
           onRefresh={pullRefresh.onRefresh}
         >
-          <DetailSegmentBar
-            segments={segments}
-            active={activeSegment}
-            onChange={(sid) => setSegment(sid as SegmentId)}
+          <RdvAppointmentInfoSection
+            apt={primary}
+            viewer={user}
+            batch={isMultiBatch ? batchSorted : undefined}
+            batchLoading={s.siblingsLoading}
+            showMapActions
+            onViewPatientProfile={openPatientProfile}
+            viewPatientProfileLabel={viewPatientProfileLabel}
           />
-
-          {activeSegment === 'infos' ? (
-            <View style={styles.tabBody}>
-              <RdvAppointmentInfoSection
-                apt={primary}
-                viewer={user}
-                batch={isMultiBatch ? batchSorted : undefined}
-                batchLoading={s.siblingsLoading}
-                showMapActions
-                onViewPatientProfile={openPatientProfile}
-                viewPatientProfileLabel={viewPatientProfileLabel}
-              />
-              <StaffPatientKvSection apt={primary} />
-              <PatientAssigneeRows apt={primary} />
-              <SettingsSection title="Suivi" items={followUpRows} />
-              {config.showProReviewBlock && primary.status === 'completed' ? (
-                <ProPatientReviewSection apt={primary} />
-              ) : null}
-              {showActionsBlock ? (
-                <DetailSidebarActions
-                  role={role}
-                  viewerId={user?.id}
-                  apt={primary}
-                  onShareDone={s.refreshAll}
-                  onReschedule={() => {
-                    if (editHref) router.push(editHref);
-                  }}
-                  onCancel={() => setCancelOpen(true)}
-                />
-              ) : null}
-            </View>
-          ) : null}
-
-          {activeSegment === 'documents' && config.showDocumentsBlock ? (
-            <RdvDocumentsPremiumPanel
-              appointmentId={id}
+          <StaffPatientKvSection apt={primary} />
+          <PatientAssigneeRows apt={primary} />
+          {role === 'nurse' ? (
+            <CoNursesSection
               apt={primary}
-              role={role}
-              docs={s.allDocuments}
-              loading={s.docsLoading}
-              error={s.docsError}
-              onRetry={s.retryDocs}
-              omitCarePhotos={hasCareGallery}
+              viewerId={user?.id}
+              onSelfRemoved={() => navigation.goBack()}
             />
           ) : null}
-
+          <SettingsSection title="Suivi" items={followUpRows} />
+          {config.showProReviewBlock && primary.status === 'completed' ? (
+            <ProPatientReviewSection apt={primary} />
+          ) : null}
+          {showActionsBlock ? (
+            <DetailSidebarActions
+              role={role}
+              viewerId={user?.id}
+              apt={primary}
+              onShareDone={s.refreshAll}
+              onReschedule={() => {
+                if (!config.canReschedule) return;
+                const editHref = appointmentEditHref(roleRoutePrefix(role), id);
+                if (editHref) router.push(editHref);
+              }}
+              onCancel={() => setCancelOpen(true)}
+            />
+          ) : null}
         </SceneScrollView>
       </StackChromeScreen>
 
@@ -371,8 +330,7 @@ function buildStyles() {
     width: '100%' as const,
     paddingHorizontal: spacing[4],
     paddingTop: spacing[2],
-    gap: spacing[3],
+    gap: spacing[5],
   },
-  tabBody: { gap: spacing[5] },
 };
 }

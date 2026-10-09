@@ -3,6 +3,8 @@
 require_once __DIR__ . '/LabTeamAccess.php';
 require_once __DIR__ . '/MedicalDocumentSubject.php';
 require_once __DIR__ . '/pharmacy/PharmacyOrderAccess.php';
+require_once __DIR__ . '/RelativeProfile.php';
+require_once __DIR__ . '/nurse-collaboration/NurseCollaboration.php';
 require_once __DIR__ . '/../models/User.php';
 
 /**
@@ -49,8 +51,22 @@ class MedicalDocumentAccess
         )) {
             return false;
         }
+        $dossierId = self::subjectDossierId($db, (string) $appointmentPatientId, $appointmentRelativeId);
 
-        return self::userHasProfileDocumentAccess($db, $user, (string) $appointmentPatientId);
+        return $dossierId !== null && self::userHasProfileDocumentAccess($db, $user, $dossierId);
+    }
+
+    /**
+     * Dossier patient d'un sujet (titulaire, proche éventuel) : celui du proche s'il est concerné.
+     * Null si le proche n'a pas encore de dossier (aucun accès soignant ne peut alors en découler).
+     */
+    public static function subjectDossierId(PDO $db, string $patientId, ?string $relativeId): ?string
+    {
+        if ($relativeId === null || $relativeId === '') {
+            return $patientId !== '' ? $patientId : null;
+        }
+
+        return RelativeProfile::profileIdForRelative($db, $relativeId);
     }
 
     /**
@@ -83,6 +99,33 @@ class MedicalDocumentAccess
         return null;
     }
 
+    /**
+     * Document et colonnes du RDV lues par userCanAccess (LEFT JOIN : un document de profil n'a pas de RDV).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function loadForAccess(PDO $db, string $documentId): ?array
+    {
+        $stmt = $db->prepare('
+            SELECT md.*,
+                   a.patient_id AS apt_patient_id,
+                   a.relative_id AS apt_relative_id,
+                   a.assigned_to,
+                   a.assigned_nurse_id,
+                   a.assigned_lab_id,
+                   a.assigned_pro_id,
+                   a.created_by AS apt_created_by
+            FROM medical_documents md
+            LEFT JOIN appointments a ON a.id = md.appointment_id
+            WHERE md.id = ?
+            LIMIT 1
+        ');
+        $stmt->execute([$documentId]);
+        $document = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $document ?: null;
+    }
+
     public static function userCanAccess(PDO $db, array $user, array $document): bool
     {
         if ($user['role'] === 'super_admin') {
@@ -98,11 +141,30 @@ class MedicalDocumentAccess
         }
 
         $owner = self::resolveProfileDocumentOwner($db, $documentId);
-        if ($owner !== null && self::userHasProfileDocumentAccess($db, $user, $owner['patient_id'])) {
+        if ($owner !== null && self::userCanAccessProfileDocumentOwner($db, $user, $owner)) {
             return true;
         }
 
         return self::userCanViewViaPharmacyOrder($db, $user, $documentId);
+    }
+
+    /**
+     * Document de profil d'un proche : le titulaire, ou un soignant ayant accès au dossier du proche
+     * (un accès au seul dossier du titulaire ne suffit pas).
+     *
+     * @param array{patient_id: string, relative_id: string|null} $owner
+     */
+    private static function userCanAccessProfileDocumentOwner(PDO $db, array $user, array $owner): bool
+    {
+        if ($owner['relative_id'] === null) {
+            return self::userHasProfileDocumentAccess($db, $user, $owner['patient_id']);
+        }
+        if ($owner['patient_id'] === ($user['user_id'] ?? '')) {
+            return true;
+        }
+        $dossierId = self::subjectDossierId($db, $owner['patient_id'], $owner['relative_id']);
+
+        return $dossierId !== null && self::userHasProfileDocumentAccess($db, $user, $dossierId);
     }
 
     /** Ordonnance jointe à une commande pharmacie que l'utilisateur peut consulter (officine destinataire, patient). */
@@ -140,6 +202,14 @@ class MedicalDocumentAccess
             || ($document['apt_created_by'] ?? '') === $user['user_id']
         );
 
+        if (!$hasAccess && ($user['role'] ?? '') === 'nurse') {
+            $hasAccess = NurseCollaboration::isAppointmentSharedWith(
+                $db,
+                (string) ($document['appointment_id'] ?? ''),
+                (string) $user['user_id'],
+            );
+        }
+
         if (!$hasAccess && in_array($user['role'], ['lab', 'subaccount', 'preleveur'], true)) {
             $teamIdsDirect = LabTeamAccess::teamMemberIds($db, $user['user_id'], $user['role']);
             if (in_array($document['assigned_lab_id'] ?? '', $teamIdsDirect, true)
@@ -148,37 +218,37 @@ class MedicalDocumentAccess
             }
         }
 
-        if (!$hasAccess && !empty($document['apt_patient_id']) && in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse'], true)) {
-            $hasAccess = self::userHasAssignedAppointmentWithPatient(
-                $db,
-                $user,
-                (string) $document['apt_patient_id'],
-            );
+        if ($hasAccess || empty($document['apt_patient_id'])) {
+            return $hasAccess;
+        }
+        // RDV d'un proche : le périmètre dossier est celui du proche, pas celui du titulaire.
+        $dossierId = self::subjectDossierId(
+            $db,
+            (string) $document['apt_patient_id'],
+            isset($document['apt_relative_id']) ? (string) $document['apt_relative_id'] : null,
+        );
+        if ($dossierId === null) {
+            return false;
         }
 
-        if (!$hasAccess && !empty($document['apt_patient_id']) && in_array($user['role'], ['pro', 'subaccount'], true)) {
-            $hasAccess = self::userHasProfessionalPatientAccess($db, $user, (string) $document['apt_patient_id']);
+        if (in_array($user['role'], ['lab', 'subaccount', 'preleveur', 'nurse'], true)
+            && self::userHasAssignedAppointmentWithPatient($db, $user, $dossierId)) {
+            return true;
         }
 
-        if (!$hasAccess && !empty($document['apt_patient_id']) && $user['role'] === 'pro') {
-            $hasAccess = self::userHasAppointmentAsCreatorWithPatient(
-                $db,
-                (string) $user['user_id'],
-                (string) $document['apt_patient_id'],
-            );
+        if (in_array($user['role'], ['pro', 'subaccount'], true)
+            && self::userHasProfessionalPatientAccess($db, $user, $dossierId)) {
+            return true;
+        }
+
+        if ($user['role'] === 'pro'
+            && self::userHasAppointmentAsCreatorWithPatient($db, (string) $user['user_id'], $dossierId)) {
+            return true;
         }
 
         // Aligné avec LabResultsListing : infirmier/pro avec accès dossier patient
         // peut télécharger un résultat labo même sans être assigné au RDV prélèvement.
-        if (!$hasAccess && !empty($document['apt_patient_id'])) {
-            $hasAccess = self::userHasProfileDocumentAccess(
-                $db,
-                $user,
-                (string) $document['apt_patient_id'],
-            );
-        }
-
-        return $hasAccess;
+        return self::userHasProfileDocumentAccess($db, $user, $dossierId);
     }
 
     /**
@@ -238,25 +308,28 @@ class MedicalDocumentAccess
         string $userId,
         string $patientId,
     ): bool {
-        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND created_by = ? LIMIT 1');
-        $chk->execute([$patientId, $userId]);
+        [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
+        $chk = $db->prepare("SELECT 1 FROM appointments a WHERE $subjectSql AND a.created_by = ? LIMIT 1");
+        $chk->execute([...$subjectParams, $userId]);
 
         return (bool) $chk->fetchColumn();
     }
 
-    /** Infirmier : assignée ou créatrice d'au moins un RDV du patient. */
+    /** Infirmier : assignée, créatrice ou invitée en binôme sur au moins un RDV du patient. */
     public static function userHasNurseAppointmentWithPatient(
         PDO $db,
         string $userId,
         string $patientId,
     ): bool {
-        $chk = $db->prepare('
-            SELECT 1 FROM appointments
-            WHERE patient_id = ?
-              AND (assigned_nurse_id = ? OR created_by = ?)
+        [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
+        [$sharedSql, $sharedParams] = NurseCollaboration::sharedWithNurseSql('a', $userId);
+        $chk = $db->prepare("
+            SELECT 1 FROM appointments a
+            WHERE $subjectSql
+              AND (a.assigned_nurse_id = ? OR a.created_by = ? OR $sharedSql)
             LIMIT 1
-        ');
-        $chk->execute([$patientId, $userId, $userId]);
+        ");
+        $chk->execute([...$subjectParams, $userId, $userId, ...$sharedParams]);
 
         return (bool) $chk->fetchColumn();
     }
@@ -305,10 +378,11 @@ class MedicalDocumentAccess
                 return false;
             }
             $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
+            [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $docPatientId);
             $chk = $db->prepare(
-                "SELECT 1 FROM appointments WHERE patient_id = ? AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders)) LIMIT 1"
+                "SELECT 1 FROM appointments a WHERE $subjectSql AND (a.assigned_lab_id IN ($placeholders) OR a.assigned_to IN ($placeholders)) LIMIT 1"
             );
-            $chk->execute(array_merge([$docPatientId], $teamIds, $teamIds));
+            $chk->execute(array_merge($subjectParams, $teamIds, $teamIds));
 
             return (bool) $chk->fetchColumn();
         }

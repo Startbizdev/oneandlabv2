@@ -154,6 +154,8 @@ export const aiBookingDraftErrorMessage: ApiErrorMessageResolver = (status, code
       return 'Ce récapitulatif a expiré. Demandez à Cary de le préparer à nouveau.';
     case 'DRAFT_ALREADY_CONFIRMED':
       return 'Ce rendez-vous a déjà été confirmé. Retrouvez-le dans vos rendez-vous.';
+    case 'PATIENT_ALREADY_EXISTS':
+      return 'Un patient existe déjà avec cet e-mail. Retrouvez-le dans vos patients ou demandez-lui l’accès à son dossier.';
     case 'EMAIL_ALREADY_USED':
       return 'Cet e-mail est déjà utilisé par un autre compte. Indiquez un autre e-mail pour le patient.';
     default:

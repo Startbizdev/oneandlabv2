@@ -1,6 +1,4 @@
 import { parseRawPatientAddress } from '~/utils/patient-address-rdv';
-import { formatStreetAndPostcodeOfferLine } from '@oneandlab/shared-utils';
-
 /**
  * Libellé d’affichage pour un champ adresse brut (objet API, chaîne libre ou JSON stringifié).
  */
@@ -26,46 +24,6 @@ function formDataAddressStreet(raw: unknown): string {
     }
   }
   return '';
-}
-
-/**
- * Affichage court avec arrondissement pour Paris (75xxx) à partir d'une ligne d'adresse libre.
- */
-export function formatAddressWithArrondissement(address: string | null | undefined): string {
-  if (!address || typeof address !== 'string') return '';
-  const trimmed = address.trim();
-  if (!trimmed) return '';
-
-  const postalCodeMatch = trimmed.match(/(\d{5})\s+([^,]+)/);
-  if (postalCodeMatch) {
-    const postalCode = postalCodeMatch[1];
-    const city = postalCodeMatch[2].trim();
-    if (postalCode.startsWith('75')) {
-      const arrondissement = postalCode.substring(3, 5);
-      return `${arrondissement}ème arrondissement, Paris`;
-    }
-    return `${postalCode} ${city}`;
-  }
-
-  const parts = trimmed.split(',').map((p) => p.trim());
-  if (parts.length > 0) {
-    return parts[parts.length - 1];
-  }
-  return trimmed;
-}
-
-/**
- * Rue + code postal (arrondissement), sans numéro de rue — pour partage / modal avant acceptation.
- * Ex. « rue de la paix 75015 ».
- */
-export function formatStreetAndDistrictWithoutStreetNumber(address: string | null | undefined): string {
-  if (!address || typeof address !== 'string') return '';
-  const trimmed = address.trim();
-  if (!trimmed) return '';
-
-  const pc = extractFrenchPostcodeFromLine(trimmed);
-  const streetPart = trimmed.split(',')[0]?.trim() ?? '';
-  return formatStreetAndPostcodeOfferLine(streetPart, pc) || streetPart;
 }
 
 /**
@@ -155,5 +113,3 @@ export function appointmentDetailAddressLine(apt: AppointmentLikeForAddress | nu
 
   return line;
 }
-
-export { appointmentOfferAddressLine, frenchArrondissementLabelFromPostcode } from '@oneandlab/shared-utils';

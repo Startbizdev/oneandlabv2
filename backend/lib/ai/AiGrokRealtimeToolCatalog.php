@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/AiGrokToolCatalog.php';
+require_once __DIR__ . '/AiBookingAccess.php';
 
 /**
  * Outils Cary au format xAI Realtime (function tools côté client).
@@ -62,16 +63,42 @@ final class AiGrokRealtimeToolCatalog
     }
 
     /**
+     * Outils proposés à l'utilisateur : la réservation seulement pour les rôles qui y ont droit.
+     *
+     * @param array<string, mixed> $user
+     * @return list<array<string, mixed>>
+     */
+    public static function toolsFor(array $user): array
+    {
+        return AiBookingAccess::allows($user) ? self::allTools() : self::contextTools();
+    }
+
+    /**
      * Outils autorisés côté serveur (proxy mobile).
      *
      * @return list<string>
      */
     public static function allowedToolNames(): array
     {
-        return array_map(
-            static fn (array $tool): string => (string) ($tool['name'] ?? ''),
-            self::allTools(),
-        );
+        return self::names(self::allTools());
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @return list<string>
+     */
+    public static function allowedToolNamesFor(array $user): array
+    {
+        return self::names(self::toolsFor($user));
+    }
+
+    /**
+     * @param list<array<string, mixed>> $tools
+     * @return list<string>
+     */
+    private static function names(array $tools): array
+    {
+        return array_map(static fn (array $tool): string => (string) ($tool['name'] ?? ''), $tools);
     }
 
     /**

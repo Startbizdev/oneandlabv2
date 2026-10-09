@@ -7,7 +7,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { DocumentDownloadButton } from '@/features/documents/components/DocumentDownloadButton';
 import { useDownloadedDocumentIds } from '@/features/documents/hooks/use-downloaded-document-ids';
-import { fetchPatientRelative } from '../api/patient-relatives.service';
+import { usePatientRelative } from '../hooks/use-patient-relative';
 import {
   RELATIVE_PROFILE_UPLOAD_TYPES,
   fetchProfileDocuments,
@@ -69,15 +69,7 @@ export function PatientRelativeDocumentsScreen() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const { isDownloaded, markDownloaded } = useDownloadedDocumentIds(`relative:${id ?? ''}`);
 
-  const relativeQ = useQuery({
-    queryKey: ['patient-relatives', id],
-    queryFn: async () => {
-      const res = await fetchPatientRelative(id!);
-      if (!res.success || !res.data) throw new Error(res.error ?? 'Proche introuvable');
-      return res.data;
-    },
-    enabled: Boolean(id),
-  });
+  const relativeQ = usePatientRelative(id);
 
   const docsQ = useQuery({
     queryKey: queryKeys.documents.relative(id ?? ''),

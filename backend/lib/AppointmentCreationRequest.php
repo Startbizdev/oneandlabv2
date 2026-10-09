@@ -7,9 +7,14 @@ final class AppointmentCreationConflict extends RuntimeException {}
 /** The claim and the appointment must commit on the same connection. */
 final class AppointmentCreationRequest
 {
+    public static function isValidKey(string $key): bool
+    {
+        return preg_match('/^[a-zA-Z0-9_-]{16,64}$/D', $key) === 1;
+    }
+
     public static function run(PDO $db, string $actor, string $key, string $hash, callable $create, ?callable $onReplay = null): string
     {
-        if (!preg_match('/^[a-zA-Z0-9_-]{16,64}$/D', $key)) {
+        if (!self::isValidKey($key)) {
             throw new AppointmentCreationConflict('Identifiant de demande invalide.');
         }
         return DatabaseTransaction::run($db, static function () use ($db, $actor, $key, $hash, $create, $onReplay): string {
@@ -33,5 +38,12 @@ final class AppointmentCreationRequest
             $save->execute([$id, $actor, $key]);
             return $id;
         });
+    }
+
+    /** A replay of a completed request skips the post-create effects (notifications). */
+    public static function markResponseCompleted(PDO $db, string $actor, string $key): void
+    {
+        $db->prepare('UPDATE appointment_creation_requests SET response_completed = 1 WHERE actor_id = ? AND request_key = ?')
+            ->execute([$actor, $key]);
     }
 }

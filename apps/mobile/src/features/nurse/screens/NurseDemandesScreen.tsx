@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { QueryFlatList } from '@/components/ui/QueryFlatList';
@@ -11,6 +12,7 @@ import { useAppointmentsList } from '@/features/appointments/hooks/use-appointme
 import { NURSE_DEMANDES_LIST_FILTERS } from '@/features/nurse/hooks/use-nurse-demandes-badge';
 import { useOpenIncomingOffer } from '@/features/nurse/hooks/use-open-incoming-offer';
 import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
+import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { spacing, useStyles, type Theme } from '@/theme';
 
@@ -19,6 +21,7 @@ export function NurseDemandesScreen() {
 
   const user = useAuthStore((s) => s.user);
 
+  const qc = useQueryClient();
   const query = useAppointmentsList(NURSE_DEMANDES_LIST_FILTERS);
   const { data, refetch } = query;
 
@@ -41,9 +44,14 @@ export function NurseDemandesScreen() {
     [incoming],
   );
 
+  const refreshScreen = useCallback(
+    () => Promise.all([refetch(), qc.invalidateQueries({ queryKey: queryKeys.planLimits.current })]),
+    [qc, refetch],
+  );
+
   const refetchList = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+    void refreshScreen();
+  }, [refreshScreen]);
 
   useAppForegroundRefetch(refetchList);
 
@@ -69,6 +77,7 @@ export function NurseDemandesScreen() {
     <View style={styles.container} collapsable={false}>
       <QueryFlatList
         query={query}
+        refresh={refreshScreen}
         items={displayRows}
         renderItem={renderItem}
         keyExtractor={(item) => (item.kind === 'batch' ? item.key : item.appointment.id)}

@@ -45,13 +45,15 @@ final class VoiceRealtimePromptBuilder
         $context['active_intent'] = $contextFocus;
         $context['active_intent_label_fr'] = CaryContextFocus::labelFr($contextFocus);
         $context['conversation_mode'] = 'voice_chat';
-        $context['tools_enabled'] = true;
         if ($draftPreview !== null) {
             $context['active_booking_draft'] = AiBookingDraftSummary::forPrompt($draftPreview);
         }
+        $promptContext = CaryContextFocus::minimizeContext($context, $contextFocus);
+        $promptContext['locale'] = $locale;
+        $promptContext['tools_enabled'] = AiBookingAccess::allows($user);
 
         return [
-            'instructions' => $this->renderInstructions($context, $locale),
+            'instructions' => $this->renderInstructions($promptContext, $locale),
             'context' => $context,
             'draft' => $draftPreview,
         ];

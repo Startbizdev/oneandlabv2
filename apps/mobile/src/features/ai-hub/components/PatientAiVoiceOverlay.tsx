@@ -1,4 +1,4 @@
-import type { AiAppointmentDraft } from '@oneandlab/shared-types';
+import type { AiAppointmentDraft, AiEmergency } from '@oneandlab/shared-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -18,9 +18,11 @@ import { X } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { CaryAiBookingRecapCard } from '@/features/ai-hub/components/CaryAiBookingRecapCard';
-import { CARY_AI_NOTICE, CaryAiEmergencyLine } from '@/features/ai-hub/components/CaryAiDisclosure';
+import { CARY_AI_NOTICE } from '@/features/ai-hub/components/CaryAiDisclosure';
+import { CaryAiEmergencyBanner, CaryAiEmergencyCard } from '@/features/ai-hub/components/CaryAiEmergency';
 import { CaryAiVoiceDocumentUpload } from '@/features/ai-hub/components/CaryAiVoiceDocumentUpload';
 import { CaryVoiceOrb, type VoiceActivityMode } from '@/features/ai-hub/components/CaryVoiceOrb';
+import type { AiBookingConsent } from '../hooks/use-ai-booking-draft';
 import type { VoicePhase, VoiceTurn } from '../hooks/use-voice-session';
 import { canConfirmAiDraftRecap, shouldShowAiDraftRecap } from '../utils/should-show-ai-draft-recap';
 import {
@@ -56,8 +58,11 @@ interface Props {
   voiceEnergy?: number;
   turns: VoiceTurn[];
   speechError: string | null;
+  /** Signe d'urgence détecté par le serveur : même carte que dans le fil écrit. */
+  emergency?: AiEmergency | null;
   activeDraft?: AiAppointmentDraft | null;
   confirmingDraft?: boolean;
+  bookingConsent?: AiBookingConsent | null;
   attachingDocument?: boolean;
   onConfirmDraft?: (draft: AiAppointmentDraft) => void;
   onAttachDocument?: (source: CarePhotoPickSource) => void;
@@ -82,9 +87,8 @@ function statusTitle(
   hasUserMessage: boolean,
 ): string | null {
   if (!available) return 'Voix indisponible';
-  if (phase === 'connecting') return 'Connexion…';
+  if (phase === 'connecting' || phase === 'fallback') return 'Connexion…';
   if (phase === 'reconnecting') return 'Reconnexion…';
-  if (phase === 'fallback') return 'Mode classique…';
   if (phase === 'error') return 'Erreur vocale';
   if (phase === 'processing') return hasUserMessage ? 'Réflexion…' : 'Connexion…';
   if (phase === 'speaking') return 'Cary parle';
@@ -160,8 +164,10 @@ export function PatientAiVoiceOverlay({
   voiceEnergy = 0,
   turns,
   speechError,
+  emergency,
   activeDraft,
   confirmingDraft,
+  bookingConsent,
   attachingDocument,
   onConfirmDraft,
   onAttachDocument,
@@ -213,10 +219,10 @@ export function PatientAiVoiceOverlay({
   }, [phase, visible]);
 
   useEffect(() => {
-    if (turns.length > 0 || phase === 'processing' || phase === 'speaking') {
+    if (turns.length > 0 || emergency || phase === 'processing' || phase === 'speaking') {
       transcriptRef.current?.scrollToEnd({ animated: true });
     }
-  }, [turns.length, phase]);
+  }, [turns.length, emergency, phase]);
 
   const micDenied = speechError?.toLowerCase().includes('micro') ?? false;
 
@@ -240,7 +246,10 @@ export function PatientAiVoiceOverlay({
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <Row justify="between" align="start" gap={spacing[3]} style={styles.header}>
           <View style={styles.disclosure}>
-            <CaryAiEmergencyLine lead={CARY_AI_NOTICE} />
+            <CaryAiEmergencyBanner variant="inline" />
+            <AppText variant="caption" style={styles.notice}>
+              {CARY_AI_NOTICE}
+            </AppText>
           </View>
           <Pressable
             onPress={handleClose}
@@ -266,6 +275,7 @@ export function PatientAiVoiceOverlay({
             {turns.map((turn) => (
               <Turn key={turn.id} turn={turn} styles={styles} />
             ))}
+            {emergency ? <CaryAiEmergencyCard emergency={emergency} /> : null}
             {phase === 'processing' ? <ProcessingDots styles={styles} /> : null}
           </ScrollView>
 
@@ -281,6 +291,7 @@ export function PatientAiVoiceOverlay({
                 draft={activeDraft}
                 canConfirm={canConfirmAiDraftRecap(activeDraft)}
                 confirming={confirmingDraft}
+                consent={bookingConsent}
                 onConfirm={onConfirmDraft}
               />
             </View>
@@ -332,6 +343,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     body: { minWidth: 0, flex: 1 },
     header: { paddingHorizontal: H_PADDING, paddingTop: spacing[2], paddingBottom: spacing[2] },
     disclosure: { flex: 1, minWidth: 0, gap: spacing[0.5] },
+    notice: { color: c.textTertiary },
     closeBtn: {
       width: MIN_TOUCH_TARGET,
       height: MIN_TOUCH_TARGET,

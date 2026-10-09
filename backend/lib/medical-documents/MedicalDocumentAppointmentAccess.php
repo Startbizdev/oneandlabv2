@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../LabTeamAccess.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 require_once __DIR__ . '/../../models/User.php';
 
 /** ACL liste / upload documents médicaux liés à un RDV. */
@@ -40,7 +41,7 @@ final class MedicalDocumentAppointmentAccess
             }
         }
 
-        return $hasAccess;
+        return $hasAccess || self::isSharedWithNurse($user, $appointment, $db);
     }
 
     /**
@@ -77,6 +78,16 @@ final class MedicalDocumentAppointmentAccess
             }
         }
 
-        return $hasAccess;
+        return $hasAccess || self::isSharedWithNurse($user, $appointment, $db);
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     * @param array<string, mixed> $appointment ligne RDV portant son id
+     */
+    private static function isSharedWithNurse(array $user, array $appointment, PDO $db): bool
+    {
+        return ($user['role'] ?? '') === 'nurse'
+            && NurseCollaboration::isAppointmentSharedWith($db, (string) ($appointment['id'] ?? ''), (string) $user['user_id']);
     }
 }

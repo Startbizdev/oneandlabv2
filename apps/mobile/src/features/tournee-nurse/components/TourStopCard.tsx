@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Check, Clock, MapPin, Navigation, Phone } from 'lucide-react-native';
+import { addressLineWithDistrict } from '@oneandlab/shared-utils';
 import { Cluster, Row, Stack } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
@@ -129,7 +130,7 @@ export function TourStopCard({
               </View>
               <Stack gap={spacing[0.5]} style={styles.addressStack}>
                 <AppText style={styles.address}>
-                  {stop.address_line}
+                  {addressLineWithDistrict(stop.address_line)}
                 </AppText>
                 {stop.address_complement ? (
                   <AppText style={styles.complement}>

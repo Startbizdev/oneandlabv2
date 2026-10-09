@@ -66,7 +66,7 @@ final class AppointmentStatusService
         ?string $cancellationPhotoDocumentId = null
     ): ?string {
         // Récupérer le statut actuel et le type
-        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, assigned_to, location_lat, location_lng, scheduled_at, patient_id, form_data_encrypted, form_data_dek, creation_batch_id FROM appointments WHERE id = ?');
+        $stmt = $this->db->prepare('SELECT status, type, assigned_nurse_id, assigned_lab_id, assigned_to, location_lat, location_lng, scheduled_at, patient_id, relative_id, form_data_encrypted, form_data_dek, creation_batch_id FROM appointments WHERE id = ?');
         $stmt->execute([$id]);
         $appointment = $stmt->fetch();
         
@@ -610,10 +610,15 @@ final class AppointmentStatusService
                 && in_array($revokeProfileRole, ['nurse', 'lab', 'subaccount'], true)
             ) {
                 require_once __DIR__ . '/../../models/User.php';
+                require_once __DIR__ . '/../RelativeProfile.php';
                 try {
-                    $userModel = new User();
+                    // RDV d'un proche : le lien retiré est celui du dossier du proche (repli titulaire pour les liens antérieurs à la migration 126).
+                    $revokeDossierId = !empty($appointment['relative_id'])
+                        ? (RelativeProfile::profileIdForRelative($this->db, (string) $appointment['relative_id']) ?? (string) $appointment['patient_id'])
+                        : (string) $appointment['patient_id'];
+                    $userModel = new User($this->db);
                     $userModel->revokePatientProfessionalAccessAfterRedispatch(
-                        (string) $appointment['patient_id'],
+                        $revokeDossierId,
                         (string) $revokeProfileId,
                         (string) $revokeProfileRole
                     );
@@ -738,11 +743,18 @@ final class AppointmentStatusService
         // Lien patient ↔ professionnel lors de l’acceptation (RDV confirmé avec patient)
         if ($newStatus === 'confirmed' && !empty($appointment['patient_id']) && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'pro'], true)) {
             require_once __DIR__ . '/../../models/User.php';
+            require_once __DIR__ . '/../RelativeProfile.php';
             try {
-                $userModel = new User();
-                $userModel->linkPatientProfessional((string) $appointment['patient_id'], $actorId, $id, 'appointment_accepted');
+                // RDV d'un proche : le soignant est relié au dossier du proche, jamais à celui du titulaire.
+                $dossierId = RelativeProfile::ensureAppointmentSubject(
+                    $this->db,
+                    (string) $appointment['patient_id'],
+                    isset($appointment['relative_id']) ? (string) $appointment['relative_id'] : null,
+                );
+                $userModel = new User($this->db);
+                $userModel->linkPatientProfessional($dossierId, $actorId, $id, 'appointment_accepted');
                 foreach ($batchSiblingIdsConfirmed as $sibApptId) {
-                    $userModel->linkPatientProfessional((string) $appointment['patient_id'], $actorId, $sibApptId, 'appointment_accepted');
+                    $userModel->linkPatientProfessional($dossierId, $actorId, $sibApptId, 'appointment_accepted');
                 }
             } catch (Throwable $e) {
                 error_log('PatientProfessionalAccess (appointment_accepted): ' . $e->getMessage());

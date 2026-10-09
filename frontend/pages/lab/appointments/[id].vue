@@ -15,6 +15,7 @@
         :uploading-types="uploadingTypes"
         @download="downloadDocument"
         @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+        @replaced="loadDocuments()"
       />
     </template>
     <template #sidebarActions="{ appointment, loadAppointment }">

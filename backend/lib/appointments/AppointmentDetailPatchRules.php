@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
+
 /** Règles PATCH partiel sur GET/PUT /appointments/:id (créneau, reprogrammation infirmier). */
 final class AppointmentDetailPatchRules
 {
@@ -47,21 +49,23 @@ final class AppointmentDetailPatchRules
         return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public static function nurseAssignedToNursing(PDO $db, string $appointmentId, string $nurseId): bool
+    /** RDV soins assigné à l'infirmier ou partagé avec lui en binôme. */
+    public static function nurseCanManageNursing(PDO $db, string $appointmentId, string $nurseId): bool
     {
+        [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $nurseId);
         $stmt = $db->prepare("
-            SELECT id FROM appointments
-            WHERE id = ? AND type = 'nursing' AND assigned_nurse_id = ?
-              AND status IN ('confirmed', 'inProgress', 'planned', 'completed')
+            SELECT a.id FROM appointments a
+            WHERE a.id = ? AND a.type = 'nursing' AND {$nurseSql}
+              AND a.status IN ('confirmed', 'inProgress', 'planned', 'completed')
             LIMIT 1
         ");
-        $stmt->execute([$appointmentId, $nurseId]);
+        $stmt->execute([$appointmentId, ...$nurseParams]);
 
         return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
-     * completed / inProgress : assigné, créateur pro, ou lab équipe.
+     * completed / inProgress : assigné, invité en binôme, créateur pro, ou lab équipe.
      *
      * @param array<string, mixed> $user
      * @param array<string, mixed> $aptPerm
@@ -78,6 +82,9 @@ final class AppointmentDetailPatchRules
         $isProCreator = ($user['role'] ?? '') === 'pro' && ($aptPerm['created_by'] ?? null) === $userId;
         if ($isAssigned || $isProCreator) {
             return true;
+        }
+        if (($user['role'] ?? '') === 'nurse') {
+            return NurseCollaboration::isAppointmentSharedWith($db, (string) ($aptPerm['id'] ?? ''), $userId);
         }
         if (in_array($user['role'] ?? '', ['lab', 'subaccount'], true)) {
             require_once __DIR__ . '/../LabTeamAccess.php';

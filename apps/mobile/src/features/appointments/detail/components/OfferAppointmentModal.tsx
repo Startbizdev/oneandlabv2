@@ -179,6 +179,7 @@ export function OfferAppointmentModal() {
       setPreparing(false);
       setLoading(false);
       if (r.planLimit) {
+        void qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
         toast('Limite atteinte — passez à l’offre Pro pour accepter sans limite.', {
           type: 'error',
         });
@@ -216,6 +217,7 @@ export function OfferAppointmentModal() {
         qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
         qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
         qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT }),
+        qc.invalidateQueries({ queryKey: queryKeys.planLimits.current }),
       ]);
     } catch (prefetchError) {
       // Navigation maintenue : le cache optimiste porte déjà le statut confirmé.

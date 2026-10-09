@@ -16,6 +16,13 @@ require_once __DIR__ . '/AiVoiceMessageSignals.php';
 require_once __DIR__ . '/AiVoiceAssistantGuard.php';
 require_once __DIR__ . '/AiAssistantResponseGuard.php';
 require_once __DIR__ . '/AiVoiceDraftReconciler.php';
+require_once __DIR__ . '/AiEmergencyDetector.php';
+require_once __DIR__ . '/AiChatService.php';
+require_once __DIR__ . '/../DatabaseTransaction.php';
+require_once __DIR__ . '/../Validation.php';
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../../models/User.php';
 
 final class VoiceService
 {
@@ -44,31 +51,47 @@ final class VoiceService
      */
     public function createSession(array $user, array $input): array
     {
-        $locale = in_array($input['locale'] ?? 'fr', ['fr', 'en', 'ar', 'es'], true)
-            ? (string) $input['locale'] : 'fr';
+        $requestedLocale = $input['locale'] ?? 'fr';
+        $locale = in_array($requestedLocale, ['fr', 'en', 'ar', 'es'], true) ? $requestedLocale : 'fr';
         $conversationId = isset($input['conversation_id']) ? trim((string) $input['conversation_id']) : null;
         if ($conversationId === '') {
             $conversationId = null;
         }
+        $requestedPatientId = trim((string) ($input['patient_id'] ?? ''));
+        if (($user['role'] ?? '') === 'patient') {
+            $patientId = (string) $user['user_id'];
+        } elseif ($requestedPatientId !== '') {
+            if (!Validation::uuid($requestedPatientId)) {
+                throw new InvalidArgumentException('patient_id invalide');
+            }
+            if (!PatientDossierAccess::canAccess($this->db, new User(), $user, $requestedPatientId)) {
+                throw HttpStatusException::forbidden('Accès à ce patient refusé');
+            }
+            $patientId = $requestedPatientId;
+        } else {
+            $patientId = null;
+        }
+
         if ($conversationId !== null) {
             // A voice session must never be attached to another user's thread.
             // The UUID alone is not an authorization check.
             $ownedConversation = $this->conversations->getById($conversationId, (string) $user['user_id']);
             if ($ownedConversation === null) {
-                throw new InvalidArgumentException('Conversation vocale introuvable');
+                throw HttpStatusException::notFound('Conversation vocale introuvable');
             }
-        }
-        if ($conversationId === null) {
-            $conv = $this->conversations->create($user, [
+            if (!empty($ownedConversation['patient_id'])) {
+                $patientId = (string) $ownedConversation['patient_id'];
+            }
+        } else {
+            $conversationId = (string) $this->conversations->create($user, [
                 'conversation_type' => 'voice',
                 'custom_title' => 'Conversation vocale',
-            ]);
-            $conversationId = (string) $conv['id'];
+                'patient_id' => $patientId !== (string) $user['user_id'] ? $patientId : null,
+            ])['conversation']['id'];
             $this->db->prepare('UPDATE ai_conversations SET channel = \'voice\' WHERE id = ?')
                 ->execute([$conversationId]);
         }
         $id = Uuid::v4();
-        $patientId = ($user['role'] ?? '') === 'patient' ? (string) $user['user_id'] : ($input['patient_id'] ?? null);
         $this->db->prepare('
             INSERT INTO voice_sessions (id, user_id, patient_id, ai_conversation_id, locale, channel, started_at)
             VALUES (?, ?, ?, ?, ?, \'voice\', NOW())
@@ -97,13 +120,7 @@ final class VoiceService
      */
     public function processTurn(array $user, string $sessionId, array $input): array
     {
-        $session = $this->getSession($sessionId, (string) $user['user_id']);
-        if (!$session) {
-            throw new RuntimeException('Session vocale introuvable');
-        }
-        if (!empty($session['ended_at'])) {
-            throw new RuntimeException('Session vocale déjà clôturée');
-        }
+        $session = $this->requireOpenSession($sessionId, (string) $user['user_id']);
         $rawTranscript = trim((string) ($input['transcript'] ?? ''));
         $sttProvider = (string) ($input['stt_provider'] ?? 'client');
 
@@ -125,16 +142,23 @@ final class VoiceService
         if ($rawTranscript === '') {
             throw new InvalidArgumentException('audio_base64 requis pour la conversation vocale');
         }
+        if (mb_strlen($rawTranscript) > AiChatService::MAX_MESSAGE_LENGTH) {
+            throw new HttpStatusException(
+                'Message trop long (' . AiChatService::MAX_MESSAGE_LENGTH . ' caractères maximum)',
+                400,
+                'AI_MESSAGE_TOO_LONG',
+            );
+        }
         $transcript = $rawTranscript;
 
         $conversationId = (string) ($session['ai_conversation_id'] ?? '');
-        $userMsgId = Uuid::v4();
-        $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'user\', NOW())')
-            ->execute([$userMsgId, $sessionId]);
-        $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider, language_detected) VALUES (?, ?, ?, ?, ?)')
-            ->execute([Uuid::v4(), $userMsgId, $transcript, $sttProvider, $session['locale'] ?? 'fr']);
+        $history = $this->modelHistory($conversationId, (string) $user['user_id']);
+        $userMessage = $this->conversations->addMessage($conversationId, 'user', $transcript);
 
-        $this->conversations->addMessage($conversationId, 'user', $transcript);
+        $emergency = AiEmergencyDetector::detect($transcript);
+        if ($emergency !== null) {
+            return $this->answerEmergency($session, $conversationId, (string) $userMessage['id'], $transcript, $sttProvider, $emergency);
+        }
 
         $this->applyVoiceSignalsToDraft($user, $conversationId, $transcript);
 
@@ -152,28 +176,24 @@ final class VoiceService
         if ($draftPreview !== null) {
             $context['active_booking_draft'] = AiBookingDraftSummary::forPrompt($draftPreview);
         }
+        $promptContext = CaryContextFocus::minimizeContext($context, $contextFocus);
+        $promptContext['locale'] = $context['locale'];
 
-        $history = $this->conversations->getMessages(
-            $conversationId,
-            (string) $user['user_id'],
-            AiTurnOrchestrator::HISTORY_LIMIT,
-        );
-        $messages = [];
-        foreach ($history as $msg) {
-            if (($msg['role'] ?? '') === 'system') {
-                continue;
-            }
-            $messages[] = ['role' => (string) $msg['role'], 'content' => (string) $msg['content']];
+        $messages = $history;
+        $messages[] = ['role' => 'user', 'content' => $transcript];
+        try {
+            $turn = $this->orchestrator->runTurn(
+                $user,
+                $messages,
+                $promptContext,
+                $conversationId,
+                $patientId,
+                'voice_agent',
+            );
+        } catch (Throwable $e) {
+            $this->conversations->removeMessage($conversationId, (string) $userMessage['id']);
+            throw $e;
         }
-
-        $turn = $this->orchestrator->runTurn(
-            $user,
-            $messages,
-            $context,
-            $conversationId,
-            $patientId,
-            'voice_agent',
-        );
 
         $draft = $turn['draft'] ?? $draftPreview;
         if (is_array($draft) && !empty($draft['id'])) {
@@ -201,12 +221,6 @@ final class VoiceService
 
         $draftId = is_array($draft) && !empty($draft['id']) ? (string) $draft['id'] : null;
 
-        $assistantMsgId = Uuid::v4();
-        $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'assistant\', NOW())')
-            ->execute([$assistantMsgId, $sessionId]);
-        $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider) VALUES (?, ?, ?, \'grok\')')
-            ->execute([Uuid::v4(), $assistantMsgId, $assistantText]);
-
         $metadata = [
             'audit_id' => $turn['audit_id'] ?? null,
             'disclaimer' => $context['disclaimer'],
@@ -217,7 +231,9 @@ final class VoiceService
         if ($appointmentId !== null && $appointmentId !== '') {
             $metadata['appointment_id'] = $appointmentId;
         }
-        $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata);
+        $this->recordVoiceExchange($session, $transcript, $sttProvider, $assistantText, 'grok', function () use ($conversationId, $assistantText, $metadata, $userMessage): void {
+            $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata, null, (string) $userMessage['id']);
+        });
 
         $assistantAudio = null;
         $assistantAudioMime = null;
@@ -242,7 +258,109 @@ final class VoiceService
             'draft' => $draft,
             'draft_id' => $draftId,
             'appointment_id' => $appointmentId,
+            'emergency' => null,
         ];
+    }
+
+    /**
+     * Session ouverte de l'utilisateur, sinon 404 / 409.
+     *
+     * @return array<string, mixed>
+     */
+    public function requireOpenSession(string $sessionId, string $userId): array
+    {
+        $session = $this->getSession($sessionId, $userId);
+        if ($session === null) {
+            throw HttpStatusException::notFound('Session vocale introuvable');
+        }
+        if (!empty($session['ended_at'])) {
+            throw HttpStatusException::conflict('Session vocale déjà clôturée', 'VOICE_SESSION_ENDED');
+        }
+
+        return $session;
+    }
+
+    /**
+     * Historique transmis au modèle : sans messages système ni transcriptions non vérifiées (voix temps réel).
+     *
+     * @return list<array{role: string, content: string}>
+     */
+    private function modelHistory(string $conversationId, string $userId): array
+    {
+        $messages = [];
+        foreach ($this->conversations->getMessages($conversationId, $userId, AiTurnOrchestrator::HISTORY_LIMIT) as $msg) {
+            $role = (string) ($msg['role'] ?? '');
+            if (!in_array($role, ['user', 'assistant'], true) || !empty($msg['metadata']['unverified'])) {
+                continue;
+            }
+            $messages[] = ['role' => $role, 'content' => (string) $msg['content']];
+        }
+
+        return $messages;
+    }
+
+    /**
+     * @param array<string, mixed> $session
+     * @param array{kind: string, title: string, body: string, actions: list<array{label: string, phone: string}>} $emergency
+     * @return array<string, mixed>
+     */
+    private function answerEmergency(array $session, string $conversationId, string $userMessageId, string $transcript, string $sttProvider, array $emergency): array
+    {
+        $assistantText = AiEmergencyDetector::messageContent($emergency);
+        $disclaimer = $this->gateway->getDisclaimerPublic();
+        $metadata = ['audit_id' => null, 'disclaimer' => $disclaimer, 'emergency' => $emergency, 'sources' => [], 'suggestions' => []];
+        $this->recordVoiceExchange($session, $transcript, $sttProvider, $assistantText, 'cary_emergency', function () use ($conversationId, $assistantText, $metadata, $userMessageId): void {
+            $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata, null, $userMessageId);
+        });
+
+        $audio = null;
+        $mime = null;
+        try {
+            $tts = $this->grokAudio->synthesize($assistantText, (string) ($session['locale'] ?? 'fr'));
+            $audio = $tts['audio_base64'];
+            $mime = $tts['mime'];
+        } catch (Throwable $e) {
+            error_log('[voice] TTS urgence : ' . $e->getMessage());
+        }
+
+        return [
+            'session_id' => (string) $session['id'],
+            'conversation_id' => $conversationId,
+            'transcript' => $transcript,
+            'assistant_text' => $assistantText,
+            'assistant_audio_base64' => $audio,
+            'assistant_audio_mime' => $mime,
+            'disclaimer' => $disclaimer,
+            'audit_id' => null,
+            'locale' => $session['locale'] ?? 'fr',
+            'draft' => null,
+            'draft_id' => null,
+            'appointment_id' => null,
+            'emergency' => $emergency,
+        ];
+    }
+
+    /**
+     * Trace vocale du tour (question et réponse) écrite avec la réponse : un tour en échec ne laisse aucune trace orpheline.
+     *
+     * @param array<string, mixed> $session
+     * @param callable(): void $persistAnswer
+     */
+    private function recordVoiceExchange(array $session, string $transcript, string $sttProvider, string $assistantText, string $assistantProvider, callable $persistAnswer): void
+    {
+        DatabaseTransaction::run($this->db, function () use ($session, $transcript, $sttProvider, $assistantText, $assistantProvider, $persistAnswer): void {
+            $userMsgId = Uuid::v4();
+            $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'user\', NOW())')
+                ->execute([$userMsgId, (string) $session['id']]);
+            $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider, language_detected) VALUES (?, ?, ?, ?, ?)')
+                ->execute([Uuid::v4(), $userMsgId, $transcript, $sttProvider, $session['locale'] ?? 'fr']);
+            $assistantMsgId = Uuid::v4();
+            $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'assistant\', NOW())')
+                ->execute([$assistantMsgId, (string) $session['id']]);
+            $this->db->prepare('INSERT INTO voice_transcriptions (id, voice_message_id, text, provider) VALUES (?, ?, ?, ?)')
+                ->execute([Uuid::v4(), $assistantMsgId, $assistantText, $assistantProvider]);
+            $persistAnswer();
+        });
     }
 
     /**
@@ -262,7 +380,7 @@ final class VoiceService
             );
             $name = trim((string) ($profile['first_name'] ?? ''));
         } catch (Throwable $e) {
-            // ignore
+            error_log('[voice] prénom indisponible pour l\'accueil : ' . $e->getMessage());
         }
         $greeting = $name !== '' ? "Bonjour {$name}," : 'Bonjour,';
 

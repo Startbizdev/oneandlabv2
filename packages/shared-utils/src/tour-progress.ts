@@ -6,6 +6,12 @@ export type TourStopProgressLike = {
   patient_absence?: { id?: string } | null;
 };
 
+/** Jour demandé par un lien (`?date=YYYY-MM-DD`, ex. notification de remplacement). */
+export function tourDateFromParam(raw: unknown): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 export function isTourStopAbsent(stop: TourStopProgressLike): boolean {
   return Boolean(stop.is_patient_absent_today || stop.patient_absence);
 }

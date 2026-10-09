@@ -24,7 +24,11 @@ export function HeaderBackButton({ onPress }: Props) {
       router.back();
       return;
     }
-    router.replace(role ? getRoleHome(role) : '/');
+    if (role) {
+      router.replace(getRoleHome(role));
+      return;
+    }
+    router.replace('/');
   };
 
   return <HeaderAction icon={ChevronLeft} accessibilityLabel="Retour" onPress={onPress ?? goBack} />;

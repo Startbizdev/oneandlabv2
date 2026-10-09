@@ -1,53 +1,55 @@
-import { useMemo, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
-import type { UserRole } from '@oneandlab/shared-types';
+import type { MobileRole } from '@oneandlab/shared-constants';
+import { useCallback, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { TabScreenFrame } from '@/components/navigation/TabScreenFrame';
 import { PatientAiHeaderMenuButton } from '@/features/ai-hub/components/PatientAiHeaderMenuButton';
 import { CaryAiHubScreen } from '@/features/ai-hub/screens/CaryAiHubScreen';
+import { resolveAiConversationContext } from '@/features/ai-hub/utils/ai-conversation-context';
+import type { AiDeepLinkParams } from '@/features/ai-hub/utils/ai-navigation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 
 const TITLE = 'Assistant Cary';
 
+const CONTEXT_PARAMS_CLEARED: Record<keyof AiDeepLinkParams, undefined> = {
+  conversation_type: undefined,
+  patient_id: undefined,
+  appointment_id: undefined,
+  lab_result_id: undefined,
+  initial_message: undefined,
+};
+
 type Props = {
-  role: UserRole | string;
+  role: MobileRole;
   showBackButton?: boolean;
 };
 
-/** Hub Cary IA — stack (pro/nurse/preleveur) ou onglet patient. */
+/** Hub Cary IA — stack (pro/nurse/preleveur) ou onglet patient. Les paramètres de route fixent la conversation. */
 export function RoleAiHubRouteScreen({ role, showBackButton = false }: Props) {
+  const router = useRouter();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const params = useLocalSearchParams<{
-    conversation_type?: string;
-    patient_id?: string;
-    appointment_id?: string;
-    lab_result_id?: string;
-    initial_message?: string;
-  }>();
+  const params = useLocalSearchParams<AiDeepLinkParams>();
+  const { conversation_type, patient_id, appointment_id, lab_result_id, initial_message } = params;
 
-  const init = useMemo(
-    () => ({
-      conversationType: params.conversation_type,
-      patientId: params.patient_id,
-      appointmentId: params.appointment_id,
-      labResultId: params.lab_result_id,
-      initialMessage: params.initial_message,
-    }),
-    [
-      params.appointment_id,
-      params.conversation_type,
-      params.initial_message,
-      params.lab_result_id,
-      params.patient_id,
-    ],
+  const context = useMemo(
+    () => resolveAiConversationContext(role, { conversation_type, patient_id, appointment_id, lab_result_id, initial_message }),
+    [appointment_id, conversation_type, initial_message, lab_result_id, patient_id, role],
+  );
+
+  const clearContext = useCallback(() => router.setParams(CONTEXT_PARAMS_CLEARED), [router]);
+  const pickPatient = useCallback(
+    (patientId: string) => router.setParams({ ...CONTEXT_PARAMS_CLEARED, patient_id: patientId }),
+    [router],
   );
 
   const menu = <PatientAiHeaderMenuButton onPress={() => setHistoryOpen(true)} />;
   const hub = (
     <CaryAiHubScreen
       role={role}
+      context={context}
       historyOpen={historyOpen}
       onHistoryOpenChange={setHistoryOpen}
-      init={init}
+      onClearContext={clearContext}
+      onPickPatient={pickPatient}
     />
   );
 

@@ -232,7 +232,7 @@ const planningState = ref<PassagePlanningFormState>(
   (() => {
     const base = defaultPlanningFormState(stripDate.value, { recurring: flowMode.value === 'recurring' });
     if (flowMode.value === 'recurring') {
-      return { ...base, planningMode: 'interval', openEnded: true };
+      return { ...base, planningMode: 'weekdays', weekdays: [1, 2, 3, 4, 5, 6, 7], openEnded: true };
     }
     return base;
   })(),

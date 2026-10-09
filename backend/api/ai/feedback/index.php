@@ -6,12 +6,15 @@ require_once __DIR__ . '/../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../lib/ai/AiFeedbackService.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
+$user = ai_require_assistant_user();
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    ai_json_error('Méthode non autorisée', 405);
+}
 
 try {
-    $service = new AiFeedbackService();
-    $result = $service->submit($user, ai_read_json_body());
+    $result = (new AiFeedbackService())->submit($user, ai_read_json_body());
     ai_json_response(['success' => true, 'data' => $result], 201);
-} catch (InvalidArgumentException $e) {
-    ai_json_error($e->getMessage(), 400);
+} catch (Throwable $e) {
+    ai_respond_error($e, 'ai/feedback');
 }

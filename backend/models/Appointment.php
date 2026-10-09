@@ -52,8 +52,7 @@ class Appointment
     public function markCreationResponseCompleted(): void
     {
         if ($this->creationRequestContext === null) return;
-        $statement = $this->db->prepare('UPDATE appointment_creation_requests SET response_completed = 1 WHERE actor_id = ? AND request_key = ?');
-        $statement->execute($this->creationRequestContext);
+        AppointmentCreationRequest::markResponseCompleted($this->db, ...$this->creationRequestContext);
     }
 
     public function __construct(?PDO $db = null)
@@ -576,15 +575,17 @@ class Appointment
             $params[] = $scheduledAt;
         }
 
-        if (!empty($data['address']) && is_array($data['address']) && !empty($data['address']['label'])) {
-            $lat = floatval($data['address']['lat'] ?? 0);
-            $lng = floatval($data['address']['lng'] ?? 0);
-            $addressEncrypted = $this->crypto->encryptField($data['address']['label']);
-            $updateFields[] = 'address_encrypted = ?, address_dek = ?, location_lat = ?, location_lng = ?';
-            $params[] = $addressEncrypted['encrypted'];
-            $params[] = $addressEncrypted['dek'];
-            $params[] = $lat;
-            $params[] = $lng;
+        $requestedAddress = AppointmentAddressFields::requested($data, $oldFormData);
+        if ($requestedAddress !== null) {
+            $data['address'] = $requestedAddress;
+            [$addressSql, $addressParams] = AppointmentAddressFields::columns($this->crypto, $requestedAddress);
+            $updateFields[] = $addressSql;
+            array_push($params, ...$addressParams);
+            $formDataToSync = is_array($data['form_data'] ?? null) ? $data['form_data'] : $oldFormData;
+            $syncedFormData = AppointmentAddressFields::withFormDataAddress($formDataToSync, $requestedAddress);
+            if ($syncedFormData !== $formDataToSync) {
+                $data['form_data'] = $syncedFormData;
+            }
         }
 
         if (isset($data['form_data']) && is_array($data['form_data'])) {

@@ -30,7 +30,7 @@ final class PatientAbsenceService
             WHERE nurse_id = ? AND patient_id = ?
         ';
         if ($activeOnly) {
-            $sql .= ' AND end_date >= CURDATE()';
+            $sql .= ' AND (end_date IS NULL OR end_date >= CURDATE())';
         }
         $sql .= ' ORDER BY start_date DESC, created_at DESC';
         $stmt = $this->db->prepare($sql);
@@ -57,7 +57,7 @@ final class PatientAbsenceService
             SELECT * FROM patient_absences
             WHERE nurse_id = ?
               AND start_date <= ?
-              AND end_date >= ?
+              AND (end_date IS NULL OR end_date >= ?)
               AND patient_id IN ($placeholders)
             ORDER BY start_date ASC
         ");
@@ -141,7 +141,7 @@ final class PatientAbsenceService
     private function formatRow(array $row): array
     {
         $type = (string) ($row['absence_type'] ?? 'other');
-        $endDate = (string) ($row['end_date'] ?? '');
+        $endDate = isset($row['end_date']) && $row['end_date'] !== '' ? (string) $row['end_date'] : null;
 
         return [
             'id' => (string) ($row['id'] ?? ''),
@@ -167,9 +167,12 @@ final class PatientAbsenceService
         };
     }
 
-    private function cardLabel(string $type, string $endDate): string
+    private function cardLabel(string $type, ?string $endDate): string
     {
         $label = $this->typeLabel($type);
+        if ($endDate === null) {
+            return $label . ' · jusqu\'à nouvel ordre';
+        }
         $end = $this->formatEndDateFr($endDate);
         if ($end === '') {
             return $label;
@@ -205,7 +208,9 @@ final class PatientAbsenceService
 
     /**
      * @param array<string, mixed> $input
-     * @return array{0:string,1:string,2:string,3:?string}
+     * Fin absente ou vide : absence en cours jusqu'à nouvel ordre.
+     *
+     * @return array{0:string,1:string,2:?string,3:?string}
      */
     private function parseInput(array $input): array
     {
@@ -213,12 +218,12 @@ final class PatientAbsenceService
         if (!in_array($type, self::VALID_TYPES, true)) {
             throw new InvalidArgumentException('Motif d\'absence invalide');
         }
-        $start = trim((string) ($input['start_date'] ?? ''));
-        $end = trim((string) ($input['end_date'] ?? ''));
-        if ($start === '' || $end === '') {
-            throw new InvalidArgumentException('Dates de début et de fin requises');
+        $start = $this->parseIsoDate($input['start_date'] ?? null);
+        if ($start === null) {
+            throw new InvalidArgumentException('Date de début requise');
         }
-        if ($end < $start) {
+        $end = $this->parseIsoDate($input['end_date'] ?? null);
+        if ($end !== null && $end < $start) {
             throw new InvalidArgumentException('La date de fin doit être après la date de début');
         }
         $note = isset($input['note']) ? trim((string) $input['note']) : null;
@@ -229,19 +234,37 @@ final class PatientAbsenceService
         return [$type, $start, $end, $note];
     }
 
+    private function parseIsoDate(mixed $value): ?string
+    {
+        $raw = $value === null ? '' : trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', substr($raw, 0, 10));
+        if ($date === false || $date->format('Y-m-d') !== substr($raw, 0, 10)) {
+            throw new InvalidArgumentException('Date invalide');
+        }
+
+        return $date->format('Y-m-d');
+    }
+
     private function assertNoOverlap(
         string $nurseId,
         string $patientId,
         string $start,
-        string $end,
+        ?string $end,
         ?string $excludeId,
     ): void {
         $sql = '
             SELECT id FROM patient_absences
             WHERE nurse_id = ? AND patient_id = ?
-              AND start_date <= ? AND end_date >= ?
+              AND (end_date IS NULL OR end_date >= ?)
         ';
-        $params = [$nurseId, $patientId, $end, $start];
+        $params = [$nurseId, $patientId, $start];
+        if ($end !== null) {
+            $sql .= ' AND start_date <= ?';
+            $params[] = $end;
+        }
         if ($excludeId !== null && $excludeId !== '') {
             $sql .= ' AND id <> ?';
             $params[] = $excludeId;

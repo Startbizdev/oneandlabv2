@@ -32,9 +32,12 @@ import {
   useBookingDraftSession,
 } from '../hooks/use-booking-draft';
 import { BookingDraftResumeSheet } from '../components/BookingDraftResumeSheet';
+import { DirectedProviderBanner } from '../components/DirectedProviderBanner';
+import { useDirectedProviderName } from '../hooks/use-directed-provider-name';
 import type { BookingDraftData } from '../utils/booking-draft';
 import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import { PATIENT_VIP_FEE_LABEL } from '@oneandlab/shared-constants';
+import { resolveDirectedProvider, type DirectedProvider } from '@oneandlab/shared-utils';
 import { SkeletonCareSelectionStep } from '@/components/ui/skeletons';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 
@@ -53,14 +56,19 @@ interface Props {
 export function BookingWizardScreen(props: Props) {
   const [session, setSession] = useState(0);
   const [initialDraft, setInitialDraft] = useState<BookingDraftData | null>(null);
-  const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
+  const {
+    patient_id: patientIdParam,
+    relative_id: relativeIdParam,
+    provider_id: providerIdParam,
+  } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
+    provider_id?: string;
   }>();
   const focused = useIsFocused();
   const draftResume = useBookingDraftResume(
     useBookingDraftOwnerKey(),
-    focused && !patientIdParam && !relativeIdParam,
+    focused && !patientIdParam && !relativeIdParam && !providerIdParam,
   );
   const restart = useCallback(() => {
     setInitialDraft(null);
@@ -96,10 +104,23 @@ function BookingWizardFlow({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const router = useRouter();
-  const { patient_id: patientIdParam, relative_id: relativeIdParam } = useLocalSearchParams<{
+  const {
+    patient_id: patientIdParam,
+    relative_id: relativeIdParam,
+    provider_id: providerIdParam,
+    provider_role: providerRoleParam,
+  } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
+    provider_id?: string;
+    provider_role?: string;
   }>();
+  const [directedProvider, setDirectedProvider] = useState<DirectedProvider | null>(() =>
+    mode === 'patient'
+      ? (resolveDirectedProvider(providerIdParam, providerRoleParam) ??
+        resolveDirectedProvider(initialDraft?.directedProvider?.id, initialDraft?.directedProvider?.type))
+      : null,
+  );
   const draftSession = useBookingDraftSession(useBookingDraftOwnerKey());
   const [relativeSheetOpen, setRelativeSheetOpen] = useState(false);
   const formScrollRef = useRef<ScrollView>(null);
@@ -119,8 +140,10 @@ function BookingWizardFlow({
     onConsentMissing,
     initialDraft,
     onBookingCreated: draftSession.discard,
+    directedProvider,
   });
   useBookingDraftAutosave(bw, draftSession);
+  const providerName = useDirectedProviderName(bw.directedProvider);
   const w = bw.wizard;
   const { phases } = bw.progress;
 
@@ -222,6 +245,15 @@ function BookingWizardFlow({
               formDataByService={w.formDataByService}
               loading={w.saving}
               phases={phases}
+              contextBanner={
+                bw.directedProvider && providerName ? (
+                  <DirectedProviderBanner
+                    name={providerName}
+                    type={bw.directedProvider.type}
+                    onRemove={() => setDirectedProvider(null)}
+                  />
+                ) : null
+              }
             />
           )}
         </View>
@@ -394,6 +426,7 @@ function BookingWizardFlow({
                 formDataByService={w.formDataByService}
                 slotRows={bw.slotRows}
                 labSummary={bw.labSummary}
+                providerName={providerName}
                 beneficiary={{
                   name: beneficiaryName || (mode === 'patient' ? 'Vous' : 'Patient à renseigner'),
                   detail: beneficiaryDetail,

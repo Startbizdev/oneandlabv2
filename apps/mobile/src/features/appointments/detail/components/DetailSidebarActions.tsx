@@ -9,12 +9,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
-import {
-  canCancelAppointment,
-  isBloodTestAppointment,
-  isNursingAppointment,
-  staffCanManageOwnPendingBloodTest,
-} from '@oneandlab/shared-utils';
+import { appointmentDossierPatientId } from '@oneandlab/shared-utils';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -25,11 +20,8 @@ import {
   appointmentSidebarCardVisible,
   getAppointmentSidebarTerminalEmpty,
 } from '@/utils/appointment-sidebar-terminal';
-import {
-  effectiveAppointmentStatus,
-  nurseCanRescheduleOrCancel,
-} from '@/utils/effective-appointment-status';
-import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
+import { effectiveAppointmentStatus } from '@/utils/effective-appointment-status';
+import { detailSidebarActionFlags } from '../utils/detail-sidebar-action-flags';
 import {
   DetailActionList,
   type DetailActionItem,
@@ -91,26 +83,7 @@ export function DetailSidebarActions({
   if (!appointmentSidebarCardVisible(role, apt, viewerId)) return null;
   if (terminal) return null;
 
-  const rawStatus = String(apt.status ?? '');
-  const active = ['pending', 'confirmed', 'inProgress', 'in_progress'].includes(status);
-  const canceled = isAppointmentCanceled(rawStatus);
-  const nursing = isNursingAppointment(apt.type);
-  const blood = isBloodTestAppointment(apt.type);
-  const nurseManage =
-    nurseCanRescheduleOrCancel(apt, { role, viewerId }) ||
-    staffCanManageOwnPendingBloodTest(apt, viewerId);
-
-  const canCancel = canCancelAppointment(apt, { role, id: viewerId });
-  const showRescheduleNurse = role === 'nurse' && nurseManage;
-  const showRescheduleOther = (role === 'pro' || role === 'preleveur') && active;
-  const showCancelNurse = role === 'nurse' && nurseManage && canCancel;
-  const showCancelOther = (role === 'pro' || role === 'preleveur') && active && canCancel;
-  const showRedispatchNonNursing =
-    role === 'nurse' && status === 'confirmed' && !nursing && !blood;
-  const showRedispatchInNursingBlock =
-    role === 'nurse' && nursing && status === 'confirmed' && !canceled;
-  const showShareNursing =
-    role === 'nurse' && nursing && status !== 'completed' && !canceled;
+  const show = detailSidebarActionFlags(apt, { role, viewerId });
 
   const confirmRedispatch = () => {
     Alert.alert(
@@ -125,7 +98,7 @@ export function DetailSidebarActions({
 
   const actions: DetailActionItem[] = [];
 
-  if (showRescheduleNurse || showRescheduleOther) {
+  if (show.reschedule) {
     actions.push({
       key: 'reschedule',
       label: 'Reprendre le rendez-vous',
@@ -136,7 +109,7 @@ export function DetailSidebarActions({
     });
   }
 
-  if (showShareNursing) {
+  if (show.share) {
     actions.push({
       key: 'share',
       label: 'Partager à un confrère',
@@ -147,7 +120,7 @@ export function DetailSidebarActions({
     });
   }
 
-  if (showRedispatchNonNursing || showRedispatchInNursingBlock) {
+  if (show.redispatch) {
     actions.push({
       key: 'redispatch',
       label: 'Céder le rendez-vous',
@@ -170,15 +143,14 @@ export function DetailSidebarActions({
           buildAiDeepLink(role, {
             conversation_type: 'appointment',
             appointment_id: apt.id,
-            patient_id: apt.patient_id ?? undefined,
-            initial_message: 'Parle-moi de ce rendez-vous et aide-moi à le préparer.',
+            patient_id: appointmentDossierPatientId(apt) ?? undefined,
           }),
         );
       },
     });
   }
 
-  if (showCancelNurse || showCancelOther) {
+  if (show.cancel) {
     actions.push({
       key: 'cancel',
       label: 'Annuler le rendez-vous',

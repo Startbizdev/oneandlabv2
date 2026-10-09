@@ -27,22 +27,17 @@ function detectMagic(bytes: Uint8Array): string {
   return 'UNKNOWN';
 }
 
+/** Premiers octets seulement : lire une photo de plusieurs Mo en base64 retarde chaque envoi de plusieurs secondes. */
 async function readHeadBytes(uri: string, max = 16): Promise<Uint8Array> {
-  try {
-    const res = await fetch(uri);
-    const blob = await res.blob();
-    const buf = await blob.slice(0, max).arrayBuffer();
-    return new Uint8Array(buf);
-  } catch {
-    const b64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const slice = b64.slice(0, 32);
-    const bin = atob(slice);
-    const out = new Uint8Array(Math.min(bin.length, max));
-    for (let i = 0; i < out.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
+  const b64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+    position: 0,
+    length: max,
+  });
+  const bin = atob(b64);
+  const out = new Uint8Array(Math.min(bin.length, max));
+  for (let i = 0; i < out.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
 /** Logs détaillés pour tracer photos noires / uploads — filtrer Metro avec `MedDoc`. */

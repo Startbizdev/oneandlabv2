@@ -1,6 +1,6 @@
 import { ApiHttpError, apiErrorMessage, apiFetch, apiFetchBlob } from '~/utils/api';
 import { isManualOrderLockedError, tourOptimizeErrorMessage } from '@oneandlab/shared-api';
-import type { PatientAbsence } from '@oneandlab/shared-types';
+import type { AppointmentCoNurse, PatientAbsence } from '@oneandlab/shared-types';
 import {
   appointmentDayFrance,
   buildNavigationUrl,
@@ -48,6 +48,9 @@ export interface NurseTourStop {
   passage_custom_time?: string | null;
   passage_duration_minutes?: number | null;
   passage_series_id?: string | null;
+  co_nurses?: AppointmentCoNurse[];
+  is_co_nurse?: boolean;
+  shared_by_name?: string | null;
 }
 
 export interface NurseTourPayload {

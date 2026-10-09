@@ -33,6 +33,12 @@ final class HttpStatusExceptionMappingTest extends TestCase
         $this->db = TestDatabase::pdo();
     }
 
+    protected function tearDown(): void
+    {
+        unset($this->db);
+        parent::tearDown();
+    }
+
     public function testFactoriesCarryStatusAndCode(): void
     {
         $this->assertSame([403, 'FORBIDDEN'], $this->statusOf(HttpStatusException::forbidden('x')));

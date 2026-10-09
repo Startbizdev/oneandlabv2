@@ -12,6 +12,7 @@ export default function PreleveurLayout() {
       <Stack screenOptions={stackHeaderOptions(theme)}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={onboardingScreenOptions(theme)} />
+        <Stack.Screen name="appointment/[id]/documents" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="appointments/new" options={bookingWizardScreenOptions(theme)} />
         <Stack.Screen name="ai" options={{ animation: 'slide_from_right' }} />
       </Stack>

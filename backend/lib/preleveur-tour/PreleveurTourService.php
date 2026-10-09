@@ -9,6 +9,7 @@ require_once __DIR__ . '/../nurse-tour/TourProximity.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 
 final class PreleveurTourService
 {
@@ -307,7 +308,7 @@ final class PreleveurTourService
         ?array $origin,
     ): array {
         $byId = [];
-        foreach ($appointments as $apt) {
+        foreach (RelativeProfile::withRelativeProfileIds($this->db, $appointments) as $apt) {
             $byId[(string) ($apt['id'] ?? '')] = $apt;
         }
 
@@ -358,6 +359,8 @@ final class PreleveurTourService
                 'skip_reason' => $meta['skip_reason'] ?? null,
                 'patient_name' => $patientName,
                 'patient_id' => !empty($apt['patient_id']) ? (string) $apt['patient_id'] : null,
+                'relative_id' => !empty($apt['relative_id']) ? (string) $apt['relative_id'] : null,
+                'relative_profile_id' => $apt['relative_profile_id'],
                 'patient_gender' => $apt['beneficiary_gender'] ?? null,
                 'profile_image_url' => $apt['beneficiary_profile_image_url'] ?? null,
                 'type' => 'blood_test',

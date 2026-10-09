@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../appointments/AppointmentCreateInputPolicy.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/UnifiedRdvValidator.php';
@@ -15,6 +16,9 @@ require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../Logger.php';
 require_once __DIR__ . '/../MedicalDocumentsInternal.php';
+require_once __DIR__ . '/../StaffPatientConsent.php';
+require_once __DIR__ . '/../DatabaseTransaction.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 
 class AiBookingService
 {
@@ -160,92 +164,125 @@ class AiBookingService
     public function confirmDraft(string $id, array $user, array $finalPatch = []): array
     {
         AiBookingAccess::assertAllowed($user);
-        $draft = $this->getDraft($id, (string) $user['user_id']);
-        if (!$draft) {
-            throw HttpStatusException::notFound('Brouillon introuvable');
+        $userId = (string) $user['user_id'];
+        $role = (string) ($user['role'] ?? '');
+        $consentGiven = StaffPatientConsent::isConsentGiven($finalPatch);
+        unset($finalPatch['patient_booking_consent']);
+        if (StaffPatientConsent::requiresConsent($role) && !$consentGiven) {
+            throw new HttpStatusException(
+                'Veuillez confirmer le consentement du patient pour la prise de rendez-vous.',
+                400,
+                'PATIENT_BOOKING_CONSENT_REQUIRED',
+            );
         }
-        if ($draft['status'] === 'confirmed') {
-            throw HttpStatusException::conflict('Brouillon déjà confirmé', 'DRAFT_ALREADY_CONFIRMED');
+
+        if (!$this->db->inTransaction()) {
+            // Patient et rendez-vous sont créés par les modèles sur leur propre connexion : sans READ COMMITTED,
+            // l'instantané de cette transaction ne verrait pas le patient tout juste créé.
+            $this->db->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
         }
-        if ($draft['status'] !== 'ready') {
-            throw new HttpStatusException('Complétez le récapitulatif avant de valider', 400, 'DRAFT_NOT_READY');
-        }
-        if (strtotime((string) $draft['expires_at']) < time()) {
-            $this->db->prepare('UPDATE ai_appointment_drafts SET status = ? WHERE id = ?')->execute(['expired', $id]);
+        $confirmed = DatabaseTransaction::run($this->db, function () use ($id, $user, $userId, $role, $finalPatch): ?array {
+            $stmt = $this->db->prepare('SELECT * FROM ai_appointment_drafts WHERE id = ? AND user_id = ? LIMIT 1 FOR UPDATE');
+            $stmt->execute([$id, $userId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                throw HttpStatusException::notFound('Brouillon introuvable');
+            }
+            $draft = $this->mapDraft($row);
+            if ($draft['status'] === 'confirmed') {
+                throw HttpStatusException::conflict('Brouillon déjà confirmé', 'DRAFT_ALREADY_CONFIRMED');
+            }
+            if ($draft['status'] !== 'ready') {
+                throw new HttpStatusException('Complétez le récapitulatif avant de valider', 400, 'DRAFT_NOT_READY');
+            }
+            if (strtotime((string) $draft['expires_at']) < time()) {
+                return null;
+            }
+
+            $payload = array_merge($draft['payload'] ?? [], $finalPatch);
+            if (in_array($role, ['pro', 'nurse'], true) && ($payload['patient_mode'] ?? '') === 'new') {
+                $payload['patient_id'] = $this->createPatientFromPayload($user, $payload);
+            } elseif ($role === 'patient') {
+                $payload['patient_id'] = $userId;
+            }
+            $payload = $this->enricher->enrich($payload, $user, null);
+
+            $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
+            if (!$validation['valid']) {
+                throw new HttpStatusException($validation['error'] ?? 'Brouillon incomplet', 400, 'VALIDATION_ERROR');
+            }
+
+            $appointmentInputs = array_map(
+                fn (array $input): array => AppointmentCreateInputPolicy::apply($this->db, $user, $input),
+                AiBookingPayloadBuilder::buildFromDraft($payload, $user, $role)
+            );
+            if ($appointmentInputs === []) {
+                throw new HttpStatusException('Aucun soin à réserver dans ce brouillon', 400, 'VALIDATION_ERROR');
+            }
+            $batchId = count($appointmentInputs) > 1 ? Uuid::v4() : null;
+            $created = [];
+            foreach ($appointmentInputs as $appointmentInput) {
+                if ($batchId !== null) {
+                    $appointmentInput['creation_batch_id'] = $batchId;
+                    $appointmentInput['creation_batch_size'] = count($appointmentInputs);
+                }
+                $appointmentId = $this->appointmentModel->create($appointmentInput, $userId, $role);
+                $created[] = ['id' => $appointmentId, 'input' => $appointmentInput];
+            }
+            $firstAppointmentId = $created[0]['id'] ?? '';
+
+            $this->db->prepare('
+                UPDATE ai_appointment_drafts
+                SET status = ?, appointment_id = ?, patient_id = ?, payload_json = ?, updated_at = NOW()
+                WHERE id = ?
+            ')->execute(['confirmed', $firstAppointmentId, $payload['patient_id'] ?? null, json_encode($payload), $id]);
+            $this->audit($id, 'confirm', $userId, $firstAppointmentId, null);
+
+            return ['payload' => $payload, 'created' => $created];
+        });
+
+        if ($confirmed === null) {
+            $this->db->prepare('UPDATE ai_appointment_drafts SET status = ? WHERE id = ? AND status = ?')->execute(['expired', $id, 'ready']);
             throw new HttpStatusException('Brouillon expiré', 400, 'DRAFT_EXPIRED');
         }
 
-        $payload = array_merge($draft['payload'] ?? [], $finalPatch);
-        $role = (string) ($user['role'] ?? '');
-
-        if (in_array($role, ['pro', 'nurse'], true) && ($payload['patient_mode'] ?? '') === 'new') {
-            $payload['patient_id'] = $this->createPatientFromPayload($user, $payload);
-        } elseif ($role === 'patient') {
-            $payload['patient_id'] = $user['user_id'];
-        }
-
-        $payload = $this->enricher->enrich($payload, $user, null);
-
-        $validation = UnifiedRdvValidator::validateDraft($payload, $role, true);
-        if (!$validation['valid']) {
-            throw new HttpStatusException($validation['error'] ?? 'Brouillon incomplet', 400, 'VALIDATION_ERROR');
-        }
-
-        $appointmentInputs = array_map(
-            fn (array $input): array => AppointmentCreateInputPolicy::apply($this->db, $user, $input),
-            AiBookingPayloadBuilder::buildFromDraft($payload, $user, $role)
-        );
-        $appointmentIds = [];
-        $batchId = count($appointmentInputs) > 1 ? Uuid::v4() : null;
-
-        foreach ($appointmentInputs as $index => $appointmentInput) {
-            if ($batchId !== null) {
-                $appointmentInput['creation_batch_id'] = $batchId;
-                $appointmentInput['creation_batch_size'] = count($appointmentInputs);
-            }
-            $appointmentId = $this->appointmentModel->create($appointmentInput, (string) $user['user_id'], $role);
-            $appointmentIds[] = $appointmentId;
-            if ($index === 0) {
-                $this->attachDraftDocuments($appointmentId, $payload, $user);
-            }
+        $patientId = (string) ($confirmed['payload']['patient_id'] ?? '');
+        $appointmentIds = array_column($confirmed['created'], 'id');
+        $this->attachDraftDocuments($appointmentIds[0], $confirmed['payload'], $user);
+        foreach ($confirmed['created'] as $appointment) {
             try {
-                $this->appointmentModel->runPostCreateNotifications($appointmentId, $appointmentInput, $role);
+                $this->appointmentModel->runPostCreateNotifications($appointment['id'], $appointment['input'], $role);
             } catch (Throwable $e) {
                 error_log('ai_booking runPostCreateNotifications: ' . $e->getMessage());
             }
         }
-
-        $appointmentId = $appointmentIds[0] ?? '';
-
-        if (in_array($role, ['pro', 'nurse'], true) && !empty($payload['patient_id'])) {
+        if (StaffPatientConsent::requiresConsent($role)) {
+            StaffPatientConsent::logRecorded($user, $patientId !== '' ? $patientId : null, 'ai_booking_confirm');
+        }
+        if (in_array($role, ['pro', 'nurse'], true) && $patientId !== '') {
             try {
-                $this->userModel->linkPatientProfessional((string) $payload['patient_id'], (string) $user['user_id'], $appointmentId, 'appointment_linked');
+                $relativeId = $confirmed['payload']['relative_id'] ?? null;
+                $dossierId = RelativeProfile::ensureAppointmentSubject(
+                    $this->db,
+                    $patientId,
+                    is_string($relativeId) ? $relativeId : null,
+                );
+                $this->userModel->linkPatientProfessional($dossierId, $userId, $appointmentIds[0], 'appointment_linked');
             } catch (Throwable $e) {
                 error_log('ai_booking linkPatientProfessional: ' . $e->getMessage());
             }
         }
 
-        $this->db->prepare('
-            UPDATE ai_appointment_drafts
-            SET status = ?, appointment_id = ?, patient_id = ?, payload_json = ?, updated_at = NOW()
-            WHERE id = ?
-        ')->execute([
-            'confirmed',
-            $appointmentId,
-            $payload['patient_id'] ?? null,
-            json_encode($payload),
-            $id,
-        ]);
-        $this->audit($id, 'confirm', (string) $user['user_id'], $appointmentId, null);
-
         return [
-            'appointment_id' => $appointmentId,
+            'appointment_id' => $appointmentIds[0] ?? '',
             'appointment_ids' => $appointmentIds,
-            'draft' => $this->getDraft($id, (string) $user['user_id']) ?? [],
+            'draft' => $this->getDraft($id, $userId) ?? [],
         ];
     }
 
     /**
+     * Patient saisi par un professionnel : un dossier existant (même e-mail) n'est réutilisé que s'il y a déjà accès.
+     *
      * @param array<string, mixed> $payload
      */
     private function createPatientFromPayload(array $user, array $payload): string
@@ -256,6 +293,13 @@ class AiBookingService
             $dupHash = hash('sha256', strtolower($email));
             $existingId = $this->userModel->findPatientIdByEmailHash($dupHash);
             if ($existingId !== null) {
+                if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $existingId)) {
+                    throw HttpStatusException::conflict(
+                        'Un patient existe déjà avec cet e-mail. Retrouvez-le dans vos patients ou demandez-lui de vous donner accès à son dossier.',
+                        'PATIENT_ALREADY_EXISTS',
+                    );
+                }
+
                 return $existingId;
             }
             // Email déjà utilisé par un compte staff → laisser User::create basculer sur email technique

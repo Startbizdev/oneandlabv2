@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../../../../../lib/nurse-passage/bootstrap.php';
+require_once __DIR__ . '/../../../../../middleware/CSRFMiddleware.php';
+require_once __DIR__ . '/../../../../../lib/nurse-passage/NursePassageSeriesService.php';
+
+nurse_passage_handle_options(['POST', 'OPTIONS']);
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    nurse_passage_json_error('Méthode non autorisée', 405);
+}
+CSRFMiddleware::handle();
+$user = nurse_passage_require_nurse();
+$nurseId = (string) ($user['user_id'] ?? '');
+
+$id = trim((string) ($_GET['id'] ?? ''));
+if ($id === '') {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#/nurse/passages/series/([a-f0-9-]{36})/remove-slot#i', $uri, $m)) {
+        $id = $m[1];
+    }
+}
+$appointmentId = trim((string) (nurse_passage_read_json_body()['appointment_id'] ?? ''));
+if ($id === '' || $appointmentId === '') {
+    nurse_passage_json_error('series id et appointment_id requis', 400);
+}
+
+try {
+    $service = new NursePassageSeriesService();
+    nurse_passage_json_response([
+        'success' => true,
+        'data' => $service->removeSlot($id, $nurseId, $appointmentId),
+    ]);
+} catch (InvalidArgumentException $e) {
+    nurse_passage_json_error($e->getMessage(), 400);
+} catch (HttpStatusException $e) {
+    nurse_passage_json_error($e->getMessage(), $e->httpStatus, $e->errorCode);
+} catch (Throwable $e) {
+    error_log('[nurse/passages/series/remove-slot] ' . $e->getMessage());
+    nurse_passage_json_error('Retrait du créneau impossible', 500);
+}

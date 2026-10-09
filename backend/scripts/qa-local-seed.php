@@ -10,10 +10,11 @@ declare(strict_types=1);
  * ce que l'API ne permet pas : création du compte pharmacie et du mot de passe de Bruno, et
  * déplacement de dates vers aujourd'hui / le passé (l'API refuse un RDV dans le passé).
  *
- * Usage (depuis la racine du repo) : npm run qa:seed:local [-- --reset | --report]
+ * Usage (depuis la racine du repo) : npm run qa:seed:local [-- --reset | --report | --accounts]
  *   (sans option)  seed si la base ne l'est pas encore, sinon affiche le rapport
  *   --reset        supprime les données métier des comptes de démo puis reseed (dates recalées sur aujourd'hui)
  *   --report       affiche uniquement le rapport (SQL)
+ *   --accounts     crée ou met à jour uniquement les comptes ajoutés en SQL (idempotent, aucun appel API)
  *   --verify       relit le jeu par l'API, compte par compte (7 connexions : limite 20 / 15 min par IP)
  *
  * Refuse toute base qui ne finit pas par "_test" et tout hôte DB / API non local.
@@ -29,6 +30,9 @@ const QA_ALLOWED_SMTP_HOSTS = ['localhost', '127.0.0.1', '::1'];
 const QA_PHARMACY = '00000000-0000-4000-8000-00000000d002';
 const QA_PHARMACY_EMAIL = 'pharmacie@test.invalid';
 const QA_LAB_B = '00000000-0000-4000-8000-00000000c101';
+/** Second infirmier : confrère de Nina pour les binômes (aucun flux seedé, connexion manuelle). */
+const QA_NURSE_B = '00000000-0000-4000-8000-00000000b002';
+const QA_NURSE_B_EMAIL = 'noe.nurse@test.invalid';
 
 /** Patients créés par l'API au cours du seed (retrouvés par e-mail lors d'un --reset). */
 const QA_CREATED_PATIENT_EMAILS = [
@@ -63,7 +67,8 @@ $repoEnv = __DIR__ . '/../../.env';
 if (is_readable($repoEnv) && preg_match('/^\s*SMTP_HOST\s*=\s*"?([^"\s#]+)/m', (string) file_get_contents($repoEnv), $m)) {
     $smtpHost = $m[1];
 }
-if (!in_array('--report', $argv, true) && !in_array($smtpHost, QA_ALLOWED_SMTP_HOSTS, true)) {
+$withoutApiCalls = in_array('--report', $argv, true) || in_array('--accounts', $argv, true);
+if (!$withoutApiCalls && !in_array($smtpHost, QA_ALLOWED_SMTP_HOSTS, true)) {
     fwrite(STDERR, "Refus : l'API enverrait ses e-mails vers un hôte distant (SMTP_HOST=$smtpHost). Définir SMTP_HOST local dans l'environnement de l'API.\n");
     exit(1);
 }
@@ -76,6 +81,7 @@ $mode = match (true) {
     in_array('--reset', $argv, true) => 'reset',
     in_array('--report', $argv, true) => 'report',
     in_array('--verify', $argv, true) => 'verify',
+    in_array('--accounts', $argv, true) => 'accounts',
     default => 'seed',
 };
 
@@ -249,6 +255,7 @@ final class QaSeed
         $this->seedNurseFlows($relatives);
         $this->seedLabFlows($relatives);
         $this->seedProFlows();
+        $this->seedCareTeam();
         $this->seedNurseOwnPlanning($staffPatients['simone']);
         $this->seedPreleveurMissions($staffPatients);
         $this->seedPharmacyOrders($staffPatients['simone']);
@@ -268,15 +275,19 @@ final class QaSeed
             'alice' => [
                 '/api/appointments', '/api/patient-relatives', '/api/medical-documents', '/api/pharmacy-orders?scope=patient',
                 '/api/reviews?patient_id=' . TestFixtures::PATIENT_A, '/api/notifications?limit=100',
+                '/api/patients/' . TestFixtures::PATIENT_B . '/transmissions',
             ],
             'bruno' => ['/api/appointments', '/api/reviews?patient_id=' . TestFixtures::PATIENT_B, '/api/notifications?limit=100'],
             'nina' => [
                 '/api/appointments?nurse_segment=en_attente', '/api/appointments?nurse_segment=acceptes',
                 '/api/appointments?nurse_segment=historique', "/api/nurse/tour?date=$today", '/api/patients',
                 '/api/reviews?reviewee_id=' . TestFixtures::NURSE, '/api/nurse/prescriptions', '/api/pharmacy-orders?scope=sent',
-                '/api/notifications?limit=100',
+                '/api/notifications?limit=100', '/api/patients/' . TestFixtures::PATIENT_B . '/transmissions',
             ],
-            'pro' => ['/api/appointments', '/api/patients', '/api/pro/prescriptions', '/api/pharmacy-orders?scope=sent', '/api/notifications?limit=100'],
+            'pro' => [
+                '/api/appointments', '/api/patients', '/api/pro/prescriptions', '/api/pharmacy-orders?scope=sent', '/api/notifications?limit=100',
+                '/api/patients/' . TestFixtures::PATIENT_B . '/transmissions',
+            ],
             'preleveur' => ['/api/appointments', "/api/preleveur/tour?date=$today", '/api/patients', '/api/notifications?limit=100'],
             'labo' => ['/api/appointments', '/api/notifications?limit=100'],
             'pharmacie' => ['/api/pharmacy-orders?scope=received', '/api/notifications?limit=100'],
@@ -329,26 +340,32 @@ final class QaSeed
     // ---------------------------------------------------------------- comptes
 
     /** SQL : l'API ne crée pas de compte pro sans le circuit d'inscription admin, ni de mot de passe pour un tiers. */
-    private function prepareAccounts(): void
+    public function prepareAccounts(): void
     {
-        $crypto = new Crypto();
-        $email = $crypto->encryptField(QA_PHARMACY_EMAIL);
-        $first = $crypto->encryptField('Pharmacie');
-        $last = $crypto->encryptField('du Vieux-Port');
-        $this->pdo->prepare("
-            INSERT IGNORE INTO profiles (id, role, emploi, email_encrypted, email_dek, email_hash,
-                first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek)
-            VALUES (?, 'pro', 'Pharmacien', ?, ?, ?, ?, ?, ?, ?)
-        ")->execute([
-            QA_PHARMACY, $email['encrypted'], $email['dek'], hash('sha256', QA_PHARMACY_EMAIL),
-            $first['encrypted'], $first['dek'], $last['encrypted'], $last['dek'],
-        ]);
+        $this->insertAccount(QA_PHARMACY, 'pro', 'Pharmacien', QA_PHARMACY_EMAIL, 'Pharmacie', 'du Vieux-Port');
+        $this->insertAccount(QA_NURSE_B, 'nurse', null, QA_NURSE_B_EMAIL, 'Noé', 'Infirmier');
 
         $update = $this->pdo->prepare('UPDATE profiles SET password_hash = ?, password_set_at = NOW(), must_change_password = 0 WHERE id = ?');
-        foreach ([TestFixtures::PATIENT_B, QA_PHARMACY] as $profileId) {
+        foreach ([TestFixtures::PATIENT_B, QA_PHARMACY, QA_NURSE_B] as $profileId) {
             $update->execute([password_hash($this->password, PASSWORD_BCRYPT), $profileId]);
         }
-        $this->log('Comptes prêts (bruno.patient@test.invalid, ' . QA_PHARMACY_EMAIL . ')');
+        $this->log('Comptes prêts (bruno.patient@test.invalid, ' . QA_PHARMACY_EMAIL . ', ' . QA_NURSE_B_EMAIL . ')');
+    }
+
+    private function insertAccount(string $id, string $role, ?string $emploi, string $email, string $firstName, string $lastName): void
+    {
+        $crypto = new Crypto();
+        $emailEnc = $crypto->encryptField($email);
+        $first = $crypto->encryptField($firstName);
+        $last = $crypto->encryptField($lastName);
+        $this->pdo->prepare('
+            INSERT IGNORE INTO profiles (id, role, emploi, email_encrypted, email_dek, email_hash,
+                first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ')->execute([
+            $id, $role, $emploi, $emailEnc['encrypted'], $emailEnc['dek'], hash('sha256', $email),
+            $first['encrypted'], $first['dek'], $last['encrypted'], $last['dek'],
+        ]);
     }
 
     private function loadCategories(): void
@@ -426,6 +443,10 @@ final class QaSeed
         ]);
         $ids = ['lea' => (string) $lea['data']['id'], 'jean' => (string) $jean['data']['id']];
         $this->manifest['alice']['relatives'] = $ids;
+        $this->manifest['alice']['dossiers_proches'] = [
+            'lea' => (string) ($lea['data']['profile_id'] ?? ''),
+            'jean' => (string) ($jean['data']['profile_id'] ?? ''),
+        ];
         $this->log('Proches d\'Alice : Léa (enfant) ' . $ids['lea'] . ', Jean (parent) ' . $ids['jean']);
 
         return $ids;
@@ -433,9 +454,15 @@ final class QaSeed
 
     private function linkPatients(): void
     {
+        $patients = [
+            TestFixtures::PATIENT_A => 'alice.patient@test.invalid',
+            TestFixtures::PATIENT_B => 'bruno.patient@test.invalid',
+        ];
         foreach (['pro', 'nina'] as $staff) {
-            foreach ([TestFixtures::PATIENT_A, TestFixtures::PATIENT_B] as $patientId) {
-                $this->api($staff)->send('POST', '/api/patients/adopt', ['patient_id' => $patientId]);
+            foreach ($patients as $patientId => $email) {
+                $this->api($staff)->send('POST', '/api/patients/adopt', [
+                    'patient_id' => $patientId, 'email' => $email, 'patient_booking_consent' => true,
+                ]);
             }
         }
         $this->log('Alice et Bruno rattachés aux patients du pro et de Nina');
@@ -499,6 +526,10 @@ final class QaSeed
         $this->api('alice')->send('PUT', "/api/appointments/$canceled", ['status' => 'canceled']);
         $this->manifest['alice']['rdv_annule_proche_lea'] = $canceled;
 
+        $jeanConfirmed = $this->patientBooking('alice', 'nursing', self::relativeIdentity('Jean', $alice), ['Pansement'], $this->at(1, '11:00'), $relatives['jean']);
+        $this->api('nina')->send('PUT', "/api/appointments/$jeanConfirmed", ['status' => 'confirmed']);
+        $this->manifest['alice']['rdv_confirme_proche_jean_nina'] = $jeanConfirmed;
+
         $brunoCompleted = $this->patientBooking('bruno', 'nursing', $bruno, ['Soins de plaies'], $this->staging('09:00'));
         $this->api('nina')->send('PUT', "/api/appointments/$brunoCompleted", ['status' => 'confirmed']);
         $this->api('nina')->send('PUT', "/api/appointments/$brunoCompleted", ['status' => 'completed']);
@@ -511,7 +542,7 @@ final class QaSeed
 
         $this->manifest['nina']['demande_entrante_offre'] = $pending;
         $this->manifest['nina']['avis_recus'] = [$reviewId, (string) $brunoReview['data']['id']];
-        $this->log('Flux infirmier : offre en attente, RDV accepté + conversation, 2 RDV terminés + 2 avis, RDV proche annulé');
+        $this->log('Flux infirmier : offre en attente, RDV accepté + conversation, 2 RDV terminés + 2 avis, RDV proche annulé, RDV de Jean accepté par Nina (dossier du proche)');
     }
 
     private function seedNurseOwnPlanning(string $simoneId): void
@@ -549,7 +580,31 @@ final class QaSeed
             'series_id' => (string) $series['data']['series_id'],
             'appointment_ids' => $series['data']['appointment_ids'],
         ];
-        $this->log('Planning Nina : tournée du jour (4 passages, le 1er terminé) et série de 5 passages pour Simone');
+
+        $chronic = $this->api('nina')->send('POST', '/api/nurse/passages/series', [
+            'patient_id' => TestFixtures::PATIENT_B,
+            'planning_type' => 'weekdays',
+            'planning_config' => [
+                'start_date' => $this->today->modify('+1 day')->format('Y-m-d'),
+                'end_date' => $this->today->modify('+14 days')->format('Y-m-d'),
+                'weekdays' => [1, 2, 3, 4, 5, 6, 7],
+                'daily_time_slots' => [
+                    ['time_slot' => 'custom', 'custom_time' => '08:00'],
+                    ['time_slot' => 'custom', 'custom_time' => '12:30'],
+                    ['time_slot' => 'custom', 'custom_time' => '19:00'],
+                ],
+            ],
+            'time_slot' => 'custom',
+            'custom_time' => '08:00',
+            'duration_minutes' => 15,
+            'nursing_items' => [
+                $this->careItem('nursing', 'Mesure tension / glycémie'),
+                $this->careItem('nursing', 'Injection sous-cutanée'),
+            ],
+            'notes' => 'Diabète insulino-dépendant : glycémie capillaire avant chaque injection.',
+        ]);
+        $this->manifest['nina']['serie_chronique_3_creneaux'] = (string) $chronic['data']['series_id'];
+        $this->log('Planning Nina : tournée du jour (4 passages, le 1er terminé), série de 5 passages pour Simone, série chronique 14 j x 3 créneaux pour Bruno');
     }
 
     // ---------------------------------------------------------------- laboratoire / préleveur
@@ -637,6 +692,34 @@ final class QaSeed
         $this->log('Flux pro : ordonnance médicale pour Alice, soin confié à Nina pour Bruno, prise de sang pour Alice');
     }
 
+    // ---------------------------------------------------------------- transmissions
+
+    /** Nina écrit trois transmissions dans le dossier de Bruno. */
+    private function seedCareTeam(): void
+    {
+        $bruno = TestFixtures::PATIENT_B;
+        $notes = [
+            [2, false, 'Pansement de jambe refait, plaie propre, pas de signe d\'infection. Douleur cotée 2/10.'],
+            [1, true, 'Tension à 16/9 ce matin, contrôlée deux fois à 10 minutes. Pouvez-vous réévaluer le traitement ?'],
+            [0, false, 'Patient en forme, a bien pris son traitement. Prochain passage demain matin.'],
+        ];
+        $transmissions = [];
+        foreach ($notes as [$daysAgo, $forDoctor, $body]) {
+            $day = $this->today->modify("-$daysAgo days")->format('Y-m-d');
+            $care = $this->api('nina')->get("/api/patients/$bruno/transmission-care-items?date=$day")['data'];
+            $item = $care['passage_items'][0] ?? $care['categories'][0] ?? null;
+            $created = $this->api('nina')->send('POST', "/api/patients/$bruno/transmissions", [
+                'occurred_on' => $day,
+                'body' => $body,
+                'for_doctor' => $forDoctor,
+                'care_items' => $item === null ? [] : [['kind' => $item['kind'], 'id' => $item['id']]],
+            ]);
+            $transmissions[] = (string) $created['data']['id'];
+        }
+        $this->manifest['bruno']['transmissions_nina'] = $transmissions;
+        $this->log('Transmissions : 3 transmissions de Nina pour Bruno (dont 1 « Pour le médecin »)');
+    }
+
     private function seedPharmacyOrders(string $simoneId): void
     {
         $aliceDoc = $this->api('alice')->upload('/api/medical-documents', ['document_type' => 'ordonnance'],
@@ -660,6 +743,15 @@ final class QaSeed
         $this->api('pharmacie')->send('POST', "/api/pharmacy-orders/$ninaOrder/messages", [
             'body' => 'Bonjour, tout sera prêt demain à partir de 10h.',
         ]);
+
+        $refusedDoc = $this->api('alice')->upload('/api/medical-documents', ['document_type' => 'ordonnance'],
+            'ordonnance-antibiotique.pdf', 'application/pdf', self::pdf('Ordonnance : Amoxicilline 1 g, 6 jours'));
+        $refusedOrder = $this->pharmacyOrder('alice', TestFixtures::PATIENT_A, (string) $refusedDoc['data']['id'], 'click_collect', 1,
+            'Urgent si possible.');
+        $this->api('pharmacie')->send('PATCH', "/api/pharmacy-orders/$refusedOrder", [
+            'status' => 'refusee', 'rejection_reason' => 'Ordonnance expirée, merci de la faire renouveler.',
+        ]);
+        $this->manifest['alice']['commande_pharmacie_refusee'] = $refusedOrder;
 
         $this->manifest['alice']['commande_pharmacie_terminee'] = $aliceOrder;
         $this->manifest['pro']['commande_envoyee_en_cours'] = $proOrder;
@@ -980,7 +1072,7 @@ final class QaSeed
 /** Comptes de démo et patients créés par le seed (périmètre exact d'un --reset). */
 function qaSeedScope(PDO $pdo): array
 {
-    $staff = [TestFixtures::NURSE, TestFixtures::PRO, TestFixtures::PRELEVEUR, TestFixtures::LAB, QA_LAB_B, QA_PHARMACY];
+    $staff = [TestFixtures::NURSE, QA_NURSE_B, TestFixtures::PRO, TestFixtures::PRELEVEUR, TestFixtures::LAB, QA_LAB_B, QA_PHARMACY];
     $patients = [TestFixtures::PATIENT_A, TestFixtures::PATIENT_B];
     $stmt = $pdo->prepare("SELECT id FROM profiles WHERE email_hash = ? AND role = 'patient'");
     foreach (QA_CREATED_PATIENT_EMAILS as $email) {
@@ -991,7 +1083,17 @@ function qaSeedScope(PDO $pdo): array
         }
     }
 
-    return ['staff' => $staff, 'patients' => $patients, 'all' => array_merge($staff, $patients)];
+    // Dossiers des proches (profils sans connexion) : supprimés avec leurs titulaires lors d'un --reset.
+    $in = implode(',', array_fill(0, count($patients), '?'));
+    $relativeProfiles = $pdo->prepare("SELECT profile_id FROM patient_relatives WHERE patient_id IN ($in) AND profile_id IS NOT NULL");
+    $relativeProfiles->execute($patients);
+
+    return [
+        'staff' => $staff,
+        'patients' => $patients,
+        'relative_profiles' => array_map('strval', $relativeProfiles->fetchAll(PDO::FETCH_COLUMN)),
+        'all' => array_merge($staff, $patients),
+    ];
 }
 
 function qaSeedReset(PDO $pdo): void
@@ -1001,6 +1103,8 @@ function qaSeedReset(PDO $pdo): void
     $all = $scope['all'];
     $patients = $scope['patients'];
     $staff = $scope['staff'];
+    $relativeProfiles = $scope['relative_profiles'];
+    $dossiers = array_merge($patients, $relativeProfiles);
 
     $aptWhere = 'patient_id IN (' . $in($patients) . ') OR created_by IN (' . $in($all) . ') OR assigned_nurse_id IN (' . $in($staff)
         . ') OR assigned_lab_id IN (' . $in($staff) . ') OR assigned_to IN (' . $in($staff) . ') OR assigned_pro_id IN (' . $in($staff) . ')';
@@ -1019,12 +1123,21 @@ function qaSeedReset(PDO $pdo): void
         };
         $run('DELETE FROM pharmacy_orders WHERE requester_id IN (' . $in($all) . ') OR patient_id IN (' . $in($all) . ') OR pharmacy_id IN (' . $in($all) . ')', array_merge($all, $all, $all));
         $run("DELETE FROM medical_documents WHERE $docWhere", $docParams);
+        $run('DELETE FROM patient_transmissions WHERE patient_id IN (' . $in($dossiers) . ') OR author_id IN (' . $in($staff) . ')', array_merge($dossiers, $staff));
         $run("DELETE FROM appointments WHERE $aptWhere", $aptParams);
+        $run('DELETE FROM nurse_collaborations WHERE owner_nurse_id IN (' . $in($staff) . ') OR co_nurse_id IN (' . $in($staff) . ')', array_merge($staff, $staff));
         $run('DELETE FROM nurse_passage_series WHERE nurse_id IN (' . $in($staff) . ')', $staff);
         $run('DELETE FROM nurse_tour_plans WHERE nurse_id IN (' . $in($staff) . ')', $staff);
         $run('DELETE FROM preleveur_tour_plans WHERE preleveur_id IN (' . $in($staff) . ')', $staff);
         $run('DELETE FROM patient_relatives WHERE patient_id IN (' . $in($patients) . ')', $patients);
-        $run('DELETE FROM patient_professional_access WHERE patient_id IN (' . $in($patients) . ') OR professional_id IN (' . $in($staff) . ')', array_merge($patients, $staff));
+        $run('DELETE FROM patient_professional_access WHERE patient_id IN (' . $in($dossiers) . ') OR professional_id IN (' . $in($staff) . ')', array_merge($dossiers, $staff));
+        if ($relativeProfiles !== []) {
+            foreach (['health_record_answers', 'patient_clinical_vitals', 'patient_phones'] as $table) {
+                $run("DELETE FROM $table WHERE patient_id IN (" . $in($relativeProfiles) . ')', $relativeProfiles);
+            }
+            $run('DELETE FROM notifications WHERE user_id IN (' . $in($relativeProfiles) . ')', $relativeProfiles);
+            $run("DELETE FROM profiles WHERE role = 'patient' AND id IN (" . $in($relativeProfiles) . ')', $relativeProfiles);
+        }
         $run("DELETE FROM notifications WHERE type <> 'welcome' AND user_id IN (" . $in($all) . ')', $all);
         $run("DELETE FROM coverage_zones WHERE owner_id = ? AND role = 'nurse'", [TestFixtures::NURSE]);
         $pdo->commit();
@@ -1043,7 +1156,7 @@ function qaSeedReset(PDO $pdo): void
             }
         }
     }
-    echo '· Données de démo supprimées (' . count($patients) . " patients, comptes pro, fichiers médicaux)\n";
+    echo '· Données de démo supprimées (' . count($patients) . ' patients, ' . count($relativeProfiles) . " dossiers de proches, comptes pro, fichiers médicaux)\n";
 }
 
 function qaSeedReport(PDO $pdo): void
@@ -1091,6 +1204,8 @@ try {
     }
     if ($mode === 'verify') {
         $seed->verify();
+    } elseif ($mode === 'accounts') {
+        $seed->prepareAccounts();
     } elseif ($mode !== 'report') {
         if ($seed->isSeeded()) {
             echo "Base déjà seedée : relancer avec --reset pour recréer le jeu (dates recalées sur aujourd'hui).\n";

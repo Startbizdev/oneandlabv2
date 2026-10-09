@@ -1,7 +1,11 @@
 import type { NursePassageNursingItem, PassageDailyTimeSlot, PassageTimeSlot } from '@oneandlab/shared-types';
 import dayjs from 'dayjs';
-import { formatPassageTimeSelectionSummary, passageSlotFromRange } from '@oneandlab/shared-utils';
-import { PASSAGE_TIME_SLOT_LABELS } from './passage-display';
+import {
+  addressLineWithDistrict,
+  formatPassageTimeSelectionSummary,
+  passageSlotFromRange,
+} from '@oneandlab/shared-utils';
+import { formatDailySlotLabel } from './passage-daily-slots';
 import type { PassagePlanningFormState } from './passage-planning';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { resolveCareItemDisplayLabel } from '@/utils/appointment-detail-display';
@@ -62,14 +66,12 @@ export function formatTimeSummary(
 
 export function formatDailyTimesSummary(slots: PassageDailyTimeSlot[]): string {
   if (slots.length === 0) return 'Matin';
-  const label = slots
-    .map((s) => PASSAGE_TIME_SLOT_LABELS[s.time_slot] ?? s.time_slot)
-    .join(' + ');
+  const label = slots.map(formatDailySlotLabel).join(' + ');
   return slots.length > 1 ? `${slots.length} passages · ${label}` : label;
 }
 
 export function formatLocationSummary(atHome: boolean, addressLabel?: string | null): string {
-  const label = addressLabel?.trim();
+  const label = addressLineWithDistrict(addressLabel);
   if (label) {
     return atHome ? `À domicile · ${label}` : `Au cabinet · ${label}`;
   }

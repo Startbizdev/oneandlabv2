@@ -5,6 +5,7 @@ import {
 } from '@oneandlab/shared-api';
 import {
   FRENCH_MOBILE_PHONE_ERROR,
+  formatFrenchPhoneDisplay,
   normalizeFrenchMobilePhone,
   nurseBookingAwaitsLabConfirmation,
 } from '@oneandlab/shared-utils';
@@ -26,6 +27,19 @@ describe('normalizeFrenchMobilePhone (aligné sur NurseInviteService::normalizeI
     for (const bad of ['0145678901', '0912345678', '+447123456789', '06123', '', 'abc', '+33012345678', '0033612345678']) {
       expect(normalizeFrenchMobilePhone(bad)).toBeNull();
     }
+  });
+});
+
+describe('formatFrenchPhoneDisplay (fiche patient)', () => {
+  it('affiche un numéro français par paires, mobile ou fixe', () => {
+    expect(formatFrenchPhoneDisplay('0611223344')).toBe('06 11 22 33 44');
+    expect(formatFrenchPhoneDisplay('+33 4 91.23-45 67')).toBe('04 91 23 45 67');
+    expect(formatFrenchPhoneDisplay('06 98 76 54 32')).toBe('06 98 76 54 32');
+  });
+
+  it('rend tel quel un numéro étranger ou incomplet', () => {
+    expect(formatFrenchPhoneDisplay(' +44 7123 456789 ')).toBe('+44 7123 456789');
+    expect(formatFrenchPhoneDisplay('06123')).toBe('06123');
   });
 });
 

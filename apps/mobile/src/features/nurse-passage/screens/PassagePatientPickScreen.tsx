@@ -1,10 +1,8 @@
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { UserPlus } from 'lucide-react-native';
-import type { StaffHubPatientItem } from '@oneandlab/shared-types';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
 import { StackKeyboardScrollView } from '@/components/navigation/StackKeyboardScrollView';
@@ -12,11 +10,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
-import { fetchStaffPatientHubSearch } from '@/features/patients/api/staff-hub-search.service';
 import { CreatePatientModal } from '@/features/patients/components/CreatePatientModal';
 import { StaffPatientHubListRow } from '@/features/patients/components/StaffPatientHubListRow';
+import { useStaffHubPatientSearch } from '@/features/patients/hooks/use-staff-hub-patient-search';
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
-import { queryKeys } from '@/lib/query-keys';
 import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 import { H_PADDING, spacing, AppText, useStyles } from '@/theme';
 
@@ -43,17 +40,7 @@ export function PassagePatientPickScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
 
-  const hubQ = useQuery({
-    queryKey: queryKeys.patients.hubSearch(debouncedSearch.trim()),
-    queryFn: async () => {
-      const res = await fetchStaffPatientHubSearch(debouncedSearch.trim());
-      if (!res.success) throw new Error(res.error ?? 'Recherche impossible');
-      return (res.data?.items ?? []).filter(
-        (item): item is StaffHubPatientItem => item.kind === 'patient',
-      );
-    },
-    staleTime: 15_000,
-  });
+  const hubQ = useStaffHubPatientSearch(debouncedSearch);
 
   const goToForm = useCallback(
     (patientId: string) => {

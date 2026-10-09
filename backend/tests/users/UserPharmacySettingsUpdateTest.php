@@ -39,6 +39,7 @@ final class UserPharmacySettingsUpdateTest extends TestCase
         if (isset($this->pharmacistId)) {
             $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$this->pharmacistId]);
         }
+        unset($this->userModel, $this->db);
         parent::tearDown();
     }
 

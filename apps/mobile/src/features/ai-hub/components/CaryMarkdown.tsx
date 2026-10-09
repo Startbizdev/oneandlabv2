@@ -19,7 +19,7 @@ export function preprocessAssistantText(raw: string): string {
     t = t.replace(/(?<=[.!?…])\s+(?=[A-ZÀ-Ü«])/g, '\n\n');
   }
 
-  t = t.replace(/\s+-\s+(?=[A-ZÀ-Ü0-9«])/g, '\n- ');
+  t = t.replace(/[ \t]+-[ \t]+(?=[A-ZÀ-Ü0-9«])/g, '\n- ');
   t = t.replace(/(?<!\n\n)(?<=\S)\s+(?=(?:Valeurs|Points|En résumé|Pour résumer|Ce qui|En bref|Côté|NFS|Foie|Rein|Lipides|À retenir)[^\n.]{2,48}:)/gi, '\n\n');
 
   return t.replace(/\n{3,}/g, '\n\n').trim();
@@ -32,45 +32,43 @@ function isSectionHeading(line: string): boolean {
   return /^[^:\n]{2,52}:$/.test(cleaned);
 }
 
+const BULLET_MARKER = /^[-•*]\s+/;
+const NUMBER_MARKER = /^\d+[.)]\s+/;
+
+/** Lignes d'un même bloc : texte suivi d'une liste (« Voici : » puis « - … ») donne titre / paragraphe puis liste. */
+function linesToBlocks(lines: string[]): MessageBlock[] {
+  const runs: { marker: RegExp | null; lines: string[] }[] = [];
+  for (const line of lines) {
+    const marker = BULLET_MARKER.test(line) ? BULLET_MARKER : NUMBER_MARKER.test(line) ? NUMBER_MARKER : null;
+    const last = runs.at(-1);
+    if (last && last.marker === marker) last.lines.push(line);
+    else runs.push({ marker, lines: [line] });
+  }
+
+  return runs.map(({ marker, lines: runLines }): MessageBlock => {
+    if (marker) return { type: 'list', items: runLines.map((l) => l.replace(marker, '').trim()) };
+    const [only] = runLines;
+    if (runLines.length === 1 && only !== undefined && isSectionHeading(only)) {
+      return { type: 'heading', text: only.replace(/\s*:$/, '') };
+    }
+    return { type: 'paragraph', lines: runLines };
+  });
+}
+
 /** Découpe le texte assistant en paragraphes, titres et listes. */
 export function parseMessageBlocks(raw: string): MessageBlock[] {
   const normalized = preprocessAssistantText(raw);
   if (!normalized) return [];
 
-  const chunks = normalized.split(/\n{2,}/).filter((c) => c.trim() !== '');
-  const blocks: MessageBlock[] = [];
-
-  for (const chunk of chunks) {
-    const lines = chunk
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l !== '');
-
-    if (lines.length === 1 && isSectionHeading(lines[0]!)) {
-      blocks.push({ type: 'heading', text: lines[0]!.replace(/:$/, '') });
-      continue;
-    }
-
-    if (lines.length > 0 && lines.every((l) => /^[-•*]\s+/.test(l))) {
-      blocks.push({
-        type: 'list',
-        items: lines.map((l) => l.replace(/^[-•*]\s+/, '').trim()),
-      });
-      continue;
-    }
-
-    if (lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l))) {
-      blocks.push({
-        type: 'list',
-        items: lines.map((l) => l.replace(/^\d+[.)]\s+/, '').trim()),
-      });
-      continue;
-    }
-
-    blocks.push({ type: 'paragraph', lines });
-  }
-
-  return blocks;
+  return normalized
+    .split(/\n{2,}/)
+    .map((chunk) =>
+      chunk
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l !== ''),
+    )
+    .flatMap(linesToBlocks);
 }
 
 function stripStrayMarkdown(text: string): string {

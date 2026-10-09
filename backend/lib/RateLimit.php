@@ -49,4 +49,17 @@ class RateLimit
         fclose($fp);
         return true;
     }
+
+    /** Secondes avant réouverture de la fenêtre (en-tête Retry-After) ; au moins 1. */
+    public static function retryAfterSeconds(string $bucket, string $key, int $windowSeconds): int
+    {
+        $path = __DIR__ . '/../uploads/rate-limit/' . hash('sha256', $bucket . ':' . $key) . '.json';
+        $raw = is_readable($path) ? file_get_contents($path) : false;
+        $data = $raw ? json_decode($raw, true) : null;
+        if (!is_array($data) || !isset($data['start'])) {
+            return 1;
+        }
+
+        return max(1, (int) $data['start'] + $windowSeconds - time());
+    }
 }

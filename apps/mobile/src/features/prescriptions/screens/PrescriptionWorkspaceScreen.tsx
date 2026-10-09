@@ -12,7 +12,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { fetchMedicalDocuments } from '@/features/appointments/detail/api/appointment-detail.service';
 import { StaffPatientEditSheet } from '@/features/patients/components/StaffPatientEditSheet';
-import { cacheMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { cacheMedicalDocument, exportMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
@@ -21,6 +21,7 @@ import { PrescriptionComposer } from '../components/PrescriptionComposer';
 import type { OpenPrescriptionSignatureOptions } from '../components/PrescriptionSignatureSheet';
 import { PrescriptionSignatureSheet } from '../components/PrescriptionSignatureSheet';
 import { PrescriptionHistoryCard } from '../components/PrescriptionHistoryCard';
+import { PrescriptionImportButton } from '../components/PrescriptionImportButton';
 import { PrescriptionAppointmentSelectField } from '../components/PrescriptionAppointmentSelectField';
 import { PrescriptionComposerAwaitingRdv } from '../components/PrescriptionComposerAwaitingRdv';
 import { PrescriptionLinkModeTabs } from '../components/PrescriptionLinkModeTabs';
@@ -37,7 +38,8 @@ import {
 } from '../hooks/use-prescription-patient-picker-infinite';
 import { usePrescriptionsHistoryInfinite } from '../hooks/use-prescriptions-history-infinite';
 import { fetchUser } from '@/features/profile/api/profile.service';
-import { resolvePrescriptionKindForRole } from '@oneandlab/shared-utils';
+import { canReplacePrescriptionRole, resolvePrescriptionKindForRole } from '@oneandlab/shared-utils';
+import { useReplacePrescription } from '@/features/documents/hooks/use-replace-prescription';
 import { useAuthStore } from '@/store/auth-store';
 import { prescriptionGenerationEnabled } from '../utils/prescription-access';
 import { appointmentDetailHref } from '@/navigation/role-hrefs';
@@ -98,6 +100,8 @@ export function PrescriptionWorkspaceScreen({
   const user = useAuthStore((s) => s.user);
   const userId = user?.id ?? '';
   const accessBlocked = !prescriptionGenerationEnabled(user);
+  const canReplace = canReplacePrescriptionRole(user?.role);
+  const { replace: replacePrescription, replacingId } = useReplacePrescription();
   const profileQ = useQuery({
     queryKey: queryKeys.profile.fullUser(userId),
     queryFn: async () => (await fetchUser(userId, 'full')).data,
@@ -178,9 +182,9 @@ export function PrescriptionWorkspaceScreen({
 
   const downloadRow = async (id: string, fileName?: string) => {
     setDownloadingId(id);
-    const res = await openMedicalDocument(id, fileName);
+    const res = await exportMedicalDocument(id, fileName);
     setDownloadingId(null);
-    if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
+    if (!res.ok) toast(res.error ?? 'Enregistrement impossible', { type: 'error' });
   };
 
   const onPatientChange = (id: string) => {
@@ -204,6 +208,8 @@ export function PrescriptionWorkspaceScreen({
         onDownload={() => void downloadRow(item.id, item.file_name)}
         onPreview={() => void previewRow(item.id, item.file_name)}
         previewing={previewingId === item.id}
+        onReplace={canReplace ? () => void replacePrescription(item.id) : undefined}
+        replacing={replacingId === item.id}
         onOpenAppointment={
           appointmentId ? () => router.push(appointmentDetailHref(rolePrefix, appointmentId)) : undefined
         }
@@ -222,6 +228,11 @@ export function PrescriptionWorkspaceScreen({
     { id: 'create' as const, label: 'Créer', Icon: PlusCircle },
     { id: 'history' as const, label: 'Historique', Icon: History },
   ];
+
+  const importButton =
+    fixedPatientId && !embedded ? (
+      <PrescriptionImportButton patientId={fixedPatientId} onImported={() => void refreshAll()} />
+    ) : null;
 
   const body = (
     <>
@@ -346,32 +357,35 @@ export function PrescriptionWorkspaceScreen({
           ) : null}
         </View>
       ) : (
-        <View style={[styles.section, styles.historySection]}>
-          {historyQ.isLoading ? (
-            <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
-          ) : historyQ.isError && historyRows.length === 0 ? (
-            <ErrorState
-              title="Ordonnances indisponibles"
-              error={historyQ.error}
-              onRetry={() => void historyQ.refetch()}
-            />
-          ) : historyRows.length === 0 ? (
-            <EmptyState illustration="prescriptions" title="Aucune ordonnance" />
-          ) : (
-            <FlashList
-              data={historyRows}
-              keyExtractor={(row) => row.id}
-              renderItem={renderHistoryItem}
-              scrollEnabled={false}
-              onEndReached={() => {
-                if (historyQ.hasNextPage && !historyQ.isFetchingNextPage) {
-                  void historyQ.fetchNextPage();
-                }
-              }}
-              onEndReachedThreshold={0.3}
-              ListFooterComponent={historyFooter}
-            />
-          )}
+        <View style={styles.section}>
+          {importButton}
+          <View style={[styles.section, styles.historySection]}>
+            {historyQ.isLoading ? (
+              <SkeletonList count={3} itemHeight={52} gap={spacing[1]} />
+            ) : historyQ.isError && historyRows.length === 0 ? (
+              <ErrorState
+                title="Ordonnances indisponibles"
+                error={historyQ.error}
+                onRetry={() => void historyQ.refetch()}
+              />
+            ) : historyRows.length === 0 ? (
+              <EmptyState illustration="prescriptions" title="Aucune ordonnance" />
+            ) : (
+              <FlashList
+                data={historyRows}
+                keyExtractor={(row) => row.id}
+                renderItem={renderHistoryItem}
+                scrollEnabled={false}
+                onEndReached={() => {
+                  if (historyQ.hasNextPage && !historyQ.isFetchingNextPage) {
+                    void historyQ.fetchNextPage();
+                  }
+                }}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={historyFooter}
+              />
+            )}
+          </View>
         </View>
       )}
     </>
@@ -379,7 +393,8 @@ export function PrescriptionWorkspaceScreen({
 
   if (accessBlocked) {
     return (
-      <View style={embedded ? styles.embeddedContainer : styles.container}>
+      <View style={embedded ? styles.embeddedContainer : [styles.container, styles.content]}>
+        {importButton}
         <EmptyState
           illustration="prescriptions"
           title="Ordonnances non activées"

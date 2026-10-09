@@ -1,12 +1,10 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Modal,
   Platform,
   Pressable,
   SectionList,
-  Share,
   StyleSheet,
   TextInput,
   View,
@@ -24,10 +22,14 @@ import { Archive, Download, Search, SquarePen, X } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SettingsSection } from '@/components/ui/SettingsSection';
-import { getErrorMessage } from '@/lib/errors/handle-api-error';
-import { exportAiConversations } from '../api/ai.service';
 import { PatientAiConversationRow } from './PatientAiConversationRow';
 import type { PatientAiConversation } from '../types/patient-ai-conversation';
+import type { ConversationRowActionKey } from '../utils/conversation-row-actions';
+import {
+  conversationsEmptyCopy,
+  groupConversations,
+  type ConversationSection,
+} from '../utils/conversation-sections';
 import {
   H_PADDING,
   ICON_STROKE_WIDTH,
@@ -46,12 +48,6 @@ import {
 const SHEET_MAX_WIDTH = 380;
 const SHEET_WIDTH_RATIO = 0.9;
 
-type ConversationSection = {
-  key: string;
-  title: string;
-  data: PatientAiConversation[];
-};
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -59,55 +55,16 @@ interface Props {
   activeId: string;
   onSelectConversation: (id: string) => void;
   onNewConversation: () => void;
-  onDeleteConversation?: (id: string) => void;
-  onRefresh?: () => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   showArchived?: boolean;
   onToggleArchived?: () => void;
-  onTogglePin?: (id: string) => void;
-  onArchive?: (id: string) => void;
-  onUnarchive?: (id: string) => void;
-}
-
-function groupConversations(conversations: PatientAiConversation[]): ConversationSection[] {
-  const sorted = [...conversations].sort((a, b) => {
-    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-    return b.updatedAt - a.updatedAt;
-  });
-  const today: PatientAiConversation[] = [];
-  const yesterday: PatientAiConversation[] = [];
-  const week: PatientAiConversation[] = [];
-  const older: PatientAiConversation[] = [];
-
-  for (const conv of sorted) {
-    const diffDays = Math.floor((Date.now() - conv.updatedAt) / 86_400_000);
-    if (diffDays <= 0) today.push(conv);
-    else if (diffDays === 1) yesterday.push(conv);
-    else if (diffDays < 7) week.push(conv);
-    else older.push(conv);
-  }
-
-  const sections: ConversationSection[] = [];
-  if (today.length) sections.push({ key: 'today', title: "Aujourd'hui", data: today });
-  if (yesterday.length) sections.push({ key: 'yesterday', title: 'Hier', data: yesterday });
-  if (week.length) sections.push({ key: 'week', title: '7 derniers jours', data: week });
-  if (older.length) sections.push({ key: 'older', title: 'Plus ancien', data: older });
-  return sections;
-}
-
-function emptyCopy(searching: boolean, showArchived: boolean) {
-  if (searching) {
-    return { illustration: 'search' as const, title: 'Aucun résultat', description: 'Essayez un autre mot.' };
-  }
-  if (showArchived) {
-    return { illustration: 'messages' as const, title: 'Aucune archive', description: undefined };
-  }
-  return {
-    illustration: 'messages' as const,
-    title: 'Aucune conversation',
-    description: 'Vos échanges avec Cary apparaîtront ici.',
-  };
+  /** Échec du chargement de la liste, affiché en tête du panneau. */
+  listError?: string | null;
+  /** Action du menu d'une conversation ; message d'erreur affiché sous la ligne, `null` si elle a abouti. */
+  onRowAction: (id: string, key: ConversationRowActionKey, title?: string) => Promise<string | null>;
+  /** Export de toutes les conversations ; message d'erreur, ou `null` si la feuille de partage s'est ouverte. */
+  onExportAll: () => Promise<string | null>;
 }
 
 /** Panneau latéral Cary — historique des conversations. */
@@ -118,15 +75,13 @@ export function PatientAiConversationsSheet({
   activeId,
   onSelectConversation,
   onNewConversation,
-  onDeleteConversation,
-  onRefresh,
   searchQuery = '',
   onSearchChange,
   showArchived = false,
   onToggleArchived,
-  onTogglePin,
-  onArchive,
-  onUnarchive,
+  listError,
+  onRowAction,
+  onExportAll,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -137,9 +92,20 @@ export function PatientAiConversationsSheet({
   const translateX = useSharedValue(-sheetWidth);
   const backdropOpacity = useSharedValue(0);
   const [mounted, setMounted] = useStateVisible(visible);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const exportAll = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    setExportError(await onExportAll());
+    setExporting(false);
+  };
 
   const sections = useMemo(() => groupConversations(conversations), [conversations]);
-  const empty = emptyCopy(searchQuery.trim().length > 0, showArchived);
+  const empty = conversationsEmptyCopy(searchQuery.trim().length > 0, showArchived);
 
   const finishClose = useCallback(() => {
     setMounted(false);
@@ -151,12 +117,7 @@ export function PatientAiConversationsSheet({
 
   useEffect(() => {
     if (visible) {
-      onRefresh?.();
-    }
-  }, [visible, onRefresh]);
-
-  useEffect(() => {
-    if (visible) {
+      setExpandedId(null);
       setMounted(true);
       translateX.value = withTiming(0, {
         duration: 260,
@@ -196,43 +157,17 @@ export function PatientAiConversationsSheet({
     onClose();
   };
 
-  const handleExport = async () => {
-    try {
-      const data = await exportAiConversations();
-      await Share.share({
-        message: JSON.stringify(data, null, 2),
-        title: 'Export Cary IA',
-      });
-    } catch (e) {
-      const message = getErrorMessage(e);
-      if (__DEV__) {
-        console.warn('[API] ai-export', message);
-      }
-      Alert.alert('Export impossible', message);
-    }
-  };
-
   const renderItem: SectionListRenderItem<PatientAiConversation, ConversationSection> = ({
     item,
   }) => (
     <PatientAiConversationRow
-      title={item.title}
+      conversation={item}
       active={item.id === activeId}
-      pinned={item.isPinned}
-      deletable={!item.isSystem}
+      archived={showArchived}
+      expanded={expandedId === item.id}
       onPress={() => handleSelect(item.id)}
-      onDelete={onDeleteConversation ? () => onDeleteConversation(item.id) : undefined}
-      onTogglePin={onTogglePin && !item.isSystem ? () => onTogglePin(item.id) : undefined}
-      onArchive={
-        showArchived
-          ? onUnarchive
-            ? () => onUnarchive(item.id)
-            : undefined
-          : onArchive && !item.isSystem
-            ? () => onArchive(item.id)
-            : undefined
-      }
-      archiveLabel={showArchived ? 'Restaurer' : 'Archiver'}
+      onToggleMenu={() => setExpandedId((current) => (current === item.id ? null : item.id))}
+      onAction={(key, title) => onRowAction(item.id, key, title)}
     />
   );
 
@@ -323,6 +258,13 @@ export function PatientAiConversationsSheet({
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              ListHeaderComponent={
+                listError ? (
+                  <AppText variant="caption" style={styles.listError} accessibilityRole="alert">
+                    {listError}
+                  </AppText>
+                ) : null
+              }
               ListEmptyComponent={
                 <EmptyState
                   illustration={empty.illustration}
@@ -346,12 +288,17 @@ export function PatientAiConversationsSheet({
                         : []),
                       {
                         icon: Download,
-                        label: 'Exporter mes conversations',
-                        onPress: () => void handleExport(),
+                        label: exporting ? 'Export en cours…' : 'Exporter mes conversations',
+                        onPress: () => void exportAll(),
                         inlineAction: true,
                       },
                     ]}
                   />
+                  {exportError ? (
+                    <AppText variant="caption" style={styles.exportError} accessibilityRole="alert">
+                      {exportError}
+                    </AppText>
+                  ) : null}
                 </View>
               }
             />
@@ -474,5 +421,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       paddingTop: spacing[4],
       paddingBottom: spacing[2],
     },
+    exportError: { color: c.error, paddingHorizontal: spacing[3], paddingTop: spacing[2] },
+    listError: { color: c.error, paddingHorizontal: spacing[3], paddingBottom: spacing[2] },
   };
 }

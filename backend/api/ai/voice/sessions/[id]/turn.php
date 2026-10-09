@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../../../lib/ai/bootstrap.php';
 require_once __DIR__ . '/../../../../../lib/ai/VoiceService.php';
+require_once __DIR__ . '/../../../../../lib/ai/AiChatRateLimit.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur']);
+$user = ai_require_assistant_user();
 
 $id = $_GET['id'] ?? null;
 if (!$id) {
@@ -16,25 +17,18 @@ if (!$id) {
     }
 }
 if (!$id) {
-    ai_json_error('session id requis', 400);
+    ai_json_error('session id requis', 400, 'VALIDATION_ERROR');
 }
 
-$service = new VoiceService();
-$method = $_SERVER['REQUEST_METHOD'] ?? 'POST';
-
-if ($method !== 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'POST') !== 'POST') {
     ai_json_error('Méthode non autorisée', 405);
 }
 
 try {
-    if (str_ends_with(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '', '/end')) {
-        $service->endSession((string) $id, (string) $user['user_id']);
-        ai_json_response(['success' => true, 'data' => null]);
-    }
-    $result = $service->processTurn($user, (string) $id, ai_read_json_body());
+    AiChatRateLimit::assertAllowed($user, 'voice_turn');
+    $user['request_id'] = Uuid::v4();
+    $result = (new VoiceService())->processTurn($user, (string) $id, ai_read_json_body());
     ai_json_response(['success' => true, 'data' => $result]);
-} catch (InvalidArgumentException $e) {
-    ai_json_error($e->getMessage(), 400);
 } catch (Throwable $e) {
-    ApiServerError::respond('ai/voice/turn user=' . $user['user_id'], $e);
+    ai_respond_error($e, 'ai/voice/turn');
 }

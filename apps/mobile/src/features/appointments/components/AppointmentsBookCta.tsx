@@ -1,5 +1,5 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import React, { useCallback } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
@@ -21,9 +21,7 @@ function AppointmentsBookCtaComponent({ href, label = DEFAULT_LABEL, flush = fal
 
   const router = useRouter();
 
-  const onPress = useCallback(() => {
-    router.push(href);
-  }, [href, router]);
+  const onPress = () => router.push(href);
 
   return (
     <View style={[styles.wrap, flush && styles.wrapFlush]}>

@@ -1,6 +1,6 @@
 <template>
   <form class="space-y-6" @submit.prevent="submit">
-    <UCard class="ring-1 ring-default/60">
+    <UCard v-if="!forSelf" class="ring-1 ring-default/60">
       <template #header>
         <h2 class="text-base font-medium">1. Patient</h2>
       </template>
@@ -33,6 +33,20 @@
       </p>
     </UCard>
 
+    <UCard v-else class="ring-1 ring-default/60">
+      <template #header>
+        <h2 class="text-base font-medium">1. Pour qui</h2>
+      </template>
+      <UFormField label="Bénéficiaire" name="beneficiary">
+        <USelect
+          v-model="selfRelativeId"
+          :items="beneficiaryOptions"
+          value-key="value"
+          class="w-full"
+        />
+      </UFormField>
+    </UCard>
+
     <UCard class="ring-1 ring-default/60">
       <template #header>
         <h2 class="text-base font-medium">{{ isOwnPharmacy ? '2. Mode de retrait' : '2. Pharmacie et mode' }}</h2>
@@ -59,13 +73,25 @@
           <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary" />
         </div>
         <UFormField v-else label="Pharmacie" name="pharmacy" class="mt-3">
-          <USelect
-            v-model="pharmacyId"
-            :items="pharmacyOptions"
-            value-key="value"
-            placeholder="Choisir une pharmacie…"
-            class="w-full"
-          />
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <USelect
+              v-model="pharmacyId"
+              :items="pharmacyOptions"
+              value-key="value"
+              placeholder="Choisir une pharmacie…"
+              class="min-w-0 flex-1"
+            />
+            <UButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-store"
+              :disabled="!pharmacyId"
+              @click="profileOpen = true"
+            >
+              Voir la fiche
+            </UButton>
+          </div>
         </UFormField>
       </template>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -161,6 +187,8 @@
       </UFormField>
     </UCard>
 
+    <PharmacyPublicProfileModal :open="profileOpen" :pharmacy-id="pharmacyId || null" @close="profileOpen = false" />
+
     <div class="flex justify-end gap-2">
       <UButton variant="ghost" color="neutral" :to="roleBase">
         Annuler
@@ -190,8 +218,10 @@ const props = withDefaults(
     roleBase: string;
     redirectToList?: boolean;
     initialPatientId?: string;
+    /** Le patient commande pour lui (ou un proche), sans chercher un dossier. */
+    forSelf?: boolean;
   }>(),
-  { redirectToList: true },
+  { redirectToList: true, forSelf: false },
 );
 
 const router = useRouter();
@@ -199,6 +229,7 @@ const toast = useAppToast();
 const { user } = useAuth();
 const { createOrder, fetchPharmacies, uiFlags, fetchModuleFlags } = usePharmacyModule();
 const isOwnPharmacy = computed(() => uiFlags.value?.is_pharmacy_account === true);
+const forSelf = computed(() => props.forSelf);
 
 const patientSearch = ref('');
 const debouncedPatientSearch = ref('');
@@ -212,6 +243,9 @@ const fulfillmentMode = ref<PharmacyFulfillmentMode>('click_collect');
 const pharmacyId = ref('');
 const pharmaciesLoading = ref(false);
 const pharmacyOptions = ref<{ label: string; value: string }[]>([]);
+const profileOpen = ref(false);
+const selfRelativeId = ref('');
+const selfRelatives = ref<Array<{ id: string; first_name?: string; last_name?: string }>>([]);
 const desiredDate = ref(new Date().toISOString().slice(0, 10));
 const deliveryAddress = ref('');
 const todayIso = new Date().toISOString().slice(0, 10);
@@ -240,8 +274,22 @@ watch(patientSearch, (q) => {
 });
 
 watch(debouncedPatientSearch, () => {
+  if (forSelf.value) return;
   void loadPatients();
 }, { immediate: true });
+
+const beneficiaryOptions = computed(() => [
+  { value: '', label: 'Moi' },
+  ...selfRelatives.value.map((relative) => ({
+    value: relative.id,
+    label: `${relative.first_name ?? ''} ${relative.last_name ?? ''}`.trim() || 'Proche',
+  })),
+]);
+
+function selfUserId(): string {
+  const current = user.value as { id?: string; user_id?: string } | null;
+  return String(current?.id ?? current?.user_id ?? '');
+}
 
 watch(selectedPatientId, (id) => {
   selectedDocIds.value = [];
@@ -424,6 +472,7 @@ async function submit() {
     const uploadedIds = await uploadPendingOrdonnances(selectedPatientId.value);
     const order = await createOrder({
       patient_id: selectedPatientId.value,
+      relative_id: forSelf.value && selfRelativeId.value ? selfRelativeId.value : null,
       pharmacy_id: pharmacyId.value,
       fulfillment_mode: fulfillmentMode.value,
       desired_fulfillment_date: desiredDate.value,
@@ -446,8 +495,26 @@ async function submit() {
   }
 }
 
+watch(
+  () => selfUserId(),
+  (id) => {
+    if (!forSelf.value || !id) return;
+    selectedPatientId.value = id;
+    selectedPatientLabel.value = 'Moi';
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   void fetchModuleFlags().catch(() => {});
+  if (forSelf.value) {
+    void apiFetch('/patient-relatives', { method: 'GET' }).then((response) => {
+      const data = (response as { data?: Array<{ id: string; first_name?: string; last_name?: string }> }).data;
+      selfRelatives.value = Array.isArray(data) ? data : [];
+    }).catch((cause) => {
+      console.warn('[pharmacie] proches', cause);
+    });
+  }
   if (!isOwnPharmacy.value) void loadPharmacies();
   if (selectedPatientId.value) void loadDocuments(selectedPatientId.value);
 });

@@ -104,23 +104,14 @@ if ($csrfToken) {
     $postHeaders[] = 'X-CSRF-Token: ' . $csrfToken;
 }
 
-$hub = curlJson("{$baseUrl}/ai/hub", $auth);
-if (($hub['code'] ?? 0) !== 200 || empty($hub['body']['success'])) {
-    fail('GET /ai/hub: ' . json_encode($hub['body'], JSON_UNESCAPED_UNICODE));
-}
-if (empty($hub['body']['data']['disclaimer'])) {
-    fail('GET /ai/hub sans disclaimer');
-}
-if (!is_array($hub['body']['data']['quick_suggestions'] ?? null)) {
-    fail('GET /ai/hub sans quick_suggestions');
-}
-ok('GET /ai/hub + disclaimer + suggestions');
-
 $suggestions = curlJson("{$baseUrl}/ai/quick-suggestions", $auth);
 if (($suggestions['code'] ?? 0) !== 200 || empty($suggestions['body']['success'])) {
     fail('GET /ai/quick-suggestions');
 }
-ok('GET /ai/quick-suggestions dynamique');
+if (empty($suggestions['body']['data']['disclaimer'])) {
+    fail('GET /ai/quick-suggestions sans disclaimer');
+}
+ok('GET /ai/quick-suggestions + disclaimer');
 
 $ensure = curlJson("{$baseUrl}/ai/conversations/ensure-system", $postHeaders, json_encode([
     'system_key' => 'assistant_health',

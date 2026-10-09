@@ -10,9 +10,10 @@ Quand tu ajoutes ou modifies des onglets segmentés, **ne réinvente pas** : cop
 
 ## Références validées (dans cet ordre)
 
-1. **Tous les écrans** → `FullWidthSegmentBar` (`components/ui/FullWidthSegmentBar.tsx`) ; fiche RDV via `DetailSegmentBar` (icônes par défaut)
+1. **Tous les écrans** → `FullWidthSegmentBar` (`components/ui/FullWidthSegmentBar.tsx`), icône passée par segment (ex. fiche passage `PassageDetailScreen`)
 2. **Formulaire RDV** → `BookingAvailabilitySection` (`features/appointments/form/components/BookingAvailabilitySection.tsx`)
-3. **Squelette** → `SkeletonSegmentBar` (`components/ui/skeleton-presets.tsx`) — mêmes contraintes flex
+
+Les documents d'une fiche (RDV, passage, commande) ne sont pas un onglet : une ligne « Documents » ouvre leur vue dédiée.
 
 ## Pattern obligatoire
 
@@ -66,4 +67,4 @@ Références : `LegalInformationScreen`, `PatientDetailScreen`, `AppointmentDeta
 
 ## Avant de livrer
 
-Comparer visuellement avec `BookingAvailabilitySection` (2 onglets) ou la fiche RDV `DetailSegmentBar` (3 onglets) : chaque segment occupe une part égale sur toute la largeur utile.
+Comparer visuellement avec `BookingAvailabilitySection` (2 onglets) ou la fiche passage `PassageDetailScreen` (2 onglets) : chaque segment occupe une part égale sur toute la largeur utile.

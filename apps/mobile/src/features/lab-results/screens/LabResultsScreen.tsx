@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
-import { appointmentDetailHref } from '@/navigation/role-hrefs';
+import { appointmentDocumentsHref } from '@/navigation/role-hrefs';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 
@@ -54,7 +54,7 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
 
   const openAppointment = useCallback(
     (appointmentId: string) => {
-      router.push(appointmentDetailHref(rolePrefix, appointmentId, { segment: 'documents' }));
+      router.push(appointmentDocumentsHref(rolePrefix, appointmentId));
     },
     [rolePrefix, router],
   );
@@ -66,7 +66,6 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
           conversation_type: 'lab_results',
           lab_result_id: item.medical_document_id ?? item.id,
           patient_id: item.patient_id ?? undefined,
-          initial_message: 'Explique-moi ce résultat de labo (sans interprétation médicale).',
         }),
       );
     },

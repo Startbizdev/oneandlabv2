@@ -31,8 +31,9 @@ type Props = {
   patientId: string;
   vitalType: ClinicalVitalType | null;
   onClose: () => void;
-  onAdd: (type: ClinicalVitalType) => void;
-  onEdit: (reading: ClinicalVitalReading) => void;
+  /** Absents en lecture seule : ni nouvelle mesure, ni modification. */
+  onAdd?: (type: ClinicalVitalType) => void;
+  onEdit?: (reading: ClinicalVitalReading) => void;
 };
 
 export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClose, onAdd, onEdit }: Props) {
@@ -59,7 +60,9 @@ export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClo
       subtitle={unit ? `Dernières mesures, en ${unit}` : 'Dernières mesures'}
       snapPoints={['88%']}
       footer={
-        vitalType ? <Button title="Nouvelle mesure" size="lg" fullWidth onPress={() => onAdd(vitalType)} /> : undefined
+        vitalType && onAdd ? (
+          <Button title="Nouvelle mesure" size="lg" fullWidth onPress={() => onAdd(vitalType)} />
+        ) : undefined
       }
     >
       {historyQ.isLoading ? (
@@ -79,7 +82,7 @@ export function ClinicalVitalHistorySheet({ visible, patientId, vitalType, onClo
           {history.map((reading, index) => (
             <View key={reading.id}>
               {index > 0 ? <View style={styles.divider} /> : null}
-              <HistoryRow reading={reading} unit={unit} onPress={() => onEdit(reading)} />
+              <HistoryRow reading={reading} unit={unit} onPress={onEdit ? () => onEdit(reading) : undefined} />
             </View>
           ))}
         </View>
@@ -95,34 +98,47 @@ function HistoryRow({
 }: {
   reading: ClinicalVitalReading;
   unit: string;
-  onPress: () => void;
+  onPress?: () => void;
 }) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const value = `${formatClinicalVitalCardValue(reading)} ${unit}`.trim();
   const meta = `${formatClinicalVitalHistoryDate(reading.recorded_at)} · ${formatClinicalVitalRecorderName(reading)}`;
   const note = reading.notes?.trim();
+  const label = `${value}, ${meta}${note ? `, ${note}` : ''}`;
+  const row = (
+    <ListRowShell
+      body={
+        <View style={styles.texts}>
+          <AppText style={styles.value}>{value}</AppText>
+          <AppText variant="caption" style={styles.meta}>
+            {meta}
+          </AppText>
+          {note ? <AppText variant="secondary">{note}</AppText> : null}
+        </View>
+      }
+      trailing={
+        onPress ? <ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} /> : undefined
+      }
+    />
+  );
 
+  if (!onPress) {
+    return (
+      <View accessible accessibilityLabel={label}>
+        {row}
+      </View>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${value}, ${meta}${note ? `, ${note}` : ''}`}
+      accessibilityLabel={label}
       accessibilityHint="Modifier cette mesure"
       style={({ pressed }) => (pressed ? styles.pressed : null)}
     >
-      <ListRowShell
-        body={
-          <View style={styles.texts}>
-            <AppText style={styles.value}>{value}</AppText>
-            <AppText variant="caption" style={styles.meta}>
-              {meta}
-            </AppText>
-            {note ? <AppText variant="secondary">{note}</AppText> : null}
-          </View>
-        }
-        trailing={<ChevronRight size={iconSize.sm} color={c.textTertiary} strokeWidth={ICON_STROKE_WIDTH} />}
-      />
+      {row}
     </Pressable>
   );
 }

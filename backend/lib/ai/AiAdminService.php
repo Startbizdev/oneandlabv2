@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/LocalMockAiProvider.php';
 
 final class AiAdminService
 {
+    /** Fournisseurs acceptés par AIGateway::resolveProvider ; « local » n'est servi qu'en base de test sans clé xAI. */
+    private const ROUTING_PROVIDERS = ['grok', LocalMockAiProvider::ROUTING_PROVIDER];
+
     private PDO $db;
 
     public function __construct(?PDO $db = null)
@@ -28,6 +32,9 @@ final class AiAdminService
 
     public function updateRouting(string $taskType, string $provider, ?string $model, bool $enabled): void
     {
+        if (!in_array($provider, self::ROUTING_PROVIDERS, true)) {
+            throw new InvalidArgumentException('Fournisseur IA non pris en charge');
+        }
         $stmt = $this->db->prepare('
             UPDATE ai_task_routing SET provider = ?, model = ?, enabled = ?
             WHERE task_type = ?

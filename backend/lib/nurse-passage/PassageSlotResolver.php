@@ -14,12 +14,42 @@ final class PassageSlotResolver
         'night' => [21, 0],
     ];
 
+    /**
+     * Heure exacte « HH:MM » (accepte « HH:MM:SS » renvoyé par une colonne TIME).
+     * Retourne null si vide ; lève une exception si le format est invalide.
+     */
+    public static function normalizeTime(mixed $raw): ?string
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $value = trim((string) $raw);
+        if ($value === '') {
+            return null;
+        }
+        if (!preg_match('/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/D', $value, $m)) {
+            throw new InvalidArgumentException('Heure invalide (format HH:MM attendu)');
+        }
+
+        return $m[1] . ':' . $m[2];
+    }
+
+    /** Clé stable d'un créneau quotidien : « morning », « custom@12:30 », « morning@07:45 ». */
+    public static function slotKey(string $timeSlot, ?string $customTime): string
+    {
+        if ($timeSlot === 'all_day' || $customTime === null || $customTime === '') {
+            return $timeSlot;
+        }
+
+        return $timeSlot . '@' . substr($customTime, 0, 5);
+    }
+
     public static function scheduledAt(string $dateYmd, string $timeSlot, ?string $customTime): string
     {
         $tz = new DateTimeZone('Europe/Paris');
         $dateYmd = self::normalizeDate($dateYmd);
 
-        if ($timeSlot === 'custom' && $customTime !== null && $customTime !== '') {
+        if ($timeSlot !== 'all_day' && $customTime !== null && $customTime !== '') {
             $parts = explode(':', trim($customTime));
             $h = (int) ($parts[0] ?? 9);
             $m = (int) ($parts[1] ?? 0);
@@ -68,11 +98,12 @@ final class PassageSlotResolver
         return null;
     }
 
+    /** @param array{0: int|float, 1: int|float}|null $timeRange */
     public static function availabilityJson(string $timeSlot, ?string $customTime, ?array $timeRange = null): string
     {
         if ($timeRange !== null && count($timeRange) >= 2) {
             return json_encode(
-                ['type' => 'custom', 'range' => [(int) $timeRange[0], (int) $timeRange[1]]],
+                ['type' => 'custom', 'range' => [self::quarterHour($timeRange[0]), self::quarterHour($timeRange[1])]],
                 JSON_THROW_ON_ERROR,
             );
         }
@@ -81,10 +112,13 @@ final class PassageSlotResolver
             return json_encode(['type' => 'all_day'], JSON_THROW_ON_ERROR);
         }
 
-        if ($timeSlot === 'custom' && $customTime) {
+        if ($customTime !== null && $customTime !== '') {
             $parts = explode(':', trim($customTime));
-            $h = (int) ($parts[0] ?? 9);
-            return json_encode(['type' => 'custom', 'range' => [$h, min(23, $h + 1)]], JSON_THROW_ON_ERROR);
+            $start = self::quarterHour((int) ($parts[0] ?? 9) + ((int) ($parts[1] ?? 0)) / 60);
+            return json_encode(
+                ['type' => 'custom', 'range' => [$start, self::quarterHour(min(24, $start + 1))]],
+                JSON_THROW_ON_ERROR,
+            );
         }
 
         $labels = [
@@ -97,6 +131,15 @@ final class PassageSlotResolver
         $range = $labels[$timeSlot] ?? [8, 12];
 
         return json_encode(['type' => 'custom', 'range' => $range], JSON_THROW_ON_ERROR);
+    }
+
+    /** Heure décimale arrondie au quart d'heure (8.25 = 8 h 15). */
+    public static function quarterHour(int|float|string $hour): int|float
+    {
+        $rounded = round(((float) $hour) * 4) / 4;
+        $rounded = max(0.0, min(24.0, $rounded));
+
+        return floor($rounded) === $rounded ? (int) $rounded : $rounded;
     }
 
     private static function normalizeDate(string $date): string

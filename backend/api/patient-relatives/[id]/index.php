@@ -28,6 +28,7 @@ $user = $authMiddleware->handle();
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../lib/PatientDossierAccess.php';
+require_once __DIR__ . '/../../../lib/StaffPatientConsent.php';
 require_once __DIR__ . '/../../../models/User.php';
 
 $config = require __DIR__ . '/../../../config/database.php';
@@ -141,11 +142,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
 
-        // Whitelist stricte : n'utiliser que les champs du proche (ne jamais toucher profiles)
+        // Modification par un soignant : mêmes exigences que la création (fiche modifiable + consentement du patient).
+        if (
+            !$isPatient
+            && !$userModel->canStaffEditPatientProfile((string) $user['user_id'], $role, $patientIdForRelative)
+        ) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Accès refusé']);
+            exit;
+        }
+        StaffPatientConsent::validateOrFail($data, $user);
+
+        // Whitelist stricte : champs du proche (l'identité est recopiée sur son dossier patient par le modèle)
         $allowedKeys = ['first_name', 'last_name', 'relationship_type', 'gender', 'birth_date', 'email', 'phone', 'address'];
         $safeData = array_intersect_key($data, array_flip($allowedKeys));
 
-        $success = $relativeModel->update($id, $safeData, $patientIdForRelative);
+        $success = $relativeModel->update($id, $safeData, $patientIdForRelative, $user);
 
         if (!$success) {
             http_response_code(404);
@@ -155,6 +167,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'code' => 'NOT_FOUND',
             ]);
             exit;
+        }
+
+        if (!$isPatient) {
+            StaffPatientConsent::logRecorded($user, $patientIdForRelative, 'patient_relative_update');
         }
 
         // Récupérer le proche mis à jour

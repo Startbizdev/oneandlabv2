@@ -1,14 +1,18 @@
 import type { StaffHubSearchItem } from '@oneandlab/shared-types';
 
+function profileHref(userId: string, relativeId?: string): string {
+  const q = new URLSearchParams({ userId });
+  if (relativeId) q.set('relativeId', relativeId);
+  return `/profile?${q.toString()}`;
+}
+
 export function staffHubItemHref(item: StaffHubSearchItem, basePath: string): string {
   if (item.kind === 'relative') {
-    return `/profile?userId=${encodeURIComponent(item.patient_id)}&relativeId=${encodeURIComponent(item.relative_id)}`;
+    const profileId = item.profile_id?.trim();
+    return profileId ? profileHref(profileId) : profileHref(item.patient_id, item.relative_id);
   }
-  if (item.kind === 'patient') {
-    return `/profile?userId=${encodeURIComponent(item.patient_id)}`;
-  }
-  if (item.kind === 'document') {
-    return `/profile?userId=${encodeURIComponent(item.patient_id)}`;
+  if (item.kind === 'patient' || item.kind === 'document') {
+    return profileHref(item.patient_id);
   }
   const hash = `rdv-care-photo-${encodeURIComponent(item.medical_document_id)}`;
   return `${basePath}/appointments/${encodeURIComponent(item.appointment_id)}#${hash}`;

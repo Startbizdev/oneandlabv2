@@ -14,7 +14,11 @@ require_once __DIR__ . '/AiConversationService.php';
 require_once __DIR__ . '/../rag/RagSearchService.php';
 require_once __DIR__ . '/AiVoiceMessageSignals.php';
 require_once __DIR__ . '/AiAssistantResponseGuard.php';
-require_once __DIR__ . '/../../lib/RateLimit.php';
+require_once __DIR__ . '/AiChatRateLimit.php';
+require_once __DIR__ . '/AiChatService.php';
+require_once __DIR__ . '/AiEmergencyDetector.php';
+require_once __DIR__ . '/../DatabaseTransaction.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../Uuid.php';
 
 /**
@@ -46,18 +50,17 @@ final class VoiceRealtimeService
     {
         $userId = (string) ($user['user_id'] ?? '');
         if (!VoiceRealtimeConfig::isAllowedForUser($userId)) {
-            throw new RuntimeException('Voix temps réel indisponible pour ce compte', 403);
+            throw HttpStatusException::forbidden('Voix temps réel indisponible pour ce compte');
         }
+        AiChatRateLimit::assertAllowed($user, 'voice_session');
 
-        if (!RateLimit::allow('ai_voice_realtime_start', $userId, 12, 3600)) {
-            throw new RuntimeException('Trop de sessions vocales — réessayez plus tard', 429);
-        }
+        $requestedLocale = $input['locale'] ?? 'fr';
+        $locale = in_array($requestedLocale, ['fr', 'en', 'ar', 'es'], true) ? $requestedLocale : 'fr';
 
-        $locale = in_array($input['locale'] ?? 'fr', ['fr', 'en', 'ar', 'es'], true)
-            ? (string) $input['locale'] : 'fr';
-
+        $tokenPack = $this->tokens->createEphemeralToken();
         $session = $this->voice->createSession($user, [
             'conversation_id' => $input['conversation_id'] ?? null,
+            'patient_id' => $input['patient_id'] ?? null,
             'locale' => $locale,
             'skip_welcome_tts' => true,
         ]);
@@ -65,11 +68,10 @@ final class VoiceRealtimeService
         $sessionId = (string) ($session['id'] ?? '');
         $conversationId = (string) ($session['ai_conversation_id'] ?? '');
         if ($sessionId === '' || $conversationId === '') {
-            throw new RuntimeException('Session vocale invalide');
+            throw new RuntimeException('Session vocale créée sans identifiant ni conversation');
         }
 
         $promptPack = $this->prompts->build($user, $conversationId, $locale);
-        $tokenPack = $this->tokens->createEphemeralToken();
         $expiresAt = (int) $tokenPack['expires_at'];
 
         $this->db->prepare('
@@ -94,7 +96,7 @@ final class VoiceRealtimeService
                 'voice' => $voiceId,
                 'instructions' => $promptPack['instructions'],
                 'turn_detection' => ['type' => 'server_vad'],
-                'tools' => AiGrokRealtimeToolCatalog::allTools(),
+                'tools' => AiGrokRealtimeToolCatalog::toolsFor($user),
                 'audio' => [
                     'input' => [
                         'format' => ['type' => 'audio/pcm', 'rate' => $sampleRate],
@@ -122,10 +124,11 @@ final class VoiceRealtimeService
     {
         $session = $this->assertSession($sessionId, (string) $user['user_id']);
         if (($session['transport'] ?? 'rest') !== 'realtime') {
-            throw new RuntimeException('Session non temps réel');
+            throw new InvalidArgumentException('Cette session vocale n\'est pas en temps réel');
         }
+        AiChatRateLimit::assertAllowed($user, 'voice_tool');
 
-        if (!in_array($toolName, AiGrokRealtimeToolCatalog::allowedToolNames(), true)) {
+        if (!in_array($toolName, AiGrokRealtimeToolCatalog::allowedToolNamesFor($user), true)) {
             throw new InvalidArgumentException('Outil vocal non autorisé: ' . $toolName);
         }
 
@@ -161,10 +164,17 @@ final class VoiceRealtimeService
     public function syncEvent(array $user, string $sessionId, array $input): array
     {
         $session = $this->assertSession($sessionId, (string) $user['user_id']);
+        if (($session['transport'] ?? 'rest') !== 'realtime') {
+            throw new InvalidArgumentException('Cette session vocale n\'est pas en temps réel');
+        }
+        AiChatRateLimit::assertAllowed($user, 'voice_event');
         $eventId = trim((string) ($input['event_id'] ?? ''));
         $eventType = trim((string) ($input['event_type'] ?? ''));
         if ($eventId === '' || $eventType === '') {
             throw new InvalidArgumentException('event_id et event_type requis');
+        }
+        if (mb_strlen($eventId) > 128 || mb_strlen($eventType) > 64) {
+            throw new InvalidArgumentException('event_id ou event_type trop long');
         }
 
         $existing = $this->db->prepare('
@@ -179,6 +189,7 @@ final class VoiceRealtimeService
         $payload = is_array($input['payload'] ?? null) ? $input['payload'] : [];
         $latencyMs = isset($input['latency_ms']) ? (int) $input['latency_ms'] : null;
         $lastUserTranscript = '';
+        $emergency = null;
 
         if ($eventType === 'xai_conversation.created') {
             $xaiConvId = trim((string) ($payload['xai_conversation_id'] ?? ''));
@@ -189,36 +200,32 @@ final class VoiceRealtimeService
         }
 
         if ($eventType === 'user.transcript.final') {
-            $transcript = trim((string) ($payload['transcript'] ?? ''));
+            $transcript = self::boundedTranscript($payload);
             if ($transcript !== '') {
                 $lastUserTranscript = $transcript;
                 $locale = (string) ($session['locale'] ?? 'fr');
                 $this->persistUserTurn($sessionId, $conversationId, $user, $transcript, $locale);
+                $emergency = AiEmergencyDetector::detect($transcript);
             }
         }
 
         if ($eventType === 'assistant.transcript.final') {
-            $assistantText = trim((string) ($payload['transcript'] ?? ''));
+            $assistantText = self::boundedTranscript($payload);
             if ($assistantText !== '') {
-                $draftForGuard = isset($payload['draft']) && is_array($payload['draft'])
-                    ? $payload['draft']
-                    : (new AiBookingService($this->db))->getLatestDraftForConversation(
-                        $conversationId,
-                        (string) $user['user_id'],
-                    );
-                $userForGuard = trim((string) ($payload['user_transcript'] ?? $lastUserTranscript));
-                $guarded = AiAssistantResponseGuard::normalize($userForGuard, $assistantText, $draftForGuard);
-                $assistantText = $guarded['text'];
-                $metadata = ['guard_repaired' => $guarded['repaired']];
+                $serverDraft = (new AiBookingService($this->db))->getLatestDraftForConversation(
+                    $conversationId,
+                    (string) $user['user_id'],
+                );
+                $userForGuard = mb_substr(trim((string) ($payload['user_transcript'] ?? $lastUserTranscript)), 0, AiChatService::MAX_MESSAGE_LENGTH);
+                $guarded = AiAssistantResponseGuard::normalize($userForGuard, $assistantText, $serverDraft);
+                $metadata = array_merge(self::unverifiedMetadata($sessionId), ['guard_repaired' => $guarded['repaired']]);
                 if ($guarded['reason'] !== null) {
                     $metadata['guard_reason'] = $guarded['reason'];
                 }
-                if (isset($payload['draft']) && is_array($payload['draft'])) {
-                    $metadata['draft'] = $payload['draft'];
-                }
-                $this->conversations->addMessage($conversationId, 'assistant', $assistantText, $metadata);
+                $this->conversations->addMessage($conversationId, 'assistant', $guarded['text'], $metadata);
             }
         }
+        unset($payload['draft']);
 
         $rowId = Uuid::v4();
         $this->db->prepare('
@@ -259,8 +266,35 @@ final class VoiceRealtimeService
             'event_id' => $eventId,
             'conversation_id' => $conversationId,
             'draft' => $draft,
+            'emergency' => $emergency,
             ...$sessionUpdate,
         ];
+    }
+
+    /**
+     * Transcriptions envoyées par l'application (non vérifiables côté serveur) : tracées, mais exclues
+     * de l'historique transmis au modèle.
+     *
+     * @return array{unverified: true, source: string, voice_session_id: string}
+     */
+    private static function unverifiedMetadata(string $sessionId): array
+    {
+        return ['unverified' => true, 'source' => 'voice_realtime_client', 'voice_session_id' => $sessionId];
+    }
+
+    /** @param array<string, mixed> $payload */
+    private static function boundedTranscript(array $payload): string
+    {
+        $text = trim((string) ($payload['transcript'] ?? ''));
+        if (mb_strlen($text) > AiChatService::MAX_MESSAGE_LENGTH) {
+            throw new HttpStatusException(
+                'Transcription trop longue (' . AiChatService::MAX_MESSAGE_LENGTH . ' caractères maximum)',
+                400,
+                'AI_MESSAGE_TOO_LONG',
+            );
+        }
+
+        return $text;
     }
 
     /**
@@ -304,13 +338,7 @@ final class VoiceRealtimeService
      */
     private function assertSession(string $sessionId, string $userId): array
     {
-        $session = $this->voice->getSession($sessionId, $userId);
-        if ($session === null) {
-            throw new RuntimeException('Session vocale introuvable', 404);
-        }
-        if (!empty($session['ended_at'])) {
-            throw new RuntimeException('Session vocale clôturée');
-        }
+        $session = $this->voice->requireOpenSession($sessionId, $userId);
 
         $stmt = $this->db->prepare('SELECT transport, xai_conversation_id FROM voice_sessions WHERE id = ? LIMIT 1');
         $stmt->execute([$sessionId]);
@@ -332,15 +360,16 @@ final class VoiceRealtimeService
         string $transcript,
         string $locale,
     ): void {
-        $userMsgId = Uuid::v4();
-        $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'user\', NOW())')
-            ->execute([$userMsgId, $sessionId]);
-        $this->db->prepare('
-            INSERT INTO voice_transcriptions (id, voice_message_id, text, provider, language_detected)
-            VALUES (?, ?, ?, \'realtime\', ?)
-        ')->execute([Uuid::v4(), $userMsgId, $transcript, $locale]);
-
-        $this->conversations->addMessage($conversationId, 'user', $transcript);
+        DatabaseTransaction::run($this->db, function () use ($sessionId, $conversationId, $transcript, $locale): void {
+            $userMsgId = Uuid::v4();
+            $this->db->prepare('INSERT INTO voice_messages (id, session_id, role, created_at) VALUES (?, ?, \'user\', NOW())')
+                ->execute([$userMsgId, $sessionId]);
+            $this->db->prepare('
+                INSERT INTO voice_transcriptions (id, voice_message_id, text, provider, language_detected)
+                VALUES (?, ?, ?, \'realtime\', ?)
+            ')->execute([Uuid::v4(), $userMsgId, $transcript, $locale]);
+            $this->conversations->addMessage($conversationId, 'user', $transcript, self::unverifiedMetadata($sessionId));
+        });
         $this->applyVoiceSignalsToDraft($user, $conversationId, $transcript);
     }
 

@@ -10,6 +10,8 @@ require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
@@ -36,9 +38,15 @@ $user = $authMiddleware->handle();
 // Vérifier CSRF
 CSRFMiddleware::handle();
 
-// Patient : ses documents ; super_admin : upload pour un patient via POST user_id ; pro/nurse/lab/sous-compte : patient du périmètre
+// Patient : ses documents, ou ceux d'un proche (relative_id ou user_id = dossier du proche) ;
+// super_admin : upload pour un patient via POST user_id ; pro/nurse/lab/sous-compte : patient du périmètre
 $targetPatientId = $user['user_id'];
-if ($user['role'] === 'super_admin') {
+if ($user['role'] === 'patient') {
+    $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : '';
+    if ($requestedUserId !== '') {
+        $targetPatientId = $requestedUserId;
+    }
+} elseif ($user['role'] === 'super_admin') {
     $requestedUserId = isset($_POST['user_id']) ? trim((string) $_POST['user_id']) : null;
     if ($requestedUserId !== null && $requestedUserId !== '') {
         $targetPatientId = $requestedUserId;
@@ -84,26 +92,24 @@ $crypto = new Crypto();
 $logger = new Logger();
 $userModel = new User();
 
-// Staff : même périmètre que patient-history (créateur, PPA, RDV assigné…)
-if (in_array($user['role'], ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'], true)) {
-    if (!PatientDossierAccess::canAccess($db, $userModel, $user, $targetPatientId)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Accès refusé']);
-        exit;
-    }
+// Documents d'un proche : stockés sous (titulaire, relative_id), accessibles au titulaire et aux soignants du proche.
+$documentsTarget = PatientDossierAccess::resolveProfileDocumentsTarget($db, $userModel, $user, $targetPatientId, $relativeId);
+if ($documentsTarget === null) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => $relativeId !== null ? 'Proche introuvable ou accès refusé' : 'Accès refusé']);
+    exit;
 }
+$targetPatientId = $documentsTarget['patient_id'];
+$relativeId = $documentsTarget['relative_id'];
+$dossierId = (string) MedicalDocumentAccess::subjectDossierId($db, $targetPatientId, $relativeId);
 
 if (
     $user['role'] === 'preleveur'
-    && !$userModel->isPatientVisibleInStaffList((string) $user['user_id'], 'preleveur', $targetPatientId)
+    && !$userModel->isPatientVisibleInStaffList((string) $user['user_id'], 'preleveur', $dossierId)
 ) {
-    if ($relativeId) {
-        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? AND relative_id = ? LIMIT 1');
-        $chk->execute([$targetPatientId, 'blood_test', $user['user_id'], $relativeId]);
-    } else {
-        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND type = ? AND assigned_to = ? LIMIT 1');
-        $chk->execute([$targetPatientId, 'blood_test', $user['user_id']]);
-    }
+    [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $dossierId);
+    $chk = $db->prepare("SELECT 1 FROM appointments a WHERE $subjectSql AND a.type = ? AND a.assigned_to = ? LIMIT 1");
+    $chk->execute([...$subjectParams, 'blood_test', $user['user_id']]);
     if (!$chk->fetchColumn()) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Accès refusé']);
@@ -274,8 +280,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Sauvegarder dans patient_documents ou patient_relative_documents
-        $relativeOwnerPatientId = $user['role'] === 'patient' ? $user['user_id'] : $targetPatientId;
-        if ($relativeId && in_array($user['role'], $rolesWithRelativeUpload, true)) {
+        $relativeOwnerPatientId = $targetPatientId;
+        if ($relativeId !== null) {
             // Documents d'un proche : vérifier que le proche appartient au patient
             $checkRel = $db->prepare('SELECT id FROM patient_relatives WHERE id = ? AND patient_id = ?');
             $checkRel->execute([$relativeId, $relativeOwnerPatientId]);

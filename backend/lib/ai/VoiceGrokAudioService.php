@@ -6,6 +6,7 @@ declare(strict_types=1);
  * STT + TTS Grok (xAI) — même stack que Grok Voice, sans OpenAI ni STT natif mobile.
  */
 require_once __DIR__ . '/VoiceGrokNaturalSpeech.php';
+require_once __DIR__ . '/AiProviderUnavailableException.php';
 
 final class VoiceGrokAudioService
 {
@@ -47,9 +48,11 @@ final class VoiceGrokAudioService
             $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
-            if ($raw === false || $code >= 400) {
-                error_log('[voice] Grok STT HTTP ' . $code . ' body=' . substr((string) $raw, 0, 400));
-                throw new RuntimeException('Transcription vocale indisponible');
+            if ($raw === false) {
+                throw AiProviderUnavailableException::network('Grok STT : réponse vide');
+            }
+            if ($code >= 400) {
+                throw AiProviderUnavailableException::httpStatus($code, 'Grok STT body=' . substr((string) $raw, 0, 400));
             }
             $decoded = json_decode((string) $raw, true);
             $text = trim((string) ($decoded['text'] ?? ''));
@@ -108,9 +111,11 @@ final class VoiceGrokAudioService
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($raw === false || $code >= 400) {
-            error_log('[voice] Grok TTS HTTP ' . $code . ' body=' . substr((string) $raw, 0, 400));
-            throw new RuntimeException('Synthèse vocale indisponible');
+        if ($raw === false) {
+            throw AiProviderUnavailableException::network('Grok TTS : réponse vide');
+        }
+        if ($code >= 400) {
+            throw AiProviderUnavailableException::httpStatus($code, 'Grok TTS body=' . substr((string) $raw, 0, 400));
         }
 
         return [
@@ -123,7 +128,7 @@ final class VoiceGrokAudioService
     {
         $key = ai_env('XAI_API_KEY');
         if ($key === null || $key === '') {
-            throw new InvalidArgumentException('XAI_API_KEY manquante pour la voix Cary');
+            throw AiProviderUnavailableException::notConfigured('XAI_API_KEY manquante pour la voix Cary');
         }
 
         return $key;

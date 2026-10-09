@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
+require_once __DIR__ . '/../../../lib/AvailabilityTimeLabel.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -139,7 +140,7 @@ $buildCareItem = static function (PDO $db, Crypto $crypto, array $row, array $du
         $av = is_string($availability) ? json_decode($availability, true) : $availability;
         if (is_array($av) && isset($av['type'])) {
             if ($av['type'] === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-                $slotLabel = (int) $av['range'][0] . 'h - ' . (int) $av['range'][1] . 'h';
+                $slotLabel = AvailabilityTimeLabel::range($av['range']);
             }
         }
     }

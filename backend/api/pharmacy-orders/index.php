@@ -46,21 +46,31 @@ if ($method === 'POST') {
         exit;
     }
     try {
-        $order = $orderService->create($user, $body);
-        $notifications->createNotification(
-            (string) $order['pharmacy_id'],
-            'pharmacy_order_created',
-            'Nouvelle commande pharmacie',
-            'Une ordonnance vous a été transmise.',
-            ['pharmacy_order_id' => $order['id']],
-        );
-        $pharmacyNotify->maybeSendOrderEmail(
-            (string) $order['pharmacy_id'],
-            'Nouvelle commande pharmacie',
-            'Une ordonnance vous a été transmise sur Cary.',
-            '/pro/commandes-recues/' . $order['id'],
-        );
+        ['order' => $order, 'notify' => $notify] = $orderService->create($user, $body);
+        if ($notify) {
+            $notifications->createNotification(
+                (string) $order['pharmacy_id'],
+                'pharmacy_order_created',
+                'Nouvelle commande pharmacie',
+                'Une ordonnance vous a été transmise.',
+                ['pharmacy_order_id' => $order['id'], 'pharmacy_order_side' => PharmacyOrderNotifier::SIDE_RECEIVED],
+            );
+            $pharmacyNotify->maybeSendOrderEmail(
+                (string) $order['pharmacy_id'],
+                'Nouvelle commande pharmacie',
+                'Une ordonnance vous a été transmise sur Cary.',
+                '/pro/commandes-recues/' . $order['id'],
+            );
+            $orderService->markCreationResponseCompleted($user, $body);
+        }
         echo json_encode(['success' => true, 'data' => $order]);
+    } catch (AppointmentCreationConflict $e) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Cette commande a déjà été envoyée avec des informations différentes. Consultez vos commandes avant de recommencer.',
+            'code' => 'CREATION_REQUEST_CONFLICT',
+        ]);
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

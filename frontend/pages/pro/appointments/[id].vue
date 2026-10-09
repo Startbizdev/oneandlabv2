@@ -46,6 +46,7 @@
         :omit-care-photos-in-list="true"
         @download="downloadDocument"
         @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+        @replaced="loadDocuments()"
         @care-photo-thread-updated="() => loadDocuments()"
       />
     </template>

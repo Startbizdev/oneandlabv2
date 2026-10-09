@@ -16,7 +16,7 @@
 | 10 | Pro | OK | |
 | 11 | Pharmacie | OK | focused poll list/inbox |
 | 12 | Stripe / IAP | OK | SubscriptionDisplayTest + e2e billing/subscription in P1 |
-| 13 | IA Cary | OK | AiChatRateLimitTest + cary-ai-booking e2e un-skipped |
+| 13 | IA Cary | OK | AiChatRateLimitTest + e2e réel cary-ai.live.spec.ts (test:e2e:live) |
 | 14 | RAG / OCR | OK | LabResultAnalysisPromptTest |
 | 15 | Carnet santé | OK | Health* Docker + Jest health-record-display |
 | 16 | Avis / SEO | OK | |

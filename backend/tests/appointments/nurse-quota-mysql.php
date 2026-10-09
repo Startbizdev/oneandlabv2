@@ -53,11 +53,11 @@ foreach (['confirmation', 'reassignment'] as $scenario) {
     $db = fixtureConnection($database);
     $db->exec('CREATE TABLE profiles (id VARCHAR(64) PRIMARY KEY, role VARCHAR(32)) ENGINE=InnoDB');
     $db->exec("INSERT INTO profiles VALUES ('nurse-a','nurse'),('nurse-b','nurse')");
-    $db->exec('CREATE TABLE appointments (id VARCHAR(64) PRIMARY KEY, assigned_nurse_id VARCHAR(64), status VARCHAR(32), scheduled_at DATETIME, INDEX (assigned_nurse_id)) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE appointments (id VARCHAR(64) PRIMARY KEY, assigned_nurse_id VARCHAR(64), status VARCHAR(32), scheduled_at DATETIME, passage_source VARCHAR(32) NULL, INDEX (assigned_nurse_id)) ENGINE=InnoDB');
     $db->exec('CREATE TABLE appointment_status_updates (appointment_id VARCHAR(64), actor_id VARCHAR(64), actor_role VARCHAR(32), status VARCHAR(32), created_at TIMESTAMP) ENGINE=InnoDB');
-    for ($i = 1; $i <= 9; $i++) $db->prepare("INSERT INTO appointments VALUES (?, 'nurse-a','confirmed', NOW())")->execute(['accepted-' . $i]);
-    $db->exec("INSERT INTO appointments VALUES ('first', NULL, 'pending', NOW())");
-    $db->prepare('INSERT INTO appointments VALUES (?, ?, ?, NOW())')->execute(['second', $scenario === 'reassignment' ? 'nurse-b' : null, $scenario === 'reassignment' ? 'confirmed' : 'pending']);
+    for ($i = 1; $i <= 9; $i++) $db->prepare("INSERT INTO appointments (id, assigned_nurse_id, status, scheduled_at) VALUES (?, 'nurse-a','confirmed', NOW())")->execute(['accepted-' . $i]);
+    $db->exec("INSERT INTO appointments (id, assigned_nurse_id, status, scheduled_at) VALUES ('first', NULL, 'pending', NOW())");
+    $db->prepare('INSERT INTO appointments (id, assigned_nurse_id, status, scheduled_at) VALUES (?, ?, ?, NOW())')->execute(['second', $scenario === 'reassignment' ? 'nurse-b' : null, $scenario === 'reassignment' ? 'confirmed' : 'pending']);
     $signal = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $database . '.lock-signal';
     $first = $launch($database, 'first', $signal);
     $deadline = microtime(true) + 5;

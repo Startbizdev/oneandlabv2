@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../LabTeamAccess.php';
 require_once __DIR__ . '/../AppointmentDetailGate.php';
 require_once __DIR__ . '/../AppointmentShareToken.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
 /** ACL GET /appointments/:id (ligne de contrôle + résolution merged_into). */
 final class AppointmentDetailAccess
@@ -42,7 +43,7 @@ final class AppointmentDetailAccess
         $mergedSelect = $hasMergedColumn ? ', merged_into_appointment_id' : '';
         $creationBatchSelect = $hasCreationBatchColumn ? ', creation_batch_id' : '';
         $stmt = $db->prepare("
-            SELECT patient_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
+            SELECT patient_id, relative_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
             FROM appointments
             WHERE id = ?
         ");
@@ -185,7 +186,7 @@ final class AppointmentDetailAccess
             && !empty($appointmentCheck['assigned_nurse_id'])
             && (string) $appointmentCheck['assigned_nurse_id'] !== (string) $user['user_id']
         ) {
-            $hasAccess = false;
+            $hasAccess = NurseCollaboration::isAppointmentSharedWith($db, $appointmentId, (string) $user['user_id']);
         }
 
         return $hasAccess;

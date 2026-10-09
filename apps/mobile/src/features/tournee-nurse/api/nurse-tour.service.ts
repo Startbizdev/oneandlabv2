@@ -1,10 +1,20 @@
 import { apiRequest } from '@/api/client';
-import type { PatientAbsence } from '@oneandlab/shared-types';
+import type { AppointmentCoNurse, PatientAbsence } from '@oneandlab/shared-types';
 import type { NavAppPref } from '@oneandlab/shared-utils';
 
 export type { NavAppPref };
 export type TourVisitStatus = 'todo' | 'en_route' | 'on_site' | 'done' | 'skipped';
 export type TourSortMode = 'smart' | 'schedule' | 'nearest' | 'manual';
+
+/** Soin du passage (`appointment_nursing_items`) ; `done_at` renseigné quand il est coché en tournée. */
+export interface NurseTourStopItem extends Record<string, unknown> {
+  id: string;
+  appointment_id: string;
+  label?: string | null;
+  category_name?: string | null;
+  care_options?: unknown;
+  done_at?: string | null;
+}
 
 export interface NurseTourStop {
   stop_id: string;
@@ -15,6 +25,8 @@ export interface NurseTourStop {
   skip_reason?: string | null;
   patient_name: string;
   patient_id?: string | null;
+  relative_id?: string | null;
+  relative_profile_id?: string | null;
   is_patient_absent_today?: boolean;
   patient_absence?: PatientAbsence | null;
   patient_gender?: string | null;
@@ -27,7 +39,7 @@ export interface NurseTourStop {
   creation_batch_id?: string | null;
   batch_sibling_count?: number;
   care_options?: Record<string, string | number> | null;
-  nursing_items?: Array<Record<string, unknown>>;
+  nursing_items?: NurseTourStopItem[];
   nursing_items_display?: Array<Record<string, unknown>>;
   status: string;
   scheduled_at?: string | null;
@@ -36,6 +48,9 @@ export interface NurseTourStop {
   passage_custom_time?: string | null;
   passage_duration_minutes?: number | null;
   passage_series_id?: string | null;
+  co_nurses?: AppointmentCoNurse[];
+  is_co_nurse?: boolean;
+  shared_by_name?: string | null;
   address_line: string;
   address_complement?: string;
   lat?: number | null;
@@ -135,6 +150,20 @@ export async function updateNurseTourStopStatus(
     },
   });
   if (!res.data) throw new Error('Statut non enregistré');
+  return res.data;
+}
+
+/** Coche / décoche un soin ; le passage est coché automatiquement quand tous ses soins le sont. */
+export async function setNurseTourStopItemDone(
+  stopId: string,
+  itemId: string,
+  done: boolean,
+): Promise<NurseTourPayload> {
+  const res = await apiRequest<NurseTourPayload>(`/nurse/tour/stops/${stopId}/items/${itemId}`, {
+    method: 'PATCH',
+    body: { done },
+  });
+  if (!res.data) throw new Error('Soin non enregistré');
   return res.data;
 }
 

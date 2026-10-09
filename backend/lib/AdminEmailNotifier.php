@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/EmailQueue.php';
 require_once __DIR__ . '/Email.php';
+require_once __DIR__ . '/AvailabilityTimeLabel.php';
 
 /**
  * Alertes email équipe Cary (super_admin / ADMIN_NOTIFY_EMAIL).
@@ -506,7 +507,7 @@ class AdminEmailNotifier
             $av = is_string($availability) ? json_decode($availability, true) : $availability;
             if (is_array($av)) {
                 if (($av['type'] ?? '') === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-                    $creneau = (int) $av['range'][0] . 'h - ' . (int) $av['range'][1] . 'h';
+                    $creneau = AvailabilityTimeLabel::range($av['range']);
                 }
             }
         }

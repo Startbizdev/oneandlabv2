@@ -51,16 +51,26 @@ function normalizeCategory(raw: Record<string, unknown>): CareCategory {
 
 export type CareCategoriesScope = 'full' | 'picker';
 
-export async function fetchCareCategories(type?: string, scope: CareCategoriesScope = 'full') {
+/**
+ * `providerId` : soins activés par ce soignant ; le serveur ignore alors `type`
+ * (il déduit les types du rôle du soignant), d'où le filtre local.
+ */
+export async function fetchCareCategories(
+  type?: string,
+  scope: CareCategoriesScope = 'full',
+  providerId?: string | null,
+) {
   const params = new URLSearchParams();
   if (type) params.set('type', type);
   if (scope === 'picker') params.set('scope', 'picker');
+  if (providerId) params.set('provider_id', providerId);
   const q = params.toString() ? `?${params.toString()}` : '';
   const res = await api.get<Record<string, unknown>[]>(`/categories${q}`);
   if (!res.success || !res.data) return { ...res, data: [] as CareCategory[] };
+  const categories = res.data.map((row) => normalizeCategory(row));
   return {
     ...res,
-    data: res.data.map((row) => normalizeCategory(row)),
+    data: providerId && type ? categories.filter((category) => category.type === type) : categories,
   };
 }
 

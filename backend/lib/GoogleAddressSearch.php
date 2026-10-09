@@ -1,12 +1,12 @@
 <?php
 
 /**
- * Recherche d'adresses via Google Geocoding API (France).
+ * Recherche d'adresses via Places API (New), France.
  * Sortie alignée sur l’ancien contrat BAN pour le front (label, street, city, postcode, lat, lng).
  */
 class GoogleAddressSearch
 {
-    private const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
+    private const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
 
     private function getApiKey(): string
     {
@@ -36,43 +36,51 @@ class GoogleAddressSearch
             $limit = 20;
         }
 
-        $params = [
-            'address' => $queryTrim,
-            'components' => 'country:FR',
-            'language' => 'fr',
-            'key' => $key,
-        ];
-        $url = self::GEOCODE_URL . '?' . http_build_query($params);
+        $payload = json_encode([
+            'textQuery' => $queryTrim,
+            'languageCode' => 'fr',
+            'regionCode' => 'FR',
+            'pageSize' => $limit,
+        ], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            throw new Exception('Requête adresse invalide');
+        }
 
-        $ch = curl_init($url);
+        $ch = curl_init(self::SEARCH_URL);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-Goog-Api-Key: ' . $key,
+            'X-Goog-FieldMask: places.formattedAddress,places.location,places.addressComponents',
+        ]);
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($httpCode !== 200 || !is_string($response)) {
-            throw new Exception('Erreur API Google Geocoding: HTTP ' . $httpCode);
+        if (!is_string($response)) {
+            throw new Exception('Erreur API Google Places: HTTP ' . $httpCode);
         }
 
         $data = json_decode($response, true);
-        if (!$data || ($data['status'] ?? '') === 'REQUEST_DENIED') {
-            $msg = $data['error_message'] ?? ($data['status'] ?? 'Erreur inconnue');
-            throw new Exception('Google Geocoding: ' . $msg);
+        if ($httpCode !== 200 || !is_array($data)) {
+            $msg = is_array($data) ? (string) ($data['error']['message'] ?? '') : '';
+            throw new Exception('Google Places: ' . ($msg !== '' ? $msg : 'HTTP ' . $httpCode));
         }
 
-        if (($data['status'] ?? '') !== 'OK' && ($data['status'] ?? '') !== 'ZERO_RESULTS') {
-            return [];
-        }
-
-        $results = $data['results'] ?? [];
+        $results = $data['places'] ?? [];
         if (!is_array($results)) {
             return [];
         }
 
         $out = [];
-        foreach (array_slice($results, 0, $limit) as $r) {
-            $row = $this->resultToRow($r);
+        foreach (array_slice($results, 0, $limit) as $place) {
+            if (!is_array($place)) {
+                continue;
+            }
+            $row = $this->resultToRow($place);
             if ($row !== null) {
                 $out[] = $row;
             }
@@ -87,27 +95,30 @@ class GoogleAddressSearch
      */
     private function resultToRow(array $r): ?array
     {
-        $loc = $r['geometry']['location'] ?? null;
-        if (!is_array($loc) || !isset($loc['lat'], $loc['lng'])) {
+        $loc = $r['location'] ?? null;
+        if (!is_array($loc) || !isset($loc['latitude'], $loc['longitude'])) {
             return null;
         }
 
-        $lat = (float) $loc['lat'];
-        $lng = (float) $loc['lng'];
-        $label = (string) ($r['formatted_address'] ?? '');
+        $lat = (float) $loc['latitude'];
+        $lng = (float) $loc['longitude'];
+        $label = (string) ($r['formattedAddress'] ?? '');
 
         $streetNumber = '';
         $route = '';
         $city = '';
         $postcode = '';
-        $components = $r['address_components'] ?? [];
+        $components = $r['addressComponents'] ?? [];
         if (is_array($components)) {
             foreach ($components as $c) {
                 if (!is_array($c)) {
                     continue;
                 }
                 $types = $c['types'] ?? [];
-                $long = (string) ($c['long_name'] ?? '');
+                if (!is_array($types)) {
+                    $types = [];
+                }
+                $long = (string) ($c['longText'] ?? '');
                 if (in_array('street_number', $types, true)) {
                     $streetNumber = $long;
                 }

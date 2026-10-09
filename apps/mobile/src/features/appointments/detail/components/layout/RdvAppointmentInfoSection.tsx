@@ -36,7 +36,7 @@ interface Props {
   showMapActions?: boolean;
   /** Bouton « Voir le profil » (pro / infirmier). */
   onViewPatientProfile?: () => void;
-  /** Libellé custom du bouton profil (ex. « Profil du titulaire · X » quand bénéficiaire ≠ titulaire). */
+  /** Libellé custom du bouton profil (ex. « Dossier de X » pour le RDV d’un proche). */
   viewPatientProfileLabel?: string;
 }
 

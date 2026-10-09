@@ -1,885 +1,245 @@
-import type { AiAppointmentDraft, AiConversation, AiMessage, AiQuickSuggestion } from '@oneandlab/shared-types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { router } from 'expo-router';
-import {
-  attachAiConversationDocument,
-  analyzeMedicalDocument,
-  confirmAiBookingDraft,
-  createAiConversation,
-  deleteAiConversation,
-  ensureAiSystemConversation,
-  fetchAiConversationDetail,
-  fetchAiConversations,
-  fetchAiQuickSuggestions,
-  patchAiConversation,
-  searchAiConversations,
-  patchAiBookingDraft,
-  sendAiChatMessage,
-  streamAiChatMessage,
-} from '../api/ai.service';
-import {
-  uploadPatientProfileDocument,
-  type PatientProfileUploadType,
-} from '@/features/patients/api/patient-profile.service';
-import { pickCarePhoto, pickCarePhotoFromSource, carePhotoPickErrorMessage } from '@/lib/uploads/pick-care-photo';
-import type { CarePhotoPickSource } from '@/lib/uploads/pick-care-photo';
-import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
+import type { AiChatResponse, AiConversation, AiQuickSuggestion } from '@oneandlab/shared-types';
+import type { MobileRole } from '@oneandlab/shared-constants';
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { useToast } from '@/providers/ToastProvider';
 import { useAuthStore } from '@/store/auth-store';
-import { aiBookingDraftErrorMessage, isAiDraftClosedError } from '@oneandlab/shared-api';
-import { ApiRequestError } from '@/lib/errors/api-request-error';
-import { apiErrorMessage } from '@/lib/errors/handle-api-error';
-import type { PatientAiChatAttachment, PatientAiChatMessage, PatientAiConversation } from '../types/patient-ai-conversation';
-import { AI_PROFILE_DOC_TYPES } from '../utils/ai-draft-documents';
-import { mapSuggestionToMessage, systemKeyFromConversationType } from '../utils/ai-navigation';
-import { appointmentDetailHref } from '@/navigation/role-hrefs';
-import { roleRoutePrefix } from '@/navigation/role-route-prefix';
-import { resolveConversationTitle } from '../utils/conversation-title';
-import { resolveLatestAiDraft } from '../utils/resolve-latest-ai-draft';
-import { isActiveAiDraft } from '../utils/is-active-ai-draft';
-import { patchMessageDraft } from '../utils/resolve-message-recap';
-import { resolveAssistantMessageText } from '../utils/resolve-assistant-message-text';
-import { hydrateMessageAttachments, normalizeMessageAttachment } from '../utils/hydrate-message-attachments';
+import {
+  createAiConversation,
+  ensureAiSystemConversation,
+  fetchAiConversations,
+  fetchAiQuickSuggestions,
+  submitAiFeedback,
+} from '../api/ai.service';
+import {
+  isLocalAiMessageId,
+  type PatientAiChatAttachment,
+  type PatientAiConversation,
+} from '../types/patient-ai-conversation';
+import { resolveAiAttachmentTarget } from '../utils/ai-attachment-target';
+import { aiRegenerateErrorMessage } from '../utils/ai-chat-errors';
+import { contextPatientId, type AiConversationContext } from '../utils/ai-conversation-context';
+import { latestFollowUpSuggestions } from '../utils/ai-conversation-state';
+import { buildAiStarterSuggestions, followUpPromptSuggestions } from '../utils/ai-starter-suggestions';
+import { useAiAttachment } from './use-ai-attachment';
+import { useAiBookingDraft } from './use-ai-booking-draft';
+import { useAiChatSend } from './use-ai-chat-send';
+import { loadAiConversationPage, useAiConversationActions } from './use-ai-conversation-actions';
 
-const PROFILE_DOC_SET = new Set<string>(AI_PROFILE_DOC_TYPES);
+export type { CaryAiSendFailure } from './use-ai-chat-send';
 
-function inferAttachmentDocType(
-  draft: AiAppointmentDraft | null,
-  override?: string | null,
-  fileName?: string | null,
-): string {
-  if (override) return override;
-  if (draft) {
-    const pending = draft.payload?.pending_upload_type;
-    if (typeof pending === 'string' && pending.trim()) return pending;
-    return 'ordonnance';
-  }
-  const fromName = inferDocTypeFromFileName(fileName);
-  if (fromName) return fromName;
-  return 'other';
-}
+export type AiMessageRating = 'up' | 'down';
 
-function inferDocTypeFromFileName(fileName?: string | null): string | null {
-  const lower = String(fileName ?? '').toLowerCase();
-  if (!lower) return null;
-  if (/analyse|bilan|resultat|résultat|labo|hemogram|hémogram|sanguin|nfs\b|bio/i.test(lower)) {
-    return 'resultats';
-  }
-  if (/ordonnance|prescription|prescri/i.test(lower)) return 'ordonnance';
-  if (/vitale|s[ée]curit[ée]\s*sociale/i.test(lower)) return 'carte_vitale';
-  if (/mutuelle|compl[ée]mentaire/i.test(lower)) return 'carte_mutuelle';
-  if (/assurance/i.test(lower)) return 'autres_assurances';
-  return null;
-}
+const GENERAL_CONTEXT: AiConversationContext = { kind: 'general', key: 'general' };
 
-function attachmentConfirmMessage(docType: string): string {
-  switch (docType) {
-    case 'carte_vitale':
-      return 'Voici ma carte Vitale mise à jour.';
-    case 'carte_mutuelle':
-      return 'Voici ma carte mutuelle mise à jour.';
-    case 'autres_assurances':
-      return 'Voici mon document autres assurances mis à jour.';
-    case 'ordonnance':
-      return 'Voici mon ordonnance.';
-    default:
-      return 'Voici le document joint.';
+/** Conversation à ouvrir pour le contexte : celle de l'objet, la conversation système, ou la dernière générale. */
+async function resolveContextConversation(context: AiConversationContext): Promise<AiConversation> {
+  switch (context.kind) {
+    case 'object':
+      return createAiConversation({
+        conversation_type: context.conversationType,
+        patient_id: context.patientId,
+        context_type: context.contextType,
+        context_id: context.contextId,
+      });
+    case 'system':
+      return ensureAiSystemConversation(context.systemKey);
+    case 'general': {
+      const list = await fetchAiConversations();
+      const general = list.find((c) => !c.is_system && (!c.context_type || c.context_type === 'general'));
+      return general ?? createAiConversation({ conversation_type: 'general' });
+    }
   }
 }
 
-function attachmentApiMessage(docType: string, fileName?: string): string {
-  const label = fileName?.trim() ? ` « ${fileName.trim()} »` : '';
-  if (docType === 'resultats') {
-    return `Voici mes résultats d'analyse${label}. Résume les points importants et explique-les simplement.`;
-  }
-  if (docType === 'other') {
-    return `Voici un document médical${label}. Analyse-le et explique-moi ce qui est important.`;
-  }
-  if (fileName?.trim()) {
-    return `${attachmentConfirmMessage(docType)} (${fileName.trim()})`;
-  }
-  return attachmentConfirmMessage(docType);
-}
-
-export type CaryAiSendOptions = {
-  conversationIdOverride?: string;
-  attachment?: PatientAiChatAttachment;
-};
-
-async function applyAttachmentToDraft(
-  draftId: string,
-  docType: string,
-  medicalDocumentId: string,
-  fileName: string,
-): Promise<AiAppointmentDraft> {
-  const fileRef = {
-    medical_document_id: medicalDocumentId,
-    field: docType,
-    file_name: fileName,
-  };
-  return patchAiBookingDraft(draftId, {
-    files: { [docType]: fileRef },
-    form_data: { files: { [docType]: fileRef } },
-  });
-}
-
-/** Dernier envoi en échec : le message utilisateur reste affiché, avec « Réessayer » / « Modifier ». */
-export type CaryAiSendFailure = {
-  conversationId: string;
-  userMessageId: string;
-  text: string;
-  attachment?: PatientAiChatAttachment;
-  error: unknown;
-};
-
-export type CaryAiHubInit = {
-  conversationType?: string;
-  patientId?: string;
-  appointmentId?: string;
-  labResultId?: string;
-  initialMessage?: string;
-};
-
-function mapConversation(conv: AiConversation, messages: AiMessage[] = []): PatientAiConversation {
-  const updated = conv.last_message_at ?? conv.updated_at ?? conv.created_at;
-  return {
-    id: conv.id,
-    title: resolveConversationTitle(conv),
-    messages: messages.map((m) => {
-      const attachment = normalizeMessageAttachment(
-        (m.metadata as { attachment?: unknown } | undefined)?.attachment,
-      );
-      return {
-        id: m.id,
-        role: m.role === 'user' ? 'user' : 'assistant',
-        text: m.content,
-        metadata: {
-          ...(m.metadata ?? {}),
-          ...(attachment ? { attachment } : {}),
-        },
-      };
-    }),
-    createdAt: conv.created_at ? Date.parse(conv.created_at) : Date.now(),
-    updatedAt: updated ? Date.parse(updated) : Date.now(),
-    isSystem: conv.is_system ?? false,
-    isPinned: conv.is_pinned ?? false,
-    archivedAt: conv.archived_at ? Date.parse(conv.archived_at) : null,
-  };
-}
-
-function mapConversationListItem(
-  conv: AiConversation,
-  existing?: PatientAiConversation,
-): PatientAiConversation {
-  const updated = conv.last_message_at ?? conv.updated_at ?? conv.created_at;
-  return {
-    id: conv.id,
-    title: resolveConversationTitle(conv),
-    messages: existing?.messages ?? [],
-    createdAt: conv.created_at ? Date.parse(conv.created_at) : Date.now(),
-    updatedAt: updated ? Date.parse(updated) : Date.now(),
-    isSystem: conv.is_system ?? false,
-    isPinned: conv.is_pinned ?? false,
-    archivedAt: conv.archived_at ? Date.parse(conv.archived_at) : null,
-  };
-}
-
-export function useCaryAiHub(init?: CaryAiHubInit) {
+/** État de l'écran Cary pour un rôle et un contexte (objet, conversation système ou générale). */
+export function useCaryAiHub({ role, context }: { role: MobileRole; context: AiConversationContext }) {
   const { show: showToast } = useToast();
   const userId = useAuthStore((s) => s.user?.id ?? '');
-  const [conversations, setConversations] = useState<PatientAiConversation[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
-  const [suggestions, setSuggestions] = useState<AiQuickSuggestion[]>([]);
-  const [disclaimer, setDisclaimer] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [awaitingReply, setAwaitingReply] = useState(false);
-  const [activeDraft, setActiveDraft] = useState<AiAppointmentDraft | null>(null);
-  const [confirmingDraft, setConfirmingDraft] = useState(false);
-  const [pendingAttachment, setPendingAttachment] = useState<PatientAiChatAttachment | null>(null);
-  const [attaching, setAttaching] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
-  const [sendFailure, setSendFailure] = useState<CaryAiSendFailure | null>(null);
-  const [initError, setInitError] = useState<unknown>(null);
-  const [initAttempt, setInitAttempt] = useState(0);
-  const initDone = useRef(false);
-  const confirmInFlight = useRef(false);
-  const sendMessageRef = useRef<(text: string, options?: CaryAiSendOptions | string) => Promise<void>>(
-    async () => {},
-  );
-
-  const activeConversation = useMemo(
-    () => conversations.find((c) => c.id === activeId) ?? conversations[0],
-    [activeId, conversations],
-  );
-
-  const loadConversationMessages = useCallback(async (id: string) => {
-    const detail = await fetchAiConversationDetail(id);
-    const mapped = mapConversation(detail.conversation, detail.messages);
-    const hydrated = await hydrateMessageAttachments(mapped.messages);
-    const withAttachments = { ...mapped, messages: hydrated };
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? withAttachments : c)),
-    );
-    setActiveDraft(isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages));
-  }, []);
-
-  const refreshConversationsList = useCallback(async (archivedOnly = false) => {
-    const list = await fetchAiConversations({ archived: archivedOnly });
-    setConversations((prev) => {
-      const byId = new Map(prev.map((c) => [c.id, c]));
-      const fromApi = list.map((conv) => mapConversationListItem(conv, byId.get(conv.id)));
-      const apiIds = new Set(fromApi.map((c) => c.id));
-      const localOnly = archivedOnly
-        ? []
-        : prev
-            .filter((c) => !apiIds.has(c.id) && !c.archivedAt)
-            .map((c) => ({
-              ...c,
-              messages: c.messages ?? [],
-            }));
-      return [...fromApi, ...localOnly].sort((a, b) => {
-        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        return b.updatedAt - a.updatedAt;
-      });
+  const [conversations, setConversationsState] = useState<PatientAiConversation[]>([]);
+  const conversationsRef = useRef<PatientAiConversation[]>([]);
+  const setConversations = useCallback<Dispatch<SetStateAction<PatientAiConversation[]>>>((action) => {
+    setConversationsState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      conversationsRef.current = next;
+      return next;
     });
   }, []);
+  const [activeId, setActiveId] = useState('');
+  const [contextConversationId, setContextConversationId] = useState('');
+  const [quickSuggestions, setQuickSuggestions] = useState<AiQuickSuggestion[]>([]);
+  const [disclaimer, setDisclaimer] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<unknown>(null);
+  const [initAttempt, setInitAttempt] = useState(0);
+  const [pendingInitial, setPendingInitial] = useState<{ conversationId: string; text: string } | null>(null);
+  const [ratings, setRatings] = useState<Record<string, AiMessageRating>>({});
+  const initialSentKeysRef = useRef(new Set<string>());
+  const reloadRef = useRef<(id: string) => Promise<void>>(() => Promise.resolve());
+
+  const onDraftClosed = useCallback((conversationId: string) => {
+    reloadRef.current(conversationId).catch((e: unknown) => console.warn('[cary-ai] rechargement du fil impossible', e));
+  }, []);
+  const draft = useAiBookingDraft({ role, activeId, conversationsRef, setConversations, showToast, onDraftClosed });
+  const { applyAssistantDraft, restoreDraft, setActiveDraft } = draft;
+
+  const onAssistantPayload = useCallback(
+    async (conversationId: string, payload: AiChatResponse, attachment?: PatientAiChatAttachment) => {
+      if (payload.disclaimer) setDisclaimer(payload.disclaimer);
+      await applyAssistantDraft(conversationId, payload, attachment);
+    },
+    [applyAssistantDraft],
+  );
+  const onRegenerateFailed = useCallback(
+    (error: unknown) => showToast(aiRegenerateErrorMessage(error), { type: 'error' }),
+    [showToast],
+  );
+  const send = useAiChatSend({
+    activeId,
+    conversationsRef,
+    setConversations,
+    draftOf: draft.draftOf,
+    onAssistantPayload,
+    onRegenerateFailed,
+  });
+  const { discardInFlight, sendMessage } = send;
+
+  const clearDraft = useCallback(() => setActiveDraft(null), [setActiveDraft]);
+  const actions = useAiConversationActions({
+    activeId,
+    setActiveId,
+    conversationsRef,
+    setConversations,
+    restoreDraft,
+    clearDraft,
+    busy: send.awaitingReply,
+    discardInFlight,
+  });
+  const { reloadConversation } = actions;
+  useEffect(() => {
+    reloadRef.current = reloadConversation;
+  }, [reloadConversation]);
+
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === activeId) ?? null,
+    [activeId, conversations],
+  );
+  const inContext = Boolean(activeId) && activeId === contextConversationId;
+  const attachmentTarget = useMemo(
+    () => resolveAiAttachmentTarget(role, activeConversation, inContext ? contextPatientId(context) : undefined),
+    [activeConversation, context, inContext, role],
+  );
+  const attachment = useAiAttachment({
+    userId,
+    target: attachmentTarget,
+    activeDraft: draft.activeDraft,
+    setActiveDraft,
+    busy: send.awaitingReply,
+    showToast,
+  });
+  const { clearAttachment } = attachment;
 
   useEffect(() => {
     let cancelled = false;
+    discardInFlight();
+    clearAttachment();
+    setConversations([]);
+    setActiveId('');
+    setContextConversationId('');
+    setActiveDraft(null);
+    setPendingInitial(null);
+    setInitError(null);
+    setLoading(true);
+    const quick = fetchAiQuickSuggestions(contextPatientId(context)).catch((e: unknown) => {
+      console.warn('[cary-ai] suggestions indisponibles, questions par défaut', e);
+      return null;
+    });
     (async () => {
       try {
-        setLoading(true);
-        setInitError(null);
-        const quick = await fetchAiQuickSuggestions(init?.patientId);
+        const conv = await resolveContextConversation(context);
+        const page = await loadAiConversationPage(conv.id);
         if (cancelled) return;
-        setSuggestions(quick.suggestions);
-        setDisclaimer(quick.disclaimer);
-
-        let conv: AiConversation;
-        const systemKey = systemKeyFromConversationType(init?.conversationType);
-        if (systemKey) {
-          conv = await ensureAiSystemConversation(systemKey);
-        } else {
-          const list = await fetchAiConversations();
-          if (list.length > 0) {
-            conv = list[0]!;
-          } else {
-            conv = await createAiConversation({
-              conversation_type: init?.conversationType ?? 'general',
-              patient_id: init?.patientId,
-            });
-          }
-        }
-
-        if (cancelled) return;
-        const [detail, list] = await Promise.all([
-          fetchAiConversationDetail(conv.id),
-          fetchAiConversations().catch(() => [] as AiConversation[]),
-        ]);
-        const active = mapConversation(detail.conversation, detail.messages);
-        const hydratedMessages = await hydrateMessageAttachments(active.messages);
-        const activeWithAttachments = { ...active, messages: hydratedMessages };
-        const others = list
-          .filter((c) => c.id !== conv.id)
-          .map((c) => mapConversationListItem(c));
-        setConversations([activeWithAttachments, ...others]);
+        setConversations([page.conversation]);
         setActiveId(conv.id);
-        setActiveDraft(
-          isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(activeWithAttachments.messages),
-        );
-
-        if (init?.initialMessage && !initDone.current) {
-          initDone.current = true;
-          setTimeout(() => {
-            void sendMessageRef.current(init.initialMessage!, conv.id);
-          }, 300);
+        setContextConversationId(conv.id);
+        restoreDraft(page.draft, page.conversation);
+        const initialMessage = context.initialMessage;
+        const hasUserMessage = page.conversation.messages.some((m) => m.role === 'user');
+        if (initialMessage && !hasUserMessage && !initialSentKeysRef.current.has(context.key)) {
+          initialSentKeysRef.current.add(context.key);
+          setPendingInitial({ conversationId: conv.id, text: initialMessage });
         }
-      } catch (initFailure) {
-        if (!cancelled) {
-          console.warn('[cary-ai] init failed, trying a new general conversation', initFailure);
-          try {
-            const fallback = await createAiConversation({ conversation_type: 'general' });
-            const detail = await fetchAiConversationDetail(fallback.id);
-            const mapped = mapConversation(detail.conversation, detail.messages);
-            const hydrated = await hydrateMessageAttachments(mapped.messages);
-            const withAttachments = { ...mapped, messages: hydrated };
-            if (cancelled) return;
-            setConversations([withAttachments]);
-            setActiveId(fallback.id);
-            setActiveDraft(
-              isActiveAiDraft(detail.draft) ? detail.draft : resolveLatestAiDraft(withAttachments.messages),
-            );
-          } catch (fallbackFailure) {
-            if (!cancelled) setInitError(fallbackFailure);
-          }
+        const suggestions = await quick;
+        if (!cancelled && suggestions) {
+          setQuickSuggestions(suggestions.suggestions);
+          setDisclaimer(suggestions.disclaimer);
         }
+      } catch (e) {
+        if (cancelled) return;
+        console.warn('[cary-ai] ouverture de la conversation impossible', e);
+        setInitError(e);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [init?.conversationType, init?.initialMessage, init?.patientId, initAttempt]);
+  }, [clearAttachment, context, discardInFlight, initAttempt, restoreDraft, setActiveDraft, setConversations]);
+
+  useEffect(() => {
+    if (!pendingInitial || pendingInitial.conversationId !== activeId) return;
+    setPendingInitial(null);
+    void sendMessage(pendingInitial.text, { conversationId: pendingInitial.conversationId });
+  }, [activeId, pendingInitial, sendMessage]);
 
   const retryInit = useCallback(() => setInitAttempt((n) => n + 1), []);
 
-  const appendLocalMessage = useCallback(
-    (convId: string, msg: PatientAiChatMessage) => {
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== convId) return c;
-          return {
-            ...c,
-            messages: [...c.messages, msg],
-            updatedAt: Date.now(),
-          };
-        }),
-      );
-    },
-    [],
-  );
-
-  const sendMessage = useCallback(
-    async (text: string, options?: CaryAiSendOptions | string) => {
-      const opts: CaryAiSendOptions =
-        typeof options === 'string' ? { conversationIdOverride: options } : (options ?? {});
-      const convId = opts.conversationIdOverride ?? activeId;
-      const trimmed = text.trim();
-      const attachment = opts.attachment ?? pendingAttachment;
-      const hasAttachment = Boolean(attachment?.medicalDocumentId);
-      if (!convId || awaitingReply) return;
-      if (!trimmed && !hasAttachment) return;
-
-      const apiMessage =
-        trimmed ||
-        attachmentApiMessage(attachment?.documentType ?? 'other', attachment?.fileName);
-      const displayText = trimmed;
-
-      setAwaitingReply(true);
-      setStreamingText('');
-      setPendingAttachment(null);
-
-      const userLocalId = `local-user-${Date.now()}`;
-      appendLocalMessage(convId, {
-        id: userLocalId,
-        role: 'user',
-        text: displayText,
-        ...(attachment
-          ? {
-              metadata: {
-                attachment: {
-                  uri: attachment.uri,
-                  fileName: attachment.fileName,
-                  mimeType: attachment.mimeType,
-                  medicalDocumentId: attachment.medicalDocumentId,
-                  documentType: attachment.documentType,
-                },
-              },
-            }
-          : {}),
-      });
-
-      const assistantLocalId = `local-assistant-${Date.now()}`;
-      let assembled = '';
-
+  const rateMessage = useCallback(
+    async (messageId: string, rating: AiMessageRating) => {
+      if (isLocalAiMessageId(messageId) || ratings[messageId]) return;
+      setRatings((prev) => ({ ...prev, [messageId]: rating }));
       try {
-        const convMessages = conversations.find((c) => c.id === convId)?.messages ?? [];
-        const draftForSend =
-          (isActiveAiDraft(activeDraft) ? activeDraft : null) ??
-          resolveLatestAiDraft(convMessages);
-
-        const attachmentIds: string[] = [];
-        const medicalDocumentIds: string[] = [];
-        if (attachment?.medicalDocumentId) {
-          medicalDocumentIds.push(attachment.medicalDocumentId);
-          try {
-            const attached = await attachAiConversationDocument(
-              convId,
-              attachment.medicalDocumentId,
-            );
-            attachmentIds.push(attached.id);
-          } catch (e) {
-            console.warn('[cary-ai] attach conversation document failed', e);
-          }
-        }
-
-        const chatBody = {
-          conversation_id: convId,
-          message: apiMessage,
-          draft_id: draftForSend?.id,
-          ...(medicalDocumentIds.length ? { medical_document_ids: medicalDocumentIds } : {}),
-          ...(attachmentIds.length ? { attachment_ids: attachmentIds } : {}),
-        };
-
-        const streamed = await streamAiChatMessage(chatBody, {
-            onDelta: (delta) => {
-              assembled += delta;
-              setStreamingText(assembled);
-            },
-          },
-        );
-
-        const payload =
-          streamed ??
-          (await sendAiChatMessage(chatBody));
-
-        const assistantText = resolveAssistantMessageText(payload.message.content, assembled);
-
-        appendLocalMessage(convId, {
-          id: payload.message.id ?? assistantLocalId,
-          role: 'assistant',
-          text: assistantText,
-          metadata: {
-            ...(payload.message.metadata ?? {}),
-            draft: payload.draft ?? payload.message.metadata?.draft,
-          },
-        });
-        if (payload.disclaimer) setDisclaimer(payload.disclaimer);
-        let resolvedDraft: AiAppointmentDraft | null =
-          payload.draft ??
-          (payload.message.metadata as { draft?: AiAppointmentDraft } | undefined)?.draft ??
-          null;
-        if (resolvedDraft?.id && !resolvedDraft.recap) {
-          try {
-            const detail = await fetchAiConversationDetail(convId);
-            if (detail.draft?.id) {
-              resolvedDraft = detail.draft;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        if (resolvedDraft?.id) {
-          setActiveDraft(isActiveAiDraft(resolvedDraft) ? resolvedDraft : null);
-          setConversations((prev) =>
-            prev.map((c) => {
-              if (c.id !== convId) return c;
-              const msgs = [...c.messages];
-              for (let i = msgs.length - 1; i >= 0; i--) {
-                if (msgs[i]?.role !== 'assistant') continue;
-                msgs[i] = {
-                  ...msgs[i]!,
-                  metadata: { ...msgs[i]!.metadata, draft: resolvedDraft! },
-                };
-                break;
-              }
-              return { ...c, messages: msgs };
-            }),
-          );
-          if (attachment?.medicalDocumentId && resolvedDraft.id) {
-            try {
-              const updated = await applyAttachmentToDraft(
-                resolvedDraft.id,
-                attachment.documentType ?? 'other',
-                attachment.medicalDocumentId,
-                attachment.fileName,
-              );
-              setActiveDraft(updated);
-            } catch {
-              /* ignore */
-            }
-          }
-        }
-
-        const title = payload.conversation
-          ? resolveConversationTitle(payload.conversation)
-          : undefined;
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === convId
-              ? {
-                  ...c,
-                  updatedAt: Date.now(),
-                  ...(title ? { title } : {}),
-                }
-              : c,
-          ),
-        );
+        await submitAiFeedback({ rating: rating === 'up' ? 5 : 1, conversation_id: activeId, message_id: messageId });
+        showToast('Merci pour votre avis');
       } catch (e) {
-        console.warn('[cary-ai] send failed', e);
-        setSendFailure({
-          conversationId: convId,
-          userMessageId: userLocalId,
-          text: trimmed,
-          attachment: attachment ?? undefined,
-          error: e,
+        console.warn('[cary-ai] avis non envoyé', e);
+        setRatings((prev) => {
+          const next = { ...prev };
+          delete next[messageId];
+          return next;
         });
-      } finally {
-        setStreamingText('');
-        setAwaitingReply(false);
+        showToast("Votre avis n'a pas pu être envoyé.", { type: 'error' });
       }
     },
-    [activeDraft, activeId, appendLocalMessage, awaitingReply, conversations, pendingAttachment],
+    [activeId, ratings, showToast],
   );
 
-  sendMessageRef.current = sendMessage;
-
-  const removeLocalMessage = useCallback((convId: string, messageId: string) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === convId ? { ...c, messages: c.messages.filter((m) => m.id !== messageId) } : c)),
-    );
-  }, []);
-
-  /** Renvoie le message en échec (le message local est remplacé par le nouvel envoi). */
-  const retryFailedSend = useCallback(() => {
-    const failure = sendFailure;
-    if (!failure) return;
-    removeLocalMessage(failure.conversationId, failure.userMessageId);
-    setSendFailure(null);
-    void sendMessage(failure.text, {
-      conversationIdOverride: failure.conversationId,
-      attachment: failure.attachment,
-    });
-  }, [removeLocalMessage, sendFailure, sendMessage]);
-
-  /** Retire le message en échec et le rend au compositeur pour modification. */
-  const editFailedSend = useCallback((): string => {
-    const failure = sendFailure;
-    if (!failure) return '';
-    removeLocalMessage(failure.conversationId, failure.userMessageId);
-    setSendFailure(null);
-    if (failure.attachment) setPendingAttachment(failure.attachment);
-    return failure.text;
-  }, [removeLocalMessage, sendFailure]);
-
-  const selectConversation = useCallback(
-    async (id: string) => {
-      if (awaitingReply || id === activeId) return;
-      setActiveId(id);
-      setActiveDraft(null);
-      setSendFailure(null);
-      await loadConversationMessages(id);
-    },
-    [activeId, awaitingReply, loadConversationMessages],
+  const starterSuggestions = useMemo(
+    () => buildAiStarterSuggestions({ role, context: inContext ? context : GENERAL_CONTEXT, quick: quickSuggestions }),
+    [context, inContext, quickSuggestions, role],
   );
-
-  const reloadConversation = useCallback(
-    async (id: string) => {
-      if (!id || awaitingReply) return;
-      if (id !== activeId) {
-        setActiveId(id);
-        setActiveDraft(null);
-      }
-      setSendFailure(null);
-      await loadConversationMessages(id);
-    },
-    [activeId, awaitingReply, loadConversationMessages],
-  );
-
-  const startNewConversation = useCallback(async () => {
-    if (awaitingReply) return;
-    const conv = await createAiConversation({ conversation_type: 'general' });
-    const detail = await fetchAiConversationDetail(conv.id);
-    const mapped = mapConversation(detail.conversation, detail.messages);
-    setConversations((prev) => [mapped, ...prev.filter((c) => c.id !== mapped.id)]);
-    setActiveId(conv.id);
-    setActiveDraft(null);
-    setSendFailure(null);
-  }, [awaitingReply]);
-
-  const deleteConversation = useCallback(
-    async (id: string) => {
-      if (awaitingReply) return;
-      await deleteAiConversation(id);
-      const remaining = conversations.filter((c) => c.id !== id);
-      setConversations(remaining);
-
-      if (activeId !== id) return;
-
-      setActiveDraft(null);
-      if (remaining.length > 0) {
-        const nextId = remaining[0]!.id;
-        setActiveId(nextId);
-        await loadConversationMessages(nextId);
-        return;
-      }
-      await startNewConversation();
-    },
-    [activeId, awaitingReply, conversations, loadConversationMessages, startNewConversation],
-  );
-
-  const togglePinConversation = useCallback(async (id: string) => {
-    const current = conversations.find((c) => c.id === id);
-    if (!current || current.isSystem) return;
-    const updated = await patchAiConversation(id, { is_pinned: !current.isPinned });
-    setConversations((prev) =>
-      prev
-        .map((c) =>
-          c.id === id
-            ? { ...c, isPinned: updated.is_pinned ?? false, title: resolveConversationTitle(updated) }
-            : c,
-        )
-        .sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-          return b.updatedAt - a.updatedAt;
-        }),
-    );
-  }, [conversations]);
-
-  const archiveConversation = useCallback(
-    async (id: string) => {
-      if (awaitingReply) return;
-      await patchAiConversation(id, { archived: true });
-      const remaining = conversations.filter((c) => c.id !== id);
-      setConversations(remaining);
-      if (activeId === id) {
-        setActiveDraft(null);
-        if (remaining.length > 0) {
-          const nextId = remaining[0]!.id;
-          setActiveId(nextId);
-          await loadConversationMessages(nextId);
-        } else {
-          await startNewConversation();
-        }
-      }
-      showToast('Conversation archivée');
-    },
-    [activeId, awaitingReply, conversations, loadConversationMessages, showToast, startNewConversation],
-  );
-
-  const unarchiveConversation = useCallback(
-    async (id: string) => {
-      await patchAiConversation(id, { archived: false });
-      await refreshConversationsList(true);
-      showToast('Conversation restaurée');
-    },
-    [refreshConversationsList, showToast],
-  );
-
-  const confirmDraft = useCallback(async (draftOverride?: AiAppointmentDraft) => {
-    if (confirmInFlight.current) return;
-    const draft =
-      draftOverride ??
-      (isActiveAiDraft(activeDraft) ? activeDraft : null) ??
-      resolveLatestAiDraft(activeConversation?.messages ?? []);
-    if (!draft) {
-      showToast('Aucun rendez-vous à valider.', { type: 'error' });
-      return;
-    }
-    if (draft.status !== 'ready' && draft.status !== 'confirmed') {
-      const hint = draft.missing_fields?.length
-        ? `À compléter : ${draft.missing_fields.join(', ')}`
-        : 'Complétez les informations avec Cary avant de valider.';
-      showToast(hint, { type: 'info' });
-      return;
-    }
-    confirmInFlight.current = true;
-    setConfirmingDraft(true);
-    try {
-      const result = await confirmAiBookingDraft(draft.id);
-      const ids = result.appointment_ids?.length
-        ? result.appointment_ids
-        : [result.appointment_id];
-      const appointmentId = ids[0];
-      if (!appointmentId) {
-        showToast('Rendez-vous créé mais identifiant manquant.', { type: 'error' });
-        return;
-      }
-      const role = useAuthStore.getState().user?.role ?? 'patient';
-      router.replace(appointmentDetailHref(roleRoutePrefix(role), appointmentId));
-
-      if (activeId) {
-        const confirmedDraft = result.draft;
-        setConversations((prev) =>
-          prev.map((c) => {
-            if (c.id !== activeId) return c;
-            return {
-              ...c,
-              messages: [
-                ...patchMessageDraft(c.messages, draft.id, confirmedDraft),
-                {
-                  id: `local-success-${Date.now()}`,
-                  role: 'assistant' as const,
-                  text:
-                    ids.length > 1
-                      ? `Vos ${ids.length} rendez-vous ont été créés. Consultez-les dans Mes rendez-vous.`
-                      : 'Votre rendez-vous a été créé. Vous pouvez le consulter dans Mes rendez-vous.',
-                },
-              ],
-              updatedAt: Date.now(),
-            };
-          }),
-        );
-      }
-      setActiveDraft(null);
-
-      try {
-        const quick = await fetchAiQuickSuggestions(init?.patientId);
-        setSuggestions(quick.suggestions);
-      } catch {
-        /* ignore */
-      }
-    } catch (e) {
-      appendLocalMessage(activeId, {
-        id: `local-error-${Date.now()}`,
-        role: 'assistant',
-        text: apiErrorMessage(e, aiBookingDraftErrorMessage, 'Impossible de confirmer le rendez-vous.'),
-      });
-      if (e instanceof ApiRequestError && isAiDraftClosedError(e.code)) {
-        setActiveDraft(null);
-        if (activeId) void reloadConversation(activeId);
-      }
-    } finally {
-      confirmInFlight.current = false;
-      setConfirmingDraft(false);
-    }
-  }, [
-    activeConversation?.messages,
-    activeDraft,
-    activeId,
-    appendLocalMessage,
-    init?.patientId,
-    reloadConversation,
-    showToast,
-  ]);
-
-  const handleAttach = useCallback(
-    async (docTypeOverride?: string, pickSource?: CarePhotoPickSource) => {
-      if (attaching || awaitingReply) return;
-      try {
-        const picked = pickSource
-          ? await pickCarePhotoFromSource(pickSource)
-          : await pickCarePhoto();
-        if (!picked) return;
-
-        const docType = inferAttachmentDocType(activeDraft, docTypeOverride ?? null, picked.fileName);
-        setPendingAttachment({
-          uri: picked.uri,
-          fileName: picked.fileName,
-          mimeType: picked.mimeType,
-          documentType: docType,
-        });
-        setAttaching(true);
-
-        let medicalDocumentId: string;
-        let fileName: string;
-
-        if (PROFILE_DOC_SET.has(docType)) {
-          if (!userId) {
-            showToast('Session expirée — reconnectez-vous.', { type: 'error' });
-            setPendingAttachment(null);
-            return;
-          }
-          const uploaded = await uploadPatientProfileDocument(
-            userId,
-            docType as PatientProfileUploadType,
-            picked,
-          );
-          if (!uploaded?.id) throw new Error('Upload profil impossible');
-          medicalDocumentId = uploaded.id;
-          fileName = uploaded.file_name ?? picked.fileName;
-        } else {
-          if (!userId) {
-            showToast('Session expirée — reconnectez-vous.', { type: 'error' });
-            setPendingAttachment(null);
-            return;
-          }
-          const uploaded = await uploadMedicalDocument(
-            { uri: picked.uri, fileName: picked.fileName, mimeType: picked.mimeType },
-            { patient_id: userId, document_type: docType },
-          );
-          if (!uploaded?.id) throw new Error('Upload impossible');
-          medicalDocumentId = uploaded.id;
-          fileName = uploaded.file_name ?? picked.fileName;
-        }
-
-        const attachment: PatientAiChatAttachment = {
-          uri: picked.uri,
-          fileName,
-          mimeType: picked.mimeType,
-          medicalDocumentId,
-          documentType: docType,
-        };
-
-        if (activeDraft?.id) {
-          const updated = await applyAttachmentToDraft(
-            activeDraft.id,
-            docType,
-            medicalDocumentId,
-            fileName,
-          );
-          setActiveDraft(updated);
-        }
-
-        setPendingAttachment(attachment);
-        // Pré-chauffe l'analyse en arrière-plan — ne pas bloquer l'UI (~20s vision).
-        void analyzeMedicalDocument(medicalDocumentId).catch(() => {});
-      } catch (e) {
-        setPendingAttachment(null);
-        showToast(carePhotoPickErrorMessage(e), { type: 'error' });
-      } finally {
-        setAttaching(false);
-      }
-    },
-    [
-      activeDraft,
-      attaching,
-      awaitingReply,
-      showToast,
-      userId,
-    ],
-  );
-
-  const clearAttachment = useCallback(() => {
-    setPendingAttachment(null);
-  }, []);
-
-  const handleSuggestion = useCallback(
-    (item: AiQuickSuggestion) => {
-      void sendMessage(mapSuggestionToMessage(item.id));
-    },
-    [sendMessage],
-  );
-
-  const syncVoiceDraft = useCallback((draft: AiAppointmentDraft | null) => {
-    if (isActiveAiDraft(draft)) {
-      setActiveDraft(draft);
-    }
-  }, []);
-
-  const onVoiceAppointmentCreated = useCallback(
-    (appointmentId: string) => {
-      const role = useAuthStore.getState().user?.role ?? 'patient';
-      router.replace(appointmentDetailHref(roleRoutePrefix(role), appointmentId));
-      setActiveDraft(null);
-    },
-    [],
+  const followUpSuggestions = useMemo(
+    () => followUpPromptSuggestions(latestFollowUpSuggestions(activeConversation?.messages ?? [])),
+    [activeConversation?.messages],
   );
 
   return {
     loading,
     initError,
     retryInit,
-    sendFailure,
-    retryFailedSend,
-    editFailedSend,
     conversations,
     activeConversation,
     activeId,
-    suggestions,
+    /** La conversation ouverte est celle de l'objet reçu en paramètre (pastille de contexte). */
+    inContext: inContext && context.kind === 'object',
     disclaimer,
-    awaitingReply,
-    streamingText,
-    activeDraft,
-    confirmingDraft,
-    selectConversation,
-    reloadConversation,
-    startNewConversation,
-    deleteConversation,
-    refreshConversationsList,
-    togglePinConversation,
-    archiveConversation,
-    unarchiveConversation,
-    sendMessage,
-    handleSuggestion,
-    confirmDraft,
-    syncVoiceDraft,
-    onVoiceAppointmentCreated,
-    handleAttach,
-    clearAttachment,
-    pendingAttachment,
-    attaching,
+    starterSuggestions,
+    followUpSuggestions,
+    ratings,
+    rateMessage,
+    ...send,
+    ...draft,
+    ...actions,
+    ...attachment,
   };
 }

@@ -12,7 +12,7 @@ import { prescriptionRowAsAppointment } from '../utils/prescription-row-appointm
 import { Stack } from '@/components/layout/primitives';
 import { ICON_STROKE_WIDTH, iconSize, spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { layoutRow } from '@/theme/layout-styles';
-import { Download, Eye } from 'lucide-react-native';
+import { Download, Eye, FileUp } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 
 interface RowProps {
@@ -20,8 +20,11 @@ interface RowProps {
   onDownload: () => void;
   onPreview?: () => void;
   onOpenAppointment?: () => void;
+  /** Nouvelle version de l'ordonnance (l'ancienne est archivée). */
+  onReplace?: () => void;
   downloading: boolean;
   previewing?: boolean;
+  replacing?: boolean;
   showPatient?: boolean;
   topBorder?: boolean;
 }
@@ -32,8 +35,10 @@ export function PrescriptionHistoryCard({
   onDownload,
   onPreview,
   onOpenAppointment,
+  onReplace,
   downloading,
   previewing = false,
+  replacing = false,
   showPatient = true,
   topBorder = false,
 }: RowProps) {
@@ -41,7 +46,7 @@ export function PrescriptionHistoryCard({
   const styles = useStyles(buildRowStyles);
   const title = prescriptionHistoryRowTitle(row, { showPatient });
   const hint = prescriptionHistoryRowHint(row, { showPatient });
-  const busy = downloading || previewing;
+  const busy = downloading || previewing || replacing;
   const lotLabel = prescriptionLotLabelFromMeta(row.appointment_batch_count, row.appointment_type);
   const linkedApt = row.appointment_id ? prescriptionRowAsAppointment(row) : null;
 
@@ -85,6 +90,17 @@ export function PrescriptionHistoryCard({
               variant="muted"
             >
               <Eye size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
+            </IconActionButton>
+          ) : null}
+          {onReplace ? (
+            <IconActionButton
+              label="Remplacer l'ordonnance"
+              onPress={onReplace}
+              loading={replacing}
+              disabled={busy}
+              variant="muted"
+            >
+              <FileUp size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
             </IconActionButton>
           ) : null}
           <IconActionButton

@@ -43,9 +43,41 @@ final class AddressDisplayFr
         return trim((string) $line);
     }
 
+    /** Villes à arrondissements : codes postaux `{prefix}0NN`, NN de 1 à count. Miroir de `FRENCH_CITY_DISTRICTS` (shared-utils). */
+    private const CITY_DISTRICTS = [
+        ['prefix' => '75', 'city' => 'Paris', 'count' => 20],
+        ['prefix' => '13', 'city' => 'Marseille', 'count' => 16],
+        ['prefix' => '69', 'city' => 'Lyon', 'count' => 9],
+    ];
+
     /**
-     * Ligne courte pour partage (WhatsApp, SMS) : nom de voie **sans numéro** + arrondissement + Paris,
-     * ou voie + CP + ville ailleurs (ex. libellé Google Maps). Sans complément d’étage/bâtiment, sans pays.
+     * Ville + arrondissement depuis le code postal : « Marseille 3e », « Paris 1er », « Lyon 9e ».
+     */
+    public static function cityDistrictLabel(string $postcode): ?string
+    {
+        $pc = substr((string) preg_replace('/\D/', '', $postcode), 0, 5);
+        if (strlen($pc) !== 5 || $pc[2] !== '0') {
+            return null;
+        }
+        foreach (self::CITY_DISTRICTS as $district) {
+            if (!str_starts_with($pc, $district['prefix'])) {
+                continue;
+            }
+            $n = (int) substr($pc, 3, 2);
+            if ($n < 1 || $n > $district['count']) {
+                return null;
+            }
+
+            return $district['city'] . ' ' . ($n === 1 ? '1er' : $n . 'e');
+        }
+
+        return null;
+    }
+
+    /**
+     * Ligne courte pour partage (WhatsApp, SMS) : nom de voie **sans numéro** + arrondissement
+     * (« Marseille 3e ») à Paris, Lyon et Marseille, ou voie + CP + ville ailleurs (ex. libellé Google Maps).
+     * Sans complément d’étage/bâtiment, sans pays.
      */
     public static function shareWhatsAppAddressLine(string $full): string
     {
@@ -65,12 +97,10 @@ final class AddressDisplayFr
         // Première partie = voie (souvent "12 rue …" depuis Maps/BAN) : on retire le n° en tête
         $streetLine = self::stripLeadingStreetNumber($parts[0]);
 
-        if (preg_match('/\b(75\d{3})\b/u', $trimmed, $m)) {
-            $arr = (int) substr($m[1], 3, 2);
-            if ($arr >= 1 && $arr <= 20) {
-                $arrLabel = $arr === 1 ? '1er arrondissement' : $arr . 'e arrondissement';
-
-                return $streetLine . ', ' . $arrLabel . ', Paris';
+        if (preg_match('/\b(\d{5})\b/u', $trimmed, $m)) {
+            $district = self::cityDistrictLabel($m[1]);
+            if ($district !== null) {
+                return $streetLine . ', ' . $district;
             }
         }
 
@@ -114,37 +144,5 @@ final class AddressDisplayFr
         $s = preg_replace('/^\d+[a-zA-Zàâäéèêëïîôùûç\-]*\s+/u', '', $s);
 
         return trim((string) $s);
-    }
-
-    /**
-     * Rue + arrondissement (Paris) ou ville, sans numéro de rue.
-     */
-    public static function streetAndDistrictWithoutStreetNumber(string $full): string
-    {
-        $trimmed = trim($full);
-        if ($trimmed === '') {
-            return '';
-        }
-
-        if (preg_match('/\b(75\d{3})\b/u', $trimmed, $m)) {
-            $cp = $m[1];
-            if (str_starts_with($cp, '75')) {
-                $arr = (int) substr($cp, 3, 2);
-                $rest = preg_replace('/^\d+[a-zA-Zàâäéèêëïîôùûç\-]*\s+/u', '', $trimmed);
-                $parts = array_values(array_filter(array_map('trim', explode(',', (string) $rest))));
-                $streetLine = $parts[0] ?? '';
-                $arrLabel = $arr === 1 ? '1er arrondissement' : $arr . 'e arrondissement';
-                if ($streetLine !== '') {
-                    return $streetLine . ', ' . $arrLabel . ', Paris';
-                }
-            }
-        }
-
-        $rest = preg_replace('/^\d+[a-zA-Zàâäéèêëïîôùûç\-]*\s+/u', '', $trimmed);
-        $parts = array_values(array_filter(array_map('trim', explode(',', (string) $rest))));
-        if (count($parts) >= 2) {
-            return $parts[0] . ', ' . implode(', ', array_slice($parts, 1));
-        }
-        return $parts[0] ?? $trimmed;
     }
 }

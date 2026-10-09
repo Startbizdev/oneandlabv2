@@ -102,6 +102,21 @@ if ($mode === 'backup') {
     require_once $releaseRoot . '/backend/scripts/migrations/lab-network-migrations.php';
     echo applyMigration116LabBrandLabs($db, $releaseRoot . '/database/migrations') . "\n";
     echo applyMigration117PpaLabAssignment($db, $releaseRoot . '/database/migrations') . "\n";
+    require_once $releaseRoot . '/backend/scripts/migrations/nurse-passage-migrations.php';
+    echo applyMigration118NursePassageSeriesAllDay($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration120AppointmentNursingItemsDoneAt($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration127NurseCollaborations($db, $releaseRoot . '/database/migrations') . "\n";
+    require_once $releaseRoot . '/backend/scripts/migrations/patient-record-migrations.php';
+    echo applyMigration119PatientAbsencesOpenEnd($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration121PatientPhones($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration122PatientTransmissions($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration126PatientRelativesProfile($db, $releaseRoot . '/database/migrations') . "\n";
+    require_once $releaseRoot . '/backend/lib/RelativeProfileBackfill.php';
+    echo 'Backfill 126 relative profiles: ' . json_encode(RelativeProfileBackfill::run($db, true)) . "\n";
+    echo applyMigration128MedicalDocumentsReplacement($db, $releaseRoot . '/database/migrations') . "\n";
+    require_once $releaseRoot . '/backend/scripts/migrations/ai-assistant-migrations.php';
+    echo applyMigration124AiMessagesIdempotence($db, $releaseRoot . '/database/migrations') . "\n";
+    echo applyMigration125AiConversationsContext($db, $releaseRoot . '/database/migrations') . "\n";
 } elseif ($mode === 'verify') {
     $before=json_decode(file_get_contents($dir.'/counts-before.json'),true,512,JSON_THROW_ON_ERROR);
     $missing=array_diff_key($before,$counts);

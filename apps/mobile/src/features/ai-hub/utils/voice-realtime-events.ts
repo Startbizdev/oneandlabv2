@@ -70,10 +70,6 @@ export function isSpeechStarted(event: RealtimeServerEvent): boolean {
   return event.type === 'input_audio_buffer.speech_started';
 }
 
-export function isSpeechStopped(event: RealtimeServerEvent): boolean {
-  return event.type === 'input_audio_buffer.speech_stopped';
-}
-
 export function isResponseCreated(event: RealtimeServerEvent): boolean {
   return event.type === 'response.created';
 }

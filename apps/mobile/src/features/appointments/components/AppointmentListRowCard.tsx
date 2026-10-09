@@ -27,6 +27,7 @@ interface Props {
   onPress: (appointment: Appointment) => void;
   role?: 'patient' | 'nurse' | 'pro' | 'preleveur' | 'lab' | 'demande';
   viewerId?: string | null;
+  footer?: React.ReactNode;
 }
 
 function sortBatch(apts: Appointment[]) {
@@ -43,6 +44,7 @@ function AppointmentListRowCardComponent({
   onPress,
   role,
   viewerId,
+  footer,
 }: Props) {
   const styles = useStyles(buildStyles);
 
@@ -119,6 +121,7 @@ function AppointmentListRowCardComponent({
               appointmentStatusForDisplay(apt, { role: cardRole, viewerId })
             }
             multiRdvBlocks={isMultiRdvLot && row.kind === 'batch' ? sortBatch(row.appointments) : undefined}
+            footer={footer}
           />
         </View>
       </Pressable>

@@ -8,7 +8,10 @@ import {
   pharmacyOrdersListHref,
   staffPatientHref,
 } from '../../navigation/role-hrefs';
-import { pharmacyOrderPrescriptionsHref } from '../../features/pharmacy-orders/utils/prescriptions-route';
+import {
+  pharmacyOrderMessagesHref,
+  pharmacyOrderPrescriptionsHref,
+} from '../../features/pharmacy-orders/utils/prescriptions-route';
 
 describe('role hrefs', () => {
   it('opens the appointment detail of each role, query params kept alongside the id', () => {
@@ -86,6 +89,30 @@ describe('role hrefs', () => {
       pathname: '/(nurse)/commandes-pharmacie/[id]/ordonnances',
       params: { id: 'o1' },
     });
-    expect(pharmacyOrderPrescriptionsHref(undefined, 'sent', 'o1')).toBeNull();
+    expect(pharmacyOrderPrescriptionsHref('/(patient)', 'sent', 'o1')).toEqual({
+      pathname: '/(patient)/traitements/[id]/ordonnances',
+      params: { id: 'o1' },
+    });
+    expect(pharmacyOrderPrescriptionsHref('/(nurse)', 'sent', '')).toBeNull();
+  });
+
+  it('opens the messages of a pharmacy order, scrolled to the notified message', () => {
+    expect(pharmacyOrderMessagesHref('/(pro)', 'received', 'o1', 'm1')).toEqual({
+      pathname: '/(pro)/commandes-recues/[id]/messages',
+      params: { id: 'o1', messageId: 'm1' },
+    });
+    expect(pharmacyOrderMessagesHref('/(pro)', 'sent', 'o1')).toEqual({
+      pathname: '/(pro)/commandes-pharmacie/[id]/messages',
+      params: { id: 'o1' },
+    });
+    expect(pharmacyOrderMessagesHref('/(nurse)', 'sent', 'o1')).toEqual({
+      pathname: '/(nurse)/commandes-pharmacie/[id]/messages',
+      params: { id: 'o1' },
+    });
+    expect(pharmacyOrderMessagesHref('/(patient)', 'sent', 'o1')).toEqual({
+      pathname: '/(patient)/traitements/[id]/messages',
+      params: { id: 'o1' },
+    });
+    expect(pharmacyOrderMessagesHref('/(patient)', 'sent', '')).toBeNull();
   });
 });

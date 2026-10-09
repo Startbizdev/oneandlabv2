@@ -106,6 +106,7 @@ export function useBookingDraftAutosave(
       nurseAssignmentMode: bw.nurseAssignmentMode,
       proLinkedNurseId: bw.proLinkedNurseId,
       externalNursePhone: bw.externalNursePhone,
+      directedProvider: bw.directedProvider,
     });
   }, [
     ownerKey,
@@ -120,6 +121,7 @@ export function useBookingDraftAutosave(
     bw.nurseAssignmentMode,
     bw.proLinkedNurseId,
     bw.externalNursePhone,
+    bw.directedProvider,
     w.selectedServices,
     w.formDataByService,
     w.addressComplement,

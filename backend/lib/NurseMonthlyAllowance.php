@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
-/** One definition of accepted monthly appointments for display and assignment checks. */
+/**
+ * One definition of accepted monthly appointments for display and assignment checks.
+ * Passages planned by the nurse for her own patients are not accepted requests and never count.
+ */
 final class NurseMonthlyAllowance
 {
     public static function count(PDO $db, string $nurseId, ?DateTimeImmutable $now = null, ?string $excludeAppointmentId = null): int
@@ -23,6 +26,7 @@ final class NurseMonthlyAllowance
             ) u ON u.appointment_id = a.id
             WHERE a.assigned_nurse_id = ?
             AND a.status NOT IN ('canceled', 'refused', 'expired')
+            AND (a.passage_source IS NULL OR a.passage_source <> 'nurse_passage')
             AND (
                 (u.first_accepted_at IS NOT NULL AND u.first_accepted_at >= ? AND u.first_accepted_at < ?)
                 OR (u.first_accepted_at IS NULL

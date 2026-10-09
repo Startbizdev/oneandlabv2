@@ -6,6 +6,7 @@ require_once __DIR__ . '/QdrantClient.php';
 require_once __DIR__ . '/EmbeddingService.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../../models/User.php';
 
 final class RagSearchService
@@ -29,7 +30,7 @@ final class RagSearchService
     public function searchForUser(array $user, string $patientId, string $query, int $limit = 6): array
     {
         if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $patientId)) {
-            throw new RuntimeException('Accès patient refusé');
+            throw HttpStatusException::forbidden('Accès à ce patient refusé');
         }
         if (!$this->qdrant->isConfigured() || trim($query) === '') {
             return [];
@@ -38,7 +39,9 @@ final class RagSearchService
             $this->qdrant->ensureCollection($this->embeddings->getVectorSize());
             $vector = $this->embeddings->embed($query);
             $hits = $this->qdrant->search($vector, $patientId, $limit);
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            error_log('RagSearchService recherche indisponible, réponse sans extraits du dossier : ' . $e->getMessage());
+
             return [];
         }
 

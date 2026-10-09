@@ -6,6 +6,7 @@ require_once __DIR__ . '/QdrantClient.php';
 require_once __DIR__ . '/EmbeddingService.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
 
 final class RagIndexer
@@ -140,16 +141,16 @@ final class RagIndexer
      */
     private function chunksFromAppointments(string $patientId): array
     {
-        $stmt = $this->db->prepare('
-            SELECT id, type, status, scheduled_at
-            FROM appointments
-            WHERE patient_id = ? OR relative_id IN (
-                SELECT id FROM patient_relatives WHERE patient_id = ?
-            )
-            ORDER BY scheduled_at DESC
+        // Index partagé avec l'équipe soignante du dossier : les RDV d'un proche sont indexés dans son propre dossier.
+        [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId);
+        $stmt = $this->db->prepare("
+            SELECT a.id, a.type, a.status, a.scheduled_at
+            FROM appointments a
+            WHERE $subjectSql
+            ORDER BY a.scheduled_at DESC
             LIMIT 20
-        ');
-        $stmt->execute([$patientId, $patientId]);
+        ");
+        $stmt->execute($subjectParams);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $out = [];
         foreach ($rows as $row) {

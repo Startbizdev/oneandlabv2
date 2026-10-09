@@ -31,6 +31,12 @@ final class UserProfileImageUpdateTest extends TestCase
         $this->userModel = new User($this->db);
     }
 
+    protected function tearDown(): void
+    {
+        unset($this->userModel, $this->db);
+        parent::tearDown();
+    }
+
     public function testNullRemovesProfileAndCoverImages(): void
     {
         $id = TestFixtures::NURSE;

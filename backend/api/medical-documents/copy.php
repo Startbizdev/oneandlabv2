@@ -142,12 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $appointmentRelativeId
             ) && $appointmentPatientId === $user['user_id'];
         } elseif (in_array($user['role'], ['pro', 'subaccount'], true)) {
-            if ($sourceDocumentPatientId && $sourceDocumentPatientId === $appointmentPatientId) {
-                $allowed = MedicalDocumentAccess::userHasProfessionalPatientAccess(
-                    $db,
-                    $user,
-                    (string) $appointmentPatientId,
-                );
+            // Même sujet (titulaire ou proche) et accès au dossier de ce sujet (celui du proche le cas échéant).
+            if (MedicalDocumentSubject::matches($sourceDocumentPatientId, $sourceDocumentRelativeId, $appointmentPatientId, $appointmentRelativeId)) {
+                $dossierId = MedicalDocumentAccess::subjectDossierId($db, (string) $appointmentPatientId, $appointmentRelativeId);
+                $allowed = $dossierId !== null
+                    && MedicalDocumentAccess::userHasProfessionalPatientAccess($db, $user, $dossierId);
             }
         } elseif ($user['role'] === 'nurse') {
             $allowed = MedicalDocumentAccess::nurseCanCopyDocumentToAppointment(

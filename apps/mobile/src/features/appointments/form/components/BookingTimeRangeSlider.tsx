@@ -26,13 +26,15 @@ interface Props {
   max: number;
   range: [number, number];
   onChange: (range: [number, number]) => void;
+  /** Pas en heures (1 par défaut ; 0.25 pour un quart d'heure). */
+  step?: number;
 }
 
 function triggerHaptic() {
   Haptics.selectionAsync();
 }
 
-export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
+export function BookingTimeRangeSlider({ min, max, range, onChange, step = 1 }: Props) {
   const styles = useStyles(buildStyles);
   const [trackWidth, setTrackWidth] = useState(0);
   const trackWidthSv = useSharedValue(0);
@@ -60,7 +62,7 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
 
   const applyRange = useCallback(
     (lo: number, hi: number) => {
-      const next = clampAvailabilityRange(lo, hi, max, min);
+      const next = clampAvailabilityRange(lo, hi, max, min, step);
       const prev = rangeRef.current;
       if (next[0] !== prev[0] || next[1] !== prev[1]) {
         triggerHaptic();
@@ -68,7 +70,7 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
       onChange(next);
       syncPositions(next[0], next[1], trackWidth);
     },
-    [max, min, onChange, syncPositions, trackWidth],
+    [max, min, onChange, step, syncPositions, trackWidth],
   );
 
   useEffect(() => {
@@ -100,8 +102,8 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
       if (w <= 0) return;
       const s = Math.max(1, maxSv.value - minSv.value);
       runOnJS(applyRange)(
-        Math.round(minSv.value + (loX.value / w) * s),
-        Math.round(minSv.value + (hiX.value / w) * s),
+        minSv.value + (loX.value / w) * s,
+        minSv.value + (hiX.value / w) * s,
       );
       loX.value = withSpring(loX.value, animation.spring.snappy);
     });
@@ -121,8 +123,8 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
       if (w <= 0) return;
       const s = Math.max(1, maxSv.value - minSv.value);
       runOnJS(applyRange)(
-        Math.round(minSv.value + (loX.value / w) * s),
-        Math.round(minSv.value + (hiX.value / w) * s),
+        minSv.value + (loX.value / w) * s,
+        minSv.value + (hiX.value / w) * s,
       );
       hiX.value = withSpring(hiX.value, animation.spring.snappy);
     });
@@ -147,10 +149,11 @@ export function BookingTimeRangeSlider({ min, max, range, onChange }: Props) {
     accessibilityValue: { text: formatBookingHour(edge === 'lo' ? range[0] : range[1]) },
     accessibilityActions: [{ name: 'increment' as const }, { name: 'decrement' as const }],
     onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => {
-      const step = e.nativeEvent.actionName === 'increment' ? 1 : e.nativeEvent.actionName === 'decrement' ? -1 : 0;
-      if (step === 0) return;
-      if (edge === 'lo') applyRange(range[0] + step, range[1]);
-      else applyRange(range[0], range[1] + step);
+      const delta =
+        e.nativeEvent.actionName === 'increment' ? step : e.nativeEvent.actionName === 'decrement' ? -step : 0;
+      if (delta === 0) return;
+      if (edge === 'lo') applyRange(range[0] + delta, range[1]);
+      else applyRange(range[0], range[1] + delta);
     },
   });
 

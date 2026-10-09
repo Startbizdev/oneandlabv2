@@ -1,7 +1,9 @@
 import { Fragment } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ROLE_LABELS } from '@oneandlab/shared-constants';
+import { directedProviderTypeForRole } from '@oneandlab/shared-utils';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { ListRowShell } from '@/components/ui/ListRowShell';
@@ -9,6 +11,7 @@ import { buildSettingsStyles } from '@/components/ui/SettingsRow';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { SkeletonList } from '@/components/ui/skeletons';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { bookingNewHref } from '@/navigation/role-hrefs';
 import { useToast } from '@/providers/ToastProvider';
 import { spacing, AppText, useStyles, type Theme } from '@/theme';
 import {
@@ -22,6 +25,7 @@ import { ProfileSubScreenLayout } from './ProfileSubScreenLayout';
 export function ProfileCareOriginsScreen() {
   const settings = useStyles(buildSettingsStyles);
   const styles = useStyles(buildStyles);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { show: toast } = useToast();
 
@@ -70,11 +74,29 @@ export function ProfileCareOriginsScreen() {
                 item.emploi?.trim() ||
                 (item.role && item.role !== 'pro' ? ROLE_LABELS[item.role] : null) ||
                 'Professionnel de santé';
+              const providerType = directedProviderTypeForRole(item.role);
+              const canBook = Boolean(providerType) && !item.hidden_by_patient;
               return (
                 <Fragment key={item.id}>
                   {index > 0 ? <View style={styles.divider} /> : null}
                   <ListRowShell
                     style={settings.row}
+                    onBodyPress={
+                      canBook
+                        ? () =>
+                            router.push(
+                              bookingNewHref('/(patient)', {
+                                provider_id: item.professional_id,
+                                provider_role: providerType,
+                              }),
+                            )
+                        : undefined
+                    }
+                    bodyAccessibilityLabel={
+                      canBook
+                        ? `Prendre rendez-vous avec ${item.display_name}, ${role}`
+                        : `${item.display_name}, ${role}`
+                    }
                     body={
                       <View style={settings.texts}>
                         <AppText style={settings.label}>{item.display_name}</AppText>
@@ -94,7 +116,7 @@ export function ProfileCareOriginsScreen() {
             })}
           </View>
           <AppText variant="caption" style={styles.footer}>
-            Les professionnels activés sont affichés comme donneurs de soins et proposés à l’avenir.
+            Touchez un professionnel activé pour prendre rendez-vous uniquement avec lui. Un professionnel désactivé ne reçoit plus vos demandes.
           </AppText>
         </View>
       )}

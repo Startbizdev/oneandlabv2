@@ -1,6 +1,6 @@
 {
   "name": "@oneandlab/mobile",
-  "version": "1.8.36",
+  "version": "1.8.37",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -36,12 +36,10 @@
     "submit:android:latest": "node scripts/run-eas-android.cjs submit --platform android --profile production --latest --non-interactive",
     "submit:store:latest": "node scripts/run-eas.cjs submit --platform all --profile production --latest --non-interactive",
     "typecheck": "tsc --noEmit",
-    "test": "jest && npm run test:voice-utils && npm run test:voice-realtime && npm run test:ai-hub-utils",
+    "test": "jest && npm run test:voice-realtime",
     "test:lib": "jest",
     "simulate:iap": "node scripts/simulate-iap-purchase.cjs",
-    "test:voice-utils": "node scripts/test-voice-session-utils.cjs",
     "test:voice-realtime": "node scripts/test-voice-realtime-events.cjs",
-    "test:ai-hub-utils": "node scripts/test-resolve-assistant-message-text.cjs",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:layout": "node scripts/lint-layout.mjs --summary",
     "verify": "npm run typecheck && npm run lint -- --max-warnings 9999"
@@ -71,7 +69,9 @@
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-calendar": "~15.0.8",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.9",
+    "expo-contacts": "~15.0.11",
     "expo-dev-client": "~6.0.21",
     "expo-device": "~8.0.8",
     "expo-document-picker": "~14.0.7",

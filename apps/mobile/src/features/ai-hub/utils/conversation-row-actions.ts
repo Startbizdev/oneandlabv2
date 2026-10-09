@@ -1,66 +1,35 @@
-import { ActionSheetIOS, Alert, Platform } from 'react-native';
-import * as Haptics from 'expo-haptics';
+export type ConversationRowActionKey = 'rename' | 'pin' | 'unpin' | 'archive' | 'restore' | 'export' | 'delete';
 
 export type ConversationRowAction = {
-  text: string;
-  style?: 'default' | 'cancel' | 'destructive';
-  onPress?: () => void;
+  key: ConversationRowActionKey;
+  label: string;
+  destructive?: boolean;
 };
 
-function confirmDelete(onDelete: () => void) {
-  Alert.alert('Supprimer la conversation', 'Cette action est irréversible.', [
-    { text: 'Annuler', style: 'cancel' },
-    {
-      text: 'Supprimer',
-      style: 'destructive',
-      onPress: () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        onDelete();
-      },
-    },
-  ]);
+const LABELS: Record<ConversationRowActionKey, string> = {
+  rename: 'Renommer',
+  pin: 'Épingler',
+  unpin: 'Désépingler',
+  archive: 'Archiver',
+  restore: 'Restaurer',
+  export: 'Exporter',
+  delete: 'Supprimer',
+};
+
+function action(key: ConversationRowActionKey): ConversationRowAction {
+  return key === 'delete' ? { key, label: LABELS[key], destructive: true } : { key, label: LABELS[key] };
 }
 
-/** Menu contextuel long-press (style ChatGPT) — épingler, archiver, supprimer. */
-export function showConversationRowActions(title: string, actions: ConversationRowAction[]) {
-  if (actions.length === 0) return;
-
-  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-  const sheetActions = [...actions, { text: 'Annuler', style: 'cancel' as const }];
-  const destructiveIndex = sheetActions.findIndex((a) => a.style === 'destructive');
-
-  if (Platform.OS === 'ios') {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: title.length > 48 ? `${title.slice(0, 45)}…` : title,
-        options: sheetActions.map((a) => a.text),
-        cancelButtonIndex: sheetActions.length - 1,
-        destructiveButtonIndex: destructiveIndex >= 0 ? destructiveIndex : undefined,
-      },
-      (index) => {
-        const picked = sheetActions[index];
-        if (!picked || picked.style === 'cancel') return;
-        if (picked.style === 'destructive' && picked.onPress) {
-          confirmDelete(picked.onPress);
-          return;
-        }
-        picked.onPress?.();
-      },
-    );
-    return;
-  }
-
-  Alert.alert(
-    title.length > 56 ? `${title.slice(0, 53)}…` : title,
-    undefined,
-    sheetActions.map((action) => ({
-      text: action.text,
-      style: action.style,
-      onPress:
-        action.style === 'destructive' && action.onPress
-          ? () => confirmDelete(action.onPress!)
-          : action.onPress,
-    })),
-  );
+/**
+ * Actions d'une conversation de l'historique. Conversation système (Mes rendez-vous…) : export seul,
+ * elle ne peut être ni renommée, ni épinglée, ni archivée, ni supprimée.
+ */
+export function buildConversationRowActions(conv: {
+  isSystem?: boolean;
+  isPinned?: boolean;
+  archived: boolean;
+}): ConversationRowAction[] {
+  if (conv.isSystem) return [action('export')];
+  if (conv.archived) return [action('restore'), action('export'), action('delete')];
+  return [action('rename'), action(conv.isPinned ? 'unpin' : 'pin'), action('archive'), action('export'), action('delete')];
 }

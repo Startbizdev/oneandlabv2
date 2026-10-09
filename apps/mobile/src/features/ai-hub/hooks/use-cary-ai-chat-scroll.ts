@@ -1,81 +1,84 @@
 import type { FlashListRef } from '@shopify/flash-list';
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
-type ScrollDeps = {
-  messageCount: number;
-  streamingTextLength: number;
-  awaitingReply: boolean;
-  activeId: string | null;
-};
+/** Distance au bas (pt) en deçà de laquelle le fil suit les nouveaux contenus. */
+const NEAR_BOTTOM = 96;
 
 /**
- * Scroll bas chronologique (liste non inversée) — pattern chat 2025+ avec footer sticky.
+ * Défilement du fil Cary : suit le bas tant que l'utilisateur y est (réponse en cours, clavier),
+ * s'arrête dès qu'il remonte lire, et propose alors « Revenir en bas ».
  */
-export function useCaryAiChatScroll<T>(
-  listRef: RefObject<FlashListRef<T> | null>,
-  { messageCount, streamingTextLength, awaitingReply, activeId }: ScrollDeps,
-) {
-  const lastStreamLenRef = useRef(0);
-  const lastStreamTimeRef = useRef(0);
-  const scrollScheduledRef = useRef(false);
-  const lastContentHeightRef = useRef(0);
-  const prevAwaitingRef = useRef(false);
+export function useCaryAiChatScroll<T>(listRef: RefObject<FlashListRef<T> | null>, activeId: string) {
+  const followRef = useRef(true);
+  const draggingRef = useRef(false);
+  const momentumRef = useRef(false);
+  const listHeightRef = useRef(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const scrollToEnd = useCallback(
     (animated = true) => {
-      if (scrollScheduledRef.current) return;
-      scrollScheduledRef.current = true;
-      requestAnimationFrame(() => {
-        scrollScheduledRef.current = false;
-        listRef.current?.scrollToEnd({ animated });
-      });
+      followRef.current = true;
+      setShowScrollToBottom(false);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated }));
     },
     [listRef],
   );
 
-  const scrollToEndAfterLayout = useCallback(() => {
-    scrollToEnd(false);
-    requestAnimationFrame(() => scrollToEnd(false));
-  }, [scrollToEnd]);
-
   useEffect(() => {
-    lastContentHeightRef.current = 0;
+    followRef.current = true;
+    setShowScrollToBottom(false);
   }, [activeId]);
 
-  useEffect(() => {
-    scrollToEnd(messageCount > 1);
-  }, [messageCount, awaitingReply, activeId, scrollToEnd]);
+  /** Revenir au bas, par n'importe quel moyen, relance le suivi ; seul un geste de l'utilisateur l'arrête. */
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const nearBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height) < NEAR_BOTTOM;
+    if (nearBottom) followRef.current = true;
+    else if (draggingRef.current || momentumRef.current) followRef.current = false;
+    const show = !followRef.current && !nearBottom;
+    setShowScrollToBottom((prev) => (prev === show ? prev : show));
+  }, []);
 
-  useEffect(() => {
-    if (prevAwaitingRef.current && !awaitingReply) {
-      scrollToEndAfterLayout();
-    }
-    prevAwaitingRef.current = awaitingReply;
-  }, [awaitingReply, scrollToEndAfterLayout]);
+  const onScrollBeginDrag = useCallback(() => {
+    draggingRef.current = true;
+  }, []);
+  const onScrollEndDrag = useCallback(() => {
+    draggingRef.current = false;
+  }, []);
+  const onMomentumScrollBegin = useCallback(() => {
+    momentumRef.current = true;
+  }, []);
+  const onMomentumScrollEnd = useCallback(() => {
+    momentumRef.current = false;
+  }, []);
 
-  useEffect(() => {
-    if (!awaitingReply) {
-      lastStreamLenRef.current = 0;
-      return;
-    }
-    const now = Date.now();
-    const len = streamingTextLength;
-    const delta = len - lastStreamLenRef.current;
-    if (len === 0 || delta > 64 || now - lastStreamTimeRef.current > 120) {
-      lastStreamLenRef.current = len;
-      lastStreamTimeRef.current = now;
-      scrollToEnd(false);
-    }
-  }, [streamingTextLength, awaitingReply, scrollToEnd]);
+  const onContentSizeChange = useCallback(() => {
+    if (followRef.current) listRef.current?.scrollToEnd({ animated: false });
+  }, [listRef]);
 
-  const onContentSizeChange = useCallback(
-    (_width: number, height: number) => {
-      if (height <= lastContentHeightRef.current + 4) return;
-      lastContentHeightRef.current = height;
-      scrollToEnd(false);
+  /** Liste réduite (clavier, pièce jointe) : rester collé au bas si on y était. */
+  const onLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const height = event.nativeEvent.layout.height;
+      const shrunk = height < listHeightRef.current;
+      listHeightRef.current = height;
+      if (shrunk && followRef.current) listRef.current?.scrollToEnd({ animated: false });
     },
-    [scrollToEnd],
+    [listRef],
   );
 
-  return { scrollToEnd, onContentSizeChange };
+  return {
+    showScrollToBottom,
+    scrollToEnd,
+    listScrollProps: {
+      onScroll,
+      onScrollBeginDrag,
+      onScrollEndDrag,
+      onMomentumScrollBegin,
+      onMomentumScrollEnd,
+      onLayout,
+    },
+    onContentSizeChange,
+  };
 }

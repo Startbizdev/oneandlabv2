@@ -54,6 +54,11 @@ export function isAllDayAvailability(availability: unknown): boolean {
   return false;
 }
 
+/** Heure décimale arrondie au quart d'heure (8.25 = 8 h 15), comme PassageSlotResolver::quarterHour (PHP). */
+function toQuarterHour(hour: number): number {
+  return Math.round(hour * 4) / 4;
+}
+
 function parseAvailabilityRange(availability: unknown): [number, number] | null {
   try {
     let avail: Record<string, unknown> | null = null;
@@ -65,8 +70,8 @@ function parseAvailabilityRange(availability: unknown): [number, number] | null 
       avail = availability as Record<string, unknown>;
     }
     if (!avail || !Array.isArray(avail.range) || avail.range.length < 2) return null;
-    const start = Math.floor(Number(avail.range[0]));
-    const end = Math.floor(Number(avail.range[1]));
+    const start = toQuarterHour(Number(avail.range[0]));
+    const end = toQuarterHour(Number(avail.range[1]));
     if (Number.isNaN(start) || Number.isNaN(end)) return null;
     return [start, end];
   } catch {
@@ -116,6 +121,11 @@ function resolvePassageTimeSlot(
   if (slot) return slot;
   if (isAllDayAvailability(availability)) return 'all_day';
   return inferPassageTimeSlotFromAvailability(availability) ?? '';
+}
+
+/** Rendez-vous généré par une série de passages infirmier (une visite de tournée, jamais regroupée en lot). */
+export function isNursePassageAppointment(apt: { passage_source?: string | null }): boolean {
+  return apt.passage_source === 'nurse_passage';
 }
 
 export function isNursePassageFormData(
@@ -236,8 +246,8 @@ export function resolvePassageTimeRange(input: {
 }): [number, number] {
   const cfg = input.planning_config as { time_range?: unknown } | null | undefined;
   if (Array.isArray(cfg?.time_range) && cfg.time_range.length >= 2) {
-    const lo = Math.floor(Number(cfg.time_range[0]));
-    const hi = Math.floor(Number(cfg.time_range[1]));
+    const lo = toQuarterHour(Number(cfg.time_range[0]));
+    const hi = toQuarterHour(Number(cfg.time_range[1]));
     if (!Number.isNaN(lo) && !Number.isNaN(hi) && hi > lo) return [lo, hi];
   }
   const fromAvail = parseAvailabilityRange(input.availability);
@@ -434,6 +444,14 @@ export type PassageTourListTimeInput = {
   passage_series_id?: string | null;
 };
 
+/** Heure précise : PassageSlotResolver enregistre alors une plage d'une heure qui commence à cette heure. */
+function isExactTimeAvailability(exactTime: string, range: [number, number] | null): boolean {
+  if (!range) return true;
+  const [h, m] = exactTime.split(':').map(Number);
+  const start = toQuarterHour((h ?? 0) + (m ?? 0) / 60);
+  return range[0] === start && range[1] - range[0] <= 1;
+}
+
 /** Libellé horaire fiable pour carte tournée / liste passage. */
 export function formatPassageTourListTimeLabel(input: PassageTourListTimeInput): string {
   const slot = resolvePassageTimeSlotForAppointment(
@@ -441,6 +459,10 @@ export function formatPassageTourListTimeLabel(input: PassageTourListTimeInput):
     input.passage_time_slot,
   );
   const range = parsePassageAvailabilityRange(input.availability);
+  const exactTime = input.passage_custom_time?.trim();
+  if (slot !== 'all_day' && exactTime && isExactTimeAvailability(exactTime, range)) {
+    return exactTime.slice(0, 5).replace(':', 'h');
+  }
   const summary = formatPassageTimeSelectionSummary(
     slot,
     input.passage_custom_time,
@@ -529,7 +551,7 @@ export function groupTourStopsByPassageSlot<T extends PassageTourListTimeInput>(
 
 export type TourStopListRow<T extends PassageTourListTimeInput & { stop_id: string }> =
   | { kind: 'section'; key: string; label: string; slot: PassageTimeSlot | 'other' }
-  | { kind: 'stop'; key: string; stop: T; index: number };
+  | { kind: 'stop'; key: string; stop: T; index: number; slotIndex: number; slotTotal: number };
 
 /** Liste aplatie (en-têtes + stops) pour FlatList mobile ; sans en-tête si un seul créneau. */
 export function flattenTourStopsWithSlotSections<T extends PassageTourListTimeInput & { stop_id: string }>(
@@ -548,10 +570,39 @@ export function flattenTourStopsWithSlotSections<T extends PassageTourListTimeIn
         slot: group.slot,
       });
     }
-    for (const stop of group.stops) {
-      rows.push({ kind: 'stop', key: stop.stop_id, stop, index: globalIndex });
+    group.stops.forEach((stop, slotIndex) => {
+      rows.push({
+        kind: 'stop',
+        key: stop.stop_id,
+        stop,
+        index: globalIndex,
+        slotIndex,
+        slotTotal: group.stops.length,
+      });
       globalIndex += 1;
-    }
+    });
   }
   return rows;
+}
+
+/**
+ * Ordre complet de la tournée après avoir monté / descendu un passage dans sa section de créneau,
+ * dans l'ordre affiché (sections successives). `null` si le passage est déjà en bord de section.
+ */
+export function moveTourStopWithinSlot<T extends PassageTourListTimeInput & { stop_id: string }>(
+  stops: T[],
+  stopId: string,
+  direction: 'up' | 'down',
+): T[] | null {
+  const groups = groupTourStopsByPassageSlot(stops);
+  for (const group of groups) {
+    const idx = group.stops.findIndex((s) => s.stop_id === stopId);
+    if (idx < 0) continue;
+    const swap = direction === 'up' ? idx - 1 : idx + 1;
+    if (swap < 0 || swap >= group.stops.length) return null;
+    const reordered = [...group.stops];
+    [reordered[idx], reordered[swap]] = [reordered[swap]!, reordered[idx]!];
+    return groups.flatMap((g) => (g === group ? reordered : g.stops));
+  }
+  return null;
 }

@@ -44,7 +44,7 @@
               Reprendre le RDV
             </UButton>
             <UButton
-              v-if="canCancelAppointment(appointment, { role: user?.role, id: user?.id })"
+              v-if="nurseOwnerOnlyActionsVisible(appointment) && canCancelAppointment(appointment, { role: user?.role, id: user?.id })"
               type="button"
               color="error"
               variant="outline"
@@ -59,7 +59,7 @@
           </div>
 
           <UButton
-            v-if="appointment.status === 'confirmed' && appointment.type !== 'nursing' && !isBloodTestAppointment(appointment.type)"
+            v-if="nurseOwnerOnlyActionsVisible(appointment) && appointment.status === 'confirmed' && appointment.type !== 'nursing' && !isBloodTestAppointment(appointment.type)"
             color="neutral"
             variant="outline"
             size="md"
@@ -74,7 +74,7 @@
           </UButton>
 
           <div
-            v-if="appointment.type === 'nursing' && appointment.status !== 'completed' && !isAppointmentCanceled(appointment.status)"
+            v-if="nurseOwnerOnlyActionsVisible(appointment) && appointment.type === 'nursing' && appointment.status !== 'completed' && !isAppointmentCanceled(appointment.status)"
             class="min-w-0"
             :class="
               appointment.status === 'confirmed'
@@ -104,6 +104,16 @@
           </div>
         </div>
       </AppointmentDetailSidebarTerminalShell>
+    </template>
+
+    <template #mainExtra="{ appointment, loadAppointment }">
+      <NurseCoNursesPanel
+        v-if="appointment?.id"
+        :appointment="appointment"
+        :viewer-id="user?.id"
+        @self-removed="navigateTo('/nurse/appointments')"
+        @changed="loadAppointment()"
+      />
     </template>
 
     <template #conversationCard="{ appointment }">
@@ -146,6 +156,7 @@
         :omit-care-photos-in-list="true"
         @download="downloadDocument"
         @upload="(docType, file) => { setAppointmentForUpload(appointment); uploadDocumentFile(file, docType); }"
+        @replaced="loadDocuments()"
         @care-photo-upload="uploadCarePhotoFile"
         @care-photo-thread-updated="() => loadDocuments()"
       />
@@ -192,7 +203,12 @@ import {
   buildAppointmentDetailUploadTypes,
   getAppointmentDetailDocumentLabel,
 } from '~/utils/appointment-detail-document-types';
-import { canCancelAppointment, isPendingIncomingOffer, staffCanManageOwnPendingBloodTest } from '@oneandlab/shared-utils';
+import {
+  canCancelAppointment,
+  isPendingIncomingOffer,
+  nurseOwnerOnlyActionsVisible,
+  staffCanManageOwnPendingBloodTest,
+} from '@oneandlab/shared-utils';
 import { getAppointmentFromDetailRef } from '~/composables/useAppointmentDetailRef';
 import { nurseAppointmentSidebarCardVisible } from '~/utils/appointment-sidebar-terminal';
 import { isBloodTestAppointment } from '~/utils/appointment-type-rules';

@@ -8,7 +8,8 @@ export interface PatientAbsence {
   type_label_fr: string;
   note?: string | null;
   start_date: string;
-  end_date: string;
+  /** `null` : absence en cours, jusqu'à nouvel ordre. */
+  end_date: string | null;
   card_label_fr: string;
   created_at?: string;
   updated_at?: string;
@@ -17,6 +18,7 @@ export interface PatientAbsence {
 export interface PatientAbsenceInput {
   absence_type: PatientAbsenceType;
   start_date: string;
-  end_date: string;
+  /** Absente ou `null` : jusqu'à nouvel ordre. */
+  end_date?: string | null;
   note?: string | null;
 }

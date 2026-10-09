@@ -1,9 +1,9 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, ScrollView, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
-import { useFormScroll } from '@/components/layout/form-scroll-context';
+import { useFormScroll, useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { searchAddresses, type AddressSuggestion } from '../api/address.service';
 import type { AddressPayload } from '@/features/appointments/form/types';
 import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
@@ -15,6 +15,13 @@ interface Props {
   onComplementChange?: (v: string) => void;
   label?: string;
   error?: string;
+  /** Adresse en texte libre (contact importé) : lance la recherche pour que l'utilisateur choisisse la bonne. */
+  prefillQuery?: string;
+}
+
+/** Remplissage automatique iOS d'une adresse complète : lignes séparées par des retours à la ligne. */
+function toSearchQuery(text: string): string {
+  return text.replace(/\s*\n+\s*/g, ', ').trim();
 }
 
 export function AddressAutocomplete({
@@ -24,6 +31,7 @@ export function AddressAutocomplete({
   onComplementChange,
   label = 'Adresse',
   error,
+  prefillQuery,
 }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -36,6 +44,7 @@ export function AddressAutocomplete({
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<View>(null);
   const formScroll = useFormScroll();
+  const scrollFieldToTop = useScrollFocusedFieldIntoView();
 
   const scrollSuggestionsIntoView = useCallback(() => {
     const scroll = formScroll?.scrollRef.current;
@@ -69,8 +78,9 @@ export function AddressAutocomplete({
     if (value?.label) setQuery(value.label);
   }, [value?.label]);
 
-  const runSearch = useCallback(async (text: string) => {
-    if (text.trim().length < 3) {
+  const runSearch = useCallback(async (raw: string) => {
+    const text = toSearchQuery(raw);
+    if (text.length < 3) {
       setSuggestions([]);
       setSearchFailed(false);
       return;
@@ -94,6 +104,14 @@ export function AddressAutocomplete({
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const seed = prefillQuery?.trim();
+    if (!seed) return;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setQuery(seed);
+    void runSearch(seed);
+  }, [prefillQuery, runSearch]);
 
   const onQueryChange = (text: string) => {
     setQuery(text);
@@ -131,7 +149,10 @@ export function AddressAutocomplete({
           label={label}
           value={query}
           onChangeText={onQueryChange}
-          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onFocus={() => {
+            scrollFieldToTop(wrapperRef);
+            if (suggestions.length > 0) setOpen(true);
+          }}
           placeholder="Tapez au moins 3 caractères…"
           textContentType="fullStreetAddress"
           autoComplete="street-address"
@@ -157,7 +178,12 @@ export function AddressAutocomplete({
       </View>
 
       {open && suggestions.length > 0 ? (
-        <View style={[styles.dropdown, elevation.md]}>
+        <ScrollView
+          style={[styles.dropdown, elevation.md]}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
+        >
           {suggestions.map((s, i) => (
             <Pressable
               key={`${s.label}-${i}`}
@@ -174,7 +200,7 @@ export function AddressAutocomplete({
               ) : null}
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       ) : null}
 
       {open && !loading && searchFailed ? (
@@ -203,6 +229,8 @@ export function AddressAutocomplete({
           value={complement}
           onChangeText={onComplementChange}
           placeholder="Appartement, étage…"
+          textContentType="streetAddressLine2"
+          autoComplete="address-line2"
         />
       ) : null}
     </View>

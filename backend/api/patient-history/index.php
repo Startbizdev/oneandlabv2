@@ -9,6 +9,8 @@ require_once __DIR__ . '/../../lib/LabTeamAccess.php';
 require_once __DIR__ . '/../../lib/Validation.php';
 require_once __DIR__ . '/../../lib/DbSchemaCache.php';
 require_once __DIR__ . '/../../lib/AppointmentListPayload.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 
@@ -71,55 +73,47 @@ $dsn = sprintf(
 );
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
-function patientHistoryHasAccess(PDO $db, string $role, string $userId, string $patientId): bool
+/** Le dossier d'un proche ne s'ouvre qu'à ses propres soignants (RDV du proche), pas à ceux du titulaire. */
+function patientHistoryHasAccess(PDO $db, array $user, string $dossierId): bool
 {
+    $role = (string) ($user['role'] ?? '');
+    $userId = (string) ($user['user_id'] ?? '');
     if ($role === 'super_admin') {
         return true;
     }
 
     if ($role === 'pro') {
-        $userModel = new User();
-        if ($userModel->hasProfessionalAccessToPatient($userId, $patientId)) {
-            return true;
-        }
-
-        $chk = $db->prepare('SELECT 1 FROM appointments WHERE patient_id = ? AND created_by = ? LIMIT 1');
-        $chk->execute([$patientId, $userId]);
-
-        return (bool) $chk->fetchColumn();
+        return (new User($db))->hasProfessionalAccessToPatient($userId, $dossierId)
+            || MedicalDocumentAccess::userHasAppointmentAsCreatorWithPatient($db, $userId, $dossierId);
     }
 
-    if ($role === 'nurse') {
-        $stmt = $db->prepare("
-            SELECT 1 FROM appointments
-            WHERE patient_id = ?
-            AND (assigned_nurse_id = ? OR created_by = ?)
-            LIMIT 1
-        ");
-        $stmt->execute([$patientId, $userId, $userId]);
-        return (bool) $stmt->fetchColumn();
-    }
-
-    if (in_array($role, ['lab', 'subaccount', 'preleveur'], true)) {
-        $teamIds = LabTeamAccess::teamMemberIds($db, $userId, $role);
-        if (empty($teamIds)) {
-            return false;
-        }
-        $placeholders = implode(',', array_fill(0, count($teamIds), '?'));
-        $stmt = $db->prepare("
-            SELECT 1 FROM appointments
-            WHERE patient_id = ?
-            AND (assigned_lab_id IN ($placeholders) OR assigned_to IN ($placeholders))
-            LIMIT 1
-        ");
-        $stmt->execute(array_merge([$patientId], $teamIds, $teamIds));
-        return (bool) $stmt->fetchColumn();
+    if (in_array($role, ['nurse', 'lab', 'subaccount', 'preleveur'], true)) {
+        return MedicalDocumentAccess::userHasAssignedAppointmentWithPatient($db, $user, $dossierId);
     }
 
     return false;
 }
 
-if (!patientHistoryHasAccess($db, $role, $userId, $patientId)) {
+// patient_id = dossier d'un proche, ou titulaire + relative_id : le périmètre est alors celui du proche.
+$relativeDossier = RelativeProfile::resolve($db, $patientId);
+if ($relativeDossier !== null) {
+    if ($relativeId !== '' && $relativeId !== $relativeDossier['relative_id']) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'relative_id invalide']);
+        exit;
+    }
+    $dossierId = $patientId;
+} elseif ($relativeId !== '') {
+    $relativeOwned = $db->prepare('SELECT 1 FROM patient_relatives WHERE id = ? AND patient_id = ? LIMIT 1');
+    $relativeOwned->execute([$relativeId, $patientId]);
+    $dossierId = $relativeOwned->fetchColumn()
+        ? (string) MedicalDocumentAccess::subjectDossierId($db, $patientId, $relativeId)
+        : '';
+} else {
+    $dossierId = $patientId;
+}
+
+if ($dossierId === '' || !patientHistoryHasAccess($db, $user, $dossierId)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Accès refusé']);
     exit;
@@ -168,12 +162,7 @@ $hasPatientRelativesTable = DbSchemaCache::tableExists($db, 'patient_relatives')
 $useRelativeJoin = $hasRelativeColumn && $hasPatientRelativesTable;
 $hasMergedColumn = DbSchemaCache::tableHasColumn($db, 'appointments', 'merged_into_appointment_id');
 
-$where = 'a.patient_id = ?';
-$params = [$patientId];
-if ($relativeId !== '') {
-    $where .= ' AND a.relative_id = ?';
-    $params[] = $relativeId;
-}
+[$where, $params] = RelativeProfile::appointmentSubjectSql($db, 'a', $dossierId);
 if ($hasMergedColumn) {
     $where .= ' AND a.merged_into_appointment_id IS NULL';
 }
@@ -185,9 +174,13 @@ $countStmt->execute($params);
 $total = (int) $countStmt->fetchColumn();
 
 if ($useRelativeJoin) {
+    $relativeProfileSelect = DbSchemaCache::tableHasColumn($db, 'patient_relatives', 'profile_id')
+        ? 'pr.profile_id as relative_profile_id,'
+        : '';
     $sql = '
         SELECT
             a.*,
+            ' . $relativeProfileSelect . '
             pr.first_name_encrypted as relative_first_name_encrypted,
             pr.first_name_dek as relative_first_name_dek,
             pr.last_name_encrypted as relative_last_name_encrypted,

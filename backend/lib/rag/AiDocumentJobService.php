@@ -393,23 +393,8 @@ final class AiDocumentJobService
                 'Le résumé de « ' . $title . ' » est disponible dans votre assistant.',
                 ['medical_document_id' => $docId],
             );
-        } catch (Throwable) {
-            // non bloquant
+        } catch (Throwable $e) {
+            error_log('AiDocumentJobService notification résumé non envoyée : ' . $e->getMessage());
         }
-    }
-
-    public function getSummaryForDocument(string $medicalDocumentId, string $userId): ?array
-    {
-        $stmt = $this->db->prepare('
-            SELECT s.* FROM ai_summaries s
-            INNER JOIN medical_documents md ON md.id = s.medical_document_id
-            WHERE s.medical_document_id = ? AND s.status = \'completed\'
-              AND (md.patient_id = ? OR md.uploaded_by = ?)
-            ORDER BY s.updated_at DESC
-            LIMIT 1
-        ');
-        $stmt->execute([$medicalDocumentId, $userId, $userId]);
-
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 }

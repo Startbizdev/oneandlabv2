@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-/** Requêtes liste documents pour GET /medical-documents?appointment_id= */
+/** Requêtes liste documents pour GET /medical-documents?appointment_id= (ordonnances remplacées exclues). */
 final class MedicalDocumentListQuery
 {
     /**
@@ -34,7 +34,7 @@ final class MedicalDocumentListQuery
                         ON prd.medical_document_id = md.id
                         AND prd.patient_id = ?
                         AND prd.relative_id = ?
-                    WHERE md.appointment_id = ?
+                    WHERE md.appointment_id = ? AND md.replaced_by_document_id IS NULL
                     ORDER BY md.created_at DESC
                 ');
                 $stmt->execute([$patientId, $relativeId, $appointmentId]);
@@ -51,7 +51,7 @@ final class MedicalDocumentListQuery
                         encrypted,
                         created_at
                     FROM medical_documents
-                    WHERE appointment_id = ?
+                    WHERE appointment_id = ? AND replaced_by_document_id IS NULL
                     ORDER BY created_at DESC
                 ');
                 $stmt->execute([$appointmentId]);
@@ -70,7 +70,7 @@ final class MedicalDocumentListQuery
                     md.created_at
                 FROM medical_documents md
                 LEFT JOIN patient_documents pd ON pd.medical_document_id = md.id AND pd.patient_id = ?
-                WHERE md.appointment_id = ?
+                WHERE md.appointment_id = ? AND md.replaced_by_document_id IS NULL
                 ORDER BY md.created_at DESC
             ');
             $stmt->execute([$patientId, $appointmentId]);
@@ -87,7 +87,7 @@ final class MedicalDocumentListQuery
                     encrypted,
                     created_at
                 FROM medical_documents
-                WHERE appointment_id = ?
+                WHERE appointment_id = ? AND replaced_by_document_id IS NULL
                 ORDER BY created_at DESC
             ');
             $stmt->execute([$appointmentId]);

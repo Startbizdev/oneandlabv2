@@ -1,4 +1,9 @@
-import type { AiAppointmentDraft, VoiceRealtimeSessionConfig, VoiceRealtimeStartResponse } from '@oneandlab/shared-types';
+import type {
+  AiAppointmentDraft,
+  AiEmergency,
+  VoiceRealtimeSessionConfig,
+  VoiceRealtimeStartResponse,
+} from '@oneandlab/shared-types';
 import {
   executeVoiceRealtimeTool,
   startVoiceRealtimeSession,
@@ -16,6 +21,10 @@ import {
   parseRealtimeJsonMessage,
 } from './voice-realtime-events';
 import { voiceLog } from './voice-debug-log';
+import { delay } from './voice-session-utils';
+
+/** Au-delà, la voix bascule sur le transport REST (socket fermée, plus aucun rappel). */
+const REALTIME_CONNECT_TIMEOUT_MS = 12_000;
 
 export type RealtimeClientPhase =
   | 'connecting'
@@ -33,6 +42,8 @@ export type RealtimeClientHandlers = {
   onAssistantTranscript?: (text: string, final: boolean) => void;
   onDraftSync?: (draft: AiAppointmentDraft | null) => void;
   onConversationSync?: (conversationId: string) => void;
+  /** Signe d'urgence détecté par le serveur dans la transcription finale de l'utilisateur. */
+  onEmergency?: (emergency: AiEmergency) => void;
   onEnergy?: (energy: number) => void;
   onError?: (message: string) => void;
   onFallbackRequired?: () => void;
@@ -58,6 +69,24 @@ async function loadAudioStreamModules(): Promise<boolean> {
     voiceLog('realtime.audio-module-missing', { message: e instanceof Error ? e.message : String(e) });
     return false;
   }
+}
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/** Arguments JSON d'un appel d'outil du modèle ; illisibles : objet vide (le serveur valide). */
+function parseToolArguments(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return Object.fromEntries(Object.entries(parsed));
+    }
+    voiceLog('realtime.tool.args-not-object');
+  } catch (e) {
+    voiceLog('realtime.tool.args-invalid', { message: errorMessage(e) });
+  }
+  return {};
 }
 
 function base64ToUint8Array(base64: string): Uint8Array {
@@ -176,17 +205,35 @@ export class CaryVoiceRealtimeClient {
     this.handlers.onPhase?.(this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
 
     return new Promise((resolve) => {
+      let ws: WebSocket;
       try {
-        this.ws = new WebSocket(url, [`xai-client-secret.${token}`]);
-        this.ws.binaryType = 'arraybuffer';
+        ws = new WebSocket(url, [`xai-client-secret.${token}`]);
+        ws.binaryType = 'arraybuffer';
       } catch (e) {
         voiceLog('realtime.ws.create-error', { message: e instanceof Error ? e.message : String(e) });
         this.handlers.onFallbackRequired?.();
         resolve(false);
         return;
       }
+      this.ws = ws;
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        voiceLog('realtime.ws.timeout');
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        ws.close();
+        if (this.ws === ws) this.ws = null;
+        if (this.active) this.handlers.onFallbackRequired?.();
+        resolve(false);
+      }, REALTIME_CONNECT_TIMEOUT_MS);
 
-      this.ws.onopen = () => {
+      ws.onopen = () => {
+        settled = true;
+        clearTimeout(timeout);
         voiceLog('realtime.ws.open');
         this.reconnectAttempts = 0;
         void this.sendSessionUpdate();
@@ -194,34 +241,33 @@ export class CaryVoiceRealtimeClient {
         resolve(true);
       };
 
-      this.ws.onmessage = (evt) => {
+      ws.onmessage = (evt) => {
         void this.handleMessage(evt);
       };
 
-      this.ws.onerror = () => {
+      ws.onerror = () => {
         voiceLog('realtime.ws.error');
         this.handlers.onError?.('Connexion vocale interrompue');
       };
 
-      this.ws.onclose = () => {
+      ws.onclose = () => {
         voiceLog('realtime.ws.close', { active: this.active });
-        if (!this.active) return;
+        clearTimeout(timeout);
+        const pending = !settled;
+        settled = true;
+        if (!this.active) {
+          if (pending) resolve(false);
+          return;
+        }
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts += 1;
-          setTimeout(() => {
-            void this.connectWebSocket();
-          }, 800 * this.reconnectAttempts);
+          const retry = delay(800 * this.reconnectAttempts).then(() => this.connectWebSocket());
+          if (pending) void retry.then(resolve);
           return;
         }
         this.handlers.onFallbackRequired?.();
+        if (pending) resolve(false);
       };
-
-      setTimeout(() => {
-        if (this.ws?.readyState !== WebSocket.OPEN) {
-          voiceLog('realtime.ws.timeout');
-          resolve(false);
-        }
-      }, 12_000);
     });
   }
 
@@ -237,14 +283,15 @@ export class CaryVoiceRealtimeClient {
   }
 
   private async startMicrophone(): Promise<void> {
-    if (!ExpoPlayAudioStreamModule || !this.active) return;
+    const pipeline = PipelineModule;
+    if (!ExpoPlayAudioStreamModule || !pipeline || !this.active) return;
     const perms = await ExpoPlayAudioStreamModule.requestPermissionsAsync();
     if (!perms.granted) {
       this.handlers.onError?.('Autorisez le micro dans les réglages pour parler à Cary.');
       return;
     }
 
-    await PipelineModule!.Pipeline.connect({
+    await pipeline.Pipeline.connect({
       sampleRate: 24000,
       channelCount: 1,
       targetBufferMs: 80,
@@ -339,35 +386,35 @@ export class CaryVoiceRealtimeClient {
     }
   }
 
+  /** Outils exécutés par le serveur sur la session temps réel ouverte par `start` (jamais une session REST). */
   private async flushFunctionCalls(): Promise<void> {
-    if (!this.session || this.pendingFunctionCalls.length === 0 || !this.ws) return;
+    const session = this.session;
+    if (!session || this.pendingFunctionCalls.length === 0 || !this.ws) return;
     const calls = [...this.pendingFunctionCalls];
     this.pendingFunctionCalls = [];
 
     const outputs = await Promise.all(
       calls.map(async (call) => {
-        let parsedArgs: Record<string, unknown> = {};
         try {
-          parsedArgs = JSON.parse(call.arguments) as Record<string, unknown>;
-        } catch {
-          parsedArgs = {};
+          const result = await executeVoiceRealtimeTool(session.session_id, {
+            name: call.name,
+            arguments: parseToolArguments(call.arguments),
+          });
+          if (result.draft && this.handlers.onDraftSync) {
+            await this.handlers.onDraftSync(result.draft);
+          }
+          return { callId: call.callId, output: JSON.stringify(result.result ?? {}) };
+        } catch (e) {
+          voiceLog('realtime.tool.error', { tool: call.name, message: errorMessage(e) });
+          return { callId: call.callId, output: JSON.stringify({ error: 'tool_unavailable' }) };
         }
-        const result = await executeVoiceRealtimeTool(this.session!.session_id, {
-          name: call.name,
-          arguments: parsedArgs,
-        });
-        if (result.draft && this.handlers.onDraftSync) {
-          await this.handlers.onDraftSync(result.draft);
-        }
-        return {
-          callId: call.callId,
-          output: JSON.stringify(result.result ?? {}),
-        };
       }),
     );
 
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
     for (const out of outputs) {
-      this.ws!.send(
+      ws.send(
         JSON.stringify({
           type: 'conversation.item.create',
           item: {
@@ -378,9 +425,10 @@ export class CaryVoiceRealtimeClient {
         }),
       );
     }
-    this.ws.send(JSON.stringify({ type: 'response.create' }));
+    ws.send(JSON.stringify({ type: 'response.create' }));
   }
 
+  /** Le serveur refuse ces événements hors session temps réel : uniquement la session ouverte par `start`. */
   private async syncEvent(eventType: string, payload: Record<string, unknown>): Promise<void> {
     if (!this.session) return;
     try {
@@ -389,6 +437,8 @@ export class CaryVoiceRealtimeClient {
         event_type: eventType,
         payload,
       });
+      if (res.emergency) this.handlers.onEmergency?.(res.emergency);
+      if (res.session_update?.instructions) this.applyInstructions(res.session_update.instructions);
       if (res.draft && this.handlers.onDraftSync) {
         await this.handlers.onDraftSync(res.draft);
       }
@@ -396,8 +446,15 @@ export class CaryVoiceRealtimeClient {
         await this.handlers.onConversationSync(res.conversation_id);
       }
     } catch (e) {
-      voiceLog('realtime.sync.error', { message: e instanceof Error ? e.message : String(e) });
+      voiceLog('realtime.sync.error', { message: errorMessage(e) });
     }
+  }
+
+  /** Consignes recalculées par le serveur (brouillon, intention) : appliquées tout de suite et aux reconnexions. */
+  private applyInstructions(instructions: string): void {
+    if (!this.session) return;
+    this.session = { ...this.session, session_config: { ...this.session.session_config, instructions } };
+    void this.sendSessionUpdate();
   }
 
   async interruptAssistant(): Promise<void> {
@@ -407,29 +464,21 @@ export class CaryVoiceRealtimeClient {
     this.handlers.onPhase?.('listening');
   }
 
+  /** Coupe micro, lecture et socket ; la session serveur est close par l'appelant (`endVoiceSession`). */
   async stop(): Promise<void> {
     this.active = false;
-    try {
-      this.micSubscription?.remove?.();
-    } catch {
-      /* noop */
-    }
+    const release = async (step: string, run: () => unknown) => {
+      try {
+        await run();
+      } catch (e) {
+        voiceLog('realtime.stop.error', { step, message: errorMessage(e) });
+      }
+    };
+    await release('mic-subscription', () => this.micSubscription?.remove?.());
     this.micSubscription = null;
-    try {
-      await ExpoPlayAudioStreamModule?.stopMicrophone();
-    } catch {
-      /* noop */
-    }
-    try {
-      await PipelineModule?.Pipeline.disconnect();
-    } catch {
-      /* noop */
-    }
-    try {
-      this.ws?.close();
-    } catch {
-      /* noop */
-    }
+    await release('microphone', () => ExpoPlayAudioStreamModule?.stopMicrophone());
+    await release('pipeline', () => PipelineModule?.Pipeline.disconnect());
+    await release('socket', () => this.ws?.close());
     this.ws = null;
     this.session = null;
   }

@@ -11,6 +11,15 @@
             color="neutral"
             variant="outline"
             size="sm"
+            icon="i-lucide-users"
+            @click="() => { collaborationsOpen = true }"
+          >
+            Confrères
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
             icon="i-lucide-calendar-arrow-down"
             :disabled="loading || saving"
             @click="downloadIcs"
@@ -202,6 +211,13 @@
       @select="onPassagePlanningSelect"
     />
 
+    <NurseTourCollaborationsModal
+      :open="collaborationsOpen"
+      :viewer-id="user?.id"
+      :date="selectedDate"
+      @close="collaborationsOpen = false"
+    />
+
     <TourSortFilterModal
       v-if="tour"
       v-model:open="sortModalOpen"
@@ -227,7 +243,7 @@
 import type { NurseTourStop } from '~/composables/useNurseTourWeb';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 import type { PatientAbsenceInput } from '@oneandlab/shared-types';
-import { countTourActiveRemainingStops, groupTourStopsByPassageSlot } from '@oneandlab/shared-utils';
+import { countTourActiveRemainingStops, groupTourStopsByPassageSlot, tourDateFromParam } from '@oneandlab/shared-utils';
 import { apiFetch } from '~/utils/api';
 
 definePageMeta({
@@ -256,6 +272,18 @@ const {
 
 const { saving: absenceSaving, error: absenceError, saveAbsence, removeAbsence } =
   usePatientAbsenceWeb();
+
+const route = useRoute();
+const { user } = useAuth();
+const collaborationsOpen = ref(false);
+
+watch(
+  () => tourDateFromParam(route.query.date),
+  (date) => {
+    if (date) selectedDate.value = date;
+  },
+  { immediate: true },
+);
 
 const rescheduleTarget = ref<NurseTourStop | null>(null);
 const absenceTarget = ref<NurseTourStop | null>(null);

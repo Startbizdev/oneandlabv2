@@ -37,6 +37,7 @@ final class PatientDeletionDeniedTest extends TestCase
         if (isset($this->patientId)) {
             $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$this->patientId]);
         }
+        unset($this->userModel, $this->db);
         parent::tearDown();
     }
 

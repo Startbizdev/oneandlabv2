@@ -35,6 +35,7 @@ final class ProfileLabAssignmentPolicyTest extends TestCase
         if ($this->otherLabId !== null) {
             $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$this->otherLabId]);
         }
+        unset($this->users, $this->db);
         parent::tearDown();
     }
 

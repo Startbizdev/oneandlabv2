@@ -18,6 +18,8 @@ interface Props {
   slotRows: SelectedServiceInput[];
   /** `null` quand l'étape laboratoire ne s'applique pas. */
   labSummary: string | null;
+  /** Soignant présélectionné depuis « Mes donneurs de soins ». */
+  providerName: string | null;
   beneficiary: { name: string; detail: string };
   address: { label: string; complement: string } | null;
   /** Prix du store quand la demande déclenche un paiement « Prioritaire ». */
@@ -77,6 +79,7 @@ export function BookingReviewStep({
   formDataByService,
   slotRows,
   labSummary,
+  providerName,
   beneficiary,
   address,
   vipPriceLabel,
@@ -109,6 +112,12 @@ export function BookingReviewStep({
             );
           })}
         </ReviewSection>
+
+        {providerName ? (
+          <ReviewSection title="Avec" editLabel="Modifier le professionnel" onEdit={onEditServices}>
+            <AppText style={styles.value}>{providerName}</AppText>
+          </ReviewSection>
+        ) : null}
 
         {labSummary ? (
           <ReviewSection title="Laboratoire" editLabel="Modifier le laboratoire" onEdit={onEditLab}>

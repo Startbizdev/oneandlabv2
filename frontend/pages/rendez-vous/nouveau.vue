@@ -236,7 +236,7 @@ import {
   type SelectedServiceInput,
 } from '~/utils/dashboard-unified-rdv';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
-import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, directedProviderBookingHasLaboratory, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
+import { filterStaffOnlyCareCategoriesForPatient, formSliceNeedsVipPayment, bloodTestNeedsLabPreferenceStep, directedProviderBookingHasLaboratory, directedProviderAssignmentField, resolveDirectedProvider, applyLabPreferenceToBloodPayloads, mergeSchedulingMetaIntoItemCareOptions, servicesRequiringSchedulingValidation } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
 import {
   type BookingServiceFormSlice,
@@ -1083,20 +1083,10 @@ function buildAppointmentPayloads(patientId: string): any[] {
     if (typeof selectedRelative.value === 'string') {
       payload.relative_id = selectedRelative.value;
     }
-    if (isProviderBooking.value && providerId.value && providerType.value) {
-      if (svc) {
-        if (providerType.value === 'nurse' && isNursingAppointment(svc.type)) {
-          payload.assigned_nurse_id = providerId.value;
-        } else if (providerType.value === 'lab' && isBloodTestAppointment(svc.type)) {
-          payload.assigned_lab_id = providerId.value;
-        } else if (providerType.value === 'pro') {
-          payload.assigned_pro_id = providerId.value;
-        }
-      } else if (providerType.value === 'lab') {
-        payload.assigned_lab_id = providerId.value;
-      } else if (providerType.value === 'pro') {
-        payload.assigned_pro_id = providerId.value;
-      }
+    const directedProvider = resolveDirectedProvider(providerId.value, providerType.value);
+    if (directedProvider) {
+      const field = directedProviderAssignmentField(directedProvider.type, svc?.type ?? payload.type);
+      if (field) payload[field] = directedProvider.id;
     }
     if (utmQr.value) {
       payload.utm_qr = utmQr.value;

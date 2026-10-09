@@ -9,7 +9,7 @@ require_once __DIR__ . '/AiGrokToolCatalog.php';
 require_once __DIR__ . '/AiChatHelper.php';
 require_once __DIR__ . '/AiAssistantResponseGuard.php';
 require_once __DIR__ . '/CaryContextFocus.php';
-require_once __DIR__ . '/GrokProvider.php';
+require_once __DIR__ . '/AiBookingAccess.php';
 
 /**
  * Orchestrateur unique chat + vocal : Grok + tools, puis sync brouillon RDV.
@@ -54,7 +54,8 @@ final class AiTurnOrchestrator
 
         $activeIntent = (string) ($context['active_intent'] ?? CaryContextFocus::GENERAL);
         $docIntents = [CaryContextFocus::DOCUMENT, CaryContextFocus::DOCUMENT_FOLLOWUP];
-        $useTools = !in_array($activeIntent, $docIntents, true)
+        $useTools = AiBookingAccess::allows($user)
+            && !in_array($activeIntent, $docIntents, true)
             && $activeIntent !== CaryContextFocus::HEALTH_RECORD;
 
         if ($useTools) {

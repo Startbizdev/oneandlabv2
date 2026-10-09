@@ -80,8 +80,8 @@ final class MemoryComposer
                 if ($hrSummary !== []) {
                     $ctx['health_record_summary'] = $hrSummary;
                 }
-            } catch (Throwable) {
-                /* carnet optional */
+            } catch (Throwable $e) {
+                error_log('MemoryComposer carnet de santé indisponible : ' . $e->getMessage());
             }
             $query = trim((string) ($userMessage ?? ''));
             if ($query !== '') {

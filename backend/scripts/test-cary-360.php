@@ -164,13 +164,10 @@ if (is_string($gatewaySource)) {
 }
 
 $apiFileMap = [
-    'api_hub' => 'api/ai/hub.php',
     'api_suggestions' => 'api/ai/quick-suggestions.php',
     'api_health_sources' => 'api/health/sources/index.php',
-    'api_trends' => 'api/ai/trends/index.php',
     'api_search' => 'api/ai/search/index.php',
     'api_export' => 'api/ai/export/index.php',
-    'api_signals' => 'api/ai/signals/index.php',
     'api_patient_docs' => 'api/patient-documents/index.php',
 ];
 foreach (Cary360ScenarioCatalog::apiProbeEndpoints() as $probe) {

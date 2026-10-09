@@ -10,6 +10,7 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/ProfessionalAppointmentLinks.php';
+require_once __DIR__ . '/AvailabilityTimeLabel.php';
 
 class Email
 {
@@ -133,7 +134,7 @@ class Email
                 if (($av['type'] ?? '') === 'all_day') {
                     $creneauPart = 'Toute la journée';
                 } elseif (($av['type'] ?? '') === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-                    $creneauPart = (int) $av['range'][0] . 'h - ' . (int) $av['range'][1] . 'h';
+                    $creneauPart = AvailabilityTimeLabel::range($av['range']);
                 }
             }
         }
@@ -775,9 +776,7 @@ class Email
             return 'Toute la journée';
         }
         if (($av['type'] ?? '') === 'custom' && !empty($av['range']) && is_array($av['range']) && count($av['range']) >= 2) {
-            $a = (int) $av['range'][0];
-            $b = (int) $av['range'][1];
-            return $a . 'h00 – ' . $b . 'h00';
+            return AvailabilityTimeLabel::range($av['range'], ' – ');
         }
         return '';
     }

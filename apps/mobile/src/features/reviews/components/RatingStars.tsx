@@ -59,7 +59,7 @@ export function RatingStars({
         const star = (
           <Star
             size={starSize}
-            color={filled ? c.star : hexToRgba(c.star, 0.45)}
+            color={filled ? c.star : c.starEmpty}
             fill={filled ? c.starFill : 'transparent'}
             strokeWidth={ICON_STROKE_WIDTH}
           />

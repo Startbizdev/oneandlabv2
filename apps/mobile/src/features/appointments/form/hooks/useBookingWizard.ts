@@ -4,11 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CACHE_STALE_RELATIVES_MS } from '@oneandlab/shared-constants';
 import { useRouter } from 'expo-router';
 import {
+  applyDirectedProviderToPayloads,
   buildDashboardAppointmentPayloads,
   servicesRequiringOwnSlots,
   validateUnifiedRdvPayload,
   bloodTestNeedsLabPreferenceStep,
   validateLabPreferenceBeforeSubmit,
+  type DirectedProvider,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
@@ -50,7 +52,7 @@ import { profileDocRefFromRow } from '../types/document-file-ref';
 import { mergePersonalFilesIntoFormData } from '../utils/merge-wizard-files';
 import {
   isPatientEmailOptionalForBookingRole,
-  skipsLabPreferenceStepForBookingRole,
+  skipsLabPreferenceStep,
 } from '../utils/booking-wizard-role-rules';
 import { PROFILE_PREFILL_DOC_KEYS } from '../constants/appointment-document-fields';
 import { useWizardProfileDocuments } from './useWizardProfileDocuments';
@@ -87,7 +89,10 @@ export function useBookingWizard(opts: {
   initialDraft?: BookingDraftData | null;
   /** Appelé dès que les RDV sont créés côté serveur. */
   onBookingCreated?: () => void;
+  /** Patient : soignant présélectionné (« Mes donneurs de soins »). */
+  directedProvider?: DirectedProvider | null;
 }) {
+  const directedProvider = opts.mode === 'patient' ? (opts.directedProvider ?? null) : null;
   const draft = opts.initialDraft ?? null;
   const { onConsentMissing } = opts;
   const bookingBatchAttempt = useRef(new ResumableAppointmentBatch<AppointmentCreatePayload>());
@@ -97,7 +102,7 @@ export function useBookingWizard(opts: {
   const user = useAuthStore((s) => s.user);
   const patientVipIap = usePatientVipIap();
 
-  const [step, setStep] = useState(() => (draft ? restoredBookingStep(draft, opts.role) : 0));
+  const [step, setStep] = useState(() => (draft ? restoredBookingStep(draft, opts.role, directedProvider) : 0));
   const [labPreferenceMode, setLabPreferenceMode] = useState<LabPreferenceMode | ''>(
     draft?.labPreferenceMode ?? 'platform_match',
   );
@@ -165,14 +170,15 @@ export function useBookingWizard(opts: {
     }),
     initialDraft: draft,
     onCreated: opts.onBookingCreated,
+    directedProvider,
   });
 
   const needsLabPreferenceStep = useMemo(
     () =>
       bloodTestNeedsLabPreferenceStep(wizard.selectedServices, {
-        skipForProviderBooking: skipsLabPreferenceStepForBookingRole(opts.role),
+        skipForProviderBooking: skipsLabPreferenceStep(opts.role, directedProvider),
       }),
-    [wizard.selectedServices, opts.role],
+    [wizard.selectedServices, opts.role, directedProvider],
   );
   const formWizardStep = needsLabPreferenceStep ? 2 : 1;
 
@@ -663,6 +669,7 @@ export function useBookingWizard(opts: {
       if (selectedRelativeId) {
         payloads = payloads.map((p) => ({ ...p, relative_id: selectedRelativeId }));
       }
+      payloads = applyDirectedProviderToPayloads(payloads, directedProvider);
 
       if (needsVip) {
         const draftFd = await buildPatientBookingDraftFormData(
@@ -845,6 +852,7 @@ export function useBookingWizard(opts: {
     step,
     wizardIndex,
     wizard,
+    directedProvider,
     slotRows,
     documentsSlotRows,
     allCategories,

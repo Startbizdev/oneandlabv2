@@ -2,31 +2,52 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../HttpStatusException.php';
+require_once __DIR__ . '/AiProviderUnavailableException.php';
+require_once __DIR__ . '/AiRateLimitedException.php';
+
 /**
- * Messages d'erreur sûrs pour patients (masque exceptions techniques).
+ * Traduit une exception en réponse client sûre (statut, code, message français) : jamais de texte technique
+ * ni de message brut du fournisseur IA.
  */
 final class AiUserFacingError
 {
+    public const UNAVAILABLE_MESSAGE = 'Cary est momentanément indisponible. Réessayez dans un instant.';
+    public const GENERIC_MESSAGE = 'Une erreur est survenue. Réessayez ou reformulez votre message.';
+    private const UNAVAILABLE_RETRY_AFTER = 30;
+
+    /**
+     * @return array{status: int, code: string, message: string, retry_after: ?int}
+     */
+    public static function describe(Throwable $e): array
+    {
+        if ($e instanceof HttpStatusException) {
+            return ['status' => $e->httpStatus, 'code' => $e->errorCode, 'message' => $e->getMessage(), 'retry_after' => null];
+        }
+        if ($e instanceof AiRateLimitedException) {
+            return [
+                'status' => 429,
+                'code' => 'AI_RATE_LIMITED',
+                'message' => 'Vous envoyez beaucoup de messages — réessayez dans quelques minutes.',
+                'retry_after' => $e->retryAfterSeconds,
+            ];
+        }
+        if ($e instanceof AiProviderUnavailableException) {
+            return [
+                'status' => 503,
+                'code' => 'AI_UNAVAILABLE',
+                'message' => self::UNAVAILABLE_MESSAGE,
+                'retry_after' => self::UNAVAILABLE_RETRY_AFTER,
+            ];
+        }
+        if ($e instanceof InvalidArgumentException) {
+            return ['status' => 400, 'code' => 'VALIDATION_ERROR', 'message' => $e->getMessage(), 'retry_after' => null];
+        }
+        return ['status' => 500, 'code' => 'AI_INTERNAL_ERROR', 'message' => self::GENERIC_MESSAGE, 'retry_after' => null];
+    }
+
     public static function fromThrowable(Throwable $e): string
     {
-        if ($e instanceof InvalidArgumentException) {
-            return $e->getMessage();
-        }
-
-        $msg = mb_strtolower($e->getMessage());
-        if (str_contains($msg, 'rate limit') || str_contains($msg, '429') || str_contains($msg, 'trop de')) {
-            return 'Vous envoyez beaucoup de messages — réessayez dans quelques minutes.';
-        }
-        if (str_contains($msg, 'boucle tools') || str_contains($msg, 'max itérations')) {
-            return 'Je n\'ai pas pu finaliser cette action. Reformulez ou réessayez.';
-        }
-        if (str_contains($msg, 'xai') || str_contains($msg, 'api_key') || str_contains($msg, 'provider')) {
-            return 'Cary est momentanément indisponible. Réessayez dans un instant.';
-        }
-        if (str_contains($msg, 'introuvable') || str_contains($msg, 'not found')) {
-            return 'Élément introuvable. Rechargez la conversation.';
-        }
-
-        return 'Une erreur est survenue. Réessayez ou reformulez votre message.';
+        return self::describe($e)['message'];
     }
 }

@@ -7,7 +7,7 @@ $date = $clock->format('Y-m-d H:i:s');
 $db->sqliteCreateFunction('NOW', static fn () => $date);
 $db->exec("CREATE TABLE profiles (id TEXT PRIMARY KEY, role TEXT); INSERT INTO profiles VALUES ('fixture-nurse','nurse')");
 $db->exec('CREATE TABLE subscriptions (user_id TEXT, plan_slug TEXT, status TEXT, updated_at TEXT)');
-$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, type TEXT, status TEXT, assigned_nurse_id TEXT, assigned_lab_id TEXT, assigned_to TEXT, location_lat REAL, location_lng REAL, scheduled_at TEXT, patient_id TEXT, form_data_encrypted TEXT, form_data_dek TEXT, creation_batch_id TEXT, updated_at TEXT, nurse_share_released_at TEXT)');
+$db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, type TEXT, status TEXT, assigned_nurse_id TEXT, assigned_lab_id TEXT, assigned_to TEXT, location_lat REAL, location_lng REAL, scheduled_at TEXT, patient_id TEXT, relative_id TEXT, form_data_encrypted TEXT, form_data_dek TEXT, creation_batch_id TEXT, passage_source TEXT, updated_at TEXT, nurse_share_released_at TEXT)');
 $db->exec('CREATE TABLE appointment_status_updates (id TEXT, appointment_id TEXT, status TEXT, actor_id TEXT, actor_role TEXT, note TEXT, created_at TEXT)');
 $db->exec('CREATE TABLE appointment_offers (appointment_id TEXT, profile_id TEXT)');
 $db->exec('CREATE TABLE access_logs (user_id TEXT, role TEXT, action TEXT, resource_type TEXT, resource_id TEXT, details TEXT, ip_address TEXT, user_agent TEXT, created_at TEXT)');

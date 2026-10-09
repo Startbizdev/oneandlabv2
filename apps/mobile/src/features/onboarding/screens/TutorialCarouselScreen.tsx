@@ -23,6 +23,11 @@ const ILLUSTRATION_MAX_HEIGHT = 320;
 /** Part de la page laissée à l'illustration : le titre et l'aide restent visibles en grande police. */
 const ILLUSTRATION_HEIGHT_RATIO = 0.42;
 
+function roleHomeOrNull(role: string | undefined): Href | null {
+  if (!role) return null;
+  return getRoleHome(role);
+}
+
 export function TutorialCarouselScreen() {
   const styles = useStyles(buildStyles);
   const router = useRouter();
@@ -51,8 +56,6 @@ export function TutorialCarouselScreen() {
   const slides = useMemo(() => (config ? selectOnboardingSlides(config) : []), [config]);
   const lastIndex = Math.max(0, slides.length - 1);
   const isLast = index >= lastIndex;
-  const home = role ? getRoleHome(role) : null;
-
   /** Fin du parcours : onboarding marqué terminé, puis proposition biométrie, puis navigation. */
   const completeOnboarding = useCallback(
     (target: Href) => {
@@ -93,13 +96,17 @@ export function TutorialCarouselScreen() {
     [reducedMotion],
   );
 
+  const finishAtHome = useCallback(() => {
+    void finish(roleHomeOrNull(role));
+  }, [finish, role]);
+
   const goNext = useCallback(() => {
     if (isLast) {
-      void finish(home);
+      finishAtHome();
       return;
     }
     scrollTo(index + 1);
-  }, [finish, home, index, isLast, scrollTo]);
+  }, [finishAtHome, index, isLast, scrollTo]);
 
   const goPrev = useCallback(() => {
     if (index <= 0) return;
@@ -136,7 +143,7 @@ export function TutorialCarouselScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Row align="center" justify="between" style={styles.topBar}>
           <AppText style={styles.kicker}>{kicker}</AppText>
-          <Button title="Passer" variant="ghost" onPress={() => void finish(home)} />
+          <Button title="Passer" variant="ghost" onPress={finishAtHome} />
         </Row>
 
         <View
@@ -210,7 +217,7 @@ export function TutorialCarouselScreen() {
                   <Button title="Précédent" variant="ghost" fullWidth onPress={goPrev} />
                 </View>
                 <View style={styles.actionFlex}>
-                  <Button title="Plus tard" variant="ghost" fullWidth onPress={() => void finish(home)} />
+                  <Button title="Plus tard" variant="ghost" fullWidth onPress={finishAtHome} />
                 </View>
               </Row>
             </View>

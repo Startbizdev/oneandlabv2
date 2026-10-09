@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
 import { Row } from '@/components/layout/primitives';
 import { Button } from '@/components/ui/Button';
-import { getErrorMessage } from '@/lib/errors/handle-api-error';
+import { aiChatErrorMessage } from '../utils/ai-chat-errors';
 import { spacing, iconSize, AppText, useStyles, font, type Theme, ICON_STROKE_WIDTH } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
 
@@ -25,7 +25,7 @@ export function CaryAiSendFailureNotice({ error, onRetry, onEdit }: Props) {
         </AppText>
       </Row>
       <AppText variant="secondary" style={styles.text}>
-        {getErrorMessage(error, 'Cary est momentanément indisponible. Vérifiez votre connexion puis réessayez.')}
+        {aiChatErrorMessage(error)}
       </AppText>
       <Row gap={spacing[2]} justify="end">
         <Button title="Modifier" variant="ghost" size="sm" onPress={onEdit} />

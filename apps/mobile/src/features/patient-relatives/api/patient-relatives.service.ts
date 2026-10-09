@@ -4,6 +4,8 @@ import type { AddressPayload } from '@/features/appointments/form/types';
 
 export interface PatientRelative {
   id: string;
+  /** Dossier patient du proche (carnet, constantes, soignants) ; absent avant sa création. */
+  profile_id?: string | null;
   first_name?: string;
   last_name?: string;
   birth_date?: string;

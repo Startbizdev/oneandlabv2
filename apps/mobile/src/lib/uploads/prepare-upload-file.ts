@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { MAX_UPLOAD_BYTES } from './upload-limits';
 import type { UploadFileInput } from './upload-file';
 import { inspectMedDocFile, inspectMedDocFilePair, logMedDoc } from './medical-doc-file-debug';
@@ -48,11 +49,32 @@ function extensionForFile(mimeType: string, fileName: string): string {
   return '.jpg';
 }
 
+/** Au-delà, une photo est réencodée en JPEG avant l'envoi (photos de galerie de plusieurs Mo). */
+const RECOMPRESS_ABOVE_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_SIDE = 2560;
+const JPEG_QUALITY = 0.8;
+
+function isHeicMime(mimeType: string): boolean {
+  return mimeType === 'image/heic' || mimeType === 'image/heif';
+}
+
+/** Réencode en JPEG (plus grand côté ≤ MAX_IMAGE_SIDE) ; renvoie l'URI du fichier créé dans le cache. */
+async function reencodeAsJpeg(uri: string): Promise<string> {
+  const context = ImageManipulator.manipulate(uri);
+  let image = await context.renderAsync();
+  if (Math.max(image.width, image.height) > MAX_IMAGE_SIDE) {
+    context.resize(image.width >= image.height ? { width: MAX_IMAGE_SIDE } : { height: MAX_IMAGE_SIDE });
+    image = await context.renderAsync();
+  }
+  const saved = await image.saveAsync({ compress: JPEG_QUALITY, format: SaveFormat.JPEG });
+  return saved.uri;
+}
+
 /**
  * Prépare un fichier pour POST multipart.
  * — Copie vers le cache (URI caméra temporaire / content:// Android).
- * — Aucune recompression ImageManipulator (photos noires sur appareil photo).
- * — La compression se fait à la prise de vue (ImagePicker quality).
+ * — HEIC / HEIF (galerie iPhone) et photos de plus de 4 Mo : réencodées en JPEG compressé.
+ * — Les autres images partent telles quelles : la recompression systématique noircissait des photos d'appareil.
  */
 export async function prepareMedicalUploadFile(file: UploadFileInput): Promise<UploadFileInput> {
   logMedDoc('prepare:IN', {
@@ -80,9 +102,23 @@ export async function prepareMedicalUploadFile(file: UploadFileInput): Promise<U
   const destUri = `${cacheDir}medical-upload-${Date.now()}-${destName}`;
 
   await FileSystem.copyAsync({ from: file.uri, to: destUri });
-  await assertUploadSize(destUri);
   await inspectMedDocFilePair(file.uri, destUri, 'prepare:copy');
 
+  const sourceSize = isImage ? await getFileSize(destUri) : null;
+  if (isImage && (isHeicMime(mimeType) || (sourceSize ?? 0) > RECOMPRESS_ABOVE_BYTES)) {
+    const jpegUri = await reencodeAsJpeg(destUri);
+    await assertUploadSize(jpegUri);
+    const out = {
+      ...file,
+      uri: jpegUri,
+      fileName: `${safeBaseName(file.fileName)}.jpg`,
+      mimeType: 'image/jpeg',
+    };
+    logMedDoc('prepare:OUT:jpeg', { ...out, sourceSize, sourceMime: mimeType });
+    return out;
+  }
+
+  await assertUploadSize(destUri);
   const out = {
     ...file,
     uri: destUri,

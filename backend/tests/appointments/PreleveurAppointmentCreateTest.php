@@ -70,6 +70,7 @@ final class PreleveurAppointmentCreateTest extends TestCase
                 $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$id]);
             }
         }
+        unset($this->notifications, $this->users, $this->crypto, $this->db);
         parent::tearDown();
     }
 

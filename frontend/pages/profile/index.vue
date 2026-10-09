@@ -917,7 +917,7 @@
                 @update:error="documentError = $event"
               />
               <PatientPrescriptionsSection
-                v-if="showStaffPatientPrescriptions"
+                v-if="showStaffCareTeamPanels"
                 :patient-id="effectiveUserId"
                 :role-base="staffPrescriptionsRoleBase"
                 :prescription-kind="staffPrescriptionKind"
@@ -928,12 +928,25 @@
                 :editable="showStaffPatientHealthRecord"
                 :clinical-vitals="showStaffClinicalVitals"
               />
+              <PatientTransmissionsPanel v-if="showStaffCareTeamPanels" :patient-id="effectiveUserId" />
+              <div
+                v-if="isProEditingPatient && isEditingRelativeProfile"
+                class="rounded-xl border border-default/60 bg-elevated/40 p-4"
+              >
+                <UCheckbox
+                  v-model="relativeEditBookingConsent"
+                  :disabled="saving"
+                  :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
+                  :ui="{ label: 'text-sm font-medium leading-snug text-default' }"
+                />
+              </div>
               <div v-if="isProEditingPatient" class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
                   color="primary"
                   icon="i-lucide-save"
                   :loading="saving"
+                  :disabled="isEditingRelativeProfile && !relativeEditBookingConsent"
                   class="w-full justify-center font-medium text-base py-4 rounded-xl"
                   @click="saveAll"
                 >
@@ -1125,6 +1138,8 @@ const preleveurLabId = ref('')
 const newPatientMode = ref(false)
 const createdPatientId = ref<string | null>(null)
 const newPatientBookingConsent = ref(false)
+/** Proche sans dossier propre (ancien lien) : le PUT staff exige le consentement du patient. */
+const relativeEditBookingConsent = ref(false)
 /** Rôles staff avec une liste « Mes patients » (création et fiche patient). */
 const staffManagesPatients = computed(() =>
   ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? ''),
@@ -1201,6 +1216,7 @@ function syncEditingRelativeIdFromRoute() {
   const raw = route.query.relativeId
   const rid = typeof raw === 'string' ? raw.trim() : Array.isArray(raw) ? String(raw[0] ?? '').trim() : ''
   editingRelativeId.value = rid || null
+  relativeEditBookingConsent.value = false
   if (!rid) editingRelativeRelationship.value = null
 }
 
@@ -1465,16 +1481,18 @@ const showPatientProfileHistory = computed(
     role.value === 'patient' &&
     ['super_admin', 'pro', 'nurse', 'lab', 'subaccount'].includes(user.value?.role ?? '')
 )
-const showStaffPatientPrescriptions = computed(
+/** Dossier clinique du titulaire : jamais affiché sur la fiche d'un proche (ses données iraient au titulaire). */
+const showStaffPatientClinicalFile = computed(
+  () => !!editingUserId.value && role.value === 'patient' && !editingRelativeId.value
+)
+const showStaffCareTeamPanels = computed(
   () =>
-    !!editingUserId.value &&
-    role.value === 'patient' &&
+    showStaffPatientClinicalFile.value &&
     (user.value?.role === 'pro' || user.value?.role === 'nurse')
 )
 const showStaffPatientHealthRecord = computed(
   () =>
-    !!editingUserId.value &&
-    role.value === 'patient' &&
+    showStaffPatientClinicalFile.value &&
     ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? '')
 )
 /** Constantes médicales : saisie infirmier / pro uniquement */
@@ -1993,6 +2011,11 @@ const loadRelativeProfileForStaff = async () => {
       throw new Error('Impossible de charger la fiche du proche. Réessayez.')
     }
     const r = res.data as Record<string, unknown>
+    const relativeProfileId = typeof r.profile_id === 'string' ? r.profile_id.trim() : ''
+    if (relativeProfileId) {
+      await navigateTo({ path: '/profile', query: { userId: relativeProfileId } }, { replace: true })
+      return
+    }
     editingRelativeRelationship.value =
       typeof r.relationship_type === 'string' ? r.relationship_type : null
     profileForm.value = {
@@ -2269,7 +2292,16 @@ const saveProfile = async (fromSaveAll = false) => {
     if (!targetId) return
 
     if (isEditingRelativeProfile.value && editingRelativeId.value) {
+      if (!relativeEditBookingConsent.value) {
+        toast.add({
+          title: 'Consentement requis',
+          description: 'Confirmez le consentement du patient avant d’enregistrer.',
+          color: 'red',
+        })
+        return
+      }
       const relativeBody: Record<string, unknown> = {
+        patient_booking_consent: true,
         first_name: profileForm.value.first_name,
         last_name: profileForm.value.last_name,
         phone: profileForm.value.phone || null,

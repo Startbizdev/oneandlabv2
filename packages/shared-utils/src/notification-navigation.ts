@@ -22,7 +22,41 @@ export type NotificationNavIntent =
       kind: 'pharmacy_order';
       orderId: string;
       messageId?: string;
-    };
+      /** Vue du destinataire : officine (`received`) ou demandeur (`sent`) ; absent si inconnu. */
+      side?: PharmacyOrderNotificationSide;
+    }
+  /** Infirmier / pro : fil des transmissions du dossier patient. */
+  | { kind: 'patient_transmissions'; patientId: string }
+  /** Infirmier : série de passages partagée par un confrère. */
+  | { kind: 'passage_series'; seriesId: string; date?: string }
+  /** Infirmier : tournée du jour indiqué (remplacement sur une période). */
+  | { kind: 'nurse_tour'; date?: string };
+
+export type PharmacyOrderNotificationSide = 'received' | 'sent';
+
+const TRANSMISSION_NOTIF_TYPES = new Set(['patient_transmission', 'patient_transmission_for_doctor']);
+
+const PHARMACY_RECEIVED_NOTIF_TYPES = new Set(['pharmacy_order_created', 'pharmacy_order_prescriptions_added']);
+
+const PHARMACY_SENT_NOTIF_TYPES = new Set([
+  'pharmacy_order_accepted',
+  'pharmacy_order_refused',
+  'pharmacy_order_complement_requested',
+  'pharmacy_order_completed',
+]);
+
+/** `pharmacy_order_side` (backend) prime ; le type couvre les notifications envoyées avant son ajout. */
+function pharmacyOrderSide(
+  type: string,
+  data: Record<string, unknown>,
+): PharmacyOrderNotificationSide | undefined {
+  if (data.pharmacy_order_side === 'received' || data.pharmacy_order_side === 'sent') {
+    return data.pharmacy_order_side;
+  }
+  if (PHARMACY_RECEIVED_NOTIF_TYPES.has(type)) return 'received';
+  if (PHARMACY_SENT_NOTIF_TYPES.has(type)) return 'sent';
+  return undefined;
+}
 
 export type NotificationNavInput = {
   type?: string | null;
@@ -49,6 +83,15 @@ export function getNotificationAppointmentId(
 ): string | null {
   const id = notif.appointment_id ?? data.appointment_id ?? data.appointmentId;
   return id != null && String(id).trim() !== '' ? String(id) : null;
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return value != null && String(value).trim() !== '' ? String(value).trim() : null;
+}
+
+function isoDay(value: unknown): string | null {
+  const day = nonEmptyString(value)?.slice(0, 10) ?? null;
+  return day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
 }
 
 function messageId(data: Record<string, unknown>): string | null {
@@ -90,15 +133,33 @@ export function resolveNotificationNavIntent(
     (type.startsWith('pharmacy_order_') || type === 'pharmacy_order_message')
   ) {
     if (role === 'nurse' || role === 'pro' || role === 'patient' || role === 'super_admin') {
+      const side = pharmacyOrderSide(type, data);
       return {
         kind: 'pharmacy_order',
         orderId: pharmacyOrderId,
         ...(type === 'pharmacy_order_message' && conversationMessageId
           ? { messageId: conversationMessageId }
           : {}),
+        ...(side ? { side } : {}),
       };
     }
     return { kind: 'none' };
+  }
+
+  if (type === 'nurse_collaboration_added') {
+    if (role !== 'nurse') return { kind: 'none' };
+    if (aptId) return { kind: 'appointment', appointmentId: aptId };
+    const seriesId = nonEmptyString(data.passage_series_id);
+    const date = isoDay(data.start_date);
+    if (seriesId) return { kind: 'passage_series', seriesId, ...(date ? { date } : {}) };
+    return { kind: 'nurse_tour', ...(date ? { date } : {}) };
+  }
+
+  if (TRANSMISSION_NOTIF_TYPES.has(type)) {
+    const patientId = data.patient_id != null ? String(data.patient_id).trim() : '';
+    return patientId && (role === 'nurse' || role === 'pro')
+      ? { kind: 'patient_transmissions', patientId }
+      : { kind: 'none' };
   }
 
   const isNewReview =

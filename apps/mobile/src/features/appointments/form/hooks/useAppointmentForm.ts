@@ -5,11 +5,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
   buildDashboardAppointmentPayloads,
+  directedProviderAppointmentTypes,
   filterStaffOnlyCareCategoriesForPatient,
   NURSE_BLOOD_TEST_AWAITING_LAB_MESSAGE,
   nurseBookingAwaitsLabConfirmation,
   validateUnifiedRdvPayload,
   validateLabPreferenceBeforeSubmit,
+  type DirectedProvider,
   type SelectedServiceInput,
 } from '@oneandlab/shared-utils';
 import type { LabPreferenceMode } from '@oneandlab/shared-types';
@@ -80,6 +82,8 @@ export function useMultiAppointmentWizard(opts: {
   getPatientBookingConsent?: () => boolean;
   getProNurseAssignment?: () => ProNurseAssignment | null;
   getLabPreference?: () => { mode: LabPreferenceMode | ''; brandId: string | null };
+  /** Soignant présélectionné par le patient : catalogue limité à ses soins. */
+  directedProvider?: DirectedProvider | null;
   /** Brouillon local repris : valeurs initiales du tunnel de création. */
   initialDraft?: BookingDraftData | null;
   /** Appelé dès que les RDV sont créés côté serveur. */
@@ -239,23 +243,28 @@ export function useMultiAppointmentWizard(opts: {
   );
 
   const bloodTestOnly = isBloodTestOnlyBookingRole(opts.role);
+  const providerId = opts.directedProvider?.id ?? null;
+  const providerTypes = opts.directedProvider
+    ? directedProviderAppointmentTypes(opts.directedProvider.type)
+    : null;
 
   const nursingCatsQ = useQuery({
-    queryKey: queryKeys.categories.list('nursing', 'picker'),
+    queryKey: queryKeys.categories.list('nursing', 'picker', providerId),
     queryFn: async () => {
-      const res = await fetchCareCategories('nursing', 'picker');
+      const res = await fetchCareCategories('nursing', 'picker', providerId);
       return res.data ?? [];
     },
     staleTime: CACHE_STALE_CATEGORIES_MS,
-    enabled: !bloodTestOnly,
+    enabled: !bloodTestOnly && (providerTypes?.includes('nursing') ?? true),
   });
   const bloodCatsQ = useQuery({
-    queryKey: queryKeys.categories.list('blood_test', 'picker'),
+    queryKey: queryKeys.categories.list('blood_test', 'picker', providerId),
     queryFn: async () => {
-      const res = await fetchCareCategories('blood_test', 'picker');
+      const res = await fetchCareCategories('blood_test', 'picker', providerId);
       return res.data ?? [];
     },
     staleTime: CACHE_STALE_CATEGORIES_MS,
+    enabled: providerTypes?.includes('blood_test') ?? true,
   });
 
   const ensureCategoryReady = useCallback(
@@ -265,11 +274,11 @@ export function useMultiAppointmentWizard(opts: {
       const options = res.data ?? [];
       const patchList = (prev: CareCategory[] | undefined) =>
         (prev ?? []).map((c) => (c.id === cat.id ? { ...c, options } : c));
-      qc.setQueryData(queryKeys.categories.list('nursing', 'picker'), patchList);
-      qc.setQueryData(queryKeys.categories.list('blood_test', 'picker'), patchList);
+      qc.setQueryData(queryKeys.categories.list('nursing', 'picker', providerId), patchList);
+      qc.setQueryData(queryKeys.categories.list('blood_test', 'picker', providerId), patchList);
       return { ...cat, options };
     },
-    [qc],
+    [qc, providerId],
   );
 
   const nursingSource = useMemo(
@@ -334,6 +343,7 @@ export function useMultiAppointmentWizard(opts: {
     });
   }, []);
 
+  const submissionLockedRef = useRef(false);
   const [submissionLocked, setSubmissionLocked] = useState(false);
 
   const submitMut = useMutation({
@@ -549,12 +559,16 @@ export function useMultiAppointmentWizard(opts: {
     ensureCategoryReady,
     saving: submitMut.isPending || submissionLocked,
     submit: useCallback(() => {
-      if (submissionLocked || submitMut.isPending) return;
+      if (submissionLockedRef.current) return;
+      submissionLockedRef.current = true;
       setSubmissionLocked(true);
       submitMut.mutate(undefined, {
-        onError: () => setSubmissionLocked(false),
+        onError: () => {
+          submissionLockedRef.current = false;
+          setSubmissionLocked(false);
+        },
       });
-    }, [submitMut, submissionLocked]),
+    }, [submitMut]),
     isNewPatient: patientMode === 'new',
   };
 }

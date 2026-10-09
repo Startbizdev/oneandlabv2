@@ -278,7 +278,7 @@ class PrescriptionService
         $appointment = null;
         if ($appointmentId !== null && $appointmentId !== '') {
             $stmt = $db->prepare('
-                SELECT id, patient_id, type, status, assigned_nurse_id, assigned_lab_id, assigned_to, created_by,
+                SELECT id, patient_id, relative_id, type, status, assigned_nurse_id, assigned_lab_id, assigned_to, created_by,
                        form_data_encrypted, form_data_dek, address_encrypted, address_dek
                 FROM appointments WHERE id = ?
             ');
@@ -291,9 +291,16 @@ class PrescriptionService
             if (($appointment['status'] ?? '') === 'canceled') {
                 return ['success' => false, 'http' => 400, 'error' => 'Impossible de créer une ordonnance pour un rendez-vous annulé'];
             }
-            if (($appointment['patient_id'] ?? '') !== $patientId) {
+            // Ordonnance au nom du patient soigné : le dossier du proche pour un RDV de proche
+            // (le titulaire reste accepté en entrée, la réponse porte toujours le dossier).
+            require_once __DIR__ . '/MedicalDocumentAccess.php';
+            $holderId = (string) ($appointment['patient_id'] ?? '');
+            $relativeId = isset($appointment['relative_id']) ? (string) $appointment['relative_id'] : null;
+            $dossierId = MedicalDocumentAccess::subjectDossierId($db, $holderId, $relativeId) ?? $holderId;
+            if ($patientId !== $dossierId && $patientId !== $holderId) {
                 return ['success' => false, 'http' => 400, 'error' => 'Le rendez-vous ne correspond pas au patient sélectionné'];
             }
+            $patientId = $dossierId;
             if ($prescriptionKind === self::KIND_NURSING && ($appointment['type'] ?? '') !== 'nursing') {
                 return ['success' => false, 'http' => 400, 'error' => 'Les prescriptions infirmières ne peuvent être générées que pour des rendez-vous de soins infirmiers'];
             }
@@ -400,12 +407,14 @@ class PrescriptionService
             if ($hasPpa || $isCreator) {
                 return true;
             }
-            $aptStmt = $db->prepare('
-                SELECT 1 FROM appointments
-                WHERE patient_id = ? AND (created_by = ? OR assigned_to = ?)
+            require_once __DIR__ . '/RelativeProfile.php';
+            [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
+            $aptStmt = $db->prepare("
+                SELECT 1 FROM appointments a
+                WHERE {$subjectSql} AND (a.created_by = ? OR a.assigned_to = ?)
                 LIMIT 1
-            ');
-            $aptStmt->execute([$patientId, $userId, $userId]);
+            ");
+            $aptStmt->execute([...$subjectParams, $userId, $userId]);
 
             return (bool) $aptStmt->fetchColumn();
         }
@@ -701,7 +710,7 @@ class PrescriptionService
         }
         $offset = ($page - 1) * $limit;
 
-        $where = 'md.uploaded_by = ? AND md.document_type = \'ordonnance\'';
+        $where = 'md.uploaded_by = ? AND md.document_type = \'ordonnance\' AND md.replaced_by_document_id IS NULL';
         $params = [$profileId];
 
         if ($role === 'nurse') {

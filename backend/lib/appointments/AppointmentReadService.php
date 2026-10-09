@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/AppointmentCreationValidator.php';
 require_once __DIR__ . '/AppointmentFormDataCrypto.php';
 require_once __DIR__ . '/AppointmentReviewStats.php';
@@ -24,9 +25,13 @@ final class AppointmentReadService
     }
     public function getById(string $id, string $requesterId, string $requesterRole): ?array
     {
+        $relativeProfileSelect = DbSchemaCache::tableHasColumn($this->db, 'patient_relatives', 'profile_id')
+            ? 'pr.profile_id as relative_profile_id,'
+            : '';
         $stmt = $this->db->prepare('
             SELECT
                 a.*,
+                ' . $relativeProfileSelect . '
                 pr.first_name_encrypted as relative_first_name_encrypted,
                 pr.first_name_dek as relative_first_name_dek,
                 pr.last_name_encrypted as relative_last_name_encrypted,
@@ -83,6 +88,7 @@ final class AppointmentReadService
                     ? $this->crypto->decryptField($appointment['relative_birth_date_encrypted'], $appointment['relative_birth_date_dek'])
                     : null,
                 'contact_is_parent' => false,
+                'profile_id' => $appointment['relative_profile_id'] ?? null,
             ];
 
             // Fallback : si le proche n'a pas d'email/téléphone, utiliser ceux du patient parent

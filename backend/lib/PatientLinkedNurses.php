@@ -3,15 +3,18 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/RelativeProfile.php';
 
 /**
  * Infirmiers Cary déjà liés à un patient (accès pro + historique RDV).
+ * Dossier d'un proche : ses propres RDV ; titulaire : tous les RDV qu'il porte (y compris pour ses proches).
  */
 final class PatientLinkedNurses
 {
     /** Même périmètre que listForPatient : lien d'accès ou soin déjà assigné à cet infirmier. */
     public static function isLinked(PDO $db, string $patientId, string $nurseId): bool
     {
+        [$appointmentSql, $appointmentParams] = self::appointmentScope($db, $patientId);
         $stmt = $db->prepare("
             SELECT 1 FROM profiles p
             WHERE p.id = ? AND p.role = 'nurse'
@@ -19,12 +22,12 @@ final class PatientLinkedNurses
                 EXISTS (SELECT 1 FROM patient_professional_access ppa WHERE ppa.patient_id = ? AND ppa.professional_id = p.id)
                 OR EXISTS (
                     SELECT 1 FROM appointments a
-                    WHERE a.patient_id = ? AND a.type = 'nursing' AND a.assigned_nurse_id = p.id
+                    WHERE $appointmentSql AND a.type = 'nursing' AND a.assigned_nurse_id = p.id
                 )
               )
             LIMIT 1
         ");
-        $stmt->execute([$nurseId, $patientId, $patientId]);
+        $stmt->execute([$nurseId, $patientId, ...$appointmentParams]);
 
         return (bool) $stmt->fetchColumn();
     }
@@ -34,6 +37,7 @@ final class PatientLinkedNurses
      */
     public static function listForPatient(PDO $db, string $patientId): array
     {
+        [$appointmentSql, $appointmentParams] = self::appointmentScope($db, $patientId);
         $sql = "
             SELECT
                 p.id,
@@ -50,12 +54,12 @@ final class PatientLinkedNurses
             LEFT JOIN patient_professional_access ppa
                 ON ppa.professional_id = p.id AND ppa.patient_id = ?
             LEFT JOIN (
-                SELECT assigned_nurse_id AS nurse_id, MAX(COALESCE(scheduled_at, created_at)) AS last_at
-                FROM appointments
-                WHERE patient_id = ?
-                  AND type = 'nursing'
-                  AND assigned_nurse_id IS NOT NULL
-                GROUP BY assigned_nurse_id
+                SELECT a.assigned_nurse_id AS nurse_id, MAX(COALESCE(a.scheduled_at, a.created_at)) AS last_at
+                FROM appointments a
+                WHERE $appointmentSql
+                  AND a.type = 'nursing'
+                  AND a.assigned_nurse_id IS NOT NULL
+                GROUP BY a.assigned_nurse_id
             ) a ON a.nurse_id = p.id
             WHERE p.role = 'nurse'
               AND (ppa.professional_id IS NOT NULL OR a.nurse_id IS NOT NULL)
@@ -65,7 +69,7 @@ final class PatientLinkedNurses
         ";
 
         $stmt = $db->prepare($sql);
-        $stmt->execute([$patientId, $patientId]);
+        $stmt->execute([$patientId, ...$appointmentParams]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if ($rows === []) {
             return [];
@@ -111,5 +115,15 @@ final class PatientLinkedNurses
         }
 
         return $out;
+    }
+
+    /** @return array{0: string, 1: list<string>} */
+    private static function appointmentScope(PDO $db, string $patientId): array
+    {
+        if (RelativeProfile::resolve($db, $patientId) !== null) {
+            return RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
+        }
+
+        return ['a.patient_id = ?', [$patientId]];
     }
 }

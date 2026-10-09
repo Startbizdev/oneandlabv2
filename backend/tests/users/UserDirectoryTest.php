@@ -27,6 +27,12 @@ final class UserDirectoryTest extends TestCase
         $this->pdo = TestDatabase::pdo();
     }
 
+    protected function tearDown(): void
+    {
+        unset($this->pdo);
+        parent::tearDown();
+    }
+
     public function testFixtureProfilesExistByRole(): void
     {
         $stmt = $this->pdo->query('SELECT role, COUNT(*) AS n FROM profiles GROUP BY role');

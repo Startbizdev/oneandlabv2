@@ -183,39 +183,51 @@ final class HealthRecordService
      * @param array<string, mixed> $viewer
      * @return array<string, mixed>
      */
-    public function getRecapForStaff(array $viewer, string $patientId): array
+    public function getRecapForViewer(array $viewer, string $patientId): array
     {
-        $this->assertStaffAccess($viewer, $patientId);
+        $this->assertDossierAccess($viewer, $patientId);
         $this->logAccess($viewer, $patientId);
 
-        return $this->getRecap($patientId, true);
+        return $this->getRecap($patientId, !$this->isPatientViewer($viewer));
     }
 
     /**
-     * Écriture soignant : l'accès au dossier est vérifié avant toute écriture.
+     * Écriture soignant ou titulaire d'un proche : l'accès au dossier est vérifié avant toute écriture.
      *
      * @param array<string, mixed> $viewer
      * @param array<string, array{value: mixed}> $answers
      * @return array<string, mixed>
      */
-    public function upsertAnswersForStaff(array $viewer, string $patientId, array $answers): array
+    public function upsertAnswersForViewer(array $viewer, string $patientId, array $answers): array
     {
-        $this->assertStaffAccess($viewer, $patientId);
-        $this->upsertAnswers($patientId, $answers, 'staff');
+        $this->assertDossierAccess($viewer, $patientId);
+        $patientViewer = $this->isPatientViewer($viewer);
+        $this->upsertAnswers($patientId, $answers, $patientViewer ? 'patient' : 'staff');
         $this->logAccess($viewer, $patientId);
 
-        return $this->getRecap($patientId, true);
+        return $this->getRecap($patientId, !$patientViewer);
     }
 
     /**
+     * Soignant ayant accès au dossier, ou patient titulaire du proche dont c'est le dossier
+     * (un patient passe par /health-record pour son propre carnet).
+     *
      * @param array<string, mixed> $viewer
      */
-    private function assertStaffAccess(array $viewer, string $patientId): void
+    private function assertDossierAccess(array $viewer, string $patientId): void
     {
-        $userModel = new User();
-        if (!PatientDossierAccess::canAccess($this->db, $userModel, $viewer, $patientId)) {
+        $allowed = $this->isPatientViewer($viewer)
+            ? PatientDossierAccess::isRelativeOwner($this->db, $viewer, $patientId)
+            : PatientDossierAccess::canAccess($this->db, new User($this->db), $viewer, $patientId);
+        if (!$allowed) {
             throw new RuntimeException('Accès carnet refusé');
         }
+    }
+
+    /** @param array<string, mixed> $viewer */
+    private function isPatientViewer(array $viewer): bool
+    {
+        return ($viewer['role'] ?? '') === 'patient';
     }
 
     /**

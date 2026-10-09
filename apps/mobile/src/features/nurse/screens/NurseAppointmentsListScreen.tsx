@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalendarPlus } from 'lucide-react-native';
-import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
+import { isNursePassageAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -20,7 +20,9 @@ import { NurseSegmentChips } from '@/features/nurse/components/NurseSegmentChips
 import { useOpenIncomingOffer } from '@/features/nurse/hooks/use-open-incoming-offer';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
-import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
+import { buildAppointmentDisplayRows, sortAppointmentListRows } from '@/utils/appointment-list-sort';
+import { Badge } from '@/components/ui/Badge';
+import { nursePassageDetailHref } from '@/features/tournee-nurse/utils/passage-detail-href';
 import { AppointmentsFilterSheet } from '@/features/appointments/components/AppointmentsFilterSheet';
 import { AppointmentsListSearchHost } from '@/features/appointments/components/AppointmentsListFilterBar';
 import {
@@ -39,6 +41,7 @@ import {
   NURSE_SEGMENT_OPTIONS,
   NURSE_TAB_OPTIONS,
   normalizeNurseSegment,
+  nurseSegmentPeriod,
   type NurseListTab,
   type NurseSegment,
 } from '@/constants/appointments-list-filters';
@@ -90,6 +93,7 @@ export function NurseAppointmentsListScreen() {
   const query = useInfiniteAppointmentsList({
     nurse_tab: tab,
     nurse_segment: apiSegment,
+    patient_period: nurseSegmentPeriod(segment),
     limit: APPOINTMENTS_LIST_PAGE_SIZE,
   });
 
@@ -112,15 +116,20 @@ export function NurseAppointmentsListScreen() {
 
   const sortDirection = segment === 'historique' ? ('past' as const) : ('upcoming' as const);
 
-  const displayRows = useMemo(
-    (): AppointmentListRow[] =>
-      buildAppointmentDisplayRows(filtered, {
+  /** Un passage infirmier = une visite : une carte par passage, jamais regroupé en lot. */
+  const displayRows = useMemo((): AppointmentListRow[] => {
+    const grouped = buildAppointmentDisplayRows(
+      filtered.filter((a) => !isNursePassageAppointment(a)),
+      {
         direction: sortDirection,
-        groupMode:
-          tab === 'soins' && segment === 'en_attente' ? 'nurse-demandes' : 'batch',
-      }),
-    [filtered, tab, segment, sortDirection],
-  );
+        groupMode: tab === 'soins' && segment === 'en_attente' ? 'nurse-demandes' : 'batch',
+      },
+    );
+    const passages = filtered
+      .filter(isNursePassageAppointment)
+      .map((appointment): AppointmentListRow => ({ kind: 'single', appointment }));
+    return sortAppointmentListRows([...grouped, ...passages], sortDirection);
+  }, [filtered, tab, segment, sortDirection]);
 
   const refetchList = useCallback(() => {
     void refetch();
@@ -163,6 +172,14 @@ export function NurseAppointmentsListScreen() {
     (row: AppointmentListRow, apt: Appointment, isOffer: boolean) => {
       if (isOffer && user?.id) {
         openOffer(row, apt);
+      } else if (isNursePassageAppointment(apt)) {
+        router.push(
+          nursePassageDetailHref({
+            passage_series_id: apt.passage_series_id,
+            appointment_id: apt.id,
+            stop_id: '',
+          }),
+        );
       } else {
         router.push(appointmentDetailHref('/(nurse)', apt.id));
       }
@@ -236,6 +253,13 @@ export function NurseAppointmentsListScreen() {
                   role={isOffer ? 'demande' : 'nurse'}
                   viewerId={user?.id}
                   onPress={(apt) => onRowPress(row, apt, isOffer)}
+                  footer={
+                    row.kind === 'single' && isNursePassageAppointment(row.appointment) ? (
+                      <View style={styles.badgeRow}>
+                        <Badge label="Passage" variant="primary" size="sm" />
+                      </View>
+                    ) : undefined
+                  }
                 />
               );
             })}
@@ -300,6 +324,9 @@ function buildStyles({ colors: c }: Theme) {
     rows: {
       minWidth: 0,
       alignSelf: 'stretch' as const,
+    },
+    badgeRow: {
+      flexDirection: 'row' as const,
     },
     emptyWrap: {
       minWidth: 0,

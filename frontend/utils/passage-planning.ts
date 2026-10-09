@@ -290,14 +290,14 @@ export function embedTimeRangeInPlanningConfig(
   timeRange: [number, number] | null | undefined,
   dailyTimeSlots?: PassageDailyTimeSlot[],
 ): PassagePlanningConfig {
-  const base = { ...(planningConfig as Record<string, unknown>) };
+  const next: PassagePlanningConfig = { ...planningConfig };
   if (!timeRange) {
-    delete base.time_range;
+    delete next.time_range;
   } else {
-    base.time_range = timeRange;
+    next.time_range = timeRange;
   }
   if (dailyTimeSlots && dailyTimeSlots.length > 0) {
-    base.daily_time_slots = dailyTimeSlots;
+    next.daily_time_slots = dailyTimeSlots;
   }
-  return base as PassagePlanningConfig;
+  return next;
 }

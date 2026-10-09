@@ -11,6 +11,7 @@ interface Props {
   selected?: boolean;
   favorite?: boolean;
   onPress: () => void;
+  onViewProfile?: () => void;
   onToggleFavorite?: () => void;
   favoriteLoading?: boolean;
 }
@@ -21,6 +22,7 @@ export function PharmacyCatalogCard({
   selected = false,
   favorite = false,
   onPress,
+  onViewProfile,
   onToggleFavorite,
   favoriteLoading = false,
 }: Props) {
@@ -64,6 +66,19 @@ export function PharmacyCatalogCard({
           <AppText style={styles.title}>{item.display_name}</AppText>
           {item.emploi ? <AppText variant="secondary">{item.emploi}</AppText> : null}
           {addressLine ? <AppText variant="caption">{addressLine}</AppText> : null}
+          {onViewProfile ? (
+            <Pressable
+              onPress={(event) => {
+                event.stopPropagation();
+                onViewProfile();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Voir la fiche de ${item.display_name}`}
+              hitSlop={8}
+            >
+              <AppText style={styles.profileLink}>Voir la fiche</AppText>
+            </Pressable>
+          ) : null}
         </View>
       </Cluster>
     </Pressable>
@@ -93,6 +108,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       ...font.semiBold,
       fontSize: fontSize.base,
       color: c.textPrimary,
+    },
+    profileLink: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.primary,
+      marginTop: spacing[1],
     },
   };
 }

@@ -11,14 +11,15 @@ final class PassageDateExpander
 
     /**
      * @param array<string, mixed> $config
+     * @param string|null $openEndedUntil Série sans fin : prolonge l'horizon glissant jusqu'à cette date (Y-m-d)
      * @return list<string> Dates Y-m-d triées uniques
      */
-    public static function expand(string $planningType, array $config): array
+    public static function expand(string $planningType, array $config, ?string $openEndedUntil = null): array
     {
         return match ($planningType) {
             'single_day', 'manual' => self::singleDay($config),
-            'interval' => self::interval($config),
-            'weekdays' => self::weekdays($config),
+            'interval' => self::interval($config, $openEndedUntil),
+            'weekdays' => self::weekdays($config, $openEndedUntil),
             'custom_dates' => self::customDates($config),
             default => throw new InvalidArgumentException('planning_type invalide'),
         };
@@ -49,11 +50,11 @@ final class PassageDateExpander
     }
 
     /** @param array<string, mixed> $config */
-    private static function interval(array $config): array
+    private static function interval(array $config, ?string $openEndedUntil): array
     {
         $start = self::requireStartDate($config);
         $every = max(1, (int) ($config['every_days'] ?? 3));
-        $end = self::resolveEndDate($config, $start);
+        $end = self::resolveEndDate($config, $start, $openEndedUntil);
         $dates = [];
         $cursor = new DateTimeImmutable($start, new DateTimeZone('Europe/Paris'));
         $limit = new DateTimeImmutable($end, new DateTimeZone('Europe/Paris'));
@@ -66,10 +67,10 @@ final class PassageDateExpander
     }
 
     /** @param array<string, mixed> $config */
-    private static function weekdays(array $config): array
+    private static function weekdays(array $config, ?string $openEndedUntil): array
     {
         $start = self::requireStartDate($config);
-        $end = self::resolveEndDate($config, $start);
+        $end = self::resolveEndDate($config, $start, $openEndedUntil);
         $weekdays = $config['weekdays'] ?? [];
         if (!is_array($weekdays) || $weekdays === []) {
             throw new InvalidArgumentException('weekdays requis');
@@ -143,7 +144,7 @@ final class PassageDateExpander
     }
 
     /** @param array<string, mixed> $config */
-    private static function resolveEndDate(array $config, string $start): string
+    private static function resolveEndDate(array $config, string $start, ?string $openEndedUntil = null): string
     {
         $endRaw = trim((string) ($config['end_date'] ?? ''));
         if ($endRaw !== '') {
@@ -153,8 +154,13 @@ final class PassageDateExpander
         $openEnded = !empty($config['open_ended']);
         $horizonDays = $openEnded ? self::OPEN_ENDED_HORIZON_DAYS : self::MAX_DAYS_WITHOUT_END;
         $startDt = new DateTimeImmutable($start, new DateTimeZone('Europe/Paris'));
+        $end = $startDt->modify('+' . ($horizonDays - 1) . ' days')->format('Y-m-d');
 
-        return $startDt->modify('+' . ($horizonDays - 1) . ' days')->format('Y-m-d');
+        if ($openEnded && $openEndedUntil !== null && self::validateEndDate($openEndedUntil) > $end) {
+            return $openEndedUntil;
+        }
+
+        return $end;
     }
 
     private static function validateEndDate(string $endRaw): string

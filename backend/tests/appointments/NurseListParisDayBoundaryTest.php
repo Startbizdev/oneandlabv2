@@ -63,20 +63,41 @@ final class NurseListParisDayBoundaryTest extends TestCase
         $this->assertNotContains($todayId, $history);
     }
 
+    public function testUpcomingPeriodListsSoonestFirstWithoutPast(): void
+    {
+        $nextWeekId = $this->assignedPassage(AppTimezone::sqlDateTime(AppTimezone::now()->modify('+7 days')->setTime(8, 0)));
+        $tomorrowId = $this->assignedPassage(AppTimezone::sqlDateTime(AppTimezone::now()->modify('+1 day')->setTime(8, 0)));
+        $yesterdayId = $this->assignedPassage(AppTimezone::sqlDateTime(AppTimezone::now()->modify('-1 day')->setTime(8, 0)));
+
+        $upcoming = $this->segmentIds('tous', 'upcoming');
+        $past = $this->segmentIds('historique', 'past');
+
+        $this->assertNotContains($yesterdayId, $upcoming);
+        $this->assertLessThan(array_search($nextWeekId, $upcoming, true), array_search($tomorrowId, $upcoming, true));
+        $this->assertContains($yesterdayId, $past);
+        $this->assertNotContains($tomorrowId, $past);
+    }
+
     /** @return list<string> */
-    private function segmentIds(string $segment): array
+    private function segmentIds(string $segment, ?string $period = null): array
     {
         $_GET['nurse_segment'] = $segment;
         $flags = AppointmentListQueryBuilder::schemaFlags($this->db);
-        $sql = (new AppointmentListQueryBuilder(
+        $get = ['scope' => 'list', 'limit' => '50'];
+        if ($period !== null) {
+            $get['patient_period'] = $period;
+        }
+        $builder = new AppointmentListQueryBuilder(
             $this->db,
-            AppointmentListQuery::fromArray(['scope' => 'list', 'limit' => '50']),
+            AppointmentListQuery::fromArray($get),
             ['user_id' => $this->nurseId, 'role' => 'nurse'],
             $flags['useRelativeJoin'],
             $flags['hasMergedColumn'],
-        ))->build();
-        $stmt = $this->db->prepare($sql->selectSql);
-        $stmt->execute($sql->params);
+        );
+        $sql = $builder->build();
+        [$orderBy, $orderParams] = $builder->buildOrderByClause();
+        $stmt = $this->db->prepare($sql->selectSql . $orderBy);
+        $stmt->execute(array_merge($sql->params, $orderParams));
 
         return array_map('strval', array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'id'));
     }

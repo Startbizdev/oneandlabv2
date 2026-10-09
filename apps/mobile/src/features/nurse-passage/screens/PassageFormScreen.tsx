@@ -11,8 +11,9 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import type { SettingsRowProps } from '@/components/ui/SettingsRow';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { DetailSegmentBar } from '@/features/appointments/detail/components/layout/DetailSegmentBar';
-import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { FullWidthSegmentBar, type FullWidthSegment } from '@/components/ui/FullWidthSegmentBar';
+import { createAppointmentRequestId } from '@oneandlab/shared-utils';
+import { invalidateNursePassageQueries } from '../hooks/invalidate-nurse-passage-queries';
 import { usePassagePatient } from '../hooks/use-passage-patient';
 import { PassagePatientHeader } from '../components/PassagePatientHeader';
 import { PASSAGE_FIELD_ICONS } from '../components/passage-field-icons';
@@ -55,10 +56,10 @@ import { H_PADDING, spacing, useStyles, type Theme } from '@/theme';
 type SheetKey = 'planning' | 'daily_times' | 'location' | 'duration' | 'care' | 'notes' | null;
 type SegmentId = 'information' | 'documents' | 'health_record';
 
-const PASSAGE_FORM_SEGMENTS = [
-  { id: 'information' as const, label: 'Informations', Icon: ClipboardList },
-  { id: 'documents' as const, label: 'Documents', Icon: FileText },
-  { id: 'health_record' as const, label: 'Carnet', Icon: HeartPulse },
+const PASSAGE_FORM_SEGMENTS: FullWidthSegment<SegmentId>[] = [
+  { id: 'information', label: 'Informations', Icon: ClipboardList },
+  { id: 'documents', label: 'Documents', Icon: FileText },
+  { id: 'health_record', label: 'Carnet', Icon: HeartPulse },
 ];
 
 function paramString(v: string | string[] | undefined): string {
@@ -89,13 +90,9 @@ export function PassageFormScreen() {
   const [duration, setDuration] = useState<number>(30);
   const [customDuration, setCustomDuration] = useState('');
   const [notes, setNotes] = useState('');
-  const [planningState, setPlanningState] = useState(() => {
-    const base = defaultPlanningFormState(stripDate, { recurring: flowMode === 'recurring' });
-    if (flowMode === 'recurring') {
-      return { ...base, planningMode: 'interval' as const, openEnded: true };
-    }
-    return base;
-  });
+  const [planningState, setPlanningState] = useState(() =>
+    defaultPlanningFormState(stripDate, { recurring: flowMode === 'recurring' }),
+  );
   const [dailyTimeSlots, setDailyTimeSlots] = useState<PassageDailyTimeSlot[]>([
     { time_slot: 'morning', custom_time: null },
   ]);
@@ -106,7 +103,7 @@ export function PassageFormScreen() {
   const [passagePrescriptionDraft, setPassagePrescriptionDraft] =
     useState<PassagePrescriptionDraft | null>(null);
   const prescriptionDraftRef = useRef<PassagePrescriptionDraft | null>(null);
-  const creationAttempt = useRef(new PassageCreationAttempt());
+  const creationAttempt = useRef(new PassageCreationAttempt(createAppointmentRequestId));
 
   useEffect(() => {
     prescriptionDraftRef.current = passagePrescriptionDraft;
@@ -158,7 +155,7 @@ export function PassageFormScreen() {
       });
     },
     onSuccess: (data) => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+      invalidateNursePassageQueries(qc);
       const ordonnanceMsg = prescriptionDraftRef.current ? (data.appointment_ids?.length ? ' Ordonnance ajoutée au passage.' : ' Ordonnance enregistrée dans les documents du patient.') : '';
       toast(`${data.created_appointments} passage(s) planifié(s).${ordonnanceMsg}`, { type: 'success' });
       router.replace('/(nurse)/(tabs)/tournee');
@@ -221,7 +218,7 @@ export function PassageFormScreen() {
       planning_type,
       planning_config: planningWithRange,
       time_slot: primarySlot.time_slot,
-      custom_time: primarySlot.time_slot === 'custom' ? primarySlot.custom_time ?? null : null,
+      custom_time: primarySlot.time_slot === 'all_day' ? null : primarySlot.custom_time ?? null,
       time_range: null,
       duration_minutes: durationMinutes,
       at_home: atHome,
@@ -305,10 +302,11 @@ export function PassageFormScreen() {
     <StackChromeScreen>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <DetailSegmentBar
+          <FullWidthSegmentBar
             segments={PASSAGE_FORM_SEGMENTS}
-            active={segment}
-            onChange={(id) => setSegment(id as SegmentId)}
+            value={segment}
+            onChange={setSegment}
+            accessibilityLabel="Sections du passage"
           />
         </View>
 

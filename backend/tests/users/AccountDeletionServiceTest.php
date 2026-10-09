@@ -69,6 +69,7 @@ final class AccountDeletionServiceTest extends TestCase
             $this->restoreAdmins();
             $this->cleanup();
         }
+        unset($this->db);
         parent::tearDown();
     }
 

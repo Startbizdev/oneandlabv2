@@ -1,12 +1,12 @@
 import { spacing, useStyles } from '@/theme';
-import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useAuthStore } from '@/store/auth-store';
 import { SkeletonPatientAppointmentDetail } from '@/components/ui/skeletons';
 import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { ScreenActionLayout } from '@/components/layout/ScreenActionLayout';
+import { SettingsSection } from '@/components/ui/SettingsSection';
 import { useAppointmentDetailScreen } from '../detail/hooks/use-appointment-detail-screen';
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { AppointmentDetailLoadError } from '../detail/components/AppointmentDetailLoadError';
@@ -17,45 +17,35 @@ import { PatientDetailActions } from '../detail/components/patient/PatientDetail
 import { PatientDetailStickyActions } from '../detail/components/patient/PatientDetailStickyActions';
 import { PatientCompletedReviewPrompt } from '../detail/components/patient/PatientCompletedReviewPrompt';
 import { PatientPreleveurAlerts } from '../detail/components/patient/PatientEngagementSections';
-import { RdvDocumentsPremiumPanel } from '../detail/components/RdvDocumentsPremiumPanel';
 import { RdvCancellationBanner } from '../detail/components/RdvCancellationBanner';
 import { RdvAppointmentInfoSection } from '../detail/components/layout/RdvAppointmentInfoSection';
-import { DetailSegmentBar } from '../detail/components/layout/DetailSegmentBar';
 import { DetailTerminalBanner } from '../detail/components/layout/DetailTerminalBanner';
-import { filterListDocuments } from '../detail/utils/document-labels';
+import { appointmentListDocuments } from '../detail/utils/appointment-documents-list';
+import { appointmentDocumentsRow } from '../detail/utils/appointment-documents-row';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { getAppointmentSidebarTerminalEmpty } from '@/utils/appointment-sidebar-terminal';
 import { batchHasReviewableAppointment } from '@/utils/can-leave-review';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
+import { appointmentDocumentsHref } from '@/navigation/role-hrefs';
 import { appointmentConversationHref } from '../detail/utils/conversation-navigation';
-
-type SegmentId = 'infos' | 'documents';
 
 const SCREEN_TITLE = 'Rendez-vous';
 
 export function PatientAppointmentDetailScreen() {
   const styles = useStyles(buildStyles);
 
-  const { id, segment: segmentParam } = useLocalSearchParams<{
-    id: string;
-    segment?: string;
-  }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [segment, setSegment] = useState<SegmentId>('infos');
 
   const s = useAppointmentDetailScreen('patient', id);
 
   const primary = s.primary;
 
-  const documentsCount = useMemo(
-    () =>
-      filterListDocuments(
-        s.allDocuments.filter((d) => d.document_type !== 'cancellation_photo'),
-        { omitCarePhotos: true },
-      ).length,
+  const documents = useMemo(
+    () => appointmentListDocuments(s.allDocuments, 'patient', true),
     [s.allDocuments],
   );
 
@@ -63,22 +53,6 @@ export function PatientAppointmentDetailScreen() {
     () => batchHasReviewableAppointment(s.batchSorted),
     [s.batchSorted],
   );
-
-  const segments = useMemo((): { id: SegmentId; label: string; badge?: number }[] => {
-    return [
-      { id: 'infos', label: 'Informations' },
-      { id: 'documents', label: 'Documents', badge: documentsCount || undefined },
-    ];
-  }, [documentsCount]);
-
-  const activeSegment = segments.some((x) => x.id === segment) ? segment : 'infos';
-
-  useEffect(() => {
-    const raw = Array.isArray(segmentParam) ? segmentParam[0] : segmentParam;
-    if (raw !== 'documents') return;
-    setSegment(raw);
-    router.setParams({ segment: undefined });
-  }, [segmentParam, router]);
 
   const pullRefresh = useManualRefresh(async () => {
     s.refreshAll();
@@ -119,6 +93,13 @@ export function PatientAppointmentDetailScreen() {
   const terminal = getAppointmentSidebarTerminalEmpty(primary.status);
   const canEditSchedule =
     !canceled && String(primary.status ?? '').toLowerCase() === 'pending';
+  const documentsRow = appointmentDocumentsRow({
+    documents,
+    loading: s.docsLoading,
+    failed: Boolean(s.docsError),
+    appointmentStatus: primary.status,
+    onPress: () => router.push(appointmentDocumentsHref('/(patient)', String(id))),
+  });
 
   return (
     <>
@@ -151,9 +132,7 @@ export function PatientAppointmentDetailScreen() {
             <PatientAppointmentSummaryHeader
               apt={primary}
               batchCount={batchSorted.length}
-              assigneeShownElsewhere={
-                activeSegment === 'infos' && hasAssigneeContent(primary, user?.role ?? 'patient', user?.id)
-              }
+              assigneeShownElsewhere={hasAssigneeContent(primary, user?.role ?? 'patient', user?.id)}
             />
 
             {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
@@ -168,40 +147,19 @@ export function PatientAppointmentDetailScreen() {
               <RdvCancellationBanner apt={primary} />
             ) : null}
 
-            <DetailSegmentBar
-              segments={segments}
-              active={activeSegment}
-              onChange={(sid) => setSegment(sid as SegmentId)}
+            <RdvAppointmentInfoSection
+              apt={primary}
+              viewer={user}
+              batch={isMultiBatch ? batchSorted : undefined}
+              batchLoading={s.siblingsLoading}
             />
-
-            {activeSegment === 'infos' ? (
-              <View style={styles.tabBody}>
-                <RdvAppointmentInfoSection
-                  apt={primary}
-                  viewer={user}
-                  batch={isMultiBatch ? batchSorted : undefined}
-                  batchLoading={s.siblingsLoading}
-                />
-                <PatientAssigneeRows apt={primary} />
-                <PatientDetailActions
-                  canceled={canceled}
-                  cancelCount={cancellableForPatient.length}
-                  onCancel={() => setCancelOpen(true)}
-                />
-              </View>
-            ) : null}
-
-            {activeSegment === 'documents' ? (
-              <RdvDocumentsPremiumPanel
-                appointmentId={id!}
-                apt={primary}
-                role="patient"
-                docs={s.allDocuments}
-                loading={s.docsLoading}
-                error={s.docsError}
-                onRetry={s.retryDocs}
-              />
-            ) : null}
+            <PatientAssigneeRows apt={primary} />
+            {documentsRow ? <SettingsSection items={[documentsRow]} /> : null}
+            <PatientDetailActions
+              canceled={canceled}
+              cancelCount={cancellableForPatient.length}
+              onCancel={() => setCancelOpen(true)}
+            />
           </SceneScrollView>
         </ScreenActionLayout>
       </StackChromeScreen>
@@ -231,6 +189,5 @@ function buildStyles() {
     paddingTop: spacing[2],
     gap: spacing[3],
   },
-  tabBody: { gap: spacing[3] },
 };
 }

@@ -33,6 +33,17 @@
         >
           Télécharger
         </UButton>
+        <UButton
+          v-if="canReplaceExisting"
+          size="sm"
+          color="neutral"
+          variant="soft"
+          leading-icon="i-lucide-file-up"
+          :loading="replacingId === existingOrdonnanceDoc?.id"
+          @click="replaceExistingOrdonnance"
+        >
+          Remplacer
+        </UButton>
       </div>
     </div>
     <NursePrescriptionScopeHelp v-if="showNurseScopeHelp" class="mb-1" />
@@ -134,6 +145,7 @@ import PrescriptionSignaturePad from '~/components/prescription/PrescriptionSign
 import PrescriptionProfileGapsAlert from '~/components/prescription/PrescriptionProfileGapsAlert.vue';
 import PrescriptionMedicalFields from '~/components/prescription/PrescriptionMedicalFields.vue';
 import NursePrescriptionScopeHelp from '~/components/prescription/NursePrescriptionScopeHelp.vue';
+import { canReplacePrescriptionDocument } from '@oneandlab/shared-utils';
 import {
   getPrescriptionProfileGaps,
   type PrescriptionProfileSnapshot,
@@ -327,6 +339,15 @@ const hasExistingOrdonnance = computed(() =>
 const existingOrdonnanceDoc = computed(() =>
   (props.documents || []).find((d: any) => d.document_type === 'ordonnance'),
 );
+const { replacingId, replace } = useReplacePrescription();
+const canReplaceExisting = computed(() =>
+  canReplacePrescriptionDocument(user.value?.role, existingOrdonnanceDoc.value),
+);
+
+async function replaceExistingOrdonnance() {
+  const doc = existingOrdonnanceDoc.value;
+  if (doc?.id && (await replace(String(doc.id)))) await props.loadDocuments?.();
+}
 
 function revokePreviewBlob() {
   if (previewBlobUrl) {

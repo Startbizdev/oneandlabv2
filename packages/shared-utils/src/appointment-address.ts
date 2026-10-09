@@ -148,26 +148,67 @@ function extractCityFromAddressLine(full: string, postcode: string | null): stri
   return '';
 }
 
-/** Libellé d’arrondissement (Paris, Lyon, Marseille) à partir du code postal. */
-export function frenchArrondissementLabelFromPostcode(postcode: string): string | null {
+/** Villes à arrondissements : codes postaux `{prefix}0NN`, NN de 1 à `count`. Miroir de `AddressDisplayFr::CITY_DISTRICTS` (PHP). */
+const FRENCH_CITY_DISTRICTS = [
+  { prefix: '75', city: 'Paris', count: 20 },
+  { prefix: '13', city: 'Marseille', count: 16 },
+  { prefix: '69', city: 'Lyon', count: 9 },
+] as const;
+
+function frenchCityDistrict(postcode: string): { city: string; ordinal: string } | null {
   const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
-  if (pc.length !== 5) return null;
-  if (pc.startsWith('75')) {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 20) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  if (pc >= '69001' && pc <= '69009') {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 9) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  if (pc >= '13001' && pc <= '13016') {
-    const n = parseInt(pc.slice(3, 5), 10);
-    if (n >= 1 && n <= 16) return n === 1 ? '1er arrondissement' : `${n}e arrondissement`;
-    return null;
-  }
-  return null;
+  if (pc.length !== 5 || pc[2] !== '0') return null;
+  const district = FRENCH_CITY_DISTRICTS.find((d) => pc.startsWith(d.prefix));
+  if (!district) return null;
+  const n = parseInt(pc.slice(3, 5), 10);
+  if (n < 1 || n > district.count) return null;
+  return { city: district.city, ordinal: n === 1 ? '1er' : `${n}e` };
+}
+
+/** Ville + arrondissement à partir du code postal : « Marseille 3e », « Paris 1er », « Lyon 9e ». */
+export function frenchCityDistrictLabel(postcode: string): string | null {
+  const district = frenchCityDistrict(postcode);
+  return district ? `${district.city} ${district.ordinal}` : null;
+}
+
+/**
+ * Adresse courte qui met l’arrondissement en avant : « 12 Rue Bouès, Marseille 3e ».
+ * Hors Paris, Lyon et Marseille, le libellé est conservé (sans le pays).
+ */
+export function addressLineWithDistrict(label: string | null | undefined): string {
+  const trimmed = (label || '').trim().replace(/,?\s*France$/i, '').trim();
+  const pc = extractFrenchPostcodeFromLine(trimmed);
+  const district = pc ? frenchCityDistrictLabel(pc) : null;
+  if (!pc || !district) return trimmed;
+  const parts = trimmed
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const postcodeIndex = parts.findIndex((p) => p.includes(pc));
+  const postcodePart = parts[postcodeIndex] ?? '';
+  const street = [...parts.slice(0, postcodeIndex), postcodePart.slice(0, postcodePart.indexOf(pc)).trim()]
+    .filter(Boolean)
+    .join(', ');
+  return street ? `${street}, ${district}` : district;
+}
+
+/**
+ * Zone seule, sans rue (profil public) : « Marseille 3e » à Paris, Lyon et Marseille,
+ * sinon « 13400 Aubagne », sinon le dernier segment du libellé.
+ */
+export function addressAreaLabel(label: string | null | undefined): string {
+  const trimmed = (label || '').trim().replace(/,?\s*France$/i, '').trim();
+  if (!trimmed) return '';
+  const pc = extractFrenchPostcodeFromLine(trimmed);
+  const district = pc ? frenchCityDistrictLabel(pc) : null;
+  if (district) return district;
+  const postcodeCity = /(\d{5})\s+([^,]+)/.exec(trimmed);
+  if (postcodeCity) return `${postcodeCity[1]} ${postcodeCity[2]!.trim()}`;
+  const parts = trimmed
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts[parts.length - 1] ?? trimmed;
 }
 
 function stripLeadingHouseNumberFromLine(line: string): string {

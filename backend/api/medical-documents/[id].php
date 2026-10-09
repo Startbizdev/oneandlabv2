@@ -51,20 +51,7 @@ if (!$id) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Récupérer les métadonnées d'un document (LEFT JOIN : document de profil peut avoir appointment_id NULL)
     try {
-        $stmt = $db->prepare('
-            SELECT 
-                md.*,
-                a.patient_id AS apt_patient_id,
-                a.assigned_to,
-                a.assigned_nurse_id,
-                a.assigned_lab_id,
-                a.created_by AS apt_created_by
-            FROM medical_documents md
-            LEFT JOIN appointments a ON md.appointment_id = a.id
-            WHERE md.id = ?
-        ');
-        $stmt->execute([$id]);
-        $document = $stmt->fetch(PDO::FETCH_ASSOC);
+        $document = MedicalDocumentAccess::loadForAccess($db, (string) $id);
         
         if (!$document) {
             http_response_code(404);
@@ -83,9 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Ne pas retourner le DEK
         unset($document['file_dek']);
         unset($document['apt_patient_id']);
+        unset($document['apt_relative_id']);
         unset($document['assigned_to']);
         unset($document['assigned_nurse_id']);
         unset($document['assigned_lab_id']);
+        unset($document['assigned_pro_id']);
         unset($document['apt_created_by']);
         
         echo json_encode([

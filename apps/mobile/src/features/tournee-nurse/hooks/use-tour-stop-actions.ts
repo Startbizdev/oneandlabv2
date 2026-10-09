@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { appointmentDossierPatientId } from '@oneandlab/shared-utils';
 import { useToast } from '@/providers/ToastProvider';
 import { deletePatientAbsence } from '@/features/patient-absence/api/patient-absence.service';
 import type { NurseTourStop } from '../api/nurse-tour.service';
@@ -27,7 +28,7 @@ export function useTourStopActions(refetch: () => unknown) {
 
   const liftAbsence = useCallback(
     async (stop: NurseTourStop) => {
-      const patientId = stop.patient_id;
+      const patientId = appointmentDossierPatientId(stop);
       const absenceId = stop.patient_absence?.id;
       if (!patientId || !absenceId) return;
       setLiftingAbsence(true);

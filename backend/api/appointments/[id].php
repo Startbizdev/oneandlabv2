@@ -91,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         $include = isset($_GET['include']) ? trim((string) $_GET['include']) : '';
         $appointment = AppointmentDetailGetPayload::loadWithOptionalBatch(
+            $db,
             $appointmentModel,
             $user,
             $id,
@@ -190,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $config['charset'],
                 );
                 $dbNursePatch = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
-                $allowNursePassagePatch = AppointmentDetailPatchRules::nurseAssignedToNursing(
+                $allowNursePassagePatch = AppointmentDetailPatchRules::nurseCanManageNursing(
                     $dbNursePatch,
                     $id,
                     (string) ($user['user_id'] ?? ''),
@@ -242,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $config = require __DIR__ . '/../../config/database.php';
                 $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $config['port'], $config['database'], $config['charset']);
                 $dbPerm = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
-                $stmtPerm = $dbPerm->prepare('SELECT assigned_nurse_id, assigned_lab_id, assigned_to, created_by FROM appointments WHERE id = ?');
+                $stmtPerm = $dbPerm->prepare('SELECT id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by FROM appointments WHERE id = ?');
                 $stmtPerm->execute([$id]);
                 $aptPerm = $stmtPerm->fetch(PDO::FETCH_ASSOC);
                 if (!$aptPerm) {

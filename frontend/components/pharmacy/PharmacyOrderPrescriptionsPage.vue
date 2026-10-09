@@ -35,14 +35,26 @@
             <p class="font-medium">{{ documentIds.length > 1 ? `Ordonnance ${index + 1}` : 'Ordonnance' }}</p>
             <p class="text-xs text-muted font-mono truncate">{{ documentId }}</p>
           </div>
-          <UButton
-            variant="outline"
-            icon="i-lucide-download"
-            :loading="downloadingId === documentId"
-            @click="() => downloadOne(documentId, index)"
-          >
-            Télécharger
-          </UButton>
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              v-if="canReplace"
+              variant="ghost"
+              color="neutral"
+              icon="i-lucide-file-up"
+              :loading="replacingId === documentId"
+              @click="() => replaceOne(documentId)"
+            >
+              Remplacer
+            </UButton>
+            <UButton
+              variant="outline"
+              icon="i-lucide-download"
+              :loading="downloadingId === documentId"
+              @click="() => downloadOne(documentId, index)"
+            >
+              Télécharger
+            </UButton>
+          </div>
         </li>
       </ul>
     </UCard>
@@ -50,6 +62,7 @@
 </template>
 
 <script setup lang="ts">
+import { canReplacePrescriptionRole } from '@oneandlab/shared-utils';
 import { downloadMedicalDocument } from '~/utils/download-medical-document';
 
 const props = defineProps<{
@@ -59,6 +72,13 @@ const props = defineProps<{
 
 const toast = useAppToast();
 const { fetchOrder } = usePharmacyModule();
+const { user } = useAuth();
+const canReplace = computed(() => canReplacePrescriptionRole(user.value?.role));
+const { replacingId, replace } = useReplacePrescription();
+
+async function replaceOne(documentId: string) {
+  if (await replace(documentId)) await load();
+}
 
 const loading = ref(true);
 const documentIds = ref<string[]>([]);

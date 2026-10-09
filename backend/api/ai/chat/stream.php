@@ -9,21 +9,21 @@ require_once __DIR__ . '/../../../lib/ai/AiUserFacingError.php';
 require_once __DIR__ . '/../../../lib/Uuid.php';
 
 ai_handle_options(['POST', 'OPTIONS']);
-$user = ai_require_user(['patient', 'pro', 'nurse', 'preleveur', 'super_admin']);
+$user = ai_require_assistant_user();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     ai_json_error('Méthode non autorisée', 405);
 }
 
+$input = ai_read_json_body();
+$service = new AiChatService();
 try {
     AiChatRateLimit::assertAllowed($user, 'stream');
-} catch (RuntimeException $e) {
-    ai_json_error(AiUserFacingError::fromThrowable($e), (int) ($e->getCode() ?: 429));
+    $service->validateRequest($user, $input);
+} catch (Throwable $e) {
+    ai_respond_error($e, 'ai/chat/stream');
 }
-
-$input = ai_read_json_body();
 $user['request_id'] = Uuid::v4();
-$service = new AiChatService();
 
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
@@ -33,14 +33,14 @@ header('X-Accel-Buffering: no');
 $send = static function (string $event, array $payload): void {
     echo 'event: ' . $event . "\n";
     echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE) . "\n\n";
-    if (function_exists('ob_flush')) {
-        @ob_flush();
+    if (ob_get_level() > 0) {
+        ob_flush();
     }
     flush();
 };
 
+$send('start', ['ok' => true]);
 try {
-    $send('start', ['ok' => true]);
     $result = $service->handleMessage(
         $user,
         $input,
@@ -50,10 +50,21 @@ try {
         static function (string $event, array $payload) use ($send): void {
             $send($event, $payload);
         },
+        static function (array $emergency) use ($send): void {
+            $send('emergency', $emergency);
+        },
     );
     $send('done', $result);
-    echo "event: end\ndata: {}\n\n";
 } catch (Throwable $e) {
-    error_log('ai/chat/stream: ' . $e->getMessage());
-    $send('error', ['error' => AiUserFacingError::fromThrowable($e)]);
+    $error = AiUserFacingError::describe($e);
+    if ($error['status'] >= 500) {
+        ApiServerError::log('ai/chat/stream', $e);
+    }
+    $send('error', array_filter([
+        'error' => $error['message'],
+        'code' => $error['code'],
+        'retry_after' => $error['retry_after'],
+    ], static fn (mixed $v): bool => $v !== null));
 }
+echo "event: end\ndata: {}\n\n";
+flush();

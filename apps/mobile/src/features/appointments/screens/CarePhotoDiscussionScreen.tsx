@@ -49,6 +49,7 @@ import {
 import { AppointmentDetailBlockedEmptyState } from '../detail/components/AppointmentDetailBlockedEmptyState';
 import { rdvMaquetteAvatarCounterparty } from '@/utils/rdv-maquette-card-display';
 import { staffPatientProfileHref } from '@/features/patients/utils/staff-hub-navigation';
+import { appointmentDossierPatientId } from '@oneandlab/shared-utils';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -124,9 +125,10 @@ export function CarePhotoDiscussionScreen({
     return rdvMaquetteAvatarCounterparty(apt, cardRole);
   }, [apt, role]);
 
+  const dossierPatientId = appointmentDossierPatientId(apt);
   const patientProfileHref = useMemo(
-    () => staffPatientProfileHref(role, apt?.patient_id),
-    [apt?.patient_id, role],
+    () => staffPatientProfileHref(role, dossierPatientId),
+    [dossierPatientId, role],
   );
 
   const [draft, setDraft] = useState('');

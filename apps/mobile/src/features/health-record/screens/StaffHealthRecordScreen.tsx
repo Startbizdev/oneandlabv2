@@ -11,12 +11,15 @@ import { healthRecordQueryKeys } from '@/features/health-record/hooks/use-health
 import { PassageFormHealthRecordPanel } from '@/features/nurse-passage/components/PassageFormHealthRecordPanel';
 import { spacing, useStyles } from '@/theme';
 
-/** Carnet de santé d'un patient, vu par l'infirmier ou le pro. */
-export function StaffHealthRecordScreen() {
+type DossierProps = {
+  patientId: string;
+  title?: string;
+};
+
+/** Carnet de santé plein écran d'un dossier patient : soignant, ou titulaire sur le dossier d'un proche. */
+export function HealthRecordDossierScreen({ patientId, title }: DossierProps) {
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const patientId = typeof id === 'string' ? id : '';
 
   const refetchRecord = useCallback(
     () =>
@@ -30,7 +33,7 @@ export function StaffHealthRecordScreen() {
 
   if (!patientId) {
     return (
-      <StackChromeScreen>
+      <StackChromeScreen title={title}>
         <View style={styles.empty}>
           <EmptyState illustration="error" title="Patient introuvable" />
         </View>
@@ -39,12 +42,18 @@ export function StaffHealthRecordScreen() {
   }
 
   return (
-    <StackChromeScreen>
+    <StackChromeScreen title={title}>
       <SceneScrollView contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
         <PassageFormHealthRecordPanel patientId={patientId} variant="screen" />
       </SceneScrollView>
     </StackChromeScreen>
   );
+}
+
+/** Carnet de santé d'un patient, vu par l'infirmier ou le pro. */
+export function StaffHealthRecordScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <HealthRecordDossierScreen patientId={typeof id === 'string' ? id : ''} />;
 }
 
 function buildStyles() {

@@ -91,6 +91,34 @@ final class AppointmentCreateInputPolicyTest extends TestCase
         ]);
     }
 
+    public function testPatientChosenLabMustBeALabForBloodTest(): void
+    {
+        $out = $this->apply(TestFixtures::PATIENT_A, 'patient', ['type' => 'blood_test', 'assigned_lab_id' => TestFixtures::LAB]);
+        $this->assertSame(TestFixtures::LAB, $out['assigned_lab_id']);
+
+        $this->assertDenied(403, 'ASSIGNMENT_FORBIDDEN', TestFixtures::PATIENT_A, 'patient', [
+            'type' => 'blood_test',
+            'assigned_lab_id' => TestFixtures::NURSE,
+        ]);
+        $this->assertDenied(403, 'ASSIGNMENT_FORBIDDEN', TestFixtures::PATIENT_A, 'patient', [
+            'type' => 'nursing',
+            'assigned_lab_id' => TestFixtures::LAB,
+        ]);
+    }
+
+    public function testPatientChosenProMustBeAPro(): void
+    {
+        foreach (['nursing', 'blood_test'] as $type) {
+            $out = $this->apply(TestFixtures::PATIENT_A, 'patient', ['type' => $type, 'assigned_pro_id' => TestFixtures::PRO]);
+            $this->assertSame(TestFixtures::PRO, $out['assigned_pro_id']);
+        }
+
+        $this->assertDenied(403, 'ASSIGNMENT_FORBIDDEN', TestFixtures::PATIENT_A, 'patient', [
+            'type' => 'nursing',
+            'assigned_pro_id' => TestFixtures::NURSE,
+        ]);
+    }
+
     public function testInvalidAssignmentIdIsAValidationError(): void
     {
         $this->assertDenied(400, 'VALIDATION_ERROR', TestFixtures::PATIENT_A, 'patient', [

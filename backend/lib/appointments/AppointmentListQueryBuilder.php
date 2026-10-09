@@ -6,6 +6,8 @@ require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../LabTeamAccess.php';
 require_once __DIR__ . '/../PendingOfferExpiry.php';
+require_once __DIR__ . '/../RelativeProfile.php';
+require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 require_once __DIR__ . '/AppointmentListQuery.php';
 require_once __DIR__ . '/AppointmentListSqlResult.php';
 
@@ -85,7 +87,11 @@ final class AppointmentListQueryBuilder
         $sort = isset($_GET['sort']) ? trim((string) $_GET['sort']) : '';
         $orderBy = ' ORDER BY a.scheduled_at DESC';
         if ($this->user !== null && ($this->user['role'] ?? '') === 'nurse') {
-            $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
+            $orderBy = match ($patientPeriod) {
+                'upcoming' => ' ORDER BY a.scheduled_at ASC, a.created_at ASC',
+                'past' => ' ORDER BY a.scheduled_at DESC, a.created_at DESC',
+                default => ' ORDER BY a.created_at DESC, a.scheduled_at DESC',
+            };
         } elseif ($this->user !== null && ($this->user['role'] ?? '') === 'super_admin') {
             $orderBy = ' ORDER BY a.created_at DESC, a.scheduled_at DESC';
         } elseif ($sort === 'created_at') {
@@ -111,8 +117,13 @@ final class AppointmentListQueryBuilder
     private function buildSelectColumns(): string
     {
         if ($this->useRelativeJoin) {
+            $relativeProfileSelect = DbSchemaCache::tableHasColumn($this->db, 'patient_relatives', 'profile_id')
+                ? 'pr.profile_id as relative_profile_id,'
+                : '';
+
             return '
                 a.*,
+                ' . $relativeProfileSelect . '
                 pr.first_name_encrypted as relative_first_name_encrypted,
                 pr.first_name_dek as relative_first_name_dek,
                 pr.last_name_encrypted as relative_last_name_encrypted,
@@ -192,8 +203,18 @@ final class AppointmentListQueryBuilder
 
         $patientIdFilter = $this->query->patientId;
         if ($patientIdFilter !== null && $patientIdFilter !== '') {
-            $this->appendWhere(' AND a.patient_id = ?');
-            $this->params[] = $patientIdFilter;
+            // Dossier patient (staff) : RDV du seul sujet — ceux d'un proche relèvent du dossier du proche.
+            // Le patient filtrant sur lui-même garde sa liste complète (RDV pris pour ses proches inclus).
+            $ownListOfPatient = ($this->user['role'] ?? '') === 'patient'
+                && RelativeProfile::resolve($this->db, $patientIdFilter) === null;
+            if ($ownListOfPatient) {
+                $this->appendWhere(' AND a.patient_id = ?');
+                $this->params[] = $patientIdFilter;
+            } else {
+                [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientIdFilter);
+                $this->appendWhere(' AND ' . $subjectSql);
+                array_push($this->params, ...$subjectParams);
+            }
         }
     }
 
@@ -246,15 +267,23 @@ final class AppointmentListQueryBuilder
             $this->appendWhere(' AND a.patient_id = ?');
             $this->params[] = $userId;
         }
+        $this->appendPeriodFilter();
+    }
+
+    /**
+     * `patient_period` : à venir (non terminé, à partir d'aujourd'hui minuit Paris) ou passé. Partagé patient / infirmier.
+     */
+    private function appendPeriodFilter(): void
+    {
         $terminalStatuses = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
-        $patientPeriod = $this->query->patientPeriod;
-        if ($patientPeriod === 'upcoming') {
+        $period = $this->query->patientPeriod;
+        if ($period === 'upcoming') {
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
             $this->appendWhere(" AND a.status NOT IN ($terminalPh)");
             $this->params = array_merge($this->params, $terminalStatuses);
             $this->appendWhere(' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)');
             $this->params[] = AppTimezone::sqlStartOfToday();
-        } elseif ($patientPeriod === 'past') {
+        } elseif ($period === 'past') {
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
             $this->appendWhere(" AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?))");
             $this->params = array_merge($this->params, $terminalStatuses);
@@ -294,22 +323,24 @@ final class AppointmentListQueryBuilder
             $this->params[] = $userId;
         } elseif ($nurseSegment === 'acceptes') {
             $parisStartStr = AppTimezone::sqlStartOfToday();
+            [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $userId);
             $this->appendWhere(" AND (
-                    (a.type = 'nursing' AND a.assigned_nurse_id = ? AND a.status IN ('confirmed','inProgress','planned')
+                    (a.type = 'nursing' AND {$nurseSql} AND a.status IN ('confirmed','inProgress','planned')
                         AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
                     OR (a.type = 'blood_test' AND a.created_by = ? AND a.status IN ('confirmed','inProgress','planned')
                         AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
                 )");
-            $this->params[] = $userId;
+            array_push($this->params, ...$nurseParams);
             $this->params[] = $parisStartStr;
             $this->params[] = $userId;
             $this->params[] = $parisStartStr;
         } elseif ($nurseSegment === 'historique') {
-            $this->appendWhere(" AND a.type = 'nursing' AND a.assigned_nurse_id = ? AND (
+            [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $userId);
+            $this->appendWhere(" AND a.type = 'nursing' AND {$nurseSql} AND (
                     a.status IN ('completed','canceled','cancelled','refused')
                     OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)
                 )");
-            $this->params[] = $userId;
+            array_push($this->params, ...$nurseParams);
             $this->params[] = AppTimezone::sqlStartOfToday();
         } elseif ($nurseSegment === 'relais') {
             $this->appendWhere(" AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)
@@ -334,6 +365,7 @@ final class AppointmentListQueryBuilder
             )");
         $this->params[] = $userId;
         $this->params[] = '%redispatch%';
+        $this->appendPeriodFilter();
 
         if ($nurseSegment !== 'envoyes' && $nurseSegment !== 'en_attente') {
             $prefsCheckSql = 'SELECT COUNT(*) as count FROM nurse_category_preferences WHERE nurse_id = ? AND is_enabled = TRUE';
@@ -342,6 +374,7 @@ final class AppointmentListQueryBuilder
             $prefsCount = $prefsStmt->fetch(PDO::FETCH_ASSOC)['count'];
 
             if ($prefsCount > 0) {
+                [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $userId);
                 $this->appendWhere(' AND (
                         a.type = \'blood_test\' OR
                         a.category_id IS NULL OR
@@ -350,11 +383,11 @@ final class AppointmentListQueryBuilder
                             FROM nurse_category_preferences
                             WHERE nurse_id = ? AND is_enabled = TRUE
                         )
-                        OR (a.type = \'nursing\' AND a.assigned_nurse_id = ?)
+                        OR (a.type = \'nursing\' AND ' . $nurseSql . ')
                         OR (a.type = \'nursing\' AND a.created_by = ? AND a.created_by_role = \'nurse\')
                     )');
                 $this->params[] = $userId;
-                $this->params[] = $userId;
+                array_push($this->params, ...$nurseParams);
                 $this->params[] = $userId;
             }
         }
@@ -362,9 +395,11 @@ final class AppointmentListQueryBuilder
 
     private function appendNurseDefaultMesSoinsScope(string $userId): void
     {
+        [$sharedSql, $sharedParams] = NurseCollaboration::sharedWithNurseSql('a', $userId);
         $this->appendWhere(" AND (
                     (a.type = 'nursing' AND (
                         a.assigned_nurse_id = ?
+                        OR {$sharedSql}
                         OR (
                             a.created_by = ?
                             AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id = ?)
@@ -381,6 +416,7 @@ final class AppointmentListQueryBuilder
                     OR (a.type = 'blood_test' AND a.created_by = ?)
                 )");
         $this->params[] = $userId;
+        array_push($this->params, ...$sharedParams);
         $this->params[] = $userId;
         $this->params[] = $userId;
         $this->params[] = $userId;

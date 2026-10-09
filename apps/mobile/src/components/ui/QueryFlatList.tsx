@@ -61,6 +61,9 @@ type Props<T, Item> = Omit<
   /** Espace ajouté sous le dernier élément (ex. bouton flottant). */
   extraBottom?: number;
 
+  /** Tirer pour rafraîchir quand l'écran affiche d'autres données que la liste (défaut : `query.refetch`). */
+  refresh?: () => Promise<unknown>;
+
 };
 
 
@@ -83,6 +86,8 @@ export function QueryFlatList<T, Item>({
 
   extraBottom = 0,
 
+  refresh,
+
   contentContainerStyle,
 
   ...flatListProps
@@ -97,7 +102,7 @@ export function QueryFlatList<T, Item>({
 
   const ui = useQueryListUi(query);
 
-  const { refreshing, onRefresh } = useManualRefresh(query.refetch);
+  const { refreshing, onRefresh } = useManualRefresh(refresh ?? query.refetch);
 
   useScrollToTopOnPop(Platform.OS === 'android' ? scrollRef : flatListRef);
 

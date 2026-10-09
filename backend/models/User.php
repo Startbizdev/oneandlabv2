@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/Crypto.php';
 require_once __DIR__ . '/../lib/Logger.php';
 require_once __DIR__ . '/../lib/DbSchemaCache.php';
+require_once __DIR__ . '/../lib/DatabaseTransaction.php';
 require_once __DIR__ . '/../lib/users/bootstrap.php';
 
 /**
@@ -373,6 +374,111 @@ class User
         }
         
         return $id;
+    }
+
+    /**
+     * Dossier patient sans connexion d'un proche : email technique, pas de mot de passe, created_by NULL
+     * (le proche n'entre dans le périmètre d'aucun professionnel tant qu'il n'est pas soigné).
+     * Pas de phone_digits_hash : la recherche patient par téléphone doit continuer de trouver le titulaire.
+     *
+     * @param array{first_name: string, last_name: string, phone?: ?string, birth_date?: ?string, gender?: ?string, address?: ?array<string, mixed>} $identity
+     */
+    public function createRelativeProfile(string $technicalEmail, array $identity): string
+    {
+        $id = $this->generateUUID();
+        $email = $this->crypto->encryptField($technicalEmail);
+        $firstName = $this->crypto->encryptField((string) $identity['first_name']);
+        $lastName = $this->crypto->encryptField((string) $identity['last_name']);
+
+        $fields = ['id', 'role', 'email_encrypted', 'email_dek', 'email_hash', 'first_name_encrypted', 'first_name_dek', 'last_name_encrypted', 'last_name_dek'];
+        $params = [$id, 'patient', $email['encrypted'], $email['dek'], hash('sha256', strtolower($technicalEmail)), $firstName['encrypted'], $firstName['dek'], $lastName['encrypted'], $lastName['dek']];
+        foreach ($this->relativeProfileOptionalColumns($identity) as $column => $value) {
+            $fields[] = $column;
+            $params[] = $value;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($fields), '?'));
+        $stmt = $this->db->prepare('INSERT INTO profiles (' . implode(', ', $fields) . ', created_at, updated_at) VALUES (' . $placeholders . ', NOW(), NOW())');
+        try {
+            $stmt->execute($params);
+        } catch (PDOException $e) {
+            if (($e->errorInfo[1] ?? null) === 1062 && str_contains((string) ($e->errorInfo[2] ?? ''), 'uq_profiles_email_hash')) {
+                throw new EmailAlreadyUsed($e);
+            }
+            throw $e;
+        }
+        $this->logger->log('system', 'system', 'create', 'profile', $id, ['role' => 'patient', 'relative_profile' => true]);
+
+        return $id;
+    }
+
+    /**
+     * Recopie l'identité saisie sur la fiche du proche vers son dossier patient (champs absents = inchangés).
+     *
+     * @param array<string, mixed> $identity
+     */
+    public function syncRelativeProfileIdentity(string $profileId, array $identity): void
+    {
+        $sets = [];
+        $params = [];
+        foreach (['first_name', 'last_name'] as $required) {
+            if (isset($identity[$required]) && trim((string) $identity[$required]) !== '') {
+                $enc = $this->crypto->encryptField((string) $identity[$required]);
+                $sets[] = "{$required}_encrypted = ?, {$required}_dek = ?";
+                $params[] = $enc['encrypted'];
+                $params[] = $enc['dek'];
+            }
+        }
+        $optional = $this->relativeProfileOptionalColumns($identity);
+        foreach (['phone', 'birth_date', 'gender', 'address'] as $field) {
+            if (!array_key_exists($field, $identity)) {
+                continue;
+            }
+            if ($field === 'address' && !empty($identity['address']) && !is_array($identity['address'])) {
+                continue;
+            }
+            $sets[] = "{$field}_encrypted = ?, {$field}_dek = ?";
+            $params[] = $optional["{$field}_encrypted"] ?? null;
+            $params[] = $optional["{$field}_dek"] ?? null;
+            if ($field === 'address' && $this->hasCityPlainColumn()) {
+                $sets[] = 'city_plain = ?';
+                $params[] = $optional['city_plain'] ?? null;
+            }
+        }
+        if ($sets === []) {
+            return;
+        }
+        $params[] = $profileId;
+        $this->db->prepare('UPDATE profiles SET ' . implode(', ', $sets) . ', updated_at = NOW() WHERE id = ? AND role = \'patient\'')
+            ->execute($params);
+    }
+
+    /**
+     * @param array<string, mixed> $identity
+     * @return array<string, string|null>
+     */
+    private function relativeProfileOptionalColumns(array $identity): array
+    {
+        $columns = [];
+        foreach (['phone', 'birth_date', 'gender'] as $field) {
+            $value = trim((string) ($identity[$field] ?? ''));
+            if ($value !== '') {
+                $enc = $this->crypto->encryptField($value);
+                $columns["{$field}_encrypted"] = $enc['encrypted'];
+                $columns["{$field}_dek"] = $enc['dek'];
+            }
+        }
+        $address = $identity['address'] ?? null;
+        if (is_array($address) && $address !== []) {
+            $enc = $this->crypto->encryptField((string) json_encode($address));
+            $columns['address_encrypted'] = $enc['encrypted'];
+            $columns['address_dek'] = $enc['dek'];
+            if ($this->hasCityPlainColumn()) {
+                $columns['city_plain'] = $this->extractCityFromAddress($address);
+            }
+        }
+
+        return $columns;
     }
 
     /**
@@ -758,7 +864,9 @@ class User
             } else {
                 $updates[] = 'phone_encrypted = NULL, phone_dek = NULL';
             }
-            if ($this->hasPhoneDigitsHashColumn()) {
+            require_once __DIR__ . '/../lib/RelativeProfile.php';
+            // Dossier d'un proche : jamais de phone_digits_hash (voir createRelativeProfile).
+            if ($this->hasPhoneDigitsHashColumn() && RelativeProfile::resolve($this->db, $id) === null) {
                 $roleNow = $this->getRoleById($id);
                 if ($roleNow === 'patient') {
                     if (!empty($data['phone'])) {
@@ -1040,8 +1148,28 @@ class User
         $params[] = $id;
         
         $sql = 'UPDATE profiles SET ' . implode(', ', $updates) . ' WHERE id = ?';
-        $stmt = $this->db->prepare($sql);
-        $result = $stmt->execute($params);
+        $newAddress = is_array($data['address'] ?? null) && $data['address'] !== [] ? $data['address'] : null;
+        require_once __DIR__ . '/../lib/RelativeProfile.php';
+        $relativeIdentity = RelativeProfile::identityOf($data);
+        $actor = ['user_id' => $actorId, 'role' => $actorRole];
+        $result = DatabaseTransaction::run($this->db, function () use ($sql, $params, $id, $newAddress, $relativeIdentity, $actor): bool {
+            $passageSync = null;
+            $previousAddress = null;
+            if ($newAddress !== null) {
+                require_once __DIR__ . '/../lib/nurse-passage/PassageAddressSync.php';
+                $passageSync = new PassageAddressSync($this->db, $this->crypto);
+                $previousAddress = $passageSync->lockProfileAddress($id);
+            }
+            $updated = $this->db->prepare($sql)->execute($params);
+            if ($passageSync !== null) {
+                $passageSync->refreshPatientPassages($id, $previousAddress, $newAddress);
+            }
+            if ($updated) {
+                RelativeProfile::syncRelativeFromProfile($this->db, $id, $relativeIdentity, $actor);
+            }
+
+            return $updated;
+        });
         
         // Logger la modification
         $this->logger->log(
@@ -1344,6 +1472,12 @@ class User
         return $role === 'super_admin'
             || $role === 'preleveur'
             || in_array($role, self::patientListStaffRoles(), true);
+    }
+
+    /** Création de patient sans téléphone : admin, médecin et infirmier (miroir de PATIENT_PHONE_OPTIONAL_CREATOR_ROLES). */
+    public static function isPatientPhoneOptionalForCreator(string $role): bool
+    {
+        return in_array($role, ['super_admin', 'pro', 'nurse'], true);
     }
 
     /**

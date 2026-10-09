@@ -1,8 +1,10 @@
 import { useAppColors } from '@/theme/use-app-colors';
+import { forwardRef } from 'react';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
-import { ArrowUp, Mic, Plus } from 'lucide-react-native';
+import { ArrowUp, Mic, Plus, Square } from 'lucide-react-native';
 import {
+  AppText,
   H_PADDING,
   MIN_TOUCH_TARGET,
   radius,
@@ -13,6 +15,7 @@ import {
   type Theme,
   ICON_STROKE_WIDTH,
 } from '@/theme';
+import { AI_MESSAGE_MAX_LENGTH, formatAiMessageMaxLength } from '../utils/ai-chat-errors';
 import {
   PatientAiAttachmentThumbnail,
   type PatientAiAttachmentPreview,
@@ -20,9 +23,8 @@ import {
 
 const SEND_DISC = 36;
 const INPUT_MAX_HEIGHT = 120;
-
-/** Hauteur estimée du dock (hors clavier et pièce jointe) — réserve de scroll avant la mesure réelle. */
-export const PATIENT_AI_COMPOSER_DOCK_HEIGHT = spacing[2] + MIN_TOUCH_TARGET + spacing[2];
+/** Le compteur apparaît à partir de 90 % de la longueur maximale. */
+const COUNTER_FROM = Math.round(AI_MESSAGE_MAX_LENGTH * 0.9);
 
 export type PatientAiPendingAttachment = PatientAiAttachmentPreview;
 
@@ -40,28 +42,37 @@ interface Props {
   onBlur?: () => void;
   canSend: boolean;
   disabled?: boolean;
+  /** Réponse en cours : le bouton d'envoi devient « Arrêter ». */
+  generating?: boolean;
+  onStop?: () => void;
 }
 
-/** Saisie Cary : [+ | champ | micro | envoyer]. Seul l'envoi actif est turquoise. */
-export function PatientAiChatComposer({
-  draft,
-  onChangeDraft,
-  onSend,
-  onVoicePress,
-  onAttachPress,
-  onClearAttachment,
-  onPreviewPress,
-  pendingAttachment,
-  attaching,
-  onFocus,
-  onBlur,
-  canSend,
-  disabled = false,
-}: Props) {
+/** Saisie Cary : [+ | champ | micro | envoyer ou arrêter]. Seul le bouton actif est turquoise. */
+export const PatientAiChatComposer = forwardRef<TextInput, Props>(function PatientAiChatComposer(
+  {
+    draft,
+    onChangeDraft,
+    onSend,
+    onVoicePress,
+    onAttachPress,
+    onClearAttachment,
+    onPreviewPress,
+    pendingAttachment,
+    attaching,
+    onFocus,
+    onBlur,
+    canSend,
+    disabled = false,
+    generating = false,
+    onStop,
+  },
+  inputRef,
+) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const canAttach = Boolean(onAttachPress) && !disabled && !attaching;
   const sendEnabled = canSend && !disabled;
+  const tooLong = draft.length > AI_MESSAGE_MAX_LENGTH;
 
   return (
     <View style={styles.dock}>
@@ -95,49 +106,72 @@ export function PatientAiChatComposer({
         ) : null}
 
         <TextInput
+          ref={inputRef}
           nativeID="cary-ai-input"
           style={styles.input}
           placeholder="Écrire à Cary…"
           placeholderTextColor={c.textTertiary}
           value={draft}
           onChangeText={onChangeDraft}
-          onSubmitEditing={onSend}
           onFocus={onFocus}
           onBlur={onBlur}
-          returnKeyType="send"
           editable={!disabled}
           multiline
-          maxLength={2000}
           textAlignVertical="center"
           accessibilityLabel="Message pour Cary"
         />
 
         <Pressable
           onPress={onVoicePress}
-          disabled={disabled}
-          style={[styles.iconBtn, disabled && styles.disabled]}
+          disabled={disabled || generating}
+          style={[styles.iconBtn, (disabled || generating) && styles.disabled]}
           accessibilityRole="button"
           accessibilityLabel="Parler à Cary"
         >
           <Mic size={iconSize.lg} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
         </Pressable>
 
-        <Pressable
-          onPress={onSend}
-          disabled={!sendEnabled}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Envoyer le message"
-          accessibilityState={{ disabled: !sendEnabled }}
-        >
-          <View style={[styles.sendDisc, { backgroundColor: sendEnabled ? c.primary : c.border }]}>
-            <ArrowUp size={iconSize.md} color={sendEnabled ? c.onPrimary : c.surface} strokeWidth={ICON_STROKE_WIDTH} />
-          </View>
-        </Pressable>
+        {generating && onStop ? (
+          <Pressable
+            onPress={onStop}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Arrêter la réponse"
+          >
+            <View style={[styles.sendDisc, { backgroundColor: c.textPrimary }]}>
+              <Square size={iconSize.xs} color={c.surface} fill={c.surface} strokeWidth={ICON_STROKE_WIDTH} />
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={onSend}
+            disabled={!sendEnabled}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Envoyer le message"
+            accessibilityState={{ disabled: !sendEnabled }}
+          >
+            <View style={[styles.sendDisc, { backgroundColor: sendEnabled ? c.primary : c.border }]}>
+              <ArrowUp size={iconSize.md} color={sendEnabled ? c.onPrimary : c.surface} strokeWidth={ICON_STROKE_WIDTH} />
+            </View>
+          </Pressable>
+        )}
       </Row>
+
+      {draft.length >= COUNTER_FROM ? (
+        <AppText
+          variant="caption"
+          style={[styles.counter, tooLong && styles.counterError]}
+          accessibilityLiveRegion="polite"
+        >
+          {tooLong
+            ? `Message trop long : ${draft.length} / ${formatAiMessageMaxLength()} caractères`
+            : `${draft.length} / ${formatAiMessageMaxLength()} caractères`}
+        </AppText>
+      ) : null}
     </View>
   );
-}
+});
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
@@ -183,5 +217,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       justifyContent: 'center' as const,
     },
     disabled: { opacity: 0.45 },
+    counter: { textAlign: 'right' as const, paddingTop: spacing[1], paddingHorizontal: spacing[1] },
+    counterError: { color: c.error },
   };
 }

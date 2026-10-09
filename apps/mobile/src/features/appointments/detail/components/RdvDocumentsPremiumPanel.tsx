@@ -9,6 +9,8 @@ import {
 } from '@/lib/uploads/pick-medical-document';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Appointment } from '@oneandlab/shared-types';
+import { canReplacePrescriptionDocument } from '@oneandlab/shared-utils';
+import { useReplacePrescription } from '@/features/documents/hooks/use-replace-prescription';
 import { queryKeys } from '@/lib/query-keys';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
@@ -18,7 +20,7 @@ import {
   canUploadMedicalDocumentsForAppointmentStatus,
 } from '@/utils/appointment-documents-upload';
 import type { MedicalDocumentRow } from '../api/appointment-detail.service';
-import { filterListDocuments } from '../utils/document-labels';
+import { appointmentListDocuments } from '../utils/appointment-documents-list';
 import { useRdvDetailSectionStyles } from './layout/rdv-detail-section-styles';
 import {
   MedicalDocumentAddRow,
@@ -79,18 +81,13 @@ export function RdvDocumentsPremiumPanel({
   const qc = useQueryClient();
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ uri: string; fileName?: string } | null>(null);
+  const { replace: replacePrescription } = useReplacePrescription();
 
   const canUpload = canUploadMedicalDocumentsForAppointmentStatus(apt.status);
   const orderedTypes = useMemo(() => uploadTypesForRole(role, apt), [role, apt]);
 
   const list = useMemo(
-    () =>
-      filterListDocuments(
-        docs.filter((d) =>
-          role === 'patient' ? d.document_type !== 'cancellation_photo' : true,
-        ),
-        { omitCarePhotos },
-      ),
+    () => appointmentListDocuments(docs, role, omitCarePhotos),
     [docs, omitCarePhotos, role],
   );
 
@@ -201,15 +198,18 @@ export function RdvDocumentsPremiumPanel({
           stackRows.map((row, index) => {
             const topBorder = index > 0;
             if (row.kind === 'open') {
+              const prescription = canReplacePrescriptionDocument(role, row.doc);
               return (
                 <MedicalDocumentOpenRowContainer
                   key={row.key}
                   doc={row.doc}
                   topBorder={topBorder}
                   cacheScopeKey={`apt:${appointmentId}`}
-                  canReplace={canUpload}
+                  canReplace={prescription || canUpload}
                   onPreview={handlePreview}
-                  onReplace={() => runUploadForType(row.doc.document_type)}
+                  onReplace={() =>
+                    prescription ? replacePrescription(row.doc.id) : runUploadForType(row.doc.document_type)
+                  }
                 />
               );
             }

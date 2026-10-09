@@ -115,7 +115,13 @@ if ($method === 'POST') {
         'pharmacy_order_message',
         'Nouveau message — commande pharmacie',
         $authorName . ' : ' . mb_substr($text, 0, 120),
-        ['pharmacy_order_id' => $orderId, 'message_id' => $messageId],
+        [
+            'pharmacy_order_id' => $orderId,
+            'message_id' => $messageId,
+            'pharmacy_order_side' => $recipientId === $order['pharmacy_id']
+                ? PharmacyOrderNotifier::SIDE_RECEIVED
+                : PharmacyOrderNotifier::SIDE_SENT,
+        ],
     );
 
     echo json_encode([

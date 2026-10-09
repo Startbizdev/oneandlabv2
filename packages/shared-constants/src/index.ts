@@ -51,4 +51,5 @@ export * from './patient-vip-iap';
 export * from './staff-patient-booking-consent';
 export * from './pending-offer-expiry';
 export * from './patient-absence';
+export * from './patient-creation';
 export * from './pharmacy-order-status';

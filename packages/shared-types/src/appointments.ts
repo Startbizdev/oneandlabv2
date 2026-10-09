@@ -2,6 +2,8 @@
  * Types rendez-vous — source: frontend/types/appointments.ts
  */
 
+import type { AppointmentCoNurse } from './nurse-collaborations';
+
 export type AppointmentType = 'blood_test' | 'nursing';
 export type AppointmentStatus =
   | 'pending'
@@ -56,12 +58,29 @@ export interface AppointmentFormData {
   consent: boolean;
 }
 
+/** Proche bénéficiaire d'un RDV ; `profile_id` = son dossier patient (sans connexion). */
+export interface AppointmentRelative {
+  id?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string | null;
+  phone?: string | null;
+  relationship_type?: string;
+  birth_date?: string | null;
+  contact_is_parent?: boolean;
+  profile_id?: string | null;
+}
+
 export interface Appointment {
   id: string;
   type: AppointmentType;
   status: AppointmentStatus;
+  /** Titulaire du compte : celui qui a réservé, y compris pour un proche. */
   patient_id?: string;
   relative_id?: string;
+  relative?: AppointmentRelative | null;
+  /** Dossier du proche quand le RDV est pour un proche (`relative.profile_id`). */
+  relative_profile_id?: string | null;
   assigned_to?: string;
   assigned_nurse_id?: string;
   assigned_lab_id?: string;
@@ -71,6 +90,9 @@ export interface Appointment {
   category_icon?: string | null;
   category_image_url?: string | null;
   creation_batch_id?: string | null;
+  /** `nurse_passage` : passage créé par un infirmier (série ou passage seul). */
+  passage_source?: string | null;
+  passage_series_id?: string | null;
   created_by?: string | null;
   batch_siblings?: Array<{
     id: string;
@@ -95,6 +117,12 @@ export interface Appointment {
   updated_at: string;
   /** Snooze modal offre (appointment_offers.modal_snoozed_until). */
   offer_modal_snoozed_until?: string | null;
+  /** Binôme infirmier : confrères ajoutés sur ce RDV (hors titulaire). */
+  co_nurses?: AppointmentCoNurse[];
+  /** Le lecteur est le confrère invité, pas le titulaire. */
+  is_co_nurse?: boolean;
+  /** Infirmier titulaire qui a partagé le RDV (renseigné pour l'invité seulement). */
+  shared_by_name?: string | null;
 }
 
 export interface AppointmentListFilters {

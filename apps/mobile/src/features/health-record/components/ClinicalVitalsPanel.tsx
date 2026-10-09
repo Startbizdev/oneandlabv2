@@ -32,6 +32,8 @@ import {
 type Props = {
   patientId: string;
   context?: ClinicalVitalContext;
+  /** Titulaire consultant le dossier d'un proche : mesures relevées seulement, historique sans saisie. */
+  readOnly?: boolean;
 };
 
 type VitalConfig = (typeof CLINICAL_VITAL_UI)[number];
@@ -39,10 +41,12 @@ type VitalConfig = (typeof CLINICAL_VITAL_UI)[number];
 function VitalRow({
   cfg,
   reading,
+  readOnly,
   onPress,
 }: {
   cfg: VitalConfig;
   reading?: ClinicalVitalReading;
+  readOnly: boolean;
   onPress: () => void;
 }) {
   const c = useAppColors();
@@ -56,7 +60,7 @@ function VitalRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={value ? `${cfg.label_fr}, ${value}, ${date}` : `${cfg.label_fr}, non mesuré`}
-      accessibilityHint={reading ? 'Voir l’historique' : 'Ajouter une mesure'}
+      accessibilityHint={readOnly ? 'Voir l’historique' : 'Saisir une mesure'}
       style={({ pressed }) => (pressed ? styles.pressed : null)}
     >
       <ListRowShell
@@ -90,7 +94,7 @@ function VitalRow({
   );
 }
 
-export function ClinicalVitalsPanel({ patientId, context }: Props) {
+export function ClinicalVitalsPanel({ patientId, context, readOnly = false }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
@@ -99,6 +103,7 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   const [historyType, setHistoryType] = useState<ClinicalVitalType | null>(null);
   const [editReading, setEditReading] = useState<ClinicalVitalReading | null>(null);
   const [addType, setAddType] = useState<ClinicalVitalType | null>(null);
+  const [pendingHistoryType, setPendingHistoryType] = useState<ClinicalVitalType | null>(null);
 
   const vitalsQ = useQuery({
     queryKey: clinicalVitalsQueryKey(patientId),
@@ -107,6 +112,7 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
   });
 
   const latest = vitalsQ.data?.latest_by_type ?? {};
+  const rows: readonly VitalConfig[] = readOnly ? CLINICAL_VITAL_UI.filter((cfg) => latest[cfg.type]) : CLINICAL_VITAL_UI;
 
   const openAdd = (type?: ClinicalVitalType) => {
     setEditReading(null);
@@ -136,20 +142,40 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
     setHistoryType(null);
   };
 
+  /** L'historique s'ouvre une fois la saisie fermée : deux sheets ne s'enchaînent pas pendant l'animation. */
+  const showHistoryAfterEdit = () => {
+    if (!addType) return;
+    setPendingHistoryType(addType);
+    setSheetOpen(false);
+  };
+
+  const onEditDismissed = () => {
+    setEditReading(null);
+    setAddType(null);
+    if (pendingHistoryType) {
+      setPendingHistoryType(null);
+      openHistory(pendingHistoryType);
+    }
+  };
+
+  const canShowHistoryFromEdit = !historyOpen && !editReading && addType !== null && Boolean(latest[addType]);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
         <AppText variant="headline" style={styles.title} accessibilityRole="header">
           Constantes
         </AppText>
-        <Button
-          title="Ajouter"
-          variant="secondary"
-          size="sm"
-          leftIcon={<Plus size={iconSize.sm} color={c.primaryDark} strokeWidth={ICON_STROKE_WIDTH} />}
-          onPress={() => openAdd()}
-          accessibilityLabel="Ajouter une constante"
-        />
+        {readOnly ? null : (
+          <Button
+            title="Ajouter"
+            variant="secondary"
+            size="sm"
+            leftIcon={<Plus size={iconSize.sm} color={c.primaryDark} strokeWidth={ICON_STROKE_WIDTH} />}
+            onPress={() => openAdd()}
+            accessibilityLabel="Ajouter une constante"
+          />
+        )}
       </View>
 
       {vitalsQ.isLoading && !vitalsQ.data ? (
@@ -160,9 +186,11 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
           title="Constantes indisponibles"
           onRetry={() => void vitalsQ.refetch()}
         />
+      ) : rows.length === 0 ? (
+        <AppText variant="secondary">Aucune mesure pour l’instant.</AppText>
       ) : (
         <View style={styles.card}>
-          {CLINICAL_VITAL_UI.map((cfg, index) => {
+          {rows.map((cfg, index) => {
             const reading = latest[cfg.type];
             return (
               <View key={cfg.type}>
@@ -170,7 +198,8 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
                 <VitalRow
                   cfg={cfg}
                   reading={reading}
-                  onPress={() => (reading ? openHistory(cfg.type) : openAdd(cfg.type))}
+                  readOnly={readOnly}
+                  onPress={() => (readOnly ? openHistory(cfg.type) : openAdd(cfg.type))}
                 />
               </View>
             );
@@ -183,18 +212,22 @@ export function ClinicalVitalsPanel({ patientId, context }: Props) {
         patientId={patientId}
         vitalType={historyType}
         onClose={closeHistory}
-        onAdd={openAdd}
-        onEdit={openEdit}
+        onAdd={readOnly ? undefined : openAdd}
+        onEdit={readOnly ? undefined : openEdit}
       />
 
-      <ClinicalVitalEditSheet
-        visible={sheetOpen}
-        patientId={patientId}
-        reading={editReading}
-        initialType={addType}
-        context={context}
-        onClose={closeSheet}
-      />
+      {readOnly ? null : (
+        <ClinicalVitalEditSheet
+          visible={sheetOpen}
+          patientId={patientId}
+          reading={editReading}
+          initialType={addType}
+          context={context}
+          onClose={closeSheet}
+          onDismissed={onEditDismissed}
+          onShowHistory={canShowHistoryFromEdit ? showHistoryAfterEdit : undefined}
+        />
+      )}
     </View>
   );
 }
