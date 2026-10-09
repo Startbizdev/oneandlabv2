@@ -67,17 +67,25 @@
           {{ careListSectionHeading }}
         </p>
 
-        <!-- Liste : 1 carte par ligne ; seul le chip « Ajouter » ouvre les options (mini modal) ou retire le soin. -->
+        <!-- Liste : toute la carte ajoute ou retire le soin. -->
         <ul class="grid grid-cols-1 gap-1.5 sm:gap-2 md:grid-cols-2" role="list" aria-label="Liste des soins">
           <li v-for="item in filteredMainList" :key="item.id" class="list-none min-w-0" role="presentation">
-            <div
+            <button
+              type="button"
               :ref="(el) => setCareCardEl(item.id, el)"
               class="group flex w-full min-h-[5rem] items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors duration-150"
+              :aria-pressed="isRowSelected(item.raw, item.id)"
+              :aria-label="
+                isRowSelected(item.raw, item.id)
+                  ? `Retirer ${item.label} de la sélection`
+                  : `Ajouter ${item.label}`
+              "
               :class="
                 isRowSelected(item.raw, item.id)
                   ? 'border border-primary-600 bg-primary-50 dark:border-primary-500 dark:bg-primary-950/25'
                   : 'border border-gray-200 bg-white hover:border-primary-400 dark:border-gray-800 dark:bg-gray-950'
               "
+              @click="onAjouterChipClick(item, $event)"
             >
               <div
                 class="care-add-flight-visual flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-gray-100/90 bg-gray-50/90 dark:border-gray-700/80 dark:bg-gray-900/60"
@@ -85,38 +93,24 @@
               >
                 <CareCategoryVisual :image-src="item.imageSrc" :icon-name="item.iconName" img-class="h-8 w-8 object-contain" icon-class="h-5 w-5 text-primary-900 dark:text-primary-300" />
               </div>
-              <p
-                class="min-w-0 flex-1 break-words text-sm font-medium text-gray-900 dark:text-white"
-              >
+              <span class="min-w-0 flex-1 break-words text-left text-sm font-medium text-gray-900 dark:text-white">
                 {{ item.label }}
-              </p>
-              <div class="shrink-0 self-center">
-                <button
-                  type="button"
-                  class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl focus-visible:ring-2 focus-visible:ring-primary-800 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950"
-                  :aria-pressed="isRowSelected(item.raw, item.id)"
-                  :aria-label="
-                    isRowSelected(item.raw, item.id)
-                      ? `Retirer ${item.label} de la sélection`
-                      : `Configurer et ajouter ${item.label}`
-                  "
-                  @click="onAjouterChipClick(item, $event)"
+              </span>
+              <span class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-center" aria-hidden="true">
+                <span
+                  v-if="!isRowSelected(item.raw, item.id)"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-200/90 bg-primary-50/80 text-primary-700 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-300"
                 >
-                  <span
-                    v-if="!isRowSelected(item.raw, item.id)"
-                    class="pointer-events-none inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-200/90 bg-primary-50/80 text-primary-700 transition-colors group-hover:border-primary-300 group-hover:bg-primary-50 dark:border-primary-500/30 dark:bg-primary-950/40 dark:text-primary-300"
-                  >
-                    <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0 opacity-90" />
-                  </span>
-                  <span
-                    v-else
-                    class="pointer-events-none inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-400/60 bg-white text-primary-700 shadow-sm dark:border-primary-500/40 dark:bg-gray-900 dark:text-primary-300"
-                  >
-                    <UIcon name="i-lucide-check" class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
-                  </span>
-                </button>
-              </div>
-            </div>
+                  <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0 opacity-90" />
+                </span>
+                <span
+                  v-else
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary-400/60 bg-white text-primary-700 shadow-sm dark:border-primary-500/40 dark:bg-gray-900 dark:text-primary-300"
+                >
+                  <UIcon name="i-lucide-check" class="h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+                </span>
+              </span>
+            </button>
           </li>
         </ul>
 
