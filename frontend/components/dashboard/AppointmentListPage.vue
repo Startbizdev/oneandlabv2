@@ -330,6 +330,7 @@ import {
   appointmentPatientSearchTextLower,
   normalizeAppointmentFormData,
 } from '~/utils/appointment-patient-display';
+import { appointmentVisitDayKeys } from '@oneandlab/shared-utils';
 import type { CareCategoryRowMinimal } from '~/utils/care-icons';
 
 const props = withDefaults(
@@ -726,22 +727,13 @@ const filteredAndSorted = computed(() => {
   if (statusFilter.value && statusFilter.value !== 'all' && !isServerPaginatedList.value) {
     list = list.filter((a: any) => a.status === statusFilter.value);
   }
-  if (!isServerPaginatedList.value && dateRangeStart.value) {
-    const startDay = new Date(dateRangeStart.value);
-    startDay.setHours(0, 0, 0, 0);
-    const startTs = startDay.getTime();
+  if (!isServerPaginatedList.value && (dateRangeStart.value || dateRangeEnd.value)) {
+    const startDay = dateRangeStart.value ? `${dateRangeStart.value}`.slice(0, 10) : '';
+    const endDay = dateRangeEnd.value ? `${dateRangeEnd.value}`.slice(0, 10) : '';
     list = list.filter((a: any) => {
-      const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
-      return at >= startTs;
-    });
-  }
-  if (!isServerPaginatedList.value && dateRangeEnd.value) {
-    const endDay = new Date(dateRangeEnd.value);
-    endDay.setHours(23, 59, 59, 999);
-    const endTs = endDay.getTime();
-    list = list.filter((a: any) => {
-      const at = a.scheduled_at ? new Date(a.scheduled_at).getTime() : 0;
-      return at <= endTs;
+      const days = appointmentVisitDayKeys(a);
+      if (days.length === 0) return false;
+      return days.some((day) => (!startDay || day >= startDay) && (!endDay || day <= endDay));
     });
   }
   const q = (searchQuery.value || '').trim().toLowerCase();
@@ -848,10 +840,7 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
   }
   const now = new Date();
   if (dateRangeStart.value) {
-    params.date_from = new Date(dateRangeStart.value + 'T00:00:00')
-      .toISOString()
-      .slice(0, 19)
-      .replace('T', ' ');
+    params.date_from = `${dateRangeStart.value} 00:00:00`;
   } else if (props.useDateFilter && dateFilter.value === 'upcoming') {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -859,9 +848,10 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
     params.date_from = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())} ${pad(start.getHours())}:${pad(start.getMinutes())}:${pad(start.getSeconds())}`;
   }
   if (dateRangeEnd.value) {
-    params.date_to = new Date(dateRangeEnd.value + 'T23:59:59').toISOString().slice(0, 19).replace('T', ' ');
+    params.date_to = `${dateRangeEnd.value} 23:59:59`;
   } else if (props.useDateFilter && dateFilter.value === 'past') {
-    params.date_to = now.toISOString().slice(0, 19).replace('T', ' ');
+    const pad = (n: number) => String(n).padStart(2, '0');
+    params.date_to = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
   }
   if (props.basePath === '/nurse') {
     params.nurse_tab = nurseListTab.value;
@@ -875,6 +865,12 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
     const slab = (props.assignedToLabId || '').trim();
     if (pre) params.filter_assigned_to = pre;
     if (slab) params.filter_assigned_lab_id = slab;
+  }
+  const q = (searchQuery.value || '').trim();
+  if (q) {
+    params.q = q;
+    params.page = '1';
+    params.limit = '100';
   }
   return params;
 }
@@ -1298,11 +1294,13 @@ watch(() => props.userIdFilter, () => {
   fetchAppointments();
 });
 
-/** Recherche = filtre client sur la page courante ; si on n’est pas en page 1, revenir à la page 1 (déclenche le fetch). */
+/** Recherche : recharge la première page élargie, puis filtre les noms déchiffrés. */
 watch(searchQuery, () => {
   if (currentPage.value !== 1) {
     currentPage.value = 1;
+    return;
   }
+  fetchAppointments();
 });
 
 onMounted(() => {

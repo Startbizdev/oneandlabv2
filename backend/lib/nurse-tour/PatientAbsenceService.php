@@ -30,7 +30,7 @@ final class PatientAbsenceService
             WHERE nurse_id = ? AND patient_id = ?
         ';
         if ($activeOnly) {
-            $sql .= ' AND (end_date IS NULL OR end_date >= CURDATE())';
+            $sql .= ' AND (end_date IS NULL OR end_date > CURDATE())';
         }
         $sql .= ' ORDER BY start_date DESC, created_at DESC';
         $stmt = $this->db->prepare($sql);
@@ -57,7 +57,7 @@ final class PatientAbsenceService
             SELECT * FROM patient_absences
             WHERE nurse_id = ?
               AND start_date <= ?
-              AND (end_date IS NULL OR end_date >= ?)
+              AND (end_date IS NULL OR end_date > ?)
               AND patient_id IN ($placeholders)
             ORDER BY start_date ASC
         ");

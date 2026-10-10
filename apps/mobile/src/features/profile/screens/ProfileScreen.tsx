@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { useAuthStore } from '@/store/auth-store';
+import { ProfileLabLinksView } from '@/features/profile/views/ProfileLabLinksView';
 import { ProfileNurseHubView } from '@/features/profile/views/ProfileNurseHubView';
 import { ProfilePatientView } from '@/features/profile/views/ProfilePatientView';
 import { ProfilePreleveurView } from '@/features/profile/views/ProfilePreleveurView';
@@ -15,6 +16,7 @@ export function ProfileScreen() {
   if (role === 'patient') return <ProfilePatientView />;
   if (role === 'pro') return <ProfileProView />;
   if (role === 'preleveur') return <ProfilePreleveurView />;
+  if (role === 'lab' || role === 'subaccount') return <ProfileLabLinksView />;
 
   return (
     <View style={styles.container}>

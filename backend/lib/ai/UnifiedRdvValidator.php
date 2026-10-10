@@ -42,6 +42,8 @@ final class UnifiedRdvValidator
             $missing[] = 'availability';
         } elseif (!self::isValidAvailability($availabilityRaw)) {
             $missing[] = 'availability';
+        } elseif (is_string($scheduledAt) && trim($scheduledAt) !== '' && !self::scheduledFitsAvailability($scheduledAt, $availabilityRaw)) {
+            $missing[] = 'scheduled_at';
         }
 
         if ($type === 'nursing' && empty($payload['category_id'])) {
@@ -120,5 +122,32 @@ final class UnifiedRdvValidator
         }
 
         return false;
+    }
+
+    private static function scheduledFitsAvailability(string $scheduledAt, mixed $availabilityRaw): bool
+    {
+        $data = is_array($availabilityRaw) ? $availabilityRaw : json_decode((string) $availabilityRaw, true);
+        if (!is_array($data) || (string) ($data['type'] ?? '') !== 'custom') {
+            return true;
+        }
+        $range = $data['range'] ?? null;
+        if (!is_array($range) || count($range) !== 2) {
+            return true;
+        }
+        try {
+            $paris = new DateTimeZone('Europe/Paris');
+            $raw = trim($scheduledAt);
+            $hasOffset = preg_match('/(?:[zZ]|[+-]\d{2}:?\d{2})$/', $raw) === 1;
+            $dt = $hasOffset
+                ? (new DateTimeImmutable($raw))->setTimezone($paris)
+                : new DateTimeImmutable($raw, $paris);
+        } catch (Throwable) {
+            return false;
+        }
+        $hour = (int) $dt->format('G') + ((int) $dt->format('i') / 60);
+        $start = (float) $range[0];
+        $end = (float) $range[1];
+
+        return $hour >= $start && $hour <= $end;
     }
 }

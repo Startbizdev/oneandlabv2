@@ -7,6 +7,7 @@ require_once __DIR__ . '/AIGateway.php';
 require_once __DIR__ . '/MemoryComposer.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
+require_once __DIR__ . '/../MedicalDocumentAccess.php';
 require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../Validation.php';
 require_once __DIR__ . '/../DatabaseTransaction.php';
@@ -61,15 +62,31 @@ final class AiReportService
         if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $patientId)) {
             throw HttpStatusException::forbidden('Accès à ce patient refusé');
         }
+        $reportPatientId = $patientId;
         if ($appointmentId !== null) {
-            $stmt = $this->db->prepare('SELECT patient_id FROM appointments WHERE id = ? LIMIT 1');
+            $stmt = $this->db->prepare('SELECT patient_id, relative_id FROM appointments WHERE id = ? LIMIT 1');
             $stmt->execute([$appointmentId]);
-            if ($stmt->fetchColumn() !== $patientId) {
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($appointment === false) {
                 throw HttpStatusException::notFound('Rendez-vous introuvable pour ce patient');
+            }
+            $ownerId = (string) ($appointment['patient_id'] ?? '');
+            $relativeId = isset($appointment['relative_id']) ? (string) $appointment['relative_id'] : null;
+            $subjectId = MedicalDocumentAccess::subjectDossierId($this->db, $ownerId, $relativeId);
+            if (($subjectId === null || $subjectId === '') && $relativeId !== null && $relativeId !== '') {
+                $subjectId = RelativeProfile::ensureProfile($this->db, $relativeId);
+            }
+            $matchesOwner = $patientId === $ownerId;
+            $matchesSubject = $subjectId !== null && $subjectId !== '' && $patientId === $subjectId;
+            if (!$matchesOwner && !$matchesSubject) {
+                throw HttpStatusException::notFound('Rendez-vous introuvable pour ce patient');
+            }
+            if ($subjectId !== null && $subjectId !== '') {
+                $reportPatientId = $subjectId;
             }
         }
 
-        $context = $this->memory->compose($user, $patientId, 'professional', false, $transcript);
+        $context = $this->memory->compose($user, $reportPatientId, 'professional', false, $transcript);
         $result = $this->gateway->chat(
             $user,
             [[
@@ -79,7 +96,7 @@ final class AiReportService
             'medical_summary',
             $context,
             null,
-            $patientId,
+            $reportPatientId,
         );
         $content = trim((string) ($result['content'] ?? ''));
         $id = Uuid::v4();
@@ -88,7 +105,7 @@ final class AiReportService
             VALUES (?, ?, ?, ?, \'consultation_summary\', \'draft\', ?, ?, ?)
         ')->execute([
             $id,
-            $patientId,
+            $reportPatientId,
             $appointmentId,
             $user['user_id'],
             $content,

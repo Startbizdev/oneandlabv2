@@ -61,13 +61,33 @@ export function endDateFromStartAndDays(startDate: string, days: number): string
   return dayjs(startDate).add(Math.max(0, days - 1), 'day').format('YYYY-MM-DD');
 }
 
-/** Fréquence soin → intervalle en jours (null = laisser l'utilisateur choisir). */
+/** Fréquence soin → intervalle en jours. Les passages du même jour sont des créneaux, pas un intervalle. */
 export function frequencyToEveryDays(frequency: string | null | undefined): number | null {
   switch (frequency) {
     case 'once_daily':
-      return 1;
     case 'twice_daily':
+    case 'thrice_daily':
       return 1;
+    default:
+      return null;
+  }
+}
+
+/** Créneaux du même jour. Hebdomadaire : un seul créneau, les jours sont dans le planning. */
+export function frequencyDailySlots(frequency: string | null | undefined): PassageDailyTimeSlot[] | null {
+  const one = (time_slot: PassageDailyTimeSlot['time_slot']): PassageDailyTimeSlot => ({
+    time_slot,
+    custom_time: null,
+  });
+  switch (frequency) {
+    case 'once_daily':
+    case 'twice_weekly':
+    case 'thrice_weekly':
+      return [one('morning')];
+    case 'twice_daily':
+      return [one('morning'), one('evening')];
+    case 'thrice_daily':
+      return [one('morning'), one('noon'), one('evening')];
     default:
       return null;
   }
@@ -93,7 +113,10 @@ export function suggestPlanningFromCare(
   const primaryFreq = items.find((i) => i.frequency)?.frequency ?? null;
   const every = frequencyToEveryDays(primaryFreq);
 
-  if (state.planningMode === 'single_day' && every === 1) {
+  if (state.planningMode === 'single_day' && (primaryFreq === 'twice_weekly' || primaryFreq === 'thrice_weekly')) {
+    patch.planningMode = 'weekdays';
+    patch.weekdays = primaryFreq === 'twice_weekly' ? [1, 4] : [1, 3, 5];
+  } else if (state.planningMode === 'single_day' && every === 1) {
     patch.planningMode = 'interval';
     patch.everyDays = '1';
   } else if (state.planningMode === 'single_day' && every == null) {

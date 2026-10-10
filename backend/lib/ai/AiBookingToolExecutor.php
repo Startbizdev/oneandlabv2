@@ -308,21 +308,45 @@ final class AiBookingToolExecutor
         }
 
         $search = mb_strtolower(trim((string) ($arguments['search_name'] ?? '')));
+        if (mb_strlen($search) < 2) {
+            return ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => 'Nom trop court',
+                'user_hint_fr' => 'Précisez le prénom ou le nom du patient.',
+            ]];
+        }
         $ctx = $this->contextComposer()->compose($this->user, null, 'utility', true);
+        $matches = [];
         foreach (is_array($ctx['staff_patients'] ?? null) ? $ctx['staff_patients'] : [] as $patient) {
             if (!is_array($patient)) {
                 continue;
             }
             $display = mb_strtolower((string) ($patient['display_name'] ?? ''));
-            if ($search !== '' && $display !== '' && str_contains($display, $search)) {
-                return $this->updateDraft([
-                    'patch' => [
-                        'patient_mode' => 'existing',
-                        'patient_id' => (string) ($patient['id'] ?? ''),
-                        'booking_step' => 'services',
-                    ],
-                ]);
+            if ($display !== '' && str_contains($display, $search)) {
+                $matches[] = $patient;
             }
+        }
+        if (count($matches) > 1) {
+            $names = array_values(array_filter(array_map(
+                static fn (array $patient): string => trim((string) ($patient['display_name'] ?? '')),
+                array_slice($matches, 0, 5),
+            )));
+
+            return ['draft' => $this->draft, 'result' => [
+                'ok' => false,
+                'error' => 'Plusieurs patients correspondent',
+                'candidates' => $names,
+                'user_hint_fr' => 'Plusieurs patients correspondent (' . implode(', ', $names) . '). Demandez lequel.',
+            ]];
+        }
+        if (count($matches) === 1) {
+            return $this->updateDraft([
+                'patch' => [
+                    'patient_mode' => 'existing',
+                    'patient_id' => (string) ($matches[0]['id'] ?? ''),
+                    'booking_step' => 'services',
+                ],
+            ]);
         }
 
         return ['draft' => $this->draft, 'result' => [

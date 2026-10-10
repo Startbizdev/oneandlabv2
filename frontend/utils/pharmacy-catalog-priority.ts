@@ -37,6 +37,7 @@ export function withOwnPharmacyOption(
       home_delivery_days: [],
       address: null,
       postal_code: '',
+      profile_image_url: null,
     },
     ...items,
   ];

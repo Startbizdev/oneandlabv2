@@ -36,6 +36,7 @@ import {
   embedTimeRangeInPlanningConfig,
   previewPassageCount,
   suggestPlanningFromCare,
+  frequencyDailySlots,
 } from '../utils/passage-planning';
 import {
   formatCareSummary,
@@ -128,6 +129,8 @@ export function PassageFormScreen() {
 
   useEffect(() => {
     if (planningEdited || nursingItems.length === 0) return;
+    const slots = frequencyDailySlots(nursingItems.find((item) => item.frequency)?.frequency);
+    if (slots) setDailyTimeSlots(slots);
     setPlanningState((prev) => {
       const patch = suggestPlanningFromCare(prev, nursingItems);
       return patch ? { ...prev, ...patch } : prev;

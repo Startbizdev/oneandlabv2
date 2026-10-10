@@ -252,16 +252,7 @@ final class AIGateway
      */
     private function summarizeDraftForTools(array $draft): array
     {
-        $payload = is_array($draft['payload'] ?? null) ? $draft['payload'] : [];
-
-        return [
-            'id' => $draft['id'] ?? null,
-            'status' => $draft['status'] ?? null,
-            'missing_fields' => $draft['missing_fields'] ?? [],
-            'booking_step' => $payload['booking_step'] ?? null,
-            'patient_mode' => $payload['patient_mode'] ?? null,
-            'payload' => $payload,
-        ];
+        return AiBookingDraftSummary::forPrompt($draft);
     }
 
     /**
@@ -308,6 +299,7 @@ final class AIGateway
         $roleIntro = CaryBookingPromptRules::isStaffRole($role)
             ? 'Tu aides des professionnels de santé à planifier des soins pour leurs patients.'
             : 'Tu accompagnes des patients dans leur parcours de santé.';
+        $workflow = CaryBookingPromptRules::workflowBlock($role);
 
         $documentBlock = '';
         if ($hasChatAttachments || in_array($activeIntent, [CaryContextFocus::DOCUMENT, CaryContextFocus::DOCUMENT_FOLLOWUP], true)) {
@@ -328,6 +320,7 @@ CARNET;
         return <<<PROMPT
 Tu es Cary, assistant santé Cary (OneAndLab). Français, chaleureux, phrases courtes.
 {$roleIntro}
+{$workflow}
 {$voiceRules}
 
 Format mobile (texte brut, PAS de markdown ** # ```) :
@@ -346,6 +339,7 @@ RDV — tools obligatoires (jamais de bloc booking_patch) :
 - JAMAIS dans le texte utilisateur : « je géocode », « geocode », noms d'outils ou étapes techniques. Les tools s'exécutent en silence ; réponds en langage naturel (« Parfait », « C'est noté », question suivante).
 - JAMAIS annoncer « rendez-vous validé / confirmé / créé » sans carte récap validée. En vocal staff : ordonnance_status=deferred si le patient a l'ordonnance (sans upload vocal).
 - Dates naturelles en français (pas d'ISO visible). Utilise today_paris / tomorrow_paris du contexte.
+- Texte visible : jamais d'UUID, de patient_id ni d'identifiant technique. Nomme la personne (patient_name). Homonyme : demande lequel, ne choisis pas.
 {$documentBlock}
 {$carnetBlock}
 

@@ -16,7 +16,6 @@ final class AiBookingDraftSummary
         $address = is_array($payload['address'] ?? null) ? $payload['address'] : null;
 
         return [
-            'id' => $draft['id'] ?? null,
             'status' => $draft['status'] ?? null,
             'missing_fields' => $draft['missing_fields'] ?? [],
             'booking_step' => $payload['booking_step'] ?? null,

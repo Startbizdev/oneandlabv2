@@ -30,11 +30,9 @@ final class ContextComposer
     {
         $role = (string) ($user['role'] ?? '');
         $userId = (string) ($user['user_id'] ?? '');
-        $targetPatientId = $patientId;
+        $targetPatientId = $this->resolveSubjectPatientId($role, $userId, $patientId);
 
-        if ($role === 'patient') {
-            $targetPatientId = $userId;
-        } elseif ($targetPatientId !== null && $targetPatientId !== '') {
+        if ($role !== 'patient' && $targetPatientId !== null && $targetPatientId !== '') {
             if (!PatientDossierAccess::canAccess($this->db, $this->userModel, $user, $targetPatientId)) {
                 throw HttpStatusException::forbidden('Accès à ce patient refusé');
             }
@@ -51,28 +49,33 @@ final class ContextComposer
         $context['today_label_fr'] = self::formatParisDateLabel($parisNow);
         $context['tomorrow_paris'] = $tomorrowParis->format('Y-m-d');
         $context['tomorrow_label_fr'] = self::formatParisDateLabel($tomorrowParis);
+        $context['subject_patient_id'] = $targetPatientId;
 
         if ($role === 'patient') {
-            $context['profile'] = $this->profileSummary($userId, $userId, $role);
-            $context['relatives'] = $this->relativesSummary($userId);
+            $subjectId = $targetPatientId ?? $userId;
+            $isRelative = $subjectId !== $userId;
+            $context['profile'] = $this->profileSummary($subjectId, $userId, $role);
+            $context['relatives'] = $isRelative ? [] : $this->relativesSummary($userId);
             $context['care_categories'] = $this->careCategoriesSummary();
-            $context['profile_documents'] = $this->profileDocumentsSummary($userId);
-            $appointments = $this->appointmentsSummary($userId, [$userId, ...array_column($context['relatives'], 'id')]);
+            $context['profile_documents'] = $this->profileDocumentsSummary($subjectId);
+            $appointments = $isRelative
+                ? $this->appointmentsSummary($userId, [$subjectId], true)
+                : $this->appointmentsSummary($userId, [$userId, ...array_column($context['relatives'], 'id')]);
             if ($light) {
                 $context['appointments'] = [
                     'upcoming' => array_slice($appointments['upcoming'], 0, 4),
                     'past' => array_slice($appointments['past'], 0, 2),
                 ];
-                $healthLight = $this->healthMetricsSummary($userId, true);
+                $healthLight = $this->healthMetricsSummary($subjectId, true);
                 if ($healthLight !== null) {
                     $context['health_metrics'] = $healthLight;
                 }
             } else {
                 $context['appointments'] = $appointments;
-                $context['lab_results'] = $this->labResultsSummary($user, 5);
-                $context['documents'] = $this->documentsSummary($userId, $userId, $role);
-                $context['pending_documents'] = $this->pendingDocumentsSummary($userId);
-                $context['health_metrics'] = $this->healthMetricsSummary($userId, false);
+                $context['lab_results'] = $this->labResultsSummary($user, 5, $subjectId);
+                $context['documents'] = $this->documentsSummary($subjectId, $userId, $role);
+                $context['pending_documents'] = $this->pendingDocumentsSummary($subjectId);
+                $context['health_metrics'] = $this->healthMetricsSummary($subjectId, false);
             }
         } elseif (in_array($role, ['pro', 'nurse', 'preleveur'], true)) {
             $context['profile'] = $this->profileSummary($userId, $userId, $role);
@@ -84,13 +87,52 @@ final class ContextComposer
                 $context['appointments'] = $this->appointmentsSummary($userId, [$targetPatientId], true);
                 $context['lab_results'] = $this->labResultsSummary($user, 5, $targetPatientId);
                 $context['documents'] = $this->documentsSummary($targetPatientId, $userId, $role);
-            } else {
-                $context['appointments'] = $this->staffAppointmentsSummary($user);
-                $context['lab_results'] = $this->labResultsSummary($user, 5);
             }
         }
 
         return $context;
+    }
+
+    /**
+     * Agenda du soignant, sans résultats d'autres dossiers. $dayYmd null = visites à venir.
+     *
+     * @return array{upcoming: list<array<string, mixed>>, past: list<array<string, mixed>>}
+     */
+    public function staffDayAgenda(array $user, ?string $dayYmd): array
+    {
+        return $this->staffAppointmentsSummary($user, $dayYmd);
+    }
+
+    /**
+     * @param array<string, mixed> $appointments
+     * @return array{upcoming: list<array<string, mixed>>, past: list<array<string, mixed>>}
+     */
+    public static function filterAppointmentsToDay(array $appointments, string $dayYmd): array
+    {
+        $keep = static function (mixed $row) use ($dayYmd): bool {
+            return is_array($row) && str_starts_with((string) ($row['scheduled_at'] ?? ''), $dayYmd);
+        };
+
+        return [
+            'upcoming' => array_values(array_filter($appointments['upcoming'] ?? [], $keep)),
+            'past' => array_values(array_filter($appointments['past'] ?? [], $keep)),
+        ];
+    }
+
+    private function resolveSubjectPatientId(string $role, string $userId, ?string $patientId): ?string
+    {
+        if ($role === 'patient') {
+            if ($patientId !== null && $patientId !== '' && $patientId !== $userId) {
+                $relative = RelativeProfile::resolve($this->db, $patientId);
+                if ($relative !== null && $relative['owner_id'] === $userId) {
+                    return $patientId;
+                }
+            }
+
+            return $userId;
+        }
+
+        return ($patientId !== null && $patientId !== '') ? $patientId : null;
     }
 
     /**
@@ -300,9 +342,14 @@ final class ContextComposer
             ? RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientIds[0])
             : ["a.patient_id IN ($placeholders)", $patientIds];
         $sqlBase = "
-            SELECT a.id, a.type, a.status, a.scheduled_at, a.patient_id, cc.name AS category_name
+            SELECT a.type, a.status, a.scheduled_at, cc.name AS category_name,
+                   p.first_name_encrypted, p.first_name_dek, p.last_name_encrypted, p.last_name_dek,
+                   r.first_name_encrypted AS rel_fn_enc, r.first_name_dek AS rel_fn_dek,
+                   r.last_name_encrypted AS rel_ln_enc, r.last_name_dek AS rel_ln_dek
             FROM appointments a
             LEFT JOIN care_categories cc ON cc.id = a.category_id
+            LEFT JOIN profiles p ON p.id = a.patient_id
+            LEFT JOIN patient_relatives r ON r.id = a.relative_id
             WHERE $patientSql
               AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)
         ";
@@ -326,7 +373,7 @@ final class ContextComposer
     /**
      * @return array{upcoming: list<array<string, mixed>>, past: list<array<string, mixed>>}
      */
-    private function staffAppointmentsSummary(array $user): array
+    private function staffAppointmentsSummary(array $user, ?string $dayYmd = null): array
     {
         $userId = (string) ($user['user_id'] ?? '');
         $role = (string) ($user['role'] ?? '');
@@ -347,19 +394,31 @@ final class ContextComposer
         $terminal = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
         $terminalPh = implode(',', array_fill(0, count($terminal), '?'));
         $todayParis = AppTimezone::sqlStartOfToday();
+        $windowSql = 'AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)';
+        $windowParams = [$todayParis];
+        if (is_string($dayYmd) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayYmd) === 1) {
+            $nextDay = (new DateTimeImmutable($dayYmd))->modify('+1 day')->format('Y-m-d');
+            $windowSql = 'AND a.scheduled_at >= ? AND a.scheduled_at < ?';
+            $windowParams = [$dayYmd . ' 00:00:00', $nextDay . ' 00:00:00'];
+        }
 
         $sql = "
-            SELECT a.id, a.type, a.status, a.scheduled_at, a.patient_id, cc.name AS category_name
+            SELECT a.type, a.status, a.scheduled_at, cc.name AS category_name,
+                   p.first_name_encrypted, p.first_name_dek, p.last_name_encrypted, p.last_name_dek,
+                   r.first_name_encrypted AS rel_fn_enc, r.first_name_dek AS rel_fn_dek,
+                   r.last_name_encrypted AS rel_ln_enc, r.last_name_dek AS rel_ln_dek
             FROM appointments a
             LEFT JOIN care_categories cc ON cc.id = a.category_id
+            LEFT JOIN profiles p ON p.id = a.patient_id
+            LEFT JOIN patient_relatives r ON r.id = a.relative_id
             WHERE ($where)
               AND a.status NOT IN ($terminalPh)
-              AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)
+              $windowSql
             ORDER BY a.scheduled_at ASC
-            LIMIT 10
+            LIMIT 20
         ";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_merge($params, $terminal, [$todayParis]));
+        $stmt->execute(array_merge($params, $terminal, $windowParams));
 
         return ['upcoming' => $this->mapAppointments($stmt->fetchAll(PDO::FETCH_ASSOC)), 'past' => []];
     }
@@ -372,17 +431,68 @@ final class ContextComposer
     {
         $out = [];
         foreach ($rows as $row) {
-            $out[] = [
-                'id' => (string) ($row['id'] ?? ''),
+            $item = [
                 'type' => $row['type'] ?? null,
                 'status' => $row['status'] ?? null,
                 'scheduled_at' => $row['scheduled_at'] ?? null,
                 'category_name' => $row['category_name'] ?? null,
-                'patient_id' => $row['patient_id'] ?? null,
             ];
+            $name = $this->appointmentDisplayName($row);
+            if ($name !== '') {
+                $item['patient_name'] = $name;
+            }
+            $out[] = $item;
         }
 
         return $out;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function appointmentDisplayName(array $row): string
+    {
+        $relative = $this->decryptPersonName(
+            (string) ($row['rel_fn_enc'] ?? ''),
+            (string) ($row['rel_fn_dek'] ?? ''),
+            (string) ($row['rel_ln_enc'] ?? ''),
+            (string) ($row['rel_ln_dek'] ?? ''),
+        );
+        if ($relative !== '') {
+            return $relative;
+        }
+
+        return $this->decryptPersonName(
+            (string) ($row['first_name_encrypted'] ?? ''),
+            (string) ($row['first_name_dek'] ?? ''),
+            (string) ($row['last_name_encrypted'] ?? ''),
+            (string) ($row['last_name_dek'] ?? ''),
+        );
+    }
+
+    private function decryptPersonName(string $fnEnc, string $fnDek, string $lnEnc, string $lnDek): string
+    {
+        if (($fnEnc === '' || $fnDek === '') && ($lnEnc === '' || $lnDek === '')) {
+            return '';
+        }
+        require_once __DIR__ . '/../Crypto.php';
+        $crypto = new Crypto();
+        $fn = '';
+        $ln = '';
+        try {
+            if ($fnEnc !== '' && $fnDek !== '') {
+                $fn = trim((string) $crypto->decryptField($fnEnc, $fnDek));
+            }
+            if ($lnEnc !== '' && $lnDek !== '') {
+                $ln = trim((string) $crypto->decryptField($lnEnc, $lnDek));
+            }
+        } catch (Throwable $e) {
+            error_log('ContextComposer nom de rendez-vous illisible : ' . $e->getMessage());
+
+            return '';
+        }
+
+        return trim($fn . ' ' . $ln);
     }
 
     /**
@@ -390,6 +500,9 @@ final class ContextComposer
      */
     private function labResultsSummary(array $user, int $limit, ?string $patientId = null): array
     {
+        if ($patientId !== null && RelativeProfile::resolve($this->db, $patientId) !== null) {
+            return $this->subjectLabResults($patientId, $limit);
+        }
         $listing = new LabResultsListing($this->db, $this->userModel);
         $result = $listing->listForUser($user, '', 1, $limit);
         $items = $result['items'] ?? [];
@@ -398,12 +511,39 @@ final class ContextComposer
         }
 
         return array_map(static fn ($i) => [
-            'id' => $i['id'] ?? null,
             'file_name' => $i['file_name'] ?? null,
             'created_at' => $i['created_at'] ?? null,
             'category_name' => $i['category_name'] ?? null,
-            'appointment_id' => $i['appointment_id'] ?? null,
         ], array_slice($items, 0, $limit));
+    }
+
+    /**
+     * Résultats du dossier d'un proche (stockés sur le titulaire avec relative_id).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function subjectLabResults(string $profileId, int $limit): array
+    {
+        [$patientSql, $patientParams] = RelativeProfile::appointmentSubjectSql($this->db, 'a', $profileId);
+        $stmt = $this->db->prepare("
+            SELECT md.file_name, md.created_at, cc.name AS category_name
+            FROM medical_documents md
+            INNER JOIN appointments a ON a.id = md.appointment_id
+            LEFT JOIN care_categories cc ON cc.id = a.category_id
+            WHERE $patientSql
+              AND md.document_type = 'resultats'
+              AND md.replaced_by_document_id IS NULL
+            ORDER BY md.created_at DESC
+            LIMIT " . (int) $limit . "
+        ");
+        $stmt->execute($patientParams);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(static fn (array $row): array => [
+            'file_name' => $row['file_name'] ?? null,
+            'created_at' => $row['created_at'] ?? null,
+            'category_name' => $row['category_name'] ?? null,
+        ], $rows);
     }
 
     /**
@@ -418,10 +558,11 @@ final class ContextComposer
             return [];
         }
 
-        // Patient : tous les RDV qu'il porte ; soignant : RDV du dossier ouvert (proche ou titulaire) uniquement.
-        [$patientSql, $patientParams] = $requesterRole === 'patient'
-            ? ['a.patient_id = ?', [$patientId]]
-            : RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId);
+        // Titulaire : documents de ses RDV. Proche ou soignant : uniquement le dossier ouvert.
+        $relativeSubject = $requesterRole === 'patient' && RelativeProfile::resolve($this->db, $patientId) !== null;
+        [$patientSql, $patientParams] = ($requesterRole !== 'patient' || $relativeSubject)
+            ? RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId)
+            : ['a.patient_id = ?', [$patientId]];
         $stmt = $this->db->prepare("
             SELECT md.id, md.document_type, md.file_name, md.created_at
             FROM medical_documents md
@@ -450,17 +591,25 @@ final class ContextComposer
      */
     private function pendingDocumentsSummary(string $patientId): array
     {
+        [$patientSql, $patientParams] = RelativeProfile::resolve($this->db, $patientId) !== null
+            ? RelativeProfile::appointmentSubjectSql($this->db, 'a', $patientId)
+            : ['a.patient_id = ?', [$patientId]];
         $stmt = $this->db->prepare("
-            SELECT a.id, a.type, a.status, a.scheduled_at, cc.name AS category_name
+            SELECT a.type, a.status, a.scheduled_at, cc.name AS category_name,
+                   p.first_name_encrypted, p.first_name_dek, p.last_name_encrypted, p.last_name_dek,
+                   r.first_name_encrypted AS rel_fn_enc, r.first_name_dek AS rel_fn_dek,
+                   r.last_name_encrypted AS rel_ln_enc, r.last_name_dek AS rel_ln_dek
             FROM appointments a
             LEFT JOIN care_categories cc ON cc.id = a.category_id
-            WHERE a.patient_id = ?
+            LEFT JOIN profiles p ON p.id = a.patient_id
+            LEFT JOIN patient_relatives r ON r.id = a.relative_id
+            WHERE $patientSql
               AND a.status IN ('pending', 'confirmed', 'planned', 'inProgress')
               AND a.scheduled_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
             ORDER BY a.scheduled_at ASC
             LIMIT 5
         ");
-        $stmt->execute([$patientId]);
+        $stmt->execute($patientParams);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $this->mapAppointments($rows);

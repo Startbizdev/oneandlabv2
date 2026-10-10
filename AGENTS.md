@@ -31,6 +31,7 @@ Plateforme de rendez-vous de prélèvement à domicile. Rôles : patient, infirm
 | Agent | Quand |
 |-------|-------|
 | `functional-guardian` | Avant et après toute refonte d'une vue : fiche fonctionnelle, trace UI → backend, CTA |
+| `senior-implementer` | Implémente une correction ou une fonctionnalité sans contourner lint, types ou tests |
 | `backend-guardian` | Dès qu'un endpoint, une policy ou une migration est touché ou utilisé par une vue modifiée |
 | `design-reviewer` | Sur les captures avant / après d'une vue |
 | `web-visual-qa` | Pour produire les captures web avant / après |

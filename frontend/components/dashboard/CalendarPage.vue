@@ -201,6 +201,7 @@
 import {
   appointmentDayFrance,
   appointmentTimeFrance,
+  appointmentVisitDayKeys,
   calendarDayKeyFromDate,
   parseAppointmentDateFrance,
 } from '@oneandlab/shared-utils';
@@ -331,7 +332,7 @@ const todayLabel = computed(() => {
 const monthCount = computed(() => {
   const now = new Date();
   return filteredAppointments.value.filter((a) => {
-    return appointmentDayFrance(a.scheduled_at).slice(0, 7) === appointmentDayFrance(now).slice(0, 7);
+    return appointmentVisitDayKeys(a).some((day) => day.slice(0, 7) === appointmentDayFrance(now).slice(0, 7));
   }).length;
 });
 
@@ -348,7 +349,7 @@ const selectedDayAppointments = computed(() => {
   if (!selectedDay.value) return [];
   const dayKey = calendarDayKeyFromDate(selectedDay.value);
   return filteredAppointments.value
-    .filter((a) => appointmentDayFrance(a.scheduled_at) === dayKey)
+    .filter((a) => appointmentVisitDayKeys(a).includes(dayKey))
     .sort((a, b) => parseAppointmentDateFrance(a.scheduled_at).getTime() - parseAppointmentDateFrance(b.scheduled_at).getTime());
 });
 

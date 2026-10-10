@@ -26,6 +26,10 @@ final class AiChatRateLimit
             return;
         }
 
+        if ($endpoint === 'stream') {
+            $endpoint = 'chat';
+        }
+
         [$max, $window] = self::LIMITS[$endpoint] ?? self::LIMITS['chat'];
         $bucket = 'ai_' . $endpoint;
         if (!RateLimit::allow($bucket, $userId, $max, $window)) {

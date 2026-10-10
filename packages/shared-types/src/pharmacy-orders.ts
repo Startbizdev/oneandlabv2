@@ -103,6 +103,7 @@ export type PharmacyCatalogItem = {
   home_delivery_days: number[];
   address: PharmacyOrderAddress | null;
   postal_code: string;
+  profile_image_url?: string | null;
   is_favorite?: boolean;
   /** Pharmacie dont ce patient est le patient (créateur ou lien professionnel). */
   is_patient_pharmacy?: boolean;

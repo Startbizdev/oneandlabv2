@@ -62,6 +62,10 @@ final class CaryContextFocus
             return false;
         }
 
+        if (self::isAgendaQuestion($msg)) {
+            return false;
+        }
+
         if (preg_match('/\b(?:quand|prochain|dernier|r[ée]sum[ée])\b/iu', $msg)
             && !preg_match('/\b(?:je veux|je voudrais|jveux|planifier|prendre (?:un )?rdv|besoin d[\x27’]?un)\b/iu', $msg)) {
             return false;
@@ -72,6 +76,39 @@ final class CaryContextFocus
             . 'infirmier|passage|soin|injection|perfusion|pr[ée]l[èe]vement)\b/iu',
             $msg,
         );
+    }
+
+    /**
+     * Lecture d'agenda (« j'ai rdv quoi demain »), pas une demande de création.
+     */
+    public static function isAgendaQuestion(string $msg): bool
+    {
+        if (!preg_match('/\b(?:rdv|rendez[- ]vous|rendezvous|agenda)\b/iu', $msg)) {
+            return false;
+        }
+        if (preg_match('/\b(?:je veux|je voudrais|jveux|planifier|prendre|r[ée]server|fixer|nouveau)\b/iu', $msg)) {
+            return false;
+        }
+        if (preg_match('/\b(?:pansement|prise de sang|injection|perfusion|pr[ée]l[èe]vement|soin)\b/iu', $msg)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\b(?:demain|aujourd|agenda|quoi|programm[ée]s?)\b/iu', $msg);
+    }
+
+    public static function agendaDay(string $message, string $todayYmd, string $tomorrowYmd): ?string
+    {
+        if (!self::isAgendaQuestion($message)) {
+            return null;
+        }
+        if (preg_match('/\bdemain\b/iu', $message)) {
+            return $tomorrowYmd !== '' ? $tomorrowYmd : null;
+        }
+        if (preg_match('/\baujourd/iu', $message)) {
+            return $todayYmd !== '' ? $todayYmd : null;
+        }
+
+        return null;
     }
 
     public static function matchesDocumentFollowUp(string $msg): bool

@@ -3,7 +3,7 @@ import type { AiReport } from '@oneandlab/shared-types';
 import type { TransmissionPrefill } from '@oneandlab/shared-utils';
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
-import { CalendarDays, FileText, FlaskConical, User, Users, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, FileText, FlaskConical, User, type LucideIcon } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { TransmissionEntrySheet } from '@/features/patients/components/TransmissionEntrySheet';
 import { useStaffPatientProfile } from '@/features/patients/hooks/use-staff-patient-profile';
@@ -39,7 +39,7 @@ function isStaffAiRole(role: MobileRole): boolean {
   return role === 'nurse' || role === 'pro';
 }
 
-/** Sous le rappel urgence : objet de la conversation, choix du patient et dictée (soignant). */
+/** Sous le rappel urgence : dossier déjà ouvert, et dictée. Pas de bouton tant qu'aucun dossier n'est choisi. */
 export function CaryAiContextBar({
   role,
   context,
@@ -84,7 +84,7 @@ export function CaryAiContextBar({
   const openPicker = () => onPickerOpenChange(true);
 
   return (
-    <View style={styles.bar}>
+    <View style={context ? [styles.bar, { backgroundColor: c.background }] : undefined}>
       {context ? (
         <CaryAiContextPill
           icon={CONTEXT_ICONS[context.contextType]}
@@ -99,15 +99,7 @@ export function CaryAiContextBar({
           }
           pressHint={context.contextType === 'appointment' ? 'Ouvre le rendez-vous' : 'Change de patient'}
         />
-      ) : (
-        <Button
-          title="Choisir un patient"
-          variant="secondary"
-          size="sm"
-          onPress={openPicker}
-          leftIcon={<Users size={iconSize.sm} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />}
-        />
-      )}
+      ) : null}
       {staff && patientId ? (
         <Button
           title="Compte rendu"
@@ -160,6 +152,7 @@ function buildStyles() {
       gap: spacing[2],
       paddingHorizontal: H_PADDING,
       paddingTop: spacing[2],
+      paddingBottom: spacing[2],
     },
   };
 }

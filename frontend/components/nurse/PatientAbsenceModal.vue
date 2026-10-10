@@ -32,8 +32,7 @@
 
         <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5 space-y-4">
           <p class="text-sm text-slate-500 dark:text-slate-400">
-            Le passage reste visible sur la tournée mais la carte sera grisée avec le motif jusqu'à la
-            date de fin.
+            Le passage reste visible, grisé, jusqu’à la date de retour. Ce jour-là, le soin reprend.
           </p>
 
           <UFormField label="Motif">
@@ -54,7 +53,7 @@
                 class="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900"
               />
             </UFormField>
-            <UFormField label="Au" help="Vide : jusqu'à nouvel ordre">
+            <UFormField label="Date de retour (facultatif)" help="Vide : jusqu'à nouvel ordre. Le soin reprend ce jour-là.">
               <input
                 v-model="form.end_date"
                 type="date"

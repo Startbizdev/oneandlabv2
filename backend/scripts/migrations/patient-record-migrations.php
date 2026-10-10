@@ -6,8 +6,9 @@ require_once __DIR__ . '/lab-network-migrations.php';
 
 /**
  * Migrations 119 (absence sans date de fin), 121 (téléphones patient), 122 (transmissions),
- * 126 (dossier patient des proches) et 128 (remplacement d'ordonnance), idempotentes.
- * Partagées entre les scripts apply-migration-119/121/122/126/128 et scripts/deploy-database-safety.php.
+ * 126 (dossier patient des proches), 128 (remplacement d'ordonnance)
+ * et 129 (dates de visite d'un bilan), idempotentes.
+ * Partagées entre les scripts apply-migration-119/121/122/126/128/129 et scripts/deploy-database-safety.php.
  */
 
 function applyMigration119PatientAbsencesOpenEnd(PDO $pdo, string $migrationsDir): string
@@ -104,4 +105,19 @@ function applyMigration128MedicalDocumentsReplacement(PDO $pdo, string $migratio
     return $applied
         ? 'Migration 128 applied: medical_documents.replaced_*.'
         : 'Migration 128 verified: medical_documents.replaced_* present.';
+}
+
+function applyMigration129AppointmentsVisitDates(PDO $pdo, string $migrationsDir): string
+{
+    $column = $pdo->query("SHOW COLUMNS FROM appointments LIKE 'visit_dates'")->fetch(PDO::FETCH_ASSOC);
+    if ($column !== false) {
+        return 'Migration 129 verified: appointments.visit_dates present.';
+    }
+    $pdo->exec(readMigrationSql($migrationsDir, '129_appointments_visit_dates.sql'));
+    $column = $pdo->query("SHOW COLUMNS FROM appointments LIKE 'visit_dates'")->fetch(PDO::FETCH_ASSOC);
+    if ($column === false || strtoupper((string) ($column['Null'] ?? '')) !== 'YES') {
+        throw new RuntimeException('Migration 129 non appliquée : appointments.visit_dates absente.');
+    }
+
+    return 'Migration 129 applied: appointments.visit_dates.';
 }

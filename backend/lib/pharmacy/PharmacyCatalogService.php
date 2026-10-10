@@ -87,7 +87,7 @@ final class PharmacyCatalogService
         $params = $receiverEmplois;
 
         $sql = "
-            SELECT p.id, p.emploi, p.company_name_encrypted, p.company_name_dek,
+            SELECT p.id, p.emploi, p.profile_image_url, p.company_name_encrypted, p.company_name_dek,
                    p.first_name_encrypted, p.first_name_dek,
                    p.last_name_encrypted, p.last_name_dek,
                    p.address_encrypted, p.address_dek,
@@ -282,6 +282,7 @@ final class PharmacyCatalogService
             'home_delivery_days' => $this->decodeDays($row['pharmacy_home_delivery_days_json'] ?? null),
             'address' => $address,
             'postal_code' => is_array($address) ? (string) ($address['postal_code'] ?? '') : '',
+            'profile_image_url' => $this->nullableString($row['profile_image_url'] ?? null),
         ];
     }
 

@@ -49,8 +49,13 @@ export async function removePharmacyFavorite(pharmacyId: string) {
   return api.delete<unknown>(`/pharmacy-favorites/${encodeURIComponent(pharmacyId)}`);
 }
 
-export async function fetchPharmacyOrders(scope: 'sent' | 'received' | 'patient' = 'sent') {
-  return api.get<PharmacyOrder[]>(`/pharmacy-orders?scope=${encodeURIComponent(scope)}`);
+export async function fetchPharmacyOrders(
+  scope: 'sent' | 'received' | 'patient' = 'sent',
+  segment?: 'active' | 'history',
+) {
+  const params = new URLSearchParams({ scope });
+  if (segment) params.set('segment', segment);
+  return api.get<PharmacyOrder[]>(`/pharmacy-orders?${params.toString()}`);
 }
 
 export async function fetchPharmacyOrder(orderId: string) {

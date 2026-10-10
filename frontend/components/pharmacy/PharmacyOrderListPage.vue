@@ -109,7 +109,6 @@
 import type { PharmacyOrder, PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { PHARMACY_FULFILLMENT_LABELS, PHARMACY_ORDER_STATUS_LABELS } from '@oneandlab/shared-constants';
 import {
-  countPharmacyOrdersBySegment,
   filterPharmacyOrdersBySegment,
   type PharmacyOrderListSegment,
 } from '@oneandlab/shared-utils';
@@ -141,9 +140,8 @@ const loading = ref(true);
 const orders = ref<PharmacyOrder[]>([]);
 const searchQuery = ref('');
 const segment = ref<PharmacyOrderListSegment>('active');
+const segmentCounts = ref({ active: 0, history: 0 });
 const statsCards = ref<{ key: string; label: string; value: number }[]>([]);
-
-const segmentCounts = computed(() => countPharmacyOrdersBySegment(orders.value));
 
 const segmentTabs = computed(() => [
   { value: 'active' as const, label: 'En cours', count: segmentCounts.value.active },
@@ -152,6 +150,7 @@ const segmentTabs = computed(() => [
 
 function selectSegment(value: PharmacyOrderListSegment): void {
   segment.value = value;
+  void load();
 }
 
 const segmentEmptyTitle = computed(() =>
@@ -243,7 +242,9 @@ function resolvedStatsVariant(): 'sent' | 'received' | 'admin' | 'none' {
 async function load() {
   loading.value = true;
   try {
-    orders.value = await fetchOrders(props.scope);
+    const loaded = await fetchOrders(props.scope, segment.value, searchQuery.value);
+    orders.value = loaded.orders;
+    segmentCounts.value = loaded.counts;
     const variant = resolvedStatsVariant();
     if (variant === 'sent') {
       const s = await fetchSentStats();
@@ -283,5 +284,13 @@ async function load() {
 
 onMounted(() => {
   void load();
+});
+
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+watch(searchQuery, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    void load();
+  }, 300);
 });
 </script>

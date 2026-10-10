@@ -39,7 +39,7 @@ const PRO_SERVER_STATUS: Record<ProStatusFilter, string | undefined> = {
   all: 'pending,confirmed,inProgress,planned',
   pending: 'pending',
   active: 'confirmed,inProgress',
-  done: undefined,
+  done: 'completed,canceled,expired',
 };
 
 function matchesSearch(apt: Appointment, q: string): boolean {
@@ -57,7 +57,7 @@ function matchesSearch(apt: Appointment, q: string): boolean {
 function matchesProStatus(apt: Appointment, filter: ProStatusFilter): boolean {
   const st = String(apt.status ?? '').toLowerCase();
   const past = isAppointmentPastForList(apt);
-  if (filter === 'done') return past;
+  if (filter === 'done') return true;
   if (past) return false;
   if (filter === 'all') return true;
   if (filter === 'pending') return PENDING.has(st);

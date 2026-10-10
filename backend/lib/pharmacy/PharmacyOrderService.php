@@ -66,7 +66,7 @@ final class PharmacyOrderService
         $patientId = trim((string) ($input['patient_id'] ?? ''));
         $pharmacyId = trim((string) ($input['pharmacy_id'] ?? ''));
         $uid = (string) ($user['user_id'] ?? '');
-        if ($pharmacyId === '' && PharmacyModuleConfig::isPharmacyAccount($user, $config)) {
+        if (PharmacyModuleConfig::isPharmacyAccount($user, $config)) {
             $pharmacyId = $uid;
         }
         if ($patientId === '' || $pharmacyId === '') {
@@ -215,39 +215,122 @@ final class PharmacyOrderService
     /**
      * @return list<array<string, mixed>>
      */
-    public function listForUser(array $user, string $scope = 'sent'): array
+    public function listForUser(array $user, string $scope = 'sent', ?string $segment = null, ?string $search = null): array
     {
         $uid = (string) ($user['user_id'] ?? '');
         $role = (string) ($user['role'] ?? '');
+        $statusSql = $this->segmentStatusSql($segment);
+        $limit = 500;
 
         if ($role === 'super_admin' && $scope === 'all') {
-            $stmt = $this->db->query('SELECT * FROM pharmacy_orders ORDER BY created_at DESC LIMIT 200');
-
-            return $this->enrichOrdersWithDisplayNames(
+            $sql = 'SELECT * FROM pharmacy_orders';
+            if ($statusSql !== '') {
+                $sql .= ' WHERE ' . $statusSql;
+            }
+            $sql .= ' ORDER BY created_at DESC LIMIT ' . $limit;
+            $stmt = $this->db->query($sql);
+            $orders = $this->enrichOrdersWithDisplayNames(
                 array_map(fn ($r) => $this->mapOrder($r), $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [])
             );
+
+            return $this->filterOrdersBySearch($orders, $search);
         }
 
         if ($scope === 'patient') {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM pharmacy_orders WHERE patient_id = ? ORDER BY created_at DESC LIMIT 200'
-            );
-            $stmt->execute([$uid]);
+            $sql = 'SELECT * FROM pharmacy_orders WHERE patient_id = ?';
+            $params = [$uid];
         } elseif ($scope === 'received') {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM pharmacy_orders WHERE pharmacy_id = ? ORDER BY created_at DESC LIMIT 200'
-            );
-            $stmt->execute([$uid]);
+            $sql = 'SELECT * FROM pharmacy_orders WHERE pharmacy_id = ?';
+            $params = [$uid];
         } else {
-            $stmt = $this->db->prepare(
-                'SELECT * FROM pharmacy_orders WHERE requester_id = ? ORDER BY created_at DESC LIMIT 200'
-            );
-            $stmt->execute([$uid]);
+            $sql = 'SELECT * FROM pharmacy_orders WHERE requester_id = ?';
+            $params = [$uid];
+        }
+        if ($statusSql !== '') {
+            $sql .= ' AND ' . $statusSql;
+        }
+        $sql .= ' ORDER BY created_at DESC LIMIT ' . $limit;
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $this->filterOrdersBySearch(
+            $this->enrichOrdersWithDisplayNames(
+                array_map(fn ($r) => $this->mapOrder($r), $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [])
+            ),
+            $search
+        );
+    }
+
+    /** @return array{active: int, history: int} */
+    public function segmentCounts(array $user, string $scope): array
+    {
+        $uid = (string) ($user['user_id'] ?? '');
+        $role = (string) ($user['role'] ?? '');
+        $activeSql = $this->segmentStatusSql('active');
+        if ($role === 'super_admin' && $scope === 'all') {
+            $where = '1=1';
+            $params = [];
+        } elseif ($scope === 'patient') {
+            $where = 'patient_id = ?';
+            $params = [$uid];
+        } elseif ($scope === 'received') {
+            $where = 'pharmacy_id = ?';
+            $params = [$uid];
+        } else {
+            $where = 'requester_id = ?';
+            $params = [$uid];
+        }
+        $stmt = $this->db->prepare(
+            "SELECT
+                SUM(CASE WHEN $activeSql THEN 1 ELSE 0 END) AS active_count,
+                SUM(CASE WHEN NOT ($activeSql) THEN 1 ELSE 0 END) AS history_count
+             FROM pharmacy_orders WHERE $where"
+        );
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'active' => (int) ($row['active_count'] ?? 0),
+            'history' => (int) ($row['history_count'] ?? 0),
+        ];
+    }
+
+    private function segmentStatusSql(?string $segment): string
+    {
+        $active = "status IN ('en_attente','acceptee','en_cours','complement_demande')";
+        if ($segment === 'active') {
+            return $active;
+        }
+        if ($segment === 'history') {
+            return "status NOT IN ('en_attente','acceptee','en_cours','complement_demande')";
         }
 
-        return $this->enrichOrdersWithDisplayNames(
-            array_map(fn ($r) => $this->mapOrder($r), $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [])
-        );
+        return '';
+    }
+
+    /**
+     * @param list<array<string, mixed>> $orders
+     * @return list<array<string, mixed>>
+     */
+    private function filterOrdersBySearch(array $orders, ?string $search): array
+    {
+        $q = mb_strtolower(trim((string) $search));
+        if ($q === '') {
+            return $orders;
+        }
+
+        return array_values(array_filter($orders, static function (array $order) use ($q): bool {
+            $haystack = mb_strtolower(implode(' ', [
+                (string) ($order['id'] ?? ''),
+                (string) ($order['status'] ?? ''),
+                (string) ($order['patient_display_name'] ?? ''),
+                (string) ($order['relative_display_name'] ?? ''),
+                (string) ($order['pharmacy_display_name'] ?? ''),
+                (string) ($order['requester_comment'] ?? ''),
+            ]));
+
+            return str_contains($haystack, $q);
+        }));
     }
 
     /** @param array<string, mixed> $patch */

@@ -66,6 +66,7 @@ final class AiChatHelper
             '/\((?:patient_mode|booking_step|ordonnance_status|relative_id|category_id|service_id)\s*=\s*[^)]+\)/iu',
             '/(?:patient_mode|booking_step|ordonnance_status|relative_id|category_id|service_id)\s*=\s*[\w-]+/iu',
             '/\*\*\((?:patient_mode|booking_step)[^)]+\)\*\*/iu',
+            '/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu',
         ];
         $out = str_replace(["\r\n", "\r"], "\n", trim($text));
         foreach ($patterns as $pattern) {

@@ -105,8 +105,10 @@ function buildStyles({ colors: c }: Theme) {
       marginTop: spacing[2],
     },
     header: {
+      backgroundColor: c.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.borderLight,
+      zIndex: 1,
     },
     headerRow: {
       paddingTop: Platform.OS === 'ios' ? spacing[5] : spacing[3],

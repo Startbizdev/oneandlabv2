@@ -52,6 +52,27 @@ final class CaryContextFocusTest extends TestCase
         );
     }
 
+    public function testAgendaQuestionIsNotABooking(): void
+    {
+        $this->assertTrue(CaryContextFocus::isAgendaQuestion("j'ai rdv quoi demain"));
+        $this->assertFalse(CaryContextFocus::matchesBookingRequest("j'ai rdv quoi demain"));
+        $this->assertSame(
+            CaryContextFocus::GENERAL,
+            CaryContextFocus::resolve("j'ai rdv quoi demain", false, null),
+        );
+        $this->assertSame('2026-10-10', CaryContextFocus::agendaDay("j'ai rdv quoi demain", '2026-10-09', '2026-10-10'));
+    }
+
+    public function testCreateRequestStaysBooking(): void
+    {
+        $this->assertFalse(CaryContextFocus::isAgendaQuestion('Je voudrais un pansement demain'));
+        $this->assertTrue(CaryContextFocus::matchesBookingRequest('Je voudrais prendre un rdv demain'));
+        $this->assertSame(
+            CaryContextFocus::BOOKING,
+            CaryContextFocus::resolve('rdv prise de sang demain matin', false, null),
+        );
+    }
+
     public function testGeneralQuestion(): void
     {
         $this->assertSame(

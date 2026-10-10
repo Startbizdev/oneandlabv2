@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/ContextComposer.php';
+require_once __DIR__ . '/CaryContextFocus.php';
 require_once __DIR__ . '/AiMemoryService.php';
 require_once __DIR__ . '/CaryAppNavigation.php';
 require_once __DIR__ . '/../rag/RagSearchService.php';
@@ -41,9 +42,21 @@ final class MemoryComposer
             $ctx['app_navigation'] = $nav;
         }
         $userId = (string) ($user['user_id'] ?? '');
-        $targetPatientId = $patientId;
-        if (($user['role'] ?? '') === 'patient') {
-            $targetPatientId = $userId;
+        $targetPatientId = isset($ctx['subject_patient_id']) && (string) $ctx['subject_patient_id'] !== ''
+            ? (string) $ctx['subject_patient_id']
+            : null;
+        if (is_string($userMessage) && $userMessage !== '' && CaryContextFocus::isAgendaQuestion($userMessage)) {
+            $day = CaryContextFocus::agendaDay(
+                $userMessage,
+                (string) ($ctx['today_paris'] ?? ''),
+                (string) ($ctx['tomorrow_paris'] ?? ''),
+            );
+            $staffGeneral = ($patientId === null || $patientId === '') && in_array($role, ['nurse', 'pro'], true);
+            if ($staffGeneral) {
+                $ctx['appointments'] = $this->context->staffDayAgenda($user, $day);
+            } elseif ($day !== null && isset($ctx['appointments']) && is_array($ctx['appointments'])) {
+                $ctx['appointments'] = ContextComposer::filterAppointmentsToDay($ctx['appointments'], $day);
+            }
         }
 
         $ctx['user_memory'] = $this->memory->getUserMemory($userId);

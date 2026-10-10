@@ -192,13 +192,8 @@ final class AppointmentListQueryBuilder
             $this->appendWhere(' AND a.type = ?');
             $this->params[] = $type;
         }
-        if ($this->query->dateFrom) {
-            $this->appendWhere(' AND a.scheduled_at >= ?');
-            $this->params[] = $this->query->dateFrom;
-        }
-        if ($this->query->dateTo) {
-            $this->appendWhere(' AND a.scheduled_at <= ?');
-            $this->params[] = $this->query->dateTo;
+        if ($this->query->dateFrom || $this->query->dateTo) {
+            $this->appendDateWindow();
         }
 
         $patientIdFilter = $this->query->patientId;
@@ -277,17 +272,32 @@ final class AppointmentListQueryBuilder
     {
         $terminalStatuses = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
         $period = $this->query->patientPeriod;
+        $today = AppTimezone::sqlStartOfToday();
+        $hasVisitDates = DbSchemaCache::tableHasColumn($this->db, 'appointments', 'visit_dates');
         if ($period === 'upcoming') {
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
             $this->appendWhere(" AND a.status NOT IN ($terminalPh)");
             $this->params = array_merge($this->params, $terminalStatuses);
-            $this->appendWhere(' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)');
-            $this->params[] = AppTimezone::sqlStartOfToday();
+            if ($hasVisitDates) {
+                $this->appendWhere(' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ? OR ' . $this->visitDayOnOrAfterSql() . ')');
+                $this->params[] = $today;
+                $this->params[] = substr($today, 0, 10);
+            } else {
+                $this->appendWhere(' AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?)');
+                $this->params[] = $today;
+            }
         } elseif ($period === 'past') {
             $terminalPh = implode(',', array_fill(0, count($terminalStatuses), '?'));
-            $this->appendWhere(" AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?))");
-            $this->params = array_merge($this->params, $terminalStatuses);
-            $this->params[] = AppTimezone::sqlStartOfToday();
+            if ($hasVisitDates) {
+                $this->appendWhere(" AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ? AND NOT (" . $this->visitDayOnOrAfterSql() . ')))');
+                $this->params = array_merge($this->params, $terminalStatuses);
+                $this->params[] = $today;
+                $this->params[] = substr($today, 0, 10);
+            } else {
+                $this->appendWhere(" AND (a.status IN ($terminalPh) OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?))");
+                $this->params = array_merge($this->params, $terminalStatuses);
+                $this->params[] = $today;
+            }
         }
     }
 
@@ -295,6 +305,9 @@ final class AppointmentListQueryBuilder
     {
         $nurseTab = isset($_GET['nurse_tab']) ? trim((string) $_GET['nurse_tab']) : '';
         $nurseSegment = isset($_GET['nurse_segment']) ? trim((string) $_GET['nurse_segment']) : '';
+        if ($nurseSegment === '' && $this->query->segment) {
+            $nurseSegment = $this->query->segment;
+        }
         if ($nurseSegment === 'dispatches') {
             $nurseSegment = 'tous';
         }
@@ -323,25 +336,43 @@ final class AppointmentListQueryBuilder
             $this->params[] = $userId;
         } elseif ($nurseSegment === 'acceptes') {
             $parisStartStr = AppTimezone::sqlStartOfToday();
+            $parisDay = substr($parisStartStr, 0, 10);
             [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $userId);
+            $hasVisitDates = DbSchemaCache::tableHasColumn($this->db, 'appointments', 'visit_dates');
+            $stillAhead = $hasVisitDates
+                ? '(a.scheduled_at IS NULL OR a.scheduled_at >= ? OR ' . $this->visitDayOnOrAfterSql() . ')'
+                : '(a.scheduled_at IS NULL OR a.scheduled_at >= ?)';
             $this->appendWhere(" AND (
                     (a.type = 'nursing' AND {$nurseSql} AND a.status IN ('confirmed','inProgress','planned')
-                        AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
+                        AND {$stillAhead})
                     OR (a.type = 'blood_test' AND a.created_by = ? AND a.status IN ('confirmed','inProgress','planned')
-                        AND (a.scheduled_at IS NULL OR a.scheduled_at >= ?))
+                        AND {$stillAhead})
                 )");
             array_push($this->params, ...$nurseParams);
             $this->params[] = $parisStartStr;
+            if ($hasVisitDates) {
+                $this->params[] = $parisDay;
+            }
             $this->params[] = $userId;
             $this->params[] = $parisStartStr;
+            if ($hasVisitDates) {
+                $this->params[] = $parisDay;
+            }
         } elseif ($nurseSegment === 'historique') {
             [$nurseSql, $nurseParams] = NurseCollaboration::assignedOrSharedSql('a', $userId);
+            $today = AppTimezone::sqlStartOfToday();
+            $noFutureVisit = DbSchemaCache::tableHasColumn($this->db, 'appointments', 'visit_dates')
+                ? ' AND NOT (' . $this->visitDayOnOrAfterSql() . ')'
+                : '';
             $this->appendWhere(" AND a.type = 'nursing' AND {$nurseSql} AND (
                     a.status IN ('completed','canceled','cancelled','refused')
-                    OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?)
+                    OR (a.scheduled_at IS NOT NULL AND a.scheduled_at < ?{$noFutureVisit})
                 )");
             array_push($this->params, ...$nurseParams);
-            $this->params[] = AppTimezone::sqlStartOfToday();
+            $this->params[] = $today;
+            if ($noFutureVisit !== '') {
+                $this->params[] = substr($today, 0, 10);
+            }
         } elseif ($nurseSegment === 'relais') {
             $this->appendWhere(" AND a.type = 'nursing' AND a.created_by = ? AND a.status = 'pending' AND (a.assigned_nurse_id IS NULL OR a.assigned_nurse_id <> ?)
                     AND " . PendingOfferExpiry::sqlCreatedWithinTtl('a') . "
@@ -525,5 +556,43 @@ final class AppointmentListQueryBuilder
         $this->appendWhere(' AND (a.created_by = ? OR a.assigned_pro_id = ?)');
         $this->params[] = $userId;
         $this->params[] = $userId;
+    }
+
+    private function visitDayOnOrAfterSql(): string
+    {
+        return "a.visit_dates IS NOT NULL AND JSON_VALID(a.visit_dates) AND EXISTS ("
+            . "SELECT 1 FROM JSON_TABLE(a.visit_dates, '\$[*]' COLUMNS (visit_day VARCHAR(10) PATH '\$')) vd WHERE vd.visit_day >= ?)";
+    }
+
+    private function appendDateWindow(): void
+    {
+        $scheduled = [];
+        $scheduledParams = [];
+        $visit = [];
+        $visitParams = [];
+        if ($this->query->dateFrom) {
+            $scheduled[] = 'a.scheduled_at >= ?';
+            $scheduledParams[] = $this->query->dateFrom;
+            $visit[] = 'vd.visit_day >= ?';
+            $visitParams[] = substr($this->query->dateFrom, 0, 10);
+        }
+        if ($this->query->dateTo) {
+            $scheduled[] = 'a.scheduled_at <= ?';
+            $scheduledParams[] = $this->query->dateTo;
+            $visit[] = 'vd.visit_day <= ?';
+            $visitParams[] = substr($this->query->dateTo, 0, 10);
+        }
+        $scheduledSql = implode(' AND ', $scheduled);
+        if (!DbSchemaCache::tableHasColumn($this->db, 'appointments', 'visit_dates')) {
+            $this->appendWhere(' AND ' . $scheduledSql);
+            array_push($this->params, ...$scheduledParams);
+            return;
+        }
+        $visitSql = implode(' AND ', $visit);
+        $this->appendWhere(
+            " AND (($scheduledSql) OR (a.visit_dates IS NOT NULL AND JSON_VALID(a.visit_dates) AND EXISTS ("
+            . "SELECT 1 FROM JSON_TABLE(a.visit_dates, '\$[*]' COLUMNS (visit_day VARCHAR(10) PATH '\$')) vd WHERE $visitSql)))"
+        );
+        array_push($this->params, ...$scheduledParams, ...$visitParams);
     }
 }

@@ -192,6 +192,7 @@ import {
   embedTimeRangeInPlanningConfig,
   previewPassageCount,
   suggestPlanningFromCare,
+  frequencyDailySlots,
   type PassagePlanningFormState,
 } from '~/utils/passage-planning';
 
@@ -291,6 +292,8 @@ watch(nursingItems, (items) => {
   if (planningEdited.value || items.length === 0) return;
   const patch = suggestPlanningFromCare(planningState.value, items);
   if (patch) planningState.value = { ...planningState.value, ...patch };
+  const slots = frequencyDailySlots(items.find((item) => item.frequency)?.frequency);
+  if (slots) dailyTimeSlots.value = slots;
 }, { deep: true });
 
 function toggleDailySlot(slot: PassageTimeSlot) {

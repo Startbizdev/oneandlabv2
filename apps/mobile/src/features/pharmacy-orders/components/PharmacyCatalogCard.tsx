@@ -4,7 +4,8 @@ import { Cluster } from '@/components/layout/primitives';
 import { Star } from 'lucide-react-native';
 import type { PharmacyCatalogItem } from '@oneandlab/shared-types';
 import { IconActionButton } from '@/components/ui/IconActionButton';
-import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
+import { ICON_STROKE_WIDTH, avatarSize, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
   item: PharmacyCatalogItem;
@@ -45,6 +46,13 @@ export function PharmacyCatalogCard({
     >
       <Cluster
         gap={spacing[3]}
+        leading={
+          <ProfileAvatar
+            profileImageUrl={item.profile_image_url}
+            seed={item.id}
+            size={avatarSize.md}
+          />
+        }
         actions={
           onToggleFavorite ? (
             <IconActionButton

@@ -269,7 +269,32 @@ final class AppointmentListEnricher
                 unset($appointment[$key]);
             }
         }
+        if (array_key_exists('visit_dates', $appointment)) {
+            $appointment['visit_dates'] = self::normalizeVisitDates($appointment['visit_dates']);
+        }
 
         return $appointment;
+    }
+
+    public static function normalizeVisitDates(mixed $raw): ?array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : null;
+        }
+        if (!is_array($raw)) {
+            return null;
+        }
+        $dates = [];
+        foreach ($raw as $value) {
+            $day = substr(trim((string) $value), 0, 10);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) === 1) {
+                $dates[$day] = $day;
+            }
+        }
+        $dates = array_values($dates);
+        sort($dates);
+
+        return $dates === [] ? null : $dates;
     }
 }

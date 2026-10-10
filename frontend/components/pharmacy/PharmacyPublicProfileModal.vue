@@ -51,6 +51,18 @@
               </a>
             </dd>
           </div>
+          <div v-if="profile.social_links?.facebook">
+            <dt class="text-muted">Facebook</dt>
+            <dd><a :href="profile.social_links.facebook" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ profile.social_links.facebook }}</a></dd>
+          </div>
+          <div v-if="profile.social_links?.linkedin">
+            <dt class="text-muted">LinkedIn</dt>
+            <dd><a :href="profile.social_links.linkedin" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ profile.social_links.linkedin }}</a></dd>
+          </div>
+          <div v-if="profile.social_links?.instagram">
+            <dt class="text-muted">Instagram</dt>
+            <dd><a :href="profile.social_links.instagram" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ profile.social_links.instagram }}</a></dd>
+          </div>
         </dl>
       </div>
     </template>

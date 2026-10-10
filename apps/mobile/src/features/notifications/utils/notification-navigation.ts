@@ -34,6 +34,8 @@ function navRole(role: string | undefined): NavRole | null {
 export type NotificationNavigationOptions = {
   /** Pro pharmacien — priorise la boîte de réception pour les messages. */
   pharmacyCanReceive?: boolean;
+  /** Une pharmacie n'ouvre pas les transmissions infirmières. */
+  isPharmacyAccount?: boolean;
 };
 
 type RouteParams = Record<string, string>;
@@ -172,6 +174,7 @@ export function resolveNotificationNavigation(
       return appointmentDetailHref(roleRoutePrefix(r), intent.appointmentId, params);
     }
     case 'patient_transmissions':
+      if (options?.isPharmacyAccount) return null;
       return transmissionsHref(r, intent.patientId);
     // La fiche passage mobile s'ouvre depuis un arrêt (RDV) : une série ouvre la tournée du jour.
     case 'passage_series':

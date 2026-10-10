@@ -68,15 +68,33 @@
       <div v-if="pharmaciesLoading" class="mt-3 flex justify-center py-4">
         <UIcon name="i-lucide-loader-2" class="h-6 w-6 animate-spin text-primary" />
       </div>
-      <UFormField v-else label="Pharmacie" name="pharmacy" class="mt-3">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <USelect
-            v-model="pharmacyId"
-            :items="visiblePharmacyOptions"
-            value-key="value"
-            placeholder="Choisir une pharmacie…"
-            class="min-w-0 flex-1"
-          />
+      <UFormField v-else-if="!isOwnPharmacy" label="Pharmacie" name="pharmacy" class="mt-3">
+        <div class="flex flex-col gap-2">
+          <button
+            v-for="pharmacy in visiblePharmacyRows"
+            :key="pharmacy.id"
+            type="button"
+            class="flex items-center gap-3 rounded-xl border px-3 py-2 text-left"
+            :class="pharmacyId === pharmacy.id ? 'border-primary bg-primary/5' : 'border-default'"
+            @click="pharmacyId = pharmacy.id"
+          >
+            <img
+              v-if="profileImageUrl(pharmacy.profile_image_url)"
+              :src="profileImageUrl(pharmacy.profile_image_url)"
+              alt=""
+              class="h-10 w-10 shrink-0 rounded-full object-cover"
+            />
+            <span
+              v-else
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated text-sm font-medium"
+            >
+              {{ pharmacy.display_name.slice(0, 1) }}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium">{{ pharmacy.display_name }}</span>
+              <span v-if="pharmacy.postal_code" class="block text-xs text-muted">{{ pharmacy.postal_code }}</span>
+            </span>
+          </button>
           <UButton
             type="button"
             color="neutral"
@@ -99,6 +117,7 @@
           Voir les autres pharmacies
         </UButton>
       </UFormField>
+      <p v-else class="mt-3 text-sm text-muted">Cette commande sera préparée par votre pharmacie.</p>
       <div class="mt-4 grid gap-4 sm:grid-cols-2">
         <UFormField label="Date souhaitée" name="desired_date" required>
           <UInput v-model="desiredDate" type="date" :min="todayIso" :max="maximumDateIso" />
@@ -238,6 +257,7 @@ const router = useRouter();
 const toast = useAppToast();
 const { user } = useAuth();
 const { createOrder, fetchPharmacies, uiFlags, fetchModuleFlags } = usePharmacyModule();
+const { profileImageUrl } = useProfileImageUrl();
 const isOwnPharmacy = computed(() => uiFlags.value?.is_pharmacy_account === true);
 const forSelf = computed(() => props.forSelf);
 
@@ -328,11 +348,15 @@ const pharmacySplit = computed(() => {
   return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalog.value, ownId), ownId);
 });
 
+const visiblePharmacyRows = computed(() => {
+  if (pharmacySplit.value.preferred.length > 0 && !showOtherPharmacies.value) {
+    return pharmacySplit.value.preferred;
+  }
+  return [...pharmacySplit.value.preferred, ...pharmacySplit.value.others];
+});
+
 const visiblePharmacyOptions = computed(() => {
-  const rows = pharmacySplit.value.preferred.length > 0 && !showOtherPharmacies.value
-    ? pharmacySplit.value.preferred
-    : [...pharmacySplit.value.preferred, ...pharmacySplit.value.others];
-  return rows.map((pharmacy) => ({
+  return visiblePharmacyRows.value.map((pharmacy) => ({
     value: pharmacy.id,
     label: `${pharmacy.display_name}${pharmacy.postal_code ? ` (${pharmacy.postal_code})` : ''}${pharmacy.is_favorite ? ' ★' : ''}`,
   }));
@@ -455,8 +479,12 @@ async function loadPharmacies() {
       selectedPatientId.value,
     );
     pharmacyCatalog.value = items;
-    const patientPharmacy = items.find((item) => item.is_patient_pharmacy === true);
     const ownId = isOwnPharmacy.value ? selfUserId() : '';
+    if (ownId) {
+      pharmacyId.value = ownId;
+      return;
+    }
+    const patientPharmacy = items.find((item) => item.is_patient_pharmacy === true);
     if (patientPharmacy && (pharmacyId.value === '' || pharmacyId.value === ownId)) {
       pharmacyId.value = patientPharmacy.id;
       return;

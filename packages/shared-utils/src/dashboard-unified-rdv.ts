@@ -96,7 +96,7 @@ export function appointmentPayloadsShareCreationBatch(
   return days.size < 2;
 }
 
-/** Un rendez-vous labo par date. Les analyses du payload restent ensemble sur chaque date. */
+/** Plusieurs dates de prélèvement : un seul rendez-vous, accepté une fois. */
 export function splitBloodPayloadByVisitDates(
   payload: Record<string, unknown>,
   formDataByService: Record<string, Record<string, unknown>>,
@@ -105,18 +105,13 @@ export function splitBloodPayloadByVisitDates(
   const dates = bloodVisitDates(formDataByService, bloodServices);
   if (!dates) return [payload];
   const availability = (payload.form_data as Record<string, unknown> | undefined)?.availability;
-  return dates.map((date) => {
-    const scheduled = enrichScheduledAtWithAvailability(date, availability) ?? `${date} 09:00:00`;
-    const formData: Record<string, unknown> = {
-      ...((payload.form_data as Record<string, unknown> | undefined) ?? {}),
-      scheduled_at: scheduled,
-    };
-    delete formData[BLOOD_EXTRA_DATES_KEY];
-    const next: Record<string, unknown> = { ...payload, scheduled_at: scheduled, form_data: formData };
-    delete next.creation_batch_id;
-    delete next.creation_batch_size;
-    return next;
-  });
+  const scheduled = enrichScheduledAtWithAvailability(dates[0], availability) ?? `${dates[0]} 09:00:00`;
+  const formData: Record<string, unknown> = {
+    ...((payload.form_data as Record<string, unknown> | undefined) ?? {}),
+    scheduled_at: scheduled,
+    [BLOOD_EXTRA_DATES_KEY]: dates.slice(1),
+  };
+  return [{ ...payload, scheduled_at: scheduled, visit_dates: dates, form_data: formData }];
 }
 
 export function countGroupedAppointmentPayloads(
@@ -126,8 +121,7 @@ export function countGroupedAppointmentPayloads(
   const nBlood = bloodServicesInSelection(selectedServices).length;
   const nNursing = nursingServicesInSelection(selectedServices).length;
   const other = selectedServices.length - nBlood - nNursing;
-  const bloodCount =
-    nBlood === 0 ? 0 : (bloodVisitDates(formDataByService, bloodServicesInSelection(selectedServices))?.length ?? 1);
+  const bloodCount = nBlood === 0 ? 0 : 1;
   return other + bloodCount + Math.min(1, nNursing);
 }
 

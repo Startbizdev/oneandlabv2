@@ -82,7 +82,7 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const { show: toast } = useToast();
-  const { canOrder } = usePharmacyModuleEnabled();
+  const { canOrder, isOwnPharmacy } = usePharmacyModuleEnabled();
   const qc = useQueryClient();
 
   const profileQ = useStaffPatientProfile(patientId);
@@ -218,7 +218,7 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
     ...(histCount > 0 ? { value: String(histCount) } : {}),
     onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'history')),
   });
-  if (isCareStaff) {
+  if (isCareStaff && !isOwnPharmacy) {
     dossierItems.push({
       icon: NotebookPen,
       label: 'Transmissions',

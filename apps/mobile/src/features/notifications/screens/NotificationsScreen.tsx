@@ -44,7 +44,7 @@ export function NotificationsScreen() {
   const token = useAuthStore((s) => s.token);
   const focused = useIsFocused();
   const appActive = useAppActive();
-  const { canReceive: pharmacyCanReceive } = usePharmacyModuleEnabled();
+  const { canReceive: pharmacyCanReceive, isOwnPharmacy } = usePharmacyModuleEnabled();
 
   const feedQ = useInfiniteQuery({
     queryKey: FEED_QUERY_KEY,
@@ -154,10 +154,10 @@ export function NotificationsScreen() {
   const onPressItem = useCallback(
     (n: AppNotification) => {
       if (!n.read_at) markRead.mutate(n.id);
-      const href = resolveNotificationNavigation(n, role, { pharmacyCanReceive });
+      const href = resolveNotificationNavigation(n, role, { pharmacyCanReceive, isPharmacyAccount: isOwnPharmacy });
       if (href) router.push(href);
     },
-    [markRead, pharmacyCanReceive, role, router],
+    [isOwnPharmacy, markRead, pharmacyCanReceive, role, router],
   );
 
   return (

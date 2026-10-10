@@ -10,6 +10,7 @@ require_once __DIR__ . '/AiChatHelper.php';
 require_once __DIR__ . '/AiAssistantResponseGuard.php';
 require_once __DIR__ . '/CaryContextFocus.php';
 require_once __DIR__ . '/AiBookingAccess.php';
+require_once __DIR__ . '/AiConversationScope.php';
 
 /**
  * Orchestrateur unique chat + vocal : Grok + tools, puis sync brouillon RDV.
@@ -44,13 +45,13 @@ final class AiTurnOrchestrator
         ?callable $onStreamDelta = null,
         ?callable $onToolProgress = null,
     ): array {
-        $draftPreview = null;
-        if ($draftId !== null && $draftId !== '') {
-            $draftPreview = $this->booking->getDraft($draftId, (string) $user['user_id']);
-        }
-        if ($draftPreview === null) {
-            $draftPreview = $this->booking->getLatestDraftForConversation($conversationId, (string) $user['user_id']);
-        }
+        $userId = (string) $user['user_id'];
+        $draftCandidate = ($draftId !== null && $draftId !== '')
+            ? $this->booking->getDraft($draftId, $userId)
+            : $this->booking->getLatestDraftForConversation($conversationId, $userId);
+        $draftPreview = ($draftCandidate !== null && AiConversationScope::draftMatchesPatient($draftCandidate, $patientId, $conversationId))
+            ? $draftCandidate
+            : null;
 
         $activeIntent = (string) ($context['active_intent'] ?? CaryContextFocus::GENERAL);
         $docIntents = [CaryContextFocus::DOCUMENT, CaryContextFocus::DOCUMENT_FOLLOWUP];
@@ -70,26 +71,14 @@ final class AiTurnOrchestrator
             return $result;
         }
 
-        if ($onStreamDelta !== null) {
-            $result = $this->gateway->chatStream(
-                $user,
-                $messages,
-                $onStreamDelta,
-                $taskType,
-                $context,
-                $conversationId,
-                $patientId,
-            );
-        } else {
-            $result = $this->gateway->chat(
-                $user,
-                $messages,
-                $taskType,
-                $context,
-                $conversationId,
-                $patientId,
-            );
-        }
+        $result = $this->gateway->chat(
+            $user,
+            $messages,
+            $taskType,
+            $context,
+            $conversationId,
+            $patientId,
+        );
 
         $extracted = AiChatHelper::extractBookingPatch((string) ($result['content'] ?? ''));
         $draft = $this->syncDraftFromPatch(
@@ -101,6 +90,11 @@ final class AiTurnOrchestrator
 
         $userMessage = self::lastUserMessage($messages);
         $guarded = AiAssistantResponseGuard::normalize($userMessage, $extracted['content'], $draft);
+        if ($onStreamDelta !== null && $guarded['text'] !== '') {
+            foreach (self::chunkTextForStream($guarded['text']) as $chunk) {
+                $onStreamDelta($chunk);
+            }
+        }
 
         return [
             'content' => $guarded['text'],

@@ -51,6 +51,11 @@ export interface ApiResponse<T = unknown> {
     total: number;
     total_pages?: number;
   };
+  /** Compteurs des segments de commandes pharmacie, hors filtre de recherche. */
+  counts?: {
+    active: number;
+    history: number;
+  };
 }
 
 export function requiresCsrf(path: string, method: string): boolean {

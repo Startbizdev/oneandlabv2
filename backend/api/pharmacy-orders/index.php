@@ -14,15 +14,22 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
     $scope = isset($_GET['scope']) ? trim((string) $_GET['scope']) : 'sent';
+    $segment = isset($_GET['segment']) ? trim((string) $_GET['segment']) : null;
+    if ($segment === '') {
+        $segment = null;
+    }
+    $search = isset($_GET['q']) ? trim((string) $_GET['q']) : null;
     if (($user['role'] ?? '') === 'super_admin' && $scope === 'all') {
-        $orders = $orderService->listForUser($user, 'all');
+        $orders = $orderService->listForUser($user, 'all', $segment, $search);
+        $listScope = 'all';
     } elseif ($scope === 'patient') {
         if (($user['role'] ?? '') !== 'patient') {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);
             exit;
         }
-        $orders = $orderService->listForUser($user, 'patient');
+        $orders = $orderService->listForUser($user, 'patient', $segment, $search);
+        $listScope = 'patient';
     } elseif ($scope === 'received') {
         $config = $moduleConfig->getConfig();
         if (!PharmacyModuleConfig::canReceive($user, $config) && ($user['role'] ?? '') !== 'super_admin') {
@@ -30,11 +37,17 @@ if ($method === 'GET') {
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);
             exit;
         }
-        $orders = $orderService->listForUser($user, 'received');
+        $orders = $orderService->listForUser($user, 'received', $segment, $search);
+        $listScope = 'received';
     } else {
-        $orders = $orderService->listForUser($user, 'sent');
+        $orders = $orderService->listForUser($user, 'sent', $segment, $search);
+        $listScope = 'sent';
     }
-    echo json_encode(['success' => true, 'data' => $orders]);
+    echo json_encode([
+        'success' => true,
+        'data' => $orders,
+        'counts' => $orderService->segmentCounts($user, $listScope),
+    ]);
     exit;
 }
 

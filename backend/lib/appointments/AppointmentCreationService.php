@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../Validation.php';
 require_once __DIR__ . '/../PatientUrgencyGuard.php';
 require_once __DIR__ . '/../PendingOfferExpiry.php';
@@ -355,6 +356,11 @@ final class AppointmentCreationService
             $insertFields .= ', pending_offer_expires_at';
             $insertParams[] = $pendingOfferExpiresAt;
         }
+        $visitDatesJson = $this->visitDatesJson($data);
+        if ($visitDatesJson !== null && DbSchemaCache::tableHasColumn($this->db, 'appointments', 'visit_dates')) {
+            $insertFields .= ', visit_dates';
+            $insertParams[] = $visitDatesJson;
+        }
         $insertFields .= ', created_at, updated_at';
         $insertPlaceholders = implode(', ', array_fill(0, count($insertParams), '?')) . ', NOW(), NOW()';
 
@@ -526,6 +532,38 @@ final class AppointmentCreationService
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function visitDatesJson(array $data): ?string
+    {
+        $raw = $data['visit_dates'] ?? null;
+        if (!is_array($raw)) {
+            $form = is_array($data['form_data'] ?? null) ? $data['form_data'] : [];
+            $extra = $form['extra_scheduled_dates'] ?? null;
+            $primary = substr((string) ($data['scheduled_at'] ?? ''), 0, 10);
+            $raw = is_array($extra) ? array_merge([$primary], $extra) : [];
+        }
+        $dates = [];
+        $primary = substr(trim((string) ($data['scheduled_at'] ?? '')), 0, 10);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $primary) === 1) {
+            $dates[$primary] = $primary;
+        }
+        foreach ($raw as $value) {
+            $day = substr(trim((string) $value), 0, 10);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) === 1) {
+                $dates[$day] = $day;
+            }
+        }
+        $dates = array_values($dates);
+        sort($dates);
+        if (count($dates) < 2) {
+            return null;
+        }
+
+        return json_encode($dates, JSON_THROW_ON_ERROR);
+    }
 
     private function hasColumn(string $table, string $column): bool
     {

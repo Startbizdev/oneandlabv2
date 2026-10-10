@@ -6,6 +6,7 @@ require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/AppointmentCreationValidator.php';
 require_once __DIR__ . '/AppointmentFormDataCrypto.php';
 require_once __DIR__ . '/AppointmentReviewStats.php';
+require_once __DIR__ . '/AppointmentListEnricher.php';
 require_once __DIR__ . '/AppointmentItemsResolver.php';
 
 /**
@@ -146,6 +147,9 @@ final class AppointmentReadService
         
         // Déchiffrer adresse + form_data (indépendamment — ne pas perdre form_data si l'adresse échoue)
         $this->formDataCrypto->decryptSensitiveFields($appointment, $requesterId, $requesterRole);
+        if (array_key_exists('visit_dates', $appointment)) {
+            $appointment['visit_dates'] = AppointmentListEnricher::normalizeVisitDates($appointment['visit_dates']);
+        }
         $this->enrichPreferredLabBrand($appointment, $requesterRole === 'super_admin');
         
         // Nettoyer les champs chiffrés

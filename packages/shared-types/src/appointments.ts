@@ -108,6 +108,8 @@ export interface Appointment {
   address: string;
   form_data?: AppointmentFormData & Record<string, unknown>;
   scheduled_at: string;
+  /** Jours d’un bilan multi-dates (YYYY-MM-DD), premier jour inclus. */
+  visit_dates?: string[] | null;
   started_at?: string;
   completed_at?: string;
   /** Code motif (`CANCELLATION_REASONS`) et commentaire saisis à l'annulation. */

@@ -291,6 +291,27 @@ final class AppointmentListGetHandler
         }
 
         $returnedCount = count($decryptedAppointments);
+        $search = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $decryptedAppointments = array_values(array_filter(
+                $decryptedAppointments,
+                static function (array $appointment) use ($needle): bool {
+                    $form = is_array($appointment['form_data'] ?? null) ? $appointment['form_data'] : [];
+                    $haystack = mb_strtolower(implode(' ', [
+                        (string) ($form['first_name'] ?? ''),
+                        (string) ($form['last_name'] ?? ''),
+                        (string) ($form['phone'] ?? ''),
+                        (string) ($appointment['category_name'] ?? ''),
+                        is_string($appointment['address'] ?? null) ? $appointment['address'] : '',
+                    ]));
+
+                    return str_contains($haystack, $needle);
+                }
+            ));
+            $returnedCount = count($decryptedAppointments);
+            $total = $returnedCount;
+        }
         // COUNT SQL incohérent (total=0 alors qu’il y a des lignes) : borne minimale pour l’UI.
         $countIncoherent = ($total === 0 && $returnedCount > 0);
         if ($countIncoherent) {

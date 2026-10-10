@@ -17,6 +17,15 @@ final class AiChatHelperTest extends TestCase
         $this->assertStringContainsString('- ALAT 58', $out);
     }
 
+    public function testSanitizeStripsVisibleUuid(): void
+    {
+        $out = AiChatHelper::sanitizeVisibleAssistantText(
+            'Marie a un pansement. patient 3f1a2b4c-5d6e-4f70-8a1b-9c0d1e2f3a4b à 14h.',
+        );
+        $this->assertStringNotContainsString('3f1a2b4c', $out);
+        $this->assertStringContainsString('Marie a un pansement.', $out);
+    }
+
     public function testSanitizeDoesNotCollapseNewlinesToSpace(): void
     {
         $input = "Ligne un.\n\nLigne deux.";

@@ -48,6 +48,14 @@
             </UButton>
             <UButton
               variant="outline"
+              icon="i-lucide-eye"
+              :loading="previewingId === documentId"
+              @click="() => previewOne(documentId, index)"
+            >
+              Voir
+            </UButton>
+            <UButton
+              variant="outline"
               icon="i-lucide-download"
               :loading="downloadingId === documentId"
               @click="() => downloadOne(documentId, index)"
@@ -58,12 +66,13 @@
         </li>
       </ul>
     </UCard>
+    <PrescriptionPdfPreviewModal v-model="previewOpen" :pdf-url="previewUrl" :file-name="previewFileName" />
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
 import { canReplacePrescriptionRole } from '@oneandlab/shared-utils';
-import { downloadMedicalDocument } from '~/utils/download-medical-document';
+import { downloadMedicalDocument, previewMedicalDocumentUrl } from '~/utils/download-medical-document';
 
 const props = defineProps<{
   orderId: string;
@@ -83,6 +92,10 @@ async function replaceOne(documentId: string) {
 const loading = ref(true);
 const documentIds = ref<string[]>([]);
 const downloadingId = ref<string | null>(null);
+const previewingId = ref<string | null>(null);
+const previewOpen = ref(false);
+const previewUrl = ref<string | null>(null);
+const previewFileName = ref('ordonnance.pdf');
 
 const detailPath = computed(() => `${props.listPath}/${props.orderId}`);
 
@@ -97,6 +110,24 @@ const pageDescription = computed(() =>
     ? `${documentIds.value.length} fichier${documentIds.value.length > 1 ? 's' : ''}`
     : 'Commande pharmacie',
 );
+
+async function previewOne(documentId: string, index: number) {
+  previewingId.value = documentId;
+  try {
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+    previewFileName.value = `ordonnance-${index + 1}.pdf`;
+    previewUrl.value = await previewMedicalDocumentUrl(documentId);
+    previewOpen.value = true;
+  } catch (e: unknown) {
+    toast.add({
+      title: 'Aperçu impossible',
+      description: e instanceof Error ? e.message : 'Réessayez.',
+      color: 'error',
+    });
+  } finally {
+    previewingId.value = null;
+  }
+}
 
 async function downloadOne(documentId: string, index: number) {
   downloadingId.value = documentId;

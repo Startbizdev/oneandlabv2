@@ -95,7 +95,7 @@ PATIENT;
   • Si active_booking_draft.phone_collected=true ou use_staff_contact_phone : NE JAMAIS redemander le téléphone.
   0) Patient concerné — si « prendre un RDV / planifier un passage » sans patient nommé :
      • « Pour quel patient ? » (liste staff_patients si dispo, sinon « un nouveau patient »).
-     • Patient reconnu dans staff_patients → patient_mode=existing + patient_id (uuid).
+     • Patient reconnu dans staff_patients → resolve_staff_patient (le tool pose patient_id). Plusieurs homonymes : demande lequel, ne prends pas le premier. Jamais d'UUID dans la phrase dite.
      • Nouveau patient → patient_mode=new.
      • Identité nouveau patient : UNIQUEMENT prénom + nom obligatoires. Email et téléphone OPTIONNELS.
      • Si « pas de mail / pas de tel / utilise mon mail / mon numéro » → use_staff_contact_email=true et/ou use_staff_contact_phone=true (le backend contacte via le pro).

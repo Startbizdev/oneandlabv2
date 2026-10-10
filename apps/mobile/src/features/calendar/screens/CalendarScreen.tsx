@@ -14,7 +14,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { fetchCalendarAppointments } from '@/features/appointments/api/appointments.service';
 import { AppointmentListRowCard } from '@/features/appointments/components/AppointmentListRowCard';
 import { buildAppointmentDisplayRows } from '@/utils/appointment-list-sort';
-import { appointmentCalendarDayKey } from '@/utils/appointment-calendar-day-key';
+import { appointmentVisitDayKeys } from '@oneandlab/shared-utils';
 import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 import { CalendarFilterSheet } from '@/features/calendar/components/CalendarFilterSheet';
 import { AppointmentsListFilterBar } from '@/features/appointments/components/AppointmentsListFilterBar';
@@ -128,11 +128,11 @@ export function CalendarScreen({
   const byDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of listQ.data ?? []) {
-      const key = appointmentCalendarDayKey(a);
-      if (!key) continue;
-      const bucket = map.get(key);
-      if (bucket) bucket.push(a);
-      else map.set(key, [a]);
+      for (const key of appointmentVisitDayKeys(a)) {
+        const bucket = map.get(key);
+        if (bucket) bucket.push(a);
+        else map.set(key, [a]);
+      }
     }
     return map;
   }, [listQ.data]);

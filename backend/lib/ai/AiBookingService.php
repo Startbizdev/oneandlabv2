@@ -30,8 +30,8 @@ class AiBookingService
     public function __construct(?PDO $db = null)
     {
         $this->db = $db ?? ai_db();
-        $this->userModel = new User();
-        $this->appointmentModel = new Appointment();
+        $this->userModel = new User($this->db);
+        $this->appointmentModel = new Appointment($this->db);
         $this->enricher = new AiDraftPayloadEnricher($this->db, $this->userModel);
     }
 
@@ -211,6 +211,7 @@ class AiBookingService
             if (!$validation['valid']) {
                 throw new HttpStatusException($validation['error'] ?? 'Brouillon incomplet', 400, 'VALIDATION_ERROR');
             }
+            $this->assertCatalogChoices($payload);
 
             $appointmentInputs = array_map(
                 fn (array $input): array => AppointmentCreateInputPolicy::apply($this->db, $user, $input),
@@ -392,6 +393,84 @@ class AiBookingService
                 );
             } catch (Throwable $e) {
                 error_log('ai_booking attachDraftDocuments: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function assertCatalogChoices(array $payload): void
+    {
+        $formData = is_array($payload['form_data'] ?? null) ? $payload['form_data'] : [];
+        $formByService = is_array($payload['formDataByService'] ?? null) ? $payload['formDataByService'] : [];
+        $pairs = [[
+            trim((string) ($payload['category_id'] ?? ($formData['category_id'] ?? ''))),
+            $payload['care_options'] ?? ($formData['care_options'] ?? null),
+        ]];
+        $services = $payload['selected_services'] ?? null;
+        if (is_array($services)) {
+            foreach ($services as $service) {
+                if (!is_array($service)) {
+                    continue;
+                }
+                $serviceId = (string) ($service['id'] ?? '');
+                $serviceForm = $serviceId !== '' && is_array($formByService[$serviceId] ?? null)
+                    ? $formByService[$serviceId]
+                    : [];
+                $pairs[] = [
+                    trim((string) ($service['category_id'] ?? '')),
+                    $serviceForm['care_options'] ?? ($service['care_options'] ?? null),
+                ];
+            }
+        }
+        foreach ($pairs as [$categoryId, $rawOptions]) {
+            $this->assertOneCatalogChoice($categoryId, $rawOptions);
+        }
+    }
+
+    private function assertOneCatalogChoice(string $categoryId, mixed $rawOptions): void
+    {
+        if ($categoryId === '' || !Validation::uuid($categoryId)) {
+            return;
+        }
+        $stmt = $this->db->prepare('SELECT is_active FROM care_categories WHERE id = ? LIMIT 1');
+        $stmt->execute([$categoryId]);
+        $active = $stmt->fetchColumn();
+        if ($active === false || (int) $active !== 1) {
+            throw new HttpStatusException('Cette catégorie de soin n\'est plus disponible', 400, 'VALIDATION_ERROR');
+        }
+        if (!is_array($rawOptions) || $rawOptions === []) {
+            return;
+        }
+        $keys = array_keys($rawOptions);
+        $isList = $keys === range(0, count($rawOptions) - 1);
+        $optionKeys = [];
+        if ($isList) {
+            foreach ($rawOptions as $item) {
+                if (is_array($item) && isset($item['key'])) {
+                    $optionKeys[] = (string) $item['key'];
+                } elseif (is_string($item)) {
+                    $optionKeys[] = $item;
+                }
+            }
+        } else {
+            foreach ($keys as $key) {
+                $optionKeys[] = (string) $key;
+            }
+        }
+        if ($optionKeys === []) {
+            return;
+        }
+        $opt = $this->db->prepare('SELECT option_key FROM care_category_options WHERE care_category_id = ?');
+        $opt->execute([$categoryId]);
+        $allowed = array_map(
+            static fn (array $row): string => (string) ($row['option_key'] ?? ''),
+            $opt->fetchAll(PDO::FETCH_ASSOC),
+        );
+        foreach ($optionKeys as $key) {
+            if ($key === '' || !in_array($key, $allowed, true)) {
+                throw new HttpStatusException('Option de soin inconnue pour cette catégorie', 400, 'VALIDATION_ERROR');
             }
         }
     }

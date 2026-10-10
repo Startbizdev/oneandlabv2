@@ -25,7 +25,7 @@ describe('rendez-vous prélèvement multi-dates', () => {
     expect(payloads.map((p) => p.type)).toEqual(['blood_test', 'nursing']);
   });
 
-  it('crée un rendez-vous labo par date et fusionne les soins infirmiers', () => {
+  it('crée un seul rendez-vous labo pour plusieurs dates et fusionne les soins infirmiers', () => {
     const payloads = buildDashboardAppointmentPayloads(
       'p1',
       form({
@@ -44,15 +44,11 @@ describe('rendez-vous prélèvement multi-dates', () => {
     );
     const bloodRows = payloads.filter((p) => p.type === 'blood_test');
     const nursingRows = payloads.filter((p) => p.type === 'nursing');
-    expect(bloodRows).toHaveLength(3);
-    expect(bloodRows.map((p) => String(p.scheduled_at).slice(0, 10))).toEqual([
-      '2026-11-02',
-      '2026-11-04',
-      '2026-11-06',
-    ]);
-    expect(bloodRows.every((p) => (p.blood_test_items as unknown[]).length === 2)).toBe(true);
+    expect(bloodRows).toHaveLength(1);
+    expect(bloodRows[0].visit_dates).toEqual(['2026-11-02', '2026-11-04', '2026-11-06']);
+    expect(String(bloodRows[0].scheduled_at).slice(0, 10)).toBe('2026-11-02');
+    expect((bloodRows[0].blood_test_items as unknown[]).length).toBe(2);
     expect(nursingRows).toHaveLength(1);
     expect((nursingRows[0].nursing_items as unknown[]).length).toBe(2);
-    expect(bloodRows.every((p) => p.creation_batch_id == null)).toBe(true);
   });
 });

@@ -378,7 +378,7 @@
             </UCard>
 
             <!-- Section Présentation (nurse, subaccount) : biographie + infirmier: expérience & diplômes -->
-            <UCard v-if="hasPublicProfile" class="overflow-hidden">
+            <UCard v-if="hasPublicProfile || isPreleveur" class="overflow-hidden">
               <template #header>
                 <div class="flex items-start gap-3">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -401,6 +401,20 @@
                   class="w-full"
                 />
               </UFormField>
+              <div v-if="!isProOwnProfile" class="mt-4 grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                <UFormField label="Site internet" class="sm:col-span-2">
+                  <UInput v-model="publicProfileForm.website_url" type="url" icon="i-lucide-globe" placeholder="https://…" :disabled="saving" class="w-full" />
+                </UFormField>
+                <UFormField label="Facebook">
+                  <UInput :model-value="publicProfileForm.social_links?.facebook" placeholder="https://…" :disabled="saving" class="w-full" @update:model-value="setSocialLink('facebook', $event)" />
+                </UFormField>
+                <UFormField label="LinkedIn">
+                  <UInput :model-value="publicProfileForm.social_links?.linkedin" placeholder="https://…" :disabled="saving" class="w-full" @update:model-value="setSocialLink('linkedin', $event)" />
+                </UFormField>
+                <UFormField label="Instagram">
+                  <UInput :model-value="publicProfileForm.social_links?.instagram" placeholder="https://…" :disabled="saving" class="w-full" @update:model-value="setSocialLink('instagram', $event)" />
+                </UFormField>
+              </div>
               <template v-if="isNurse">
                 <UFormField label="Années d'expérience" name="years_experience" class="mt-4">
                   <USelect
@@ -1488,7 +1502,8 @@ const showStaffPatientClinicalFile = computed(
 const showStaffCareTeamPanels = computed(
   () =>
     showStaffPatientClinicalFile.value &&
-    (user.value?.role === 'pro' || user.value?.role === 'nurse')
+    (user.value?.role === 'pro' || user.value?.role === 'nurse') &&
+    pharmacyUiFlags.value?.is_pharmacy_account !== true
 )
 const showStaffPatientHealthRecord = computed(
   () =>
@@ -2417,6 +2432,9 @@ const saveProfile = async (fromSaveAll = false) => {
     }
     if (isPreleveur.value) {
       body.profile_image_url = publicProfileForm.value.profile_image_url || null
+      body.website_url = publicProfileForm.value.website_url?.trim() || null
+      const sl = publicProfileForm.value.social_links
+      body.social_links = sl && (sl.facebook || sl.linkedin || sl.instagram) ? sl : null
       if (user.value?.role === 'lab' && editingUserId.value && preleveurLabId.value) {
         body.lab_id = preleveurLabId.value
       }

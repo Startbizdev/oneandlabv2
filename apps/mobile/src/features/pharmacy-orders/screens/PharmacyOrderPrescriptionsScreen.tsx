@@ -2,6 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Download, Eye, FileText, FileUp } from 'lucide-react-native';
 import { canReplacePrescriptionDocument } from '@oneandlab/shared-utils';
 import { useReplacePrescription } from '@/features/documents/hooks/use-replace-prescription';
@@ -13,7 +14,8 @@ import { Row } from '@/components/layout/primitives';
 import { ListRowShell } from '@/components/ui/ListRowShell';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { queryKeys } from '@/lib/query-keys';
-import { exportMedicalDocument, openMedicalDocument } from '@/lib/downloads/download-medical-document';
+import { MedicalDocumentPreviewModal } from '@/features/documents/components/MedicalDocumentPreviewModal';
+import { cacheMedicalDocument, exportMedicalDocument } from '@/lib/downloads/download-medical-document';
 import { useToast } from '@/providers/ToastProvider';
 import { fetchPharmacyOrder } from '../api/pharmacy-orders.service';
 import { fetchMedicalDocumentById } from '@/features/appointments/api/medical-documents.service';
@@ -28,6 +30,9 @@ export function PharmacyOrderPrescriptionsScreen() {
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
   const role = useAuthStore((s) => s.user?.role);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState('ordonnance.pdf');
   const { replace: replacePrescription, replacingId } = useReplacePrescription();
 
   const orderQ = useQuery({
@@ -57,8 +62,14 @@ export function PharmacyOrderPrescriptionsScreen() {
   const loading = orderQ.isLoading || docsQ.some((q) => q.isLoading);
 
   const openDoc = async (documentId: string, fileName?: string) => {
-    const res = await openMedicalDocument(documentId, fileName);
-    if (!res.ok) toast(res.error ?? 'Ouverture impossible', { type: 'error' });
+    const res = await cacheMedicalDocument(documentId, fileName);
+    if (!res.ok || !res.localUri) {
+      toast(res.error ?? 'Aperçu impossible', { type: 'error' });
+      return;
+    }
+    setPreviewUri(res.localUri);
+    setPreviewFileName(fileName ?? 'ordonnance.pdf');
+    setPreviewOpen(true);
   };
 
   const downloadDoc = async (documentId: string, fileName?: string) => {
@@ -152,6 +163,15 @@ export function PharmacyOrderPrescriptionsScreen() {
           )}
         </ScrollView>
       )}
+      <MedicalDocumentPreviewModal
+        visible={previewOpen}
+        localUri={previewUri}
+        fileName={previewFileName}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewUri(null);
+        }}
+      />
     </StackChromeScreen>
   );
 }

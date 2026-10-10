@@ -215,7 +215,7 @@ export function PatientAbsenceSheet({
 
           {tab === 'declare' ? (
             <View style={styles.tabBody}>
-              <AppText variant="secondary">Le passage reste sur la tournée, grisé pendant l’absence.</AppText>
+              <AppText variant="secondary">Le passage reste sur la tournée, grisé jusqu’à la date de retour. Ce jour-là, le soin reprend.</AppText>
 
               <SelectField
                 label="Motif"
@@ -239,7 +239,7 @@ export function PatientAbsenceSheet({
 
               {openEnded ? null : (
                 <IsoDatePicker
-                  label="Au"
+                  label="Date de retour (facultatif)"
                   value={endDate}
                   onChange={setEndDate}
                   minimumDate={new Date(`${startDate}T12:00:00`)}

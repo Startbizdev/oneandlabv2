@@ -14,6 +14,7 @@ type ApiResponse<T> = {
   success?: boolean;
   data?: T;
   error?: string;
+  counts?: { active?: number; history?: number };
 };
 
 export type PharmacyAdminStats = {
@@ -85,13 +86,28 @@ export function usePharmacyModule() {
     return res.data;
   }
 
-  async function fetchOrders(scope: 'sent' | 'received' | 'patient' | 'all' = 'sent'): Promise<PharmacyOrder[]> {
-    const qs = scope === 'sent' ? '' : `?scope=${encodeURIComponent(scope)}`;
-    const res = (await apiFetch(`/pharmacy-orders${qs}`, { method: 'GET' })) as ApiResponse<PharmacyOrder[]>;
+  async function fetchOrders(
+    scope: 'sent' | 'received' | 'patient' | 'all' = 'sent',
+    segment?: 'active' | 'history',
+    search?: string,
+  ): Promise<{ orders: PharmacyOrder[]; counts: { active: number; history: number } }> {
+    const params = new URLSearchParams();
+    if (scope !== 'sent') params.set('scope', scope);
+    if (segment) params.set('segment', segment);
+    const q = search?.trim() ?? '';
+    if (q) params.set('q', q);
+    const qs = params.toString();
+    const res = (await apiFetch(`/pharmacy-orders${qs ? `?${qs}` : ''}`, { method: 'GET' })) as ApiResponse<PharmacyOrder[]>;
     if (!res?.success || !Array.isArray(res.data)) {
       throw new Error(res?.error || 'Chargement des commandes impossible');
     }
-    return res.data;
+    return {
+      orders: res.data,
+      counts: {
+        active: Number(res.counts?.active ?? 0),
+        history: Number(res.counts?.history ?? 0),
+      },
+    };
   }
 
   async function fetchOrder(id: string): Promise<PharmacyOrder> {

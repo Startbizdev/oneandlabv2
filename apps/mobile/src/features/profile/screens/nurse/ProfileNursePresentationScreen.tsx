@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Input } from '@/components/ui/Input';
 import { SelectField, type SelectOption } from '@/components/ui/SelectField';
 import { Textarea } from '@/components/ui/Textarea';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -10,6 +11,7 @@ import { ProfileLoadState } from '@/features/profile/components/ProfileLoadState
 import { useProfileDraft } from '@/features/profile/hooks/useProfileDraft';
 import { fetchUser, updateUser } from '@/features/profile/api/profile.service';
 import { generateNursePublicSlug } from '@/features/profile/utils/generate-public-slug';
+import { parseProfileSocialLinks, serializeProfileSocialLinks } from '@/features/profile/utils/profile-social-links';
 import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
@@ -33,6 +35,10 @@ export function ProfileNursePresentationScreen() {
 
   const [biography, setBiography] = useState('');
   const [yearsExperience, setYearsExperience] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [socialFacebook, setSocialFacebook] = useState('');
+  const [socialLinkedin, setSocialLinkedin] = useState('');
+  const [socialInstagram, setSocialInstagram] = useState('');
 
   const q = useQuery({
     queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
@@ -40,9 +46,29 @@ export function ProfileNursePresentationScreen() {
     enabled: !!user?.id,
   });
 
-  const { dirty } = useProfileDraft(user?.id, q.data, { biography, yearsExperience },
-    d => ({ biography: d.biography ?? '', yearsExperience: d.years_experience ?? '' }),
-    d => { setBiography(d.biography); setYearsExperience(d.yearsExperience); },
+  const { dirty } = useProfileDraft(
+    user?.id,
+    q.data,
+    { biography, yearsExperience, websiteUrl, socialFacebook, socialLinkedin, socialInstagram },
+    (d) => {
+      const social = parseProfileSocialLinks(d.social_links);
+      return {
+        biography: d.biography ?? '',
+        yearsExperience: d.years_experience ?? '',
+        websiteUrl: d.website_url ?? '',
+        socialFacebook: social.facebook,
+        socialLinkedin: social.linkedin,
+        socialInstagram: social.instagram,
+      };
+    },
+    (d) => {
+      setBiography(d.biography);
+      setYearsExperience(d.yearsExperience);
+      setWebsiteUrl(d.websiteUrl);
+      setSocialFacebook(d.socialFacebook);
+      setSocialLinkedin(d.socialLinkedin);
+      setSocialInstagram(d.socialInstagram);
+    },
   );
 
   const savePresentation = useMutation({
@@ -50,6 +76,12 @@ export function ProfileNursePresentationScreen() {
       updateUser(user!.id, {
         biography: biography.trim() || null,
         years_experience: yearsExperience || null,
+        website_url: websiteUrl.trim() || null,
+        social_links: serializeProfileSocialLinks({
+          facebook: socialFacebook,
+          linkedin: socialLinkedin,
+          instagram: socialInstagram,
+        }),
       }),
     onSuccess: async () => {
       await fetchMe();
@@ -99,6 +131,12 @@ export function ProfileNursePresentationScreen() {
         options={YEARS_OPTIONS}
         onChange={setYearsExperience}
       />
+      <ProfileSection title="Site et réseaux">
+        <Input label="Site internet" value={websiteUrl} onChangeText={setWebsiteUrl} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="Facebook" value={socialFacebook} onChangeText={setSocialFacebook} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="LinkedIn" value={socialLinkedin} onChangeText={setSocialLinkedin} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="Instagram" value={socialInstagram} onChangeText={setSocialInstagram} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+      </ProfileSection>
 
       <ProfileSection title="Visibilité">
         <ProfileToggleRow

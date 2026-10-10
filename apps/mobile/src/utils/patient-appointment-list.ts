@@ -1,4 +1,5 @@
 import type { Appointment } from '@oneandlab/shared-types';
+import { appointmentVisitDayKeys } from '@oneandlab/shared-utils';
 
 /** Statuts terminaux — aligné web `frontend/pages/patient/index.vue`. */
 const TERMINAL_STATUSES = new Set([
@@ -20,18 +21,14 @@ function parisYmd(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
 }
 
-function appointmentParisYmd(iso: string | undefined | null): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
-}
-
-/** Passé / terminé : statut terminal ou date (Paris) strictement avant aujourd'hui. */
+/** Passé / terminé : statut terminal, ou chaque jour de visite déjà avant aujourd'hui (Paris). */
 export function isAppointmentPastForList(apt: Appointment): boolean {
   const st = normalizeAppointmentStatus(apt.status);
   if (TERMINAL_STATUSES.has(st)) return true;
-  const day = appointmentParisYmd(apt.scheduled_at);
-  if (!day) return false;
-  return day < parisYmd(new Date());
+  const days = appointmentVisitDayKeys(apt);
+  if (days.length === 0) return false;
+  const today = parisYmd(new Date());
+  return days.every((day) => day < today);
 }
 
 /** À venir : complément de {@link isAppointmentPastForList} (sans date = encore à planifier). */

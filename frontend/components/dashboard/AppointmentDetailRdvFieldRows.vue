@@ -151,6 +151,10 @@
         <div :class="kvLabel">Type prélèvement</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getBloodTestTypeLabel(appt.form_data) }}</p>
       </div>
+      <div v-if="visitDateLabel" :class="kvRow">
+        <div :class="kvLabel">Dates du bilan</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ visitDateLabel }}</p>
+      </div>
       <div v-if="showSeparateFooterDurationFrequency && appt.form_data?.duration_days" :class="kvRow">
         <div :class="kvLabel">Type de prise en charge</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{
@@ -242,6 +246,10 @@
       <div v-if="appt.form_data?.blood_test_type" :class="kvRow">
         <div :class="kvLabel">Type prélèvement</div>
         <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ getBloodTestTypeLabel(appt.form_data) }}</p>
+      </div>
+      <div v-if="visitDateLabel" :class="kvRow">
+        <div :class="kvLabel">Dates du bilan</div>
+        <p class="min-w-0 text-sm font-medium text-gray-900 dark:text-white">{{ visitDateLabel }}</p>
       </div>
       <div v-if="appt.form_data?.duration_days" :class="kvRow">
         <div :class="kvLabel">Durée</div>
@@ -664,6 +672,11 @@ const scheduledDateWithAvailabilityLine = computed(() =>
     props.appt?.form_data,
   ),
 );
+const visitDateLabel = computed(() => {
+  const raw = props.appt?.visit_dates;
+  if (!Array.isArray(raw) || raw.length < 2) return '';
+  return raw.map((day: string) => String(day)).join(' · ');
+});
 
 const isNursePassageAppt = computed(() =>
   isNursePassageFormData(props.appt?.form_data, props.appt?.passage_source),

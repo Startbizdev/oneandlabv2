@@ -4,7 +4,6 @@ import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-nativ
 import { useRouter } from 'expo-router';
 import { Clock, History } from 'lucide-react-native';
 import {
-  countPharmacyOrdersBySegment,
   filterPharmacyOrdersBySegment,
   type PharmacyOrderListSegment,
 } from '@oneandlab/shared-utils';
@@ -23,7 +22,7 @@ export function PharmacyInboxScreen() {
   const router = useRouter();
   const [segment, setSegment] = useState<PharmacyOrderListSegment>('active');
 
-  const ordersQ = usePharmacyOrdersList('received');
+  const ordersQ = usePharmacyOrdersList('received', segment);
 
   const { refreshing, onRefresh } = useManualRefresh(() => ordersQ.refetch());
 
@@ -32,8 +31,8 @@ export function PharmacyInboxScreen() {
     [router],
   );
 
-  const orders = useMemo(() => ordersQ.data ?? [], [ordersQ.data]);
-  const counts = useMemo(() => countPharmacyOrdersBySegment(orders), [orders]);
+  const orders = useMemo(() => ordersQ.data?.orders ?? [], [ordersQ.data]);
+  const counts = ordersQ.data?.counts ?? { active: 0, history: 0 };
   const filteredOrders = useMemo(
     () => filterPharmacyOrdersBySegment(orders, segment),
     [orders, segment],

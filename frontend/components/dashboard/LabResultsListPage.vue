@@ -20,7 +20,7 @@
       </div>
 
       <UEmpty
-        v-else-if="filteredItems.length === 0"
+        v-else-if="items.length === 0"
         icon="i-lucide-flask-conical"
         :title="search.trim() ? 'Aucun résultat trouvé' : emptyTitle"
         :description="search.trim() ? 'Essayez un autre mot-clé.' : emptyDescription"
@@ -28,11 +28,11 @@
 
       <div v-else class="space-y-3">
         <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
-          {{ filteredItems.length }} résultat{{ filteredItems.length > 1 ? 's' : '' }}
+          {{ items.length }} résultat{{ items.length > 1 ? 's' : '' }}
         </p>
 
         <UCard
-          v-for="item in filteredItems"
+          v-for="item in items"
           :key="item.medical_document_id || item.id"
           class="transition hover:shadow-md"
         >
@@ -111,22 +111,12 @@ const loading = ref(true);
 const items = ref<LabResultListItem[]>([]);
 const downloadingId = ref<string | null>(null);
 
-const filteredItems = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return items.value;
-  return items.value.filter((item) => {
-    const haystack = [
-      item.file_name,
-      item.category_name,
-      item.patient_first_name,
-      item.patient_last_name,
-      patientName(item),
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(q);
-  });
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    void loadResults();
+  }, 300);
 });
 
 function patientName(item: LabResultListItem): string {
@@ -158,7 +148,9 @@ function appointmentHref(appointmentId: string) {
 async function loadResults() {
   loading.value = true;
   try {
-    const res = await apiFetch('/lab-results?limit=100', { method: 'GET' });
+    const q = search.value.trim();
+    const qs = q ? `&q=${encodeURIComponent(q)}` : '';
+    const res = await apiFetch(`/lab-results?limit=100${qs}`, { method: 'GET' });
     items.value = res?.success && res.data?.items ? res.data.items : [];
   } catch (e: any) {
     items.value = [];

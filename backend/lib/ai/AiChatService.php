@@ -12,6 +12,7 @@ require_once __DIR__ . '/AiDocumentIntent.php';
 require_once __DIR__ . '/../rag/AiDocumentJobService.php';
 require_once __DIR__ . '/AiTurnOrchestrator.php';
 require_once __DIR__ . '/AiBookingDraftSummary.php';
+require_once __DIR__ . '/AiConversationScope.php';
 require_once __DIR__ . '/AiMemoryService.php';
 require_once __DIR__ . '/AiFeatureFlags.php';
 require_once __DIR__ . '/AiEmergencyDetector.php';
@@ -302,10 +303,12 @@ final class AiChatService
         $isDocumentIntent = $attachedToMessage
             || ($chatAttachments !== [] && CaryContextFocus::matchesDocumentFollowUp(mb_strtolower($message)));
 
-        $draftPreview = $requestedDraftId !== '' ? $this->booking->getDraft($requestedDraftId, $userId) : null;
-        if ($draftPreview === null) {
-            $draftPreview = $this->booking->getLatestDraftForConversation($conversationId, $userId);
-        }
+        $draftCandidate = $requestedDraftId !== ''
+            ? $this->booking->getDraft($requestedDraftId, $userId)
+            : $this->booking->getLatestDraftForConversation($conversationId, $userId);
+        $draftPreview = ($draftCandidate !== null && AiConversationScope::draftMatchesPatient($draftCandidate, $patientId, $conversationId))
+            ? $draftCandidate
+            : null;
 
         $contextFocus = $attachedToMessage
             ? CaryContextFocus::DOCUMENT
@@ -724,6 +727,12 @@ final class AiChatService
                 $docRow = $this->attachments->requireAccessibleDocument($user, $id);
             } catch (HttpStatusException $e) {
                 error_log('AiChatService document de conversation ignoré (' . $id . ') : ' . $e->getMessage());
+                continue;
+            }
+            if (!AiConversationScope::documentMatchesPatient(
+                isset($conv['patient_id']) ? (string) $conv['patient_id'] : null,
+                isset($docRow['patient_id']) ? (string) $docRow['patient_id'] : null,
+            )) {
                 continue;
             }
             $attachment = $this->buildChatAttachment($user, $conv, $docRow, [

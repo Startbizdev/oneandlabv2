@@ -10,6 +10,7 @@ require_once __DIR__ . '/../Logger.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../Validation.php';
+require_once __DIR__ . '/../pharmacy/PharmacyModuleConfig.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
 require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
@@ -253,9 +254,30 @@ final class PatientTransmissionService
         if (!in_array((string) ($viewer['role'] ?? ''), $roles, true)) {
             throw HttpStatusException::forbidden('Transmissions réservées à l\'équipe soignante');
         }
+        if ($this->viewerIsPharmacy($viewer)) {
+            throw HttpStatusException::forbidden('Les transmissions ne concernent pas la pharmacie');
+        }
         if (!PatientDossierAccess::canAccess($this->db, $this->users, $viewer, $patientId)) {
             throw HttpStatusException::forbidden('Accès au dossier refusé');
         }
+    }
+
+    /** @param array<string, mixed> $viewer */
+    private function viewerIsPharmacy(array $viewer): bool
+    {
+        if ((string) ($viewer['role'] ?? '') !== 'pro') {
+            return false;
+        }
+        $emploi = trim((string) ($viewer['emploi'] ?? ''));
+        $viewerId = (string) ($viewer['user_id'] ?? $viewer['id'] ?? '');
+        if ($emploi === '' && $viewerId !== '') {
+            $stmt = $this->db->prepare('SELECT emploi FROM profiles WHERE id = ? LIMIT 1');
+            $stmt->execute([$viewerId]);
+            $emploi = trim((string) $stmt->fetchColumn());
+        }
+        $config = (new PharmacyModuleConfig($this->db))->getConfig();
+
+        return PharmacyModuleConfig::isPharmacyAccount(['role' => 'pro', 'emploi' => $emploi], $config);
     }
 
     /**

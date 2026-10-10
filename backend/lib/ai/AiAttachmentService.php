@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../Uuid.php';
 require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../MedicalDocumentAccess.php';
+require_once __DIR__ . '/AiConversationScope.php';
 require_once __DIR__ . '/../rag/AiDocumentJobService.php';
 
 final class AiAttachmentService
@@ -53,7 +54,11 @@ final class AiAttachmentService
             throw new InvalidArgumentException('medical_document_id requis');
         }
         $doc = $this->requireAccessibleDocument($user, $medicalDocumentId);
-        $patientId = (string) ($doc['patient_id'] ?? $conv['patient_id'] ?? $userId);
+        $conversationPatientId = isset($conv['patient_id']) ? (string) $conv['patient_id'] : null;
+        if (!AiConversationScope::documentMatchesPatient($conversationPatientId, isset($doc['patient_id']) ? (string) $doc['patient_id'] : null)) {
+            throw HttpStatusException::forbidden('Ce document n\'appartient pas au patient de la conversation');
+        }
+        $patientId = (string) ($doc['patient_id'] ?? $conversationPatientId ?? $userId);
         $attachmentType = $this->mapAttachmentType((string) ($doc['document_type'] ?? 'other'), (string) ($doc['mime_type'] ?? ''));
 
         $existing = $this->findExistingAttachment($conversationId, $medicalDocumentId);

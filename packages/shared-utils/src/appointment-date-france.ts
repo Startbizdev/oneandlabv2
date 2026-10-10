@@ -55,6 +55,23 @@ export function appointmentDayFrance(value: string | Date | null | undefined): s
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
+/** Jours d’un rendez-vous (premier matin + dates supplémentaires d’un bilan). */
+export function appointmentVisitDayKeys(apt: {
+  scheduled_at?: string | null;
+  visit_dates?: unknown;
+}): string[] {
+  const days = new Set<string>();
+  const primary = appointmentDayFrance(apt.scheduled_at);
+  if (primary) days.add(primary);
+  if (Array.isArray(apt.visit_dates)) {
+    for (const value of apt.visit_dates) {
+      const raw = String(value ?? '').trim().slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) days.add(raw);
+    }
+  }
+  return [...days].sort();
+}
+
 export function appointmentTimeFrance(value: string | Date | null | undefined): string {
   const date = value instanceof Date ? value : parseAppointmentDateFrance(value);
   if (Number.isNaN(date.getTime())) return '';

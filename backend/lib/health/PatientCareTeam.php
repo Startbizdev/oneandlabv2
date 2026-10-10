@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../pharmacy/PharmacyModuleConfig.php';
 require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
 
@@ -22,7 +23,7 @@ final class PatientCareTeam
         [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
         $coveredSql = NurseCollaboration::coversAppointmentSql('a', 'nc');
         $stmt = $db->prepare("
-            SELECT p.id, p.role
+            SELECT p.id, p.role, p.emploi
             FROM profiles p
             WHERE p.role IN ('nurse', 'pro')
               AND p.id IN (
@@ -38,8 +39,15 @@ final class PatientCareTeam
         ");
         $stmt->execute([$patientId, $patientId, ...$subjectParams, ...$subjectParams, ...$subjectParams]);
 
+        $config = (new PharmacyModuleConfig($db))->getConfig();
         $members = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (PharmacyModuleConfig::isPharmacyAccount(
+                ['role' => (string) $row['role'], 'emploi' => (string) ($row['emploi'] ?? '')],
+                $config,
+            )) {
+                continue;
+            }
             $members[] = ['id' => (string) $row['id'], 'role' => (string) $row['role']];
         }
 

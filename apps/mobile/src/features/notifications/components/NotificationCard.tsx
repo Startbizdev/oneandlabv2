@@ -12,7 +12,7 @@ import {
   formatNotificationTime,
   notificationIcon,
 } from '@/features/notifications/utils/notification-card-meta';
-import { useAppColors } from '@/theme/use-app-colors';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { radius, spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ICON_WELL = 36;
@@ -30,10 +30,11 @@ export const NotificationCard = React.memo(function NotificationCard({ item, fir
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const role = useAuthStore((s) => s.user?.role);
+  const { isOwnPharmacy } = usePharmacyModuleEnabled();
 
   const { label, message } = resolveNotificationDisplayLines(item);
   const isUnread = !item.read_at;
-  const hasLink = resolveNotificationNavigation(item, role) !== null;
+  const hasLink = resolveNotificationNavigation(item, role, { isPharmacyAccount: isOwnPharmacy }) !== null;
   const time = formatNotificationTime(item.created_at);
   const Icon = notificationIcon(item.type);
   const pressable = hasLink || isUnread;

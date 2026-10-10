@@ -16,6 +16,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
 import { handleApiError } from '@/lib/errors/handle-api-error';
+import { parseProfileSocialLinks, serializeProfileSocialLinks } from '@/features/profile/utils/profile-social-links';
 import { spacing, useStyles } from '@/theme';
 
 export function ProfilePreleveurView() {
@@ -31,6 +32,10 @@ export function ProfilePreleveurView() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [socialFacebook, setSocialFacebook] = useState('');
+  const [socialLinkedin, setSocialLinkedin] = useState('');
+  const [socialInstagram, setSocialInstagram] = useState('');
 
   const q = useQuery({
     queryKey: queryKeys.profile.user(user?.id ?? ''),
@@ -38,9 +43,33 @@ export function ProfilePreleveurView() {
     enabled: !!user?.id,
   });
 
-  const { dirty } = useProfileDraft(user?.id, q.data, { firstName, lastName, phone, profileUrl },
-    d => ({ firstName: d.first_name ?? '', lastName: d.last_name ?? '', phone: d.phone ?? '', profileUrl: d.profile_image_url ?? null }),
-    d => { setFirstName(d.firstName); setLastName(d.lastName); setPhone(d.phone); setProfileUrl(d.profileUrl); },
+  const { dirty } = useProfileDraft(
+    user?.id,
+    q.data,
+    { firstName, lastName, phone, profileUrl, websiteUrl, socialFacebook, socialLinkedin, socialInstagram },
+    (d) => {
+      const social = parseProfileSocialLinks(d.social_links);
+      return {
+        firstName: d.first_name ?? '',
+        lastName: d.last_name ?? '',
+        phone: d.phone ?? '',
+        profileUrl: d.profile_image_url ?? null,
+        websiteUrl: d.website_url ?? '',
+        socialFacebook: social.facebook,
+        socialLinkedin: social.linkedin,
+        socialInstagram: social.instagram,
+      };
+    },
+    (d) => {
+      setFirstName(d.firstName);
+      setLastName(d.lastName);
+      setPhone(d.phone);
+      setProfileUrl(d.profileUrl);
+      setWebsiteUrl(d.websiteUrl);
+      setSocialFacebook(d.socialFacebook);
+      setSocialLinkedin(d.socialLinkedin);
+      setSocialInstagram(d.socialInstagram);
+    },
     ['profileUrl'],
   );
 
@@ -68,6 +97,12 @@ export function ProfilePreleveurView() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim() || null,
+        website_url: websiteUrl.trim() || null,
+        social_links: serializeProfileSocialLinks({
+          facebook: socialFacebook,
+          linkedin: socialLinkedin,
+          instagram: socialInstagram,
+        }),
         profile_image_url: profileUrl,
       }),
     onSuccess: async () => {
@@ -118,6 +153,13 @@ export function ProfilePreleveurView() {
         <Input label="Nom" value={lastName} onChangeText={setLastName} autoCapitalize="words" />
         <ProfileEmailField email={user?.email} />
         <Input label="Téléphone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+      </ProfileSection>
+
+      <ProfileSection title="Site et réseaux">
+        <Input label="Site internet" value={websiteUrl} onChangeText={setWebsiteUrl} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="Facebook" value={socialFacebook} onChangeText={setSocialFacebook} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="LinkedIn" value={socialLinkedin} onChangeText={setSocialLinkedin} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+        <Input label="Instagram" value={socialInstagram} onChangeText={setSocialInstagram} autoCapitalize="none" keyboardType="url" placeholder="https://" />
       </ProfileSection>
 
       <ProfileSecurityLinkRow />
