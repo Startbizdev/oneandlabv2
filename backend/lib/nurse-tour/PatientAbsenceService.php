@@ -178,7 +178,7 @@ final class PatientAbsenceService
             return $label;
         }
 
-        return $label . ' · jusqu\'au ' . $end;
+        return $label . ' · retour le ' . $end;
     }
 
     private function formatEndDateFr(string $isoDate): string
