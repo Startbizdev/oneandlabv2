@@ -11,7 +11,7 @@ import { SheetKeyboardProvider } from '../sheet-keyboard-context';
 import type { SheetEntry } from './sheet-store';
 
 /** Au-delà, le contenu défile dans la sheet (hauteur ajustée au contenu). */
-const MAX_FIT_CONTENT_RATIO = 0.8;
+const MAX_FIT_CONTENT_RATIO = 0.92;
 
 /**
  * En-tête puis ScrollView, enfants directs de l'écran : sur un palier fixe, iOS ne dimensionne
@@ -45,8 +45,7 @@ export function NativeSheetBody({ entry }: { entry: SheetEntry }) {
     entry.contentStyle,
     { paddingBottom: spacing[4] + (pinnedFooter ? 0 : bottomInset) },
   ];
-  return (
-    <>
+  const header = (
       <View collapsable={false} style={styles.header}>
         {Platform.OS === 'android' ? <View style={styles.handle} /> : null}
         <Row gap={spacing[2]} style={styles.headerRow}>
@@ -63,6 +62,46 @@ export function NativeSheetBody({ entry }: { entry: SheetEntry }) {
           </View>
         </Row>
       </View>
+  );
+  /**
+   * Android : une colonne pleine largeur. Le pied reste dans la sheet.
+   * `KeyboardStickyView` le colle au bas de l'écran, donc sous une sheet trop courte le bouton disparaît.
+   * iOS : l'en-tête puis le ScrollView restent les deux premiers enfants (sinon la formSheet ne se dimensionne pas).
+   */
+  if (Platform.OS === 'android') {
+    return (
+      <View style={styles.androidSheet}>
+        {header}
+        <SheetKeyboardProvider>
+          {entry.disableScroll ? (
+            <View style={[bodyStyle, styles.fill]}>{content}</View>
+          ) : (
+            <KeyboardScrollView
+              enabled={!fitToContents}
+              bottomOffset={spacing[4] + footerAboveKeyboard}
+              contentInsetAdjustmentBehavior="never"
+              nestedScrollEnabled
+              style={styles.fill}
+              contentContainerStyle={bodyStyle}
+            >
+              {content}
+            </KeyboardScrollView>
+          )}
+          {pinnedFooter ? (
+            <View
+              style={[styles.pinnedFooter, { paddingBottom: spacing[3] + bottomInset }]}
+              onLayout={(e) => setPinnedFooterHeight(e.nativeEvent.layout.height)}
+            >
+              {entry.footer}
+            </View>
+          ) : null}
+        </SheetKeyboardProvider>
+      </View>
+    );
+  }
+  return (
+    <>
+      {header}
       <SheetKeyboardProvider>
         {entry.disableScroll ? (
           <View style={bodyStyle}>{content}</View>
@@ -95,7 +134,12 @@ export function NativeSheetBody({ entry }: { entry: SheetEntry }) {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-    fill: { flex: 1 },
+    fill: { flex: 1, minHeight: 0 },
+    androidSheet: {
+      flex: 1,
+      width: '100%' as const,
+      alignSelf: 'stretch' as const,
+    },
     handle: {
       alignSelf: 'center' as const,
       width: 36,

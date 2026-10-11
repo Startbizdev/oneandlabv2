@@ -43,10 +43,17 @@ export function sheetScreenOptions(
     headerShown: false,
     presentation: 'formSheet',
     sheetAllowedDetents: entry?.detents ?? 'fitToContents',
+    /** Ouvre au palier le plus haut. Android fige les paliers au premier layout. */
+    sheetInitialDetentIndex: 'last',
+    /**
+     * La sheet s'arrête sous la barre de statut. `true` la fait monter dans la safe zone
+     * (heure, réseau) : le titre passe sous les icônes système.
+     */
+    sheetShouldOverflowTopInset: false,
     sheetGrabberVisible: true,
     sheetCornerRadius: radius['2xl'],
     gestureEnabled: entry?.dismissible ?? true,
-    contentStyle: { backgroundColor: c.surface },
+    contentStyle: { flex: 1, width: '100%', backgroundColor: c.surface },
   };
 }
 
