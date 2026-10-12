@@ -194,9 +194,13 @@ export function CalendarScreen({
   const goPrevMonth = useCallback(() => shiftMonth(-1), [shiftMonth]);
   const goNextMonth = useCallback(() => shiftMonth(1), [shiftMonth]);
 
+  /** Pan dans un ScrollView iOS : sur iPad (mode iPhone) le geste peut bloquer le scroll et la zone liste. */
+  const monthSwipeEnabled = Platform.OS !== 'ios' || !Platform.isPad;
+
   const monthSwipeGesture = useMemo(
     () =>
       Gesture.Pan()
+        .enabled(monthSwipeEnabled)
         .activeOffsetX([-24, 24])
         .failOffsetY([-18, 18])
         .onEnd((e) => {
@@ -206,7 +210,7 @@ export function CalendarScreen({
             runOnJS(goPrevMonth)();
           }
         }),
-    [goNextMonth, goPrevMonth],
+    [goNextMonth, goPrevMonth, monthSwipeEnabled],
   );
 
   const fabClearance = useScreenFabScrollClearance();
@@ -365,13 +369,13 @@ export function CalendarScreen({
 
 function buildStyles({ colors: c, fontSize }: Theme) {
   return {
-    container: { minWidth: 0, flex: 1, backgroundColor: c.background },
+    container: { minWidth: 0, minHeight: 0, flex: 1, backgroundColor: c.background },
     filterHost: {
       alignSelf: 'stretch' as const,
       width: '100%' as const,
       paddingHorizontal: spacing[4],
     },
-    scroll: { minWidth: 0, flex: 1 },
+    scroll: { minWidth: 0, minHeight: 0, flex: 1 },
     content: {
       paddingHorizontal: spacing[4],
       paddingTop: spacing[2],

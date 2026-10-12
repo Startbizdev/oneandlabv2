@@ -54,6 +54,7 @@ function buildStyles({ colors: c }: Theme) {
     body: {
       flex: 1,
       minWidth: 0,
+      minHeight: 0,
     },
   };
 }

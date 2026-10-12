@@ -52,6 +52,7 @@ function buildStyles({ colors: c }: Theme) {
     root: {
       flex: 1,
       minWidth: 0,
+      minHeight: 0,
       backgroundColor: c.background,
     },
     segmentHost: {
@@ -64,6 +65,7 @@ function buildStyles({ colors: c }: Theme) {
     body: {
       flex: 1,
       minWidth: 0,
+      minHeight: 0,
     },
   };
 }

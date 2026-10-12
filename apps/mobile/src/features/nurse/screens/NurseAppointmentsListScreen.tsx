@@ -205,6 +205,8 @@ export function NurseAppointmentsListScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.list}
+        collapsable={false}
+        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled={Platform.OS === 'android'}
         contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
@@ -295,11 +297,13 @@ function buildStyles({ colors: c }: Theme) {
   return {
     screen: {
       minWidth: 0,
+      minHeight: 0,
       flex: 1,
       backgroundColor: c.background,
     },
     list: {
       minWidth: 0,
+      minHeight: 0,
       flex: 1,
     },
     listContent: {

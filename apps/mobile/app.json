@@ -15,6 +15,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.carybioapp.app",
       "infoPlist": {
+        "UIRequiresFullScreen": true,
         "CFBundleDisplayName": "Cary",
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Cary a besoin d’accéder à vos photos pour joindre des documents médicaux à vos rendez-vous.",
