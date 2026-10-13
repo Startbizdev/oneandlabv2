@@ -35,14 +35,12 @@ const year = new Date().getFullYear();
 
 const footerBlocks = computed(() => {
   const rdv = appointmentNewUrl.value;
-  const nursingQ = rdv === '/rendez-vous/nouveau' ? '?type=nursing' : '';
-  const bloodQ = rdv === '/rendez-vous/nouveau' ? '?type=blood_test' : '';
   return [
     {
     title: 'Services',
     links: [
-      { label: 'Soins infirmiers', to: `${rdv}${nursingQ}`, external: false },
-      { label: 'Prise de sang à domicile', to: `${rdv}${bloodQ}`, external: false },
+      { label: 'Prise de sang à domicile', to: '/prise-de-sang-a-domicile', external: false },
+      { label: 'Soins infirmiers à domicile', to: '/soins-infirmiers-a-domicile', external: false },
       { label: 'Pour les patients', to: '/pour-les-patients', external: false },
       { label: 'Comment réserver', to: `${rdv}`, external: false },
     ],

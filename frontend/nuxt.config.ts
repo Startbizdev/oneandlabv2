@@ -43,6 +43,7 @@ export default defineNuxtConfig({
     // Unhashed file names: keep the cache short enough for a regenerated artwork to reach clients.
     routeRules: {
       '/images/care/**': { headers: { 'cache-control': 'public, max-age=604800, stale-while-revalidate=86400' } },
+      '/Laboratoire/**': { redirect: { to: '/laboratoire/**', statusCode: 301 } },
     },
   
     colorMode: {

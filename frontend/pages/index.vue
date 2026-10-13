@@ -6,21 +6,36 @@
     <LandingMaquettePatientFocus />
     <LandingMaquetteFaq :items="faqItems" />
     <LandingMaquetteCta />
+    <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({
   layout: 'default',
 });
 
-useLandingSeo({
-  title: 'Prise de sang et soins infirmiers à domicile | Cary',
-  description: 'Réservez une prise de sang ou des soins infirmiers à domicile. Choisissez vos disponibilités, suivez la confirmation et retrouvez vos documents avec Cary.',
-  path: '/',
-});
+const editorial = getSeoStaticPage('/')
 
-const faqItems = [
+if (editorial) {
+  useLandingSeo({
+    title: editorial.title,
+    description: editorial.description,
+    keywords: editorial.keywords,
+    path: editorial.path,
+    breadcrumbs: editorial.breadcrumbs,
+  })
+} else {
+  useLandingSeo({
+    title: 'Prise de sang et soins infirmiers à domicile | Cary',
+    description: 'Réservez une prise de sang ou des soins infirmiers à domicile. Choisissez vos disponibilités, suivez la confirmation et retrouvez vos documents avec Cary.',
+    path: '/',
+  })
+}
+
+const faqItems = editorial?.faq ?? [
   {
     question: 'Comment réserver ?',
     answer:

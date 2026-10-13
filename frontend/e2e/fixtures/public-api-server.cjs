@@ -26,6 +26,20 @@ http.createServer((request, response) => {
       reviews: { stats: { total_reviews: 0, average_rating: 0 } }, specializations: [{ id: 'fixture-care', name: 'Soin de suivi', type: 'nursing', icon: 'syringe', image_url: '/api/old-care.png' }], services: [{ id: 'fixture-care', name: 'Prélèvement', type: 'blood_test', icon: 'syringe', image_url: '/api/old-care.png' }],
     } }));
   }
+  if (url.pathname === '/api/public/directory-cities') {
+    const kind = url.searchParams.get('kind');
+    if (kind !== 'nurses' && kind !== 'labs') {
+      response.writeHead(400);
+      return response.end(JSON.stringify({ success: false, error: 'Le paramètre kind doit être « nurses » ou « labs ».' }));
+    }
+    return response.end(JSON.stringify({
+      success: true,
+      data: [
+        { city: 'Paris', slug: 'paris', count: kind === 'nurses' ? 12 : 5 },
+        { city: 'Marseille', slug: 'marseille', count: kind === 'nurses' ? 8 : 3 },
+      ],
+    }));
+  }
   if (!['/api/public/nurses', '/api/public/labs'].includes(url.pathname)) {
     response.writeHead(404);
     return response.end(JSON.stringify({ success: false, error: 'Unknown fixture' }));
@@ -33,6 +47,11 @@ http.createServer((request, response) => {
   if (url.searchParams.get('city') === 'fixture-error') {
     response.writeHead(503);
     return response.end(JSON.stringify({ success: false, error: 'Fixture unavailable' }));
+  }
+  const city = (url.searchParams.get('city') || '').trim().toLowerCase();
+  // Known fixture cities only — unknown city slugs return an empty list so city pages can 404.
+  if (city && city !== 'paris' && city !== 'marseille') {
+    return response.end(JSON.stringify({ success: true, data: [], pagination: { page: 1, pages: 1, total: 0 } }));
   }
   response.end(JSON.stringify({ success: true, data: [{ id: 'fixture-directory', slug: 'fixture-profile', name: 'Camille Exemple', city: 'Paris', presentation: 'Présentation fictive pour la recette.', reviews_count: 2, average_rating: 4.5 }], pagination: { page: 1, pages: 2, total: 25 } }));
 }).listen(8889, '127.0.0.1', () => console.log('Synthetic public API on 127.0.0.1:8889'));

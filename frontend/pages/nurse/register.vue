@@ -22,6 +22,11 @@ definePageMeta({
   layout: 'default',
 });
 
+useHead({
+  title: 'Inscription infirmier | Cary',
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 import { apiFetch } from '~/utils/api';
 const route = useRoute();
 const toast = useAppToast();

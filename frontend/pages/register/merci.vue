@@ -39,6 +39,11 @@ definePageMeta({
   layout: 'default',
 });
 
+useHead({
+  title: 'Demande reçue | Cary',
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 const route = useRoute();
 const type = computed(() => (route.query.type as string) || '');
 </script>

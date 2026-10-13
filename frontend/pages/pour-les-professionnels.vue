@@ -63,19 +63,27 @@
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
   </LandingMaquetteMarketingBackdrop>
+  <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({ layout: 'default' });
 
+const editorial = getSeoStaticPage('/pour-les-professionnels')
+
 useLandingSeo({
-  title: 'Médecins et soignants : orientez vos patients vers le domicile | Cary',
+  title: editorial?.title ?? 'Médecins et soignants : orientez vos patients vers le domicile | Cary',
   description:
+    editorial?.description ??
     'Après la consultation, vos patients réservent une prise de sang ou un soin à domicile. Vous voyez où ça en est.',
   keywords:
+    editorial?.keywords ??
     'médecin prescription domicile, kiné à domicile, professionnel santé Cary, prescription prélèvement',
   path: '/pour-les-professionnels',
+  breadcrumbs: editorial?.breadcrumbs,
 });
 
 const proStats = [

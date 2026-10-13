@@ -1794,7 +1794,7 @@ function setOtherFormation(idx: number, value: string) {
 const savingPublicProfile = ref(false)
 const savingAccepting = ref(false)
 const publicProfileSlugPrefix = computed(() => {
-  if (isSubaccount.value || isDisplayedProfileLab.value) return 'cary.fr/Laboratoire/'
+  if (isSubaccount.value || isDisplayedProfileLab.value) return 'cary.fr/laboratoire/'
   if (isProOwnProfile.value) return 'cary.fr/professionnel/'
   return 'cary.fr/infirmier/'
 })
@@ -1842,7 +1842,7 @@ async function onAcceptingToggle(value: boolean) {
 const publicProfileUrl = computed(() => {
   const slug = publicProfileForm.value.public_slug
   if (!slug) return '#'
-  if (isSubaccount.value || isDisplayedProfileLab.value) return `/Laboratoire/${slug}`
+  if (isSubaccount.value || isDisplayedProfileLab.value) return `/laboratoire/${slug}`
   if (isProOwnProfile.value) return `/professionnel/${slug}`
   return `/infirmier/${slug}`
 })

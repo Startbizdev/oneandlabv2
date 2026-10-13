@@ -11,7 +11,7 @@ export function providerPublicProfilePath(
 ): string {
   const s = slug.trim();
   if (!s) return '';
-  return providerType === 'nurse' ? `/infirmier/${s}` : `/Laboratoire/${s}`;
+  return providerType === 'nurse' ? `/infirmier/${s}` : `/laboratoire/${s}`;
 }
 
 export type CreatorOrigin = {

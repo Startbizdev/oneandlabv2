@@ -78,7 +78,7 @@ const props = defineProps<{
 }>()
 
 const profileUrl = computed(() =>
-  props.type === 'nurse' ? `/infirmier/${encodeURIComponent(props.slug)}` : `/Laboratoire/${encodeURIComponent(props.slug)}`
+  props.type === 'nurse' ? `/infirmier/${encodeURIComponent(props.slug)}` : `/laboratoire/${encodeURIComponent(props.slug)}`
 )
 
 const starCount = computed(() =>

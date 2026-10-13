@@ -13,8 +13,7 @@ for (const width of [360, 768, 1440]) {
       await waitForNuxtReady(page);
       await expect(page.locator('h1')).toHaveCount(1);
       await expect(page.locator('h1')).toBeVisible();
-      // Contact uses its own metadata; this added route checks the shared hero's layout.
-      if (route !== '/contact') await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://cary.bio${route}`);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `https://cary.bio${route}`);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       expect(errors).toEqual([]);
       await page.screenshot({ path: `test-results/public-${route === '/' ? 'home' : route.split('/')[1]}-${width}.png`, fullPage: true });

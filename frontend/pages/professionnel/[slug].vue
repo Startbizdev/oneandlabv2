@@ -56,6 +56,14 @@ useHead({
           : `${name}, ${emploi}. Prenez rendez-vous sur Cary.`;
       }),
     },
+    {
+      property: 'og:image',
+      content: computed(() => profile.value?.profile_image_url || '/android-chrome-512x512.png'),
+    },
+    {
+      property: 'og:type',
+      content: 'profile',
+    },
   ],
 });
 

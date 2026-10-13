@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures/test';
 
 // Uses the same synthetic SSR API as public-directory.spec.ts.
-for (const path of ['/infirmier', '/Laboratoire', '/professionnel']) {
+for (const path of ['/infirmier', '/laboratoire', '/professionnel']) {
   test(`${path}: server HTML contains the profile and canonical URL`, async ({ request }) => {
     const response = await request.get(`${path}/fixture-profile?campaign=fixture`);
     expect(response.status()).toBe(200);
@@ -10,7 +10,53 @@ for (const path of ['/infirmier', '/Laboratoire', '/professionnel']) {
     expect(html).toContain(`href="https://cary.bio${path}/fixture-profile"`);
     expect(html).toContain('public-profile-entity');
     expect(html).not.toContain('[object Object]');
+
+    const jsonLdBlocks = [...html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)]
+      .map((match) => {
+        try {
+          return JSON.parse(match[1] || '{}');
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean) as Array<Record<string, unknown>>;
+
+    const entityDoc = jsonLdBlocks.find((block) => Array.isArray(block['@graph']));
+    expect(entityDoc).toBeTruthy();
+    const graph = entityDoc!['@graph'] as Array<Record<string, unknown>>;
+    expect(graph.some((node) => node['@type'] === 'WebPage')).toBe(true);
+    expect(graph.some((node) => node['@type'] === 'BreadcrumbList')).toBe(true);
+
+    if (path === '/infirmier') {
+      expect(graph.some((node) => node['@type'] === 'Person')).toBe(true);
+      expect(graph.some((node) => node['@type'] === 'MedicalBusiness')).toBe(true);
+      expect(html).toContain('/infirmier/ville/paris');
+    } else if (path === '/laboratoire') {
+      expect(graph.some((node) => {
+        const type = node['@type'];
+        return type === 'MedicalOrganization'
+          || (Array.isArray(type) && type.includes('MedicalOrganization') && type.includes('MedicalBusiness'));
+      })).toBe(true);
+      expect(html).toContain('/laboratoire/ville/paris');
+    } else {
+      expect(graph.some((node) => node['@type'] === 'Person')).toBe(true);
+      expect(html).toContain('android-chrome-512x512.png');
+    }
+
+    const faqDoc = jsonLdBlocks.find((block) => block['@type'] === 'FAQPage');
+    expect(faqDoc).toBeTruthy();
+    expect(Array.isArray(faqDoc!.mainEntity)).toBe(true);
+    expect((faqDoc!.mainEntity as unknown[]).length).toBeGreaterThan(0);
   });
+
+  if (path === '/laboratoire') {
+    test('/Laboratoire: legacy capitalized path redirects to lowercase', async ({ request }) => {
+      const moved = await request.get('/Laboratoire/fixture-profile', { maxRedirects: 0 });
+      expect(moved.status()).toBe(301);
+      expect(moved.headers().location).toBe('/laboratoire/fixture-profile');
+    });
+  }
+
 
   test(`${path}: public profile fits on a narrow phone`, async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 900 });

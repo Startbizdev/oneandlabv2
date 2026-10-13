@@ -150,10 +150,18 @@ definePageMeta({ layout: 'default' })
 
 const embedded = useEmbeddedView()
 
+const siteOrigin = String(useRuntimeConfig().public.siteUrl || 'https://cary.bio').replace(/\/$/, '')
+const pageTitle = 'Conditions générales de vente — Cary'
+const pageDescription = 'CGV des abonnements professionnels Cary : infirmiers et laboratoires, tarifs, paiement Stripe, résiliation.'
+
 useHead({
-  title: 'Conditions générales de vente — Cary',
+  title: pageTitle,
   meta: [
-    { name: 'description', content: 'CGV des abonnements professionnels Cary : infirmiers et laboratoires, tarifs, paiement Stripe, résiliation.' },
+    { name: 'description', content: pageDescription },
+    { property: 'og:title', content: pageTitle },
+    { property: 'og:description', content: pageDescription },
+    { property: 'og:url', content: `${siteOrigin}/cgv` },
   ],
+  link: [{ rel: 'canonical', href: `${siteOrigin}/cgv` }],
 })
 </script>

@@ -133,10 +133,18 @@ definePageMeta({ layout: 'default' })
 
 const embedded = useEmbeddedView()
 
+const siteOrigin = String(useRuntimeConfig().public.siteUrl || 'https://cary.bio').replace(/\/$/, '')
+const pageTitle = 'Politique de confidentialité — Cary'
+const pageDescription = 'Politique de confidentialité et protection des données personnelles (RGPD) sur Cary.'
+
 useHead({
-  title: 'Politique de confidentialité — Cary',
+  title: pageTitle,
   meta: [
-    { name: 'description', content: 'Politique de confidentialité et protection des données personnelles (RGPD) sur Cary.' },
+    { name: 'description', content: pageDescription },
+    { property: 'og:title', content: pageTitle },
+    { property: 'og:description', content: pageDescription },
+    { property: 'og:url', content: `${siteOrigin}/politique-confidentialite` },
   ],
+  link: [{ rel: 'canonical', href: `${siteOrigin}/politique-confidentialite` }],
 })
 </script>

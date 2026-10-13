@@ -266,6 +266,8 @@ useHead({
       content:
         'Contactez Cary : problème RDV, partenariat laboratoire ou infirmier, questions. Adresse : 230 B avenue Corot, 13014 Marseille.',
     },
+    { name: 'robots', content: 'noindex, nofollow' },
   ],
+  link: [{ rel: 'canonical', href: `${String(useRuntimeConfig().public.siteUrl || 'https://cary.bio').replace(/\/$/, '')}/contact` }],
 });
 </script>

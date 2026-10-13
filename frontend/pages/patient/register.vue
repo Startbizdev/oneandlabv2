@@ -124,6 +124,11 @@ definePageMeta({
   layout: 'default',
 });
 
+useHead({
+  title: 'Inscription patient | Cary',
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+});
+
 import { apiFetch } from '~/utils/api';
 
 interface AddressSelection {

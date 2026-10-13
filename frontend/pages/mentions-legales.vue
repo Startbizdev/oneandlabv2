@@ -156,10 +156,18 @@ definePageMeta({ layout: 'default' })
 
 const embedded = useEmbeddedView()
 
+const siteOrigin = String(useRuntimeConfig().public.siteUrl || 'https://cary.bio').replace(/\/$/, '')
+const pageTitle = 'Mentions légales — Cary'
+const pageDescription = 'Mentions légales du site Cary : éditeur, hébergeur, protection des données, contact.'
+
 useHead({
-  title: 'Mentions légales — Cary',
+  title: pageTitle,
   meta: [
-    { name: 'description', content: 'Mentions légales du site Cary : éditeur, hébergeur, protection des données, contact.' },
+    { name: 'description', content: pageDescription },
+    { property: 'og:title', content: pageTitle },
+    { property: 'og:description', content: pageDescription },
+    { property: 'og:url', content: `${siteOrigin}/mentions-legales` },
   ],
+  link: [{ rel: 'canonical', href: `${siteOrigin}/mentions-legales` }],
 })
 </script>

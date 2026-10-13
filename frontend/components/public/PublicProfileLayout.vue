@@ -460,6 +460,15 @@
                   </span>
                   <span v-else class="text-xs text-gray-400 dark:text-gray-500">Non renseignée</span>
                 </li>
+                <li v-if="cityDirectoryHref && cityDirectoryLabel" class="flex items-center justify-between gap-2 px-2.5 py-1.5">
+                  <span class="w-16 shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300">Ville</span>
+                  <NuxtLink
+                    :to="cityDirectoryHref"
+                    class="text-xs text-primary-600 dark:text-primary-400 hover:underline text-right"
+                  >
+                    {{ cityDirectoryLabel }}
+                  </NuxtLink>
+                </li>
                 <li v-if="(type === 'nurse' || type === 'lab') && radiusKm != null && radiusKm > 0" class="flex items-center justify-between gap-2 px-2.5 py-1.5">
                   <span class="w-24 shrink-0 text-xs font-medium text-gray-700 dark:text-gray-300">Zone carrée</span>
                   <span class="text-xs tabular-nums text-primary-600 dark:text-primary-400 font-medium text-right">
@@ -476,6 +485,8 @@
 </template>
 
 <script setup lang="ts">
+import { citySlugFrom } from '~/seo/citySlug'
+
 interface FaqItem {
   question: string
   answer: string
@@ -504,6 +515,20 @@ const props = defineProps<{
 const embedded = computed(() => props.embedded === true)
 
 const type = toRef(() => props.type)
+
+const cityDirectoryHref = computed(() => {
+  if (props.type === 'pro') return null
+  const city = typeof props.profile?.city_plain === 'string' ? props.profile.city_plain.trim() : ''
+  const citySlug = citySlugFrom(city)
+  if (!citySlug) return null
+  const base = props.type === 'nurse' ? '/infirmier/ville' : '/laboratoire/ville'
+  return `${base}/${encodeURIComponent(citySlug)}`
+})
+
+const cityDirectoryLabel = computed(() => {
+  const city = typeof props.profile?.city_plain === 'string' ? props.profile.city_plain.trim() : ''
+  return city || null
+})
 
 const route = useRoute()
 const config = useRuntimeConfig()

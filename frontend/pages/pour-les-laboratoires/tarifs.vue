@@ -26,14 +26,33 @@
 
       <LandingMaquetteFaq anchor-id="faq" section-class="bg-white dark:bg-gray-950" :items="faqItemsLab" />
     </LandingMaquetteMarketingBackdrop>
+    <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api';
+import { getSeoStaticPage } from '~/seo/pages'
 definePageMeta({ layout: 'default' });
 
-useLandingSeo({"title": "Tarifs laboratoires : gratuit, Starter et Pro | Cary", "description": "Démarrez gratuitement avec Cary. Starter à 49 €/mois pour une petite équipe, Pro à 129 €/mois pour plusieurs équipes et sous-comptes.", "path": "/pour-les-laboratoires/tarifs"});
+const editorial = getSeoStaticPage('/pour-les-laboratoires/tarifs')
+if (editorial) {
+  // FAQ schema volontairement omis : LandingMaquetteFaq ci-dessus porte déjà les questions.
+  useLandingSeo({
+    title: editorial.title,
+    description: editorial.description,
+    keywords: editorial.keywords,
+    path: editorial.path,
+    breadcrumbs: editorial.breadcrumbs,
+  })
+} else {
+  useLandingSeo({
+    title: 'Tarifs laboratoires : gratuit, Starter et Pro | Cary',
+    description:
+      'Démarrez gratuitement avec Cary. Starter à 49 €/mois pour une petite équipe, Pro à 129 €/mois pour plusieurs équipes et sous-comptes.',
+    path: '/pour-les-laboratoires/tarifs',
+  })
+}
 
 const { isAuthenticated, user } = useAuth();
 const toast = useAppToast();

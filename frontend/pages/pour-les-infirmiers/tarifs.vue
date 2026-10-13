@@ -30,13 +30,25 @@
         :items="faqItemsInfirmiers"
       />
     </LandingMaquetteMarketingBackdrop>
+    <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({ layout: 'default' });
 
-useLandingSeo({"title": "Tarifs infirmiers : gratuit et Pro | Cary", "description": "Découvrez le pack gratuit Cary et l’offre Pro à 29 €/mois : demandes de soins, secteur d’intervention et suivi d’activité.", "path": "/pour-les-infirmiers/tarifs"});
+const editorial = getSeoStaticPage('/pour-les-infirmiers/tarifs')
+useLandingSeo({
+  title: editorial?.title ?? 'Tarifs infirmiers : gratuit et Pro | Cary',
+  description:
+    editorial?.description
+    ?? 'Découvrez le pack gratuit Cary et l’offre Pro à 29 €/mois : demandes de soins, secteur d’intervention et suivi d’activité.',
+  keywords: editorial?.keywords,
+  path: '/pour-les-infirmiers/tarifs',
+  breadcrumbs: editorial?.breadcrumbs,
+});
 
 const { isAuthenticated, user } = useAuth();
 const toast = useAppToast();

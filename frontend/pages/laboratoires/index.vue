@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PublicDirectoryHero kind="labs" :city="searchCity" :appointment-url="appointmentNewUrl" @search="searchCity = $event" />
+    <PublicDirectoryHero kind="labs" :city="searchCity" :appointment-url="appointmentNewUrl" @search="onCitySearch" />
 
     <section class="relative py-12 sm:py-16 md:py-20 overflow-hidden bg-app-canvas dark:bg-gray-950">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
@@ -65,31 +65,41 @@
         </template>
       </div>
     </section>
+    <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+import { citySlugFrom } from '~/seo/citySlug'
+
 definePageMeta({ layout: 'default' })
 
 const { appointmentNewUrl } = useAppointmentNewUrl()
-const config = useRuntimeConfig()
 const searchCity = ref('')
 const { profiles: labs, loading, loadError, retry, pageNumber: page, totalPages } = await usePublicDirectory('labs', searchCity)
 const pagination = computed(() => ({ page: page.value, pages: totalPages.value }))
 
-const seoTitle = 'Prise de sang à domicile en France | Cary'
-const seoDescription = 'Un préleveur vient chez vous. Réservez en ligne, sans engagement.'
+const editorial = getSeoStaticPage('/laboratoires')
+if (editorial) {
+  useSeoEditorialPage(editorial)
+} else {
+  useLandingSeo({
+    title: 'Prise de sang à domicile en France | Cary',
+    description: 'Un préleveur vient chez vous. Réservez en ligne, sans engagement.',
+    path: '/laboratoires',
+    breadcrumbs: [{ name: 'Accueil', path: '/' }],
+  })
+}
 
-useHead({
-  title: seoTitle,
-  meta: [
-    { name: 'description', content: seoDescription },
-    { property: 'og:title', content: seoTitle },
-    { property: 'og:description', content: seoDescription },
-    { property: 'og:type', content: 'website' },
-  ],
-  link: [{ rel: 'canonical', href: `${String(config.public.siteUrl || 'https://cary.bio').replace(/\/$/, '')}/laboratoires` }],
-})
+function onCitySearch(city: string) {
+  const slug = citySlugFrom(city)
+  if (!slug) {
+    searchCity.value = ''
+    return
+  }
+  void navigateTo(`/laboratoire/ville/${encodeURIComponent(slug)}`)
+}
 
 function loadPage(p: number) {
   page.value = p

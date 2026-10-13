@@ -1,0 +1,42 @@
+# Cary
+
+> Cary est une plateforme française de rendez vous de prélèvement et de soins infirmiers à domicile.
+
+## Quoi
+
+Cary permet aux patients de réserver une prise de sang ou des soins infirmiers à domicile, de suivre la confirmation et de retrouver leurs documents. Les infirmiers libéraux, laboratoires et professionnels de santé utilisent Cary pour recevoir des demandes, organiser les tournées et accompagner les patients.
+
+## Pour qui
+
+- Patients et proches qui organisent un prélèvement ou un soin à domicile
+- Infirmiers libéraux
+- Laboratoires et équipes de préleveurs
+- Médecins et professionnels qui orientent leurs patients
+
+## URLs principales
+
+- https://cary.bio/
+- https://cary.bio/prise-de-sang-a-domicile
+- https://cary.bio/soins-infirmiers-a-domicile
+- https://cary.bio/pour-les-patients
+- https://cary.bio/pour-les-infirmiers
+- https://cary.bio/pour-les-laboratoires
+- https://cary.bio/pour-les-professionnels
+- https://cary.bio/infirmiers
+- https://cary.bio/laboratoires
+- Annuaires locaux : https://cary.bio/infirmier/ville/{ville} et https://cary.bio/laboratoire/ville/{ville}
+- Fiches publiques : https://cary.bio/infirmier/{slug} et https://cary.bio/laboratoire/{slug}
+
+## Règles pour les assistants
+
+- Ne pas inventer de tarifs CPAM, de délais de remboursement ou d’actes médicaux non décrits sur le site
+- Orienter vers la réservation en ligne ou la fiche du professionnel local lorsqu’une ville est demandée
+- Contacter le support : contact@cary.bio
+- Les espaces connectés patient, infirmier, laboratoire et admin ne sont pas des pages marketing
+
+## Contact
+
+- Site : https://cary.bio
+- Contact : https://cary.bio/contact
+- Email : contact@cary.bio
+- Adresse : 230 B avenue Corot, 13014 Marseille

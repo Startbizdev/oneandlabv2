@@ -21,6 +21,7 @@ final class ApiRouteResolverTest extends TestCase
         return [
             'fichier exact' => ['auth/request-otp', 'auth/request-otp.php', []],
             'index de dossier' => ['coverage-zones', 'coverage-zones/index.php', []],
+            'directory-cities public' => ['public/directory-cities', 'public/directory-cities/index.php', []],
             'slug' => ['public/nurse/mon-cabinet', 'public/nurse/[slug].php', ['slug' => 'mon-cabinet']],
             'id' => ['users/abc', 'users/[id].php', ['id' => 'abc']],
             'action après id' => ['medical-documents/abc/download', 'medical-documents/[id]/download.php', ['id' => 'abc']],

@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
+require_once __DIR__ . '/../../../lib/DirectoryCities.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -44,11 +45,9 @@ try {
     $where = "role = 'nurse' AND is_public_profile_enabled = TRUE AND public_slug IS NOT NULL AND public_slug != ''";
     $params = [];
     if ($city !== '') {
-        $stmt = $db->query("SHOW COLUMNS FROM profiles LIKE 'city_plain'");
-        if ($stmt->rowCount() > 0) {
-            $where .= " AND LOWER(TRIM(city_plain)) = LOWER(TRIM(?))";
-            $params[] = $city;
-        }
+        $filter = DirectoryCities::cityFilterClause($db, $where, $params, $city);
+        $where .= $filter['clause'];
+        $params = array_merge($params, $filter['params']);
     }
 
     $countSql = "SELECT COUNT(*) FROM profiles WHERE $where";

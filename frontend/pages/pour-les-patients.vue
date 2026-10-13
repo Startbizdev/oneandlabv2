@@ -68,19 +68,27 @@
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
   </LandingMaquetteMarketingBackdrop>
+  <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({ layout: 'default' });
 
+const editorial = getSeoStaticPage('/pour-les-patients')
+
 useLandingSeo({
-  title: 'Soins à domicile pour les patients | Cary',
+  title: editorial?.title ?? 'Soins à domicile pour les patients | Cary',
   description:
+    editorial?.description ??
     'Réservez une prise de sang ou un soin infirmier chez vous. Professionnels vérifiés, confirmation par SMS et email.',
   keywords:
+    editorial?.keywords ??
     'prise de sang à domicile, soins infirmiers à domicile, rendez-vous patient, Cary, soins à domicile',
   path: '/pour-les-patients',
+  breadcrumbs: editorial?.breadcrumbs,
 });
 
 const { appointmentNewUrl } = useAppointmentNewUrl();

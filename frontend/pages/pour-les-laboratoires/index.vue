@@ -67,20 +67,35 @@
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
   </LandingMaquetteMarketingBackdrop>
+    <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({ layout: 'default' });
 
-useLandingSeo({
-  title: 'Laboratoires : prises de sang à domicile, tournées et préleveurs | Cary',
-  description:
-    'Centralisez les demandes à domicile, affectez vos préleveurs et suivez les rendez-vous de votre équipe.',
-  keywords:
-    'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, Cary, analyses à domicile',
-  path: '/pour-les-laboratoires',
-});
+const editorial = getSeoStaticPage('/pour-les-laboratoires')
+if (editorial) {
+  // FAQ schema volontairement omis : LandingMaquetteFaq ci-dessus porte déjà les questions.
+  useLandingSeo({
+    title: editorial.title,
+    description: editorial.description,
+    keywords: editorial.keywords,
+    path: editorial.path,
+    breadcrumbs: editorial.breadcrumbs,
+  })
+} else {
+  useLandingSeo({
+    title: 'Laboratoires : prises de sang à domicile, tournées et préleveurs | Cary',
+    description:
+      'Centralisez les demandes à domicile, affectez vos préleveurs et suivez les rendez-vous de votre équipe.',
+    keywords:
+      'laboratoire à domicile, prise de sang à domicile, préleveur, plateforme laboratoire, Cary, analyses à domicile',
+    path: '/pour-les-laboratoires',
+  })
+}
 
 const labStats = [
   { num: '8+', rest: ' laboratoires partenaires' },

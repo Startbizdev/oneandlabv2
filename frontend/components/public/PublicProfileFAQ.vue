@@ -1,5 +1,25 @@
 <script setup lang="ts">
-defineProps<{ faq?: Array<{ question: string; answer: string }> }>();
+const props = defineProps<{ faq?: Array<{ question: string; answer: string }> }>();
+
+useHead(() => {
+  const items = props.faq?.filter(item => item.question?.trim() && item.answer?.trim()) ?? [];
+  if (!items.length) return { script: [] };
+  return {
+    script: [{
+      key: 'public-profile-faq',
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: items.map(item => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: { '@type': 'Answer', text: item.answer },
+        })),
+      }).replace(/</g, '\\u003c'),
+    }],
+  };
+});
 </script>
 
 <template>

@@ -66,18 +66,28 @@
       outer-class="bg-[#F7F7FB] dark:bg-gray-900/70"
     />
   </LandingMaquetteMarketingBackdrop>
+  <SeoEditorial v-if="editorial" :article="editorial" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { getSeoStaticPage } from '~/seo/pages'
+
 definePageMeta({ layout: 'default' });
 
+const editorial = getSeoStaticPage('/pour-les-infirmiers')
 useLandingSeo({
-  title: 'Infirmiers libéraux : recevez des demandes à domicile | Cary',
+  title:
+    editorial?.title
+    ?? 'Infirmiers libéraux : recevez des demandes à domicile | Cary',
   description:
-    'Les demandes arrivent dans votre rayon. Vous acceptez ou refusez. Planning, adresses et documents au même endroit.',
-  keywords: 'infirmier domicile, IDEL Cary, plateforme infirmiers, soins infirmiers à domicile',
+    editorial?.description
+    ?? 'Les demandes arrivent dans votre rayon. Vous acceptez ou refusez. Planning, adresses et documents au même endroit.',
+  keywords:
+    editorial?.keywords
+    ?? 'infirmier domicile, IDEL Cary, plateforme infirmiers, soins infirmiers à domicile',
   path: '/pour-les-infirmiers',
+  breadcrumbs: editorial?.breadcrumbs,
 });
 
 const nurseStats = [
