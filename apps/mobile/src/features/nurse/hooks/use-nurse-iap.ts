@@ -149,9 +149,12 @@ export function useNurseIap() {
       return;
     }
     if (subscriptionQ.data?.can_purchase_store === false) {
-      toast('Vous avez déjà Cary Pro via le site web. Gérez votre abonnement sur cary.bio.', {
-        type: 'info',
-      });
+      toast(
+        Platform.OS === 'ios'
+          ? 'Vous avez déjà Cary Pro actif sur ce compte.'
+          : 'Vous avez déjà Cary Pro via le site web. Gérez votre abonnement sur cary.bio.',
+        { type: 'info' },
+      );
       return;
     }
 

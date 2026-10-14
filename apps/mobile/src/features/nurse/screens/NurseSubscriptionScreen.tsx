@@ -30,17 +30,24 @@ function billingSourceLabel(source: string | null | undefined): string | null {
   return null;
 }
 
-function manageSubscriptionsUrl(source?: string | null): string {
+/** Guideline 3.1.1 : sur iOS, aucun lien externe (Stripe / site) pour gérer un abonnement digital. */
+function subscriptionManageUrl(source?: string | null): string | null {
+  if (Platform.OS === 'ios') {
+    if (source === 'stripe') return null;
+    return IOS_SUBSCRIPTIONS_URL;
+  }
   if (source === 'stripe') return webAppUrl('/nurse/abonnement');
-  if (source === 'apple') return IOS_SUBSCRIPTIONS_URL;
   if (source === 'google') return ANDROID_SUBSCRIPTIONS_URL;
-  return Platform.OS === 'ios' ? IOS_SUBSCRIPTIONS_URL : ANDROID_SUBSCRIPTIONS_URL;
+  return ANDROID_SUBSCRIPTIONS_URL;
 }
 
 function activeSubscriptionLine(source: string | null | undefined, periodEnd: string | null | undefined): string | null {
+  const end = periodEnd ? new Date(periodEnd).toLocaleDateString('fr-FR') : null;
+  if (Platform.OS === 'ios' && source === 'stripe') {
+    return end ? `Abonnement actif jusqu’au ${end}.` : 'Abonnement Cary Pro actif.';
+  }
   const label = billingSourceLabel(source);
   if (!label) return null;
-  const end = periodEnd ? new Date(periodEnd).toLocaleDateString('fr-FR') : null;
   return end ? `Via ${label}, période en cours jusqu’au ${end}.` : `Via ${label}.`;
 }
 
@@ -75,8 +82,7 @@ export function NurseSubscriptionScreen() {
   const periodEnd = subscription?.current_period_end;
 
   const cards = useMemo(() => {
-    const openManageSubscriptions = () => {
-      const url = manageSubscriptionsUrl(billingSource);
+    const openManageSubscriptions = (url: string) => {
       Linking.openURL(url).catch((error: unknown) => {
         console.warn('[subscription] ouverture de la gestion impossible', url, error);
         toast('Impossible d’ouvrir la gestion de l’abonnement, réessayez.', { type: 'error' });
@@ -97,8 +103,11 @@ export function NurseSubscriptionScreen() {
       if (isProPlan) {
         footnote = nurseProTrialFootnote(plan, storePrice);
         if (isCurrent) {
-          ctaLabel = 'Gérer mon abonnement';
-          onCtaPress = openManageSubscriptions;
+          const manageUrl = subscriptionManageUrl(billingSource);
+          if (manageUrl) {
+            ctaLabel = 'Gérer mon abonnement';
+            onCtaPress = () => openManageSubscriptions(manageUrl);
+          }
           footnote = activeSubscriptionLine(billingSource, periodEnd) ?? footnote;
         } else if (canPurchaseStore) {
           const storePending = connected && storeLoading;
@@ -107,7 +116,10 @@ export function NurseSubscriptionScreen() {
           ctaLoading = purchaseLoading || storeLoading;
           disabled = !connected || storePending || subscriptionLoading || subscriptionError || !subscription;
         } else {
-          footnote = 'Votre abonnement se gère sur le site web Cary.';
+          footnote =
+            Platform.OS === 'ios'
+              ? 'Abonnement Cary Pro déjà actif sur ce compte.'
+              : 'Votre abonnement se gère sur le site web Cary.';
         }
       } else if (!isCurrent) {
         footnote = 'Toujours disponible, sans carte bancaire.';
