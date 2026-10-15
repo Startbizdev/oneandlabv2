@@ -72,6 +72,8 @@ export function SheetModal({
   const { height } = useWindowDimensions();
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   const openRef = useRef(false);
+  /** Fermeture geste / navigation : ne pas republier la sheet tant que le parent ne l'a pas vraiment rouverte. */
+  const blockReopenRef = useRef(false);
   const mountedRef = useRef(false);
   const visibleRef = useRef(visible);
   const latestRef = useRef<SheetProps | null>(null);
@@ -92,7 +94,10 @@ export function SheetModal({
           callbacksRef.current.onDismissed?.();
           return;
         }
-        if (outcome === 'closed') callbacksRef.current.onClose();
+        if (outcome === 'closed') {
+          blockReopenRef.current = true;
+          callbacksRef.current.onClose();
+        }
         markRemoved();
       },
     });
@@ -125,7 +130,9 @@ export function SheetModal({
   }, [id]);
 
   useEffect(() => {
+    if (!visible) blockReopenRef.current = false;
     if (visible && !openRef.current) {
+      if (blockReopenRef.current) return;
       if (!navigationReady || !canNavigate()) return;
       openRef.current = true;
       publish();

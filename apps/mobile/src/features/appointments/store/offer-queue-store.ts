@@ -115,6 +115,8 @@ interface OfferQueueState {
   reset: () => void;
 }
 
+let processNextInFlight: Promise<void> | null = null;
+
 export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   queue: [],
   displayedIds: new Set(),
@@ -165,7 +167,9 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
     });
   },
 
-  processNext: async (role, userId) => {
+  processNext: (role, userId) => {
+    if (processNextInFlight) return processNextInFlight;
+    processNextInFlight = (async () => {
     for (let guard = 0; guard < 50; guard += 1) {
       const state = get();
       if (state.visible || state.queue.length === 0 || !role || !userId) return;
@@ -203,6 +207,10 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         set({ queue: current.queue.slice(1), displayedIds });
       }
     }
+    })().finally(() => {
+      processNextInFlight = null;
+    });
+    return processNextInFlight;
   },
 
   openIncomingOffer: async (appointmentId, role, userId, preview) => {

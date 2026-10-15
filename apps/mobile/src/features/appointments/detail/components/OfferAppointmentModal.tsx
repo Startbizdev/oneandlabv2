@@ -109,33 +109,29 @@ export function OfferAppointmentModal() {
   }, [batchSorted, isMultiBatch, selected]);
 
 
-  /** Fermeture backdrop / swipe — snooze puis file suivante. */
+  /** Fermeture backdrop / swipe — on retire la sheet tout de suite, puis snooze et offre suivante. */
   const dismissOffer = useCallback(() => {
-    if (!row) {
-      closeModal();
-      return;
-    }
+    const current = row;
+    closeModal();
+    if (!current) return;
     void (async () => {
-      await snoozeOfferBatch(row, user?.id);
-      closeModal();
+      await snoozeOfferBatch(current, user?.id);
       if (user?.role && user.id) {
         void useOfferQueueStore.getState().processNext(user.role, user.id);
       }
     })();
   }, [closeModal, row, user?.id, user?.role]);
 
-  /** « Plus tard » — snooze serveur puis offre suivante. */
+  /** « Plus tard » — on retire la sheet tout de suite, puis snooze et offre suivante. */
   const deferOffer = useCallback(() => {
-    if (!row) {
-      closeModal();
-      return;
-    }
+    const current = row;
+    closeModal();
+    if (!current) return;
     void (async () => {
-      const r = await snoozeOfferBatch(row, user?.id);
+      const r = await snoozeOfferBatch(current, user?.id);
       if (!r.ok) {
         toast(r.error, { type: 'error' });
       }
-      closeModal();
       if (user?.role && user.id) {
         void useOfferQueueStore.getState().processNext(user.role, user.id);
       }
