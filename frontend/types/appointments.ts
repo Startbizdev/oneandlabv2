@@ -111,6 +111,9 @@ export interface Appointment {
     status: string;
     scheduled_at: string;
     category_name?: string | null;
+    creation_batch_id?: string | null;
+    /** Même envoi sans lot SQL : cette ligne s'accepte à part du PUT principal. */
+    separate_offer_line?: boolean;
   }>;
   /** Actes prélèvement sur un même RDV (GET liste / détail). */
   blood_test_items?: Array<Record<string, unknown>>;

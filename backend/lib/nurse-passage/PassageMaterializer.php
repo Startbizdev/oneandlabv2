@@ -191,6 +191,10 @@ final class PassageMaterializer
         $patientCtx = $this->loadPatientIdentity($patientId, $nurseId, $nurseRole);
         $address = $this->resolveAddress($series, $nurseId, $nurseRole);
         $singleSlot = count(self::dailySlots($series)) === 1;
+        // Une occurrence = une heure. Si la clé de créneau ne reconnaît pas la ligne déjà en base,
+        // on réactive cette ligne au lieu d'en insérer une autre (sinon chaque enregistrement
+        // annule puis recrée, et les annulés s'accumulent).
+        $stored = $seriesId !== '' ? $this->indexStoredOccurrences($seriesId, $fromYmd, $untilYmd) : [];
 
         $createdIds = [];
         foreach ($missing as $occurrence) {
@@ -201,6 +205,14 @@ final class PassageMaterializer
                 $now,
             );
             if ($scheduledAt === null) {
+                continue;
+            }
+            $hit = $stored[$scheduledAt] ?? null;
+            if ($hit !== null) {
+                if ($hit['status'] === 'canceled') {
+                    $this->reactivateCanceledPassage($hit['id']);
+                    $stored[$scheduledAt]['status'] = 'confirmed';
+                }
                 continue;
             }
             $formData = $this->buildFormData($series, $patientCtx, $address, $occurrence, $singleSlot);
@@ -219,10 +231,52 @@ final class PassageMaterializer
                 'nursing_items' => $nursingItems,
             ], $nurseId, 'nurse');
             $this->linkPassageColumns($aptId, $seriesId);
+            $stored[$scheduledAt] = ['id' => $aptId, 'status' => 'confirmed'];
             $createdIds[] = $aptId;
         }
 
         return $createdIds;
+    }
+
+    /**
+     * Meilleure ligne déjà stockée par heure exacte (active avant annulée).
+     *
+     * @return array<string, array{id: string, status: string}>
+     */
+    private function indexStoredOccurrences(string $seriesId, string $fromYmd, string $untilYmd): array
+    {
+        $stmt = $this->db->prepare('
+            SELECT id, status, scheduled_at
+            FROM appointments
+            WHERE passage_series_id = ?
+              AND scheduled_at >= ?
+              AND scheduled_at <= ?
+            ORDER BY scheduled_at ASC, created_at ASC, id ASC
+        ');
+        $stmt->execute([$seriesId, $fromYmd . ' 00:00:00', $untilYmd . ' 23:59:59']);
+        $rank = array_flip([...self::ACTIVE_STATUSES, 'completed', 'canceled']);
+        $out = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $at = (string) $row['scheduled_at'];
+            $status = (string) $row['status'];
+            $current = $out[$at]['status'] ?? null;
+            if ($current !== null && ($rank[$current] ?? 99) <= ($rank[$status] ?? 99)) {
+                continue;
+            }
+            $out[$at] = ['id' => (string) $row['id'], 'status' => $status];
+        }
+
+        return $out;
+    }
+
+    private function reactivateCanceledPassage(string $appointmentId): void
+    {
+        $stmt = $this->db->prepare('
+            UPDATE appointments
+            SET status = \'confirmed\', updated_at = NOW()
+            WHERE id = ? AND status = \'canceled\'
+        ');
+        $stmt->execute([$appointmentId]);
     }
 
     /**

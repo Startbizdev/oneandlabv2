@@ -1,4 +1,4 @@
-import { isPendingIncomingOffer } from '@oneandlab/shared-utils';
+import { isPendingIncomingOffer, isSeparateOfferLine } from '@oneandlab/shared-utils';
 import type { Appointment } from '@oneandlab/shared-types';
 import { updateAppointment, snoozeOfferAppointment } from '@/features/appointments/api/appointments.service';
 import type { AppointmentListRow } from '@/utils/appointment-batch';
@@ -109,20 +109,23 @@ export async function acceptOfferBatch(
       : [row.appointment];
 
   const toAccept = apts.filter((a) => ids.includes(a.id));
-  const sharedBid = toAccept[0]?.creation_batch_id;
-  const sameBackendBatch =
-    !!sharedBid && toAccept.length > 1 && toAccept.every((a) => a.creation_batch_id === sharedBid);
-
-  if (sameBackendBatch) {
-    return acceptOfferAppointment(toAccept[0].id, shareToken);
-  }
+  const shared = toAccept.filter((a) => !isSeparateOfferLine(a));
+  const separate = toAccept.filter((a) => isSeparateOfferLine(a));
+  const primary = shared[0] ?? separate[0];
+  if (!primary) return { ok: false, error: 'Aucune offre à accepter' };
 
   let okCount = 0;
-  for (let i = 0; i < toAccept.length; i++) {
-    const id = toAccept[i].id;
-    const tok = i === 0 ? shareToken : null;
-    const r = await acceptOfferAppointment(id, tok);
-    if (!r.ok) return r;
+  if (shared.length > 0) {
+    const accepted = await acceptOfferAppointment(shared[0].id, shareToken);
+    if (!accepted.ok) return accepted;
+    okCount += shared.length;
+  }
+  for (let i = 0; i < separate.length; i += 1) {
+    const accepted = await acceptOfferAppointment(
+      separate[i].id,
+      shared.length === 0 && i === 0 ? shareToken : null,
+    );
+    if (!accepted.ok) return accepted;
     okCount += 1;
   }
   return { ok: true, count: okCount };

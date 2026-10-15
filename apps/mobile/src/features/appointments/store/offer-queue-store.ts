@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import type { Appointment } from '@oneandlab/shared-types';
-import { isPendingIncomingOffer, isBloodTestAppointment, isNursingAppointment, isOfferModalSnoozed } from '@oneandlab/shared-utils';
+import {
+  incomingOfferBatchKey,
+  incomingOfferIdsCoveredByOpen,
+  mergeOfferBatchSiblings,
+  planIncomingOfferEnqueue,
+  isPendingIncomingOffer,
+  isBloodTestAppointment,
+  isOfferModalSnoozed,
+  type IncomingOfferClusterSource,
+} from '@oneandlab/shared-utils';
 import {
   offerOpenFailureFromError,
   type OpenIncomingOfferFailure,
@@ -9,12 +18,26 @@ import { fetchAppointment } from '../api/appointments.service';
 
 export type OpenIncomingOfferResult = { ok: true } | { ok: false; reason: OpenIncomingOfferFailure };
 
-function batchKey(apt: Appointment): string | null {
-  const bid = apt.creation_batch_id;
-  if (!bid) return null;
-  if (isBloodTestAppointment(apt.type)) return `blood_test:${bid}`;
-  if (isNursingAppointment(apt.type)) return `nursing:${bid}`;
-  return null;
+function offerSnapshot(apt: Appointment | IncomingOfferClusterSource): IncomingOfferClusterSource {
+  return {
+    id: apt.id ? String(apt.id) : '',
+    type: apt.type ?? null,
+    creation_batch_id: apt.creation_batch_id ?? null,
+    patient_id: apt.patient_id ?? null,
+    relative_id: apt.relative_id ?? null,
+    created_at: apt.created_at ?? null,
+    status: apt.status ?? null,
+    scheduled_at: apt.scheduled_at ?? null,
+    category_name: 'category_name' in apt ? (apt.category_name ?? null) : null,
+    batch_siblings: (apt.batch_siblings ?? []).flatMap((sibling) => {
+      if (!sibling?.id) return [];
+      return [{
+        id: String(sibling.id),
+        status: String(sibling.status ?? ''),
+        scheduled_at: String(sibling.scheduled_at ?? ''),
+      }];
+    }),
+  };
 }
 
 function canOpenOffer(data: Appointment, role: string, userId: string): boolean {
@@ -32,25 +55,50 @@ function canOpenOffer(data: Appointment, role: string, userId: string): boolean 
   return true;
 }
 
-function markDisplayedAndFilterQueue(
-  state: Pick<OfferQueueState, 'queue' | 'displayedIds' | 'displayedBatchKeys'>,
+const COVERED_SNAPSHOT_LIMIT = 300;
+
+function rememberOpened(
+  state: Pick<OfferQueueState, 'queue' | 'displayedIds' | 'displayedBatchKeys' | 'coveredSnapshots' | 'selected'>,
   data: Appointment,
 ) {
+  const sameLotIds = new Set(incomingOfferIdsCoveredByOpen(data, state.queue));
+  const extras: Array<Appointment | IncomingOfferClusterSource> = state.queue.filter(
+    (item) => item.id !== data.id && sameLotIds.has(item.id),
+  );
+  if (state.selected && state.selected.id === data.id) extras.push(state.selected);
+  const merged = mergeOfferBatchSiblings(data, extras);
+  const dropIds = new Set(incomingOfferIdsCoveredByOpen(merged, state.queue));
   const ids = new Set(state.displayedIds);
-  ids.add(data.id);
-  const bk = batchKey(data);
-  const batchKeys = new Set(state.displayedBatchKeys);
-  if (bk) batchKeys.add(bk);
-  const queue = bk
-    ? state.queue.filter((a) => batchKey(a) !== bk)
-    : state.queue.filter((a) => a.id !== data.id);
-  return { queue, displayedIds: ids, displayedBatchKeys: batchKeys };
+  for (const id of dropIds) ids.add(id);
+  const batchKey = incomingOfferBatchKey(merged);
+  const displayedBatchKeys = new Set(state.displayedBatchKeys);
+  if (batchKey) displayedBatchKeys.add(batchKey);
+  const queue = state.queue.filter((item) => {
+    if (dropIds.has(item.id)) return false;
+    const key = incomingOfferBatchKey(item);
+    return !batchKey || key !== batchKey;
+  });
+  const coveredSnapshots = [...state.coveredSnapshots];
+  for (const snapshot of [offerSnapshot(merged), ...state.queue.filter((item) => dropIds.has(item.id)).map(offerSnapshot)]) {
+    if (!snapshot.id) continue;
+    const index = coveredSnapshots.findIndex((item) => String(item.id) === String(snapshot.id));
+    if (index >= 0) coveredSnapshots[index] = snapshot;
+    else coveredSnapshots.push(snapshot);
+  }
+  return {
+    queue,
+    displayedIds: ids,
+    displayedBatchKeys,
+    coveredSnapshots: coveredSnapshots.slice(-COVERED_SNAPSHOT_LIMIT),
+    selected: merged,
+  };
 }
 
 interface OfferQueueState {
   queue: Appointment[];
   displayedIds: Set<string>;
   displayedBatchKeys: Set<string>;
+  coveredSnapshots: IncomingOfferClusterSource[];
   visible: boolean;
   selected: Appointment | null;
   shareToken: string | null;
@@ -71,6 +119,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   queue: [],
   displayedIds: new Set(),
   displayedBatchKeys: new Set(),
+  coveredSnapshots: [],
   visible: false,
   selected: null,
   shareToken: null,
@@ -79,68 +128,80 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
 
   enqueueMany: (items) => {
     const state = get();
-    const ids = new Set(state.displayedIds);
-    const batchKeys = new Set(state.displayedBatchKeys);
-    const toAdd: Appointment[] = [];
-    const localBatch = new Set<string>();
+    const displayedId = state.visible && state.selected?.id ? state.selected.id : '';
+    const candidates = items.filter((item) => item?.id && item.id !== displayedId);
+    const already = [
+      ...state.coveredSnapshots,
+      ...[...state.displayedIds].map((id) => ({ id })),
+      ...state.queue.map(offerSnapshot),
+    ];
+    const plan = planIncomingOfferEnqueue(candidates, already);
+    if (plan.enqueue.length === 0 && plan.coveredIds.length === 0) return;
 
-    for (const a of items) {
-      if (!a?.id || ids.has(a.id)) continue;
-      const bk = batchKey(a);
-      if (bk && (batchKeys.has(bk) || localBatch.has(bk))) continue;
-      if (bk) localBatch.add(bk);
-      ids.add(a.id);
-      toAdd.push(a);
+    const displayedIds = new Set(state.displayedIds);
+    for (const id of plan.coveredIds) displayedIds.add(id);
+    for (const item of plan.enqueue) displayedIds.add(item.id);
+    const displayedBatchKeys = new Set(state.displayedBatchKeys);
+    for (const item of [...plan.enqueue, ...candidates]) {
+      const key = incomingOfferBatchKey(item);
+      if (key) displayedBatchKeys.add(key);
     }
-
-    if (toAdd.length === 0) return;
-    const newBatchKeys = new Set([...batchKeys, ...toAdd.map(batchKey).filter(Boolean) as string[]]);
+    const coveredSnapshots = [...state.coveredSnapshots];
+    const stored = [
+      ...plan.enqueue.map(offerSnapshot),
+      ...candidates.filter((item) => plan.coveredIds.includes(item.id)).map(offerSnapshot),
+    ];
+    for (const snapshot of stored) {
+      if (!snapshot.id) continue;
+      const index = coveredSnapshots.findIndex((item) => String(item.id) === String(snapshot.id));
+      if (index >= 0) coveredSnapshots[index] = snapshot;
+      else coveredSnapshots.push(snapshot);
+    }
     set({
-      queue: [...state.queue, ...toAdd],
-      displayedIds: ids,
-      displayedBatchKeys: newBatchKeys,
+      queue: [...state.queue, ...plan.enqueue],
+      displayedIds,
+      displayedBatchKeys,
+      coveredSnapshots: coveredSnapshots.slice(-COVERED_SNAPSHOT_LIMIT),
     });
   },
 
   processNext: async (role, userId) => {
-    const state = get();
-    if (state.visible || state.queue.length === 0 || !role || !userId) return;
+    for (let guard = 0; guard < 50; guard += 1) {
+      const state = get();
+      if (state.visible || state.queue.length === 0 || !role || !userId) return;
 
-    const next = state.queue[0];
-    if (!next?.id) {
-      set({ queue: state.queue.slice(1) });
-      return;
-    }
-
-    try {
-      const res = await fetchAppointment(next.id, { includeBatch: true });
-      if (!res.success || !res.data) {
-        if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
-          set({ queue: state.queue.slice(1) });
-          return;
-        }
-        if (res.success && (res as { appointmentUnavailable?: boolean }).appointmentUnavailable) {
-          set({ queue: state.queue.slice(1) });
-          return;
-        }
+      const next = state.queue[0];
+      if (!next?.id) {
         set({ queue: state.queue.slice(1) });
-        return;
-      }
-      const data = res.data;
-
-      if (!canOpenOffer(data, role, userId)) {
-        set({ queue: state.queue.slice(1) });
-        return;
+        continue;
       }
 
-      const marked = markDisplayedAndFilterQueue(get(), data);
-      set({
-        ...marked,
-        selected: data,
-        visible: true,
-      });
-    } catch {
-      set({ queue: state.queue.slice(1) });
+      try {
+        const res = await fetchAppointment(next.id, { includeBatch: true });
+        if (!res.success || !res.data) {
+          const current = get();
+          const displayedIds = new Set(current.displayedIds);
+          const head = current.queue[0];
+          if (head?.id) displayedIds.add(head.id);
+          set({ queue: current.queue.slice(1), displayedIds });
+          continue;
+        }
+        const data = res.data;
+        if (!canOpenOffer(data, role, userId)) {
+          const marked = rememberOpened(get(), data);
+          set({ ...marked, selected: null, visible: false });
+          continue;
+        }
+        const marked = rememberOpened(get(), data);
+        set({ ...marked, visible: true });
+        return;
+      } catch {
+        const current = get();
+        const displayedIds = new Set(current.displayedIds);
+        const head = current.queue[0];
+        if (head?.id) displayedIds.add(head.id);
+        set({ queue: current.queue.slice(1), displayedIds });
+      }
     }
   },
 
@@ -155,12 +216,8 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         : null;
 
     if (previewData) {
-      const marked = markDisplayedAndFilterQueue(get(), previewData);
-      set({
-        ...marked,
-        selected: previewData,
-        visible: true,
-      });
+      const marked = rememberOpened(get(), previewData);
+      set({ ...marked, visible: true });
     }
 
     try {
@@ -180,16 +237,13 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       const data = res.data;
 
       if (!canOpenOffer(data, role, userId)) {
-        set({ visible: false, selected: null });
+        const marked = rememberOpened(get(), data);
+        set({ ...marked, visible: false, selected: null });
         return { ok: false, reason: 'unavailable' };
       }
 
-      const marked = markDisplayedAndFilterQueue(get(), data);
-      set({
-        ...marked,
-        selected: data,
-        visible: true,
-      });
+      const marked = rememberOpened(get(), data);
+      set({ ...marked, visible: true });
       return { ok: true };
     } catch (error) {
       const reason = offerOpenFailureFromError(error);
@@ -209,6 +263,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       queue: [],
       displayedIds: new Set(),
       displayedBatchKeys: new Set(),
+      coveredSnapshots: [],
       visible: false,
       selected: null,
       shareToken: null,

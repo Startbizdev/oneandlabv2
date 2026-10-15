@@ -541,7 +541,10 @@ onUnmounted(() => {
 // Modal pour nouveaux rendez-vous (infirmiers, lab, subaccount) — file d'attente FIFO
 const seenAppointmentIds = ref<Set<string>>(new Set());
 const { showAppointmentModal, selectedAppointment, openAppointmentModalById, openAppointmentModalByIdIfEligible, openAppointmentModalFromShareLink, enqueueMany, onModalClosed } = useAppointmentModal({
-  onDisplayed: (apt) => { seenAppointmentIds.value = new Set([...seenAppointmentIds.value, apt.id]); },
+  onDisplayed: (apt) => {
+    const ids = [apt?.id, ...(Array.isArray(apt?.batch_siblings) ? apt.batch_siblings.map((sibling: { id?: string }) => sibling?.id) : [])]
+    seenAppointmentIds.value = new Set([...seenAppointmentIds.value, ...ids.filter(Boolean)])
+  },
 });
 
 function dedupePendingBloodTestLegacy(appointments: any[]): any[] {

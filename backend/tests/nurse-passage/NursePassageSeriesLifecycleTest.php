@@ -108,6 +108,20 @@ final class NursePassageSeriesLifecycleTest extends TestCase
         $this->assertCount(3, array_filter($active, static fn (array $a): bool => str_ends_with($a['scheduled_at'], '21:15:00')));
     }
 
+    public function testRematerializeReusesCanceledRowsInsteadOfInserting(): void
+    {
+        $seriesId = $this->service->create($this->nurseId, $this->chronicInput(), $this->parisTime('2030-01-07 06:00'))['series_id'];
+        $before = (int) $this->db->query('SELECT COUNT(*) FROM appointments WHERE passage_series_id = ' . $this->db->quote($seriesId))->fetchColumn();
+        $this->db->prepare('UPDATE appointments SET status = \'canceled\' WHERE passage_series_id = ?')->execute([$seriesId]);
+
+        $created = $this->service->materialize($seriesId, $this->nurseId, $this->parisTime('2030-01-07 07:00'))['created_appointments'];
+
+        $after = (int) $this->db->query('SELECT COUNT(*) FROM appointments WHERE passage_series_id = ' . $this->db->quote($seriesId))->fetchColumn();
+        $this->assertSame(0, $created);
+        $this->assertSame($before, $after);
+        $this->assertCount($before, $this->active($seriesId));
+    }
+
     public function testDeletedPassageIsNeverRecreated(): void
     {
         $seriesId = $this->service->create($this->nurseId, $this->chronicInput(), $this->parisTime('2030-01-07 06:00'))['series_id'];

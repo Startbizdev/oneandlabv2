@@ -13,6 +13,7 @@ import {
   notificationIcon,
 } from '@/features/notifications/utils/notification-card-meta';
 import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
+import { useAppColors } from '@/theme/use-app-colors';
 import { radius, spacing, iconSize, ICON_STROKE_WIDTH, AppText, useStyles, font, type Theme } from '@/theme';
 
 const ICON_WELL = 36;

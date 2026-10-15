@@ -339,7 +339,7 @@ import {
 import { useAuth } from '~/composables/useAuth'
 import { useAppointmentModalQueue } from '~/composables/useAppointmentModalQueue'
 import { useAppToast } from '~/composables/useAppToast'
-import { appointmentOfferAddressLine, appointmentDetailAddressLine } from '@oneandlab/shared-utils'
+import { appointmentOfferAddressLine, appointmentDetailAddressLine, mergeOfferBatchSiblings } from '@oneandlab/shared-utils'
 import { getNursingDurationLabel } from '~/constants/nursing-duration'
 import { formatBloodTestSeriesDurationDays } from '~/utils/duration-display'
 import { patientUiEmailLine } from '~/utils/patient-address-rdv'
@@ -546,19 +546,21 @@ function addressLineFor(appt: any) {
 
 /**
  * Charge les GET détail des fratries listées dans `batch_siblings`.
- * `batch_siblings` est renseigné uniquement par `Appointment::getById` (GET `/appointments/:id`),
- * pas par `decryptRowForList` (GET `/appointments` liste) — voir backend `Appointment.php` (~893–917 vs ~941–1008).
- * On prend donc en priorité l’objet renvoyé par le premier GET de la modal (`checkIfAlreadyAccepted`), pas seulement la prop.
+ * `batch_siblings` vient du GET détail, et des autres lignes du même envoi
+ * collées par la file (lot SQL ou même patient créé dans les 2 minutes).
+ * On fusionne le détail avec la prop pour ne pas perdre ces lignes.
  */
 async function loadBatchSiblings(fromAppt?: any) {
   batchSiblingsFull.value = []
   const a = fromAppt ?? props.appointment
   if (!a?.batch_siblings?.length) return
   const full = await Promise.all(
-    (a.batch_siblings as { id: string; status?: string; scheduled_at?: string; category_name?: string }[]).map(async (s) => {
+    (a.batch_siblings as { id: string; status?: string; scheduled_at?: string; category_name?: string; separate_offer_line?: boolean }[]).map(async (s) => {
       try {
         const r = await apiFetch(appointmentGetUrl(s.id))
-        if (r.success && r.data) return r.data
+        if (r.success && r.data) {
+          return s.separate_offer_line ? { ...r.data, separate_offer_line: true } : r.data
+        }
       } catch {
         /* ignore */
       }
@@ -671,7 +673,8 @@ watch(
     loading.value = true
     try {
       const detail = await checkIfAlreadyAccepted(appt)
-      await loadBatchSiblings(detail ?? appt)
+      const seed = detail ? mergeOfferBatchSiblings(detail, [appt]) : appt
+      await loadBatchSiblings(seed)
     } finally {
       loading.value = false
     }
@@ -756,12 +759,35 @@ const acceptAppointment = async () => {
     // Un PUT : le backend propage la confirmation aux frères du lot (creation_batch_id).
     const res = await apiFetch(`/appointments/${encodeURIComponent(id)}`, { method: 'PUT', body })
     if (res?.success) {
+      const separateIds = batchSiblingsFull.value
+        .filter((sibling: { id?: string; separate_offer_line?: boolean }) => sibling?.separate_offer_line && String(sibling.id) !== id)
+        .map((sibling: { id: string }) => String(sibling.id))
+      let separateOk = true
+      for (const separateId of separateIds) {
+        const separateRes = await apiFetch(`/appointments/${encodeURIComponent(separateId)}`, {
+          method: 'PUT',
+          body: { status: 'confirmed' },
+        })
+        if (!separateRes?.success) {
+          separateOk = false
+          toast.add({
+            title: 'Erreur',
+            description: (separateRes as { error?: string; message?: string })?.error
+              || (separateRes as { message?: string })?.message
+              || 'Impossible de confirmer tous les rendez-vous du lot.',
+            color: 'error',
+          })
+          break
+        }
+      }
       const n = batchAppointmentIds.value.length
-      toast.add({
-        title: n > 1 ? 'Rendez-vous acceptés' : 'Rendez-vous accepté',
-        description: n > 1 ? `${n} soins ont été confirmés (lot).` : undefined,
-        color: 'green',
-      })
+      if (separateOk) {
+        toast.add({
+          title: n > 1 ? 'Rendez-vous acceptés' : 'Rendez-vous accepté',
+          description: n > 1 ? `${n} soins ont été confirmés (lot).` : undefined,
+          color: 'green',
+        })
+      }
       isAccepted.value = true
       shareTokenForAccept.value = null
       skipSnoozeOnClose.value = true
