@@ -2,7 +2,6 @@
 .env
 .env.local
 .env.*.local
-docs/AUDIT-360-TEST-ACCOUNTS.local.md
 
 # Dependencies
 node_modules/
@@ -26,6 +25,8 @@ backend/uploads/rate-limit/
 logs/
 
 # Build / test artefacts (ne pas versionner)
+__pycache__/
+*.pyc
 *.phar
 *.tmp
 .phpunit.result.cache
