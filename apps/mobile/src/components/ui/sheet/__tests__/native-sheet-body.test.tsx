@@ -79,6 +79,23 @@ describe('NativeSheetBody', () => {
     expect(root.findAll((n) => n.props.testID === 'keyboard-sticky' && typeof n.type === 'string')).toHaveLength(0);
   });
 
+  it.each([
+    ['palier fixe', [0.92] as SheetEntry['detents']],
+    ['ajustée au contenu', 'fitToContents' as SheetEntry['detents']],
+  ])('%s : l’en-tête reste le premier enfant natif, sans zIndex dans la sheet', (_label, detents) => {
+    const root = render(entry({ detents }));
+    const column = root.children[0] as ReactTestInstance;
+
+    // Sous Fabric, un zIndex réordonne les vues natives : le ScrollView passerait devant l'en-tête et
+    // react-native-screens (iOS) lui imposerait toute la sheet (contenu sous l'en-tête, scroll qui remonte).
+    const sheetChrome = column.findAll((n) => typeof n.type === 'string' && !isInside(n, ScrollView));
+    for (const node of sheetChrome) {
+      expect(StyleSheet.flatten(node.props.style)?.zIndex ?? 0).toBe(0);
+    }
+    const first = column.children[0] as ReactTestInstance;
+    expect(first.findAll((n) => n.props.accessibilityRole === 'header').length).toBeGreaterThan(0);
+  });
+
   it('sans pied, rien n’est rendu sous le contenu', () => {
     const root = render(entry({ footer: undefined }));
 

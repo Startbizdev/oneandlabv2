@@ -1,12 +1,5 @@
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
-import {
-  Platform,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollView,
-  type ScrollViewProps,
-} from 'react-native';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView, ScrollViewProps } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormScrollContext, useFormScrollProviderValue } from './form-scroll-context';
@@ -33,8 +26,6 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     showsVerticalScrollIndicator = false,
     contentInsetAdjustmentBehavior = 'automatic',
     onScroll,
-    onLayout,
-    onContentSizeChange,
     ...props
   },
   ref,
@@ -53,38 +44,6 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     [formScroll.scrollYRef, onScroll],
   );
 
-  /**
-   * iOS ne ramène pas la position quand le contenu raccourcit (option retirée, champ masqué) :
-   * le haut reste caché sous l'en-tête et un vide apparaît en bas. Android le fait seul.
-   */
-  const viewportHeightRef = useRef(0);
-  const contentHeightRef = useRef(0);
-  const clampScroll = useCallback(() => {
-    if (Platform.OS !== 'ios' || viewportHeightRef.current <= 0) return;
-    const maxY = Math.max(0, contentHeightRef.current - viewportHeightRef.current);
-    if (formScroll.scrollYRef.current <= maxY + 1) return;
-    formScroll.scrollYRef.current = maxY;
-    innerRef.current?.scrollTo({ y: maxY, animated: false });
-  }, [formScroll.scrollYRef, innerRef]);
-
-  const handleLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      viewportHeightRef.current = event.nativeEvent.layout.height;
-      clampScroll();
-      onLayout?.(event);
-    },
-    [clampScroll, onLayout],
-  );
-
-  const handleContentSizeChange = useCallback(
-    (width: number, height: number) => {
-      contentHeightRef.current = height;
-      clampScroll();
-      onContentSizeChange?.(width, height);
-    },
-    [clampScroll, onContentSizeChange],
-  );
-
   const resolvedBottomOffset = (bottomOffset ?? Math.max(bottom, 8)) + KEYBOARD_CLEARANCE;
 
   return (
@@ -100,8 +59,6 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
         extraKeyboardSpace={KEYBOARD_CLEARANCE}
         scrollEventThrottle={16}
         onScroll={handleScroll}
-        onLayout={handleLayout}
-        onContentSizeChange={handleContentSizeChange}
         {...props}
       />
     </FormScrollContext.Provider>

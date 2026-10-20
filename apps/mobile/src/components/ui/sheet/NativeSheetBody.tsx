@@ -15,8 +15,9 @@ const MAX_FIT_CONTENT_RATIO = 0.88;
 
 /**
  * Une seule colonne non aplatie `[en-tête | ScrollView | pied fixe]`, quelle que soit la hauteur de la sheet.
- * iOS ne voit donc jamais le ScrollView comme enfant direct de la sheet : react-native-screens ne force pas
- * sa hauteur à « sheet − en-tête », ce qui poussait le pied (Valider / Créer) sous le bord de la sheet.
+ * Sur iOS, react-native-screens cherche le ScrollView de la sheet (enfant direct, puis premier enfant en
+ * cascade) et lui impose la taille de toute la sheet. Ici il n'est ni l'un ni l'autre : l'en-tête reste le
+ * premier enfant natif (donc sans `zIndex`, qui réordonne les vues sous Fabric) et Yoga garde la main.
  * - Palier fixe (`snapPoints`) : la colonne remplit la sheet (`sheetScreenOptions` ancre le conteneur),
  *   le ScrollView prend la place restante.
  * - Ajustée au contenu : la colonne suit son contenu, le ScrollView est borné pour que la sheet, pied compris,
@@ -125,11 +126,15 @@ function buildStyles({ colors: c }: Theme) {
       backgroundColor: c.border,
       marginTop: spacing[2],
     },
+    /**
+     * Jamais de `zIndex` ici : avec Fabric, il réordonne les vues natives et place le ScrollView en premier.
+     * react-native-screens (iOS) le trouve alors par le premier enfant et lui impose toute la sheet :
+     * le contenu passe sous l'en-tête et le scroll revient en haut.
+     */
     header: {
       backgroundColor: c.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: c.borderLight,
-      zIndex: 1,
     },
     headerRow: {
       paddingTop: Platform.OS === 'ios' ? spacing[5] : spacing[3],
