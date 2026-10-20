@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-dvh bg-app-canvas dark:bg-gray-950" @keydown.esc="mobileSidebarOpen = false">
+  <div class="flex flex-col h-[calc(100dvh-var(--app-banner-height,0px))] bg-app-canvas dark:bg-gray-950" @keydown.esc="mobileSidebarOpen = false">
     <a href="#workspace-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[1100] focus:rounded-xl focus:bg-white focus:px-4 focus:py-3 focus:text-gray-900">Aller au contenu</a>
     <ClientOnly>
       <SubscriptionBanner />
@@ -237,7 +237,7 @@
               <!-- Dropdown Notifications -->
               <div
                 v-if="notificationsMenuOpen"
-                class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
+                class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
               >
                 <div v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)" class="px-4 py-3 text-sm text-gray-500 text-center">
                   Aucune notification
@@ -296,7 +296,7 @@
               <!-- Dropdown Menu -->
               <div
                 v-if="userMenuOpen"
-                class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-56 md:max-h-none"
+                class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3.75rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-56 md:max-h-none"
               >
                 <template v-for="(item, index) in headerUserMenuItems" :key="index">
                   <button

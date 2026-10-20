@@ -17,12 +17,18 @@
     <PharmacyOrderCreateForm
       role-base="/nurse/commandes-pharmacie"
       :initial-patient-id="typeof route.query.patient_id === 'string' ? route.query.patient_id : undefined"
+      :initial-pharmacy-id="pharmacyId"
+      :utm-qr="utmQr"
     />
   </AppPageShell>
 </template>
 
 <script setup lang="ts">
+import { isPharmacyId } from '~/utils/qr-redirect';
+
 const route = useRoute();
+const pharmacyId = computed(() => (isPharmacyId(route.query.pharmacy_id) ? route.query.pharmacy_id : undefined));
+const utmQr = computed(() => (typeof route.query.utm_qr === 'string' && route.query.utm_qr.trim() ? route.query.utm_qr.trim() : undefined));
 
 definePageMeta({
   layout: 'dashboard',

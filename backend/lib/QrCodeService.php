@@ -5,6 +5,7 @@ require_once __DIR__ . '/Crypto.php';
 require_once __DIR__ . '/QrPosterRenderer.php';
 require_once __DIR__ . '/NotificationService.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/pharmacy/PharmacyModuleConfig.php';
 
 class QrCodeService
 {
@@ -15,17 +16,21 @@ class QrCodeService
     private QrPosterRenderer $poster;
     private string $siteUrl;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $config = require __DIR__ . '/../config/database.php';
-        $dsn = sprintf(
-            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-            $config['host'],
-            $config['port'],
-            $config['database'],
-            $config['charset']
-        );
-        $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+        if ($db !== null) {
+            $this->db = $db;
+        } else {
+            $config = require __DIR__ . '/../config/database.php';
+            $dsn = sprintf(
+                'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                $config['host'],
+                $config['port'],
+                $config['database'],
+                $config['charset']
+            );
+            $this->db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
+        }
         $this->crypto = new Crypto();
         $this->poster = new QrPosterRenderer();
         $app = require __DIR__ . '/../config/app.php';
@@ -51,7 +56,7 @@ class QrCodeService
 
         $existing = $this->getByProfileId($profileId);
         if ($existing !== null) {
-            $redirect = $this->buildRedirectUrl($profileId, $role);
+            $redirect = $this->buildRedirectUrl($profileId, $role, $profile);
             if (($existing['redirect_url'] ?? '') !== $redirect) {
                 $upd = $this->db->prepare('UPDATE qr_codes SET redirect_url = ?, user_role = ?, updated_at = NOW() WHERE id = ?');
                 $upd->execute([$redirect, $role, $existing['id']]);
@@ -64,7 +69,7 @@ class QrCodeService
 
         $id = $this->generateUuid();
         $token = $this->generateUniqueToken();
-        $redirect = $this->buildRedirectUrl($profileId, $role);
+        $redirect = $this->buildRedirectUrl($profileId, $role, $profile);
         $ins = $this->db->prepare('
             INSERT INTO qr_codes (id, profile_id, user_role, token, redirect_url, is_active, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())
@@ -116,15 +121,39 @@ class QrCodeService
         }
 
         $scanId = $this->recordScan((string) $row['id'], $meta);
-        $redirect = (string) $row['redirect_url'];
+        $redirect = $this->refreshRedirectUrl($row);
         $sep = strpos($redirect, '?') !== false ? '&' : '?';
-        $redirect .= $sep . 'utm_qr=' . rawurlencode($token);
+        $redirect .= $sep . 'utm_qr=' . rawurlencode((string) $row['token']);
 
         return [
             'redirect_url' => $redirect,
             'token' => (string) $row['token'],
             'scan_id' => $scanId,
         ];
+    }
+
+    /**
+     * Les QR déjà imprimés suivent la destination courante (ex. compte devenu pharmacie)
+     * sans que le professionnel rouvre sa page QR.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function refreshRedirectUrl(array $row): string
+    {
+        $current = (string) $row['redirect_url'];
+        $profileId = (string) $row['profile_id'];
+        $profile = $this->fetchProfileRow($profileId);
+        $role = (string) ($profile['role'] ?? '');
+        if ($profile === null || !self::isEligibleRole($role)) {
+            return $current;
+        }
+        $fresh = $this->buildRedirectUrl($profileId, $role, $profile);
+        if ($fresh !== $current) {
+            $upd = $this->db->prepare('UPDATE qr_codes SET redirect_url = ?, user_role = ?, updated_at = NOW() WHERE id = ?');
+            $upd->execute([$fresh, $role, $row['id']]);
+        }
+
+        return $fresh;
     }
 
     public function recordVisit(string $token, ?string $sessionId = null): string
@@ -168,25 +197,8 @@ class QrCodeService
                 );
                 $patientStmt->execute([$appointmentId]);
                 $patientId = $patientStmt->fetchColumn();
-                if ($patientId && (string) $patientId !== (string) $profileId) {
-                    $accessId = $this->generateUuid();
-                    $access = $this->db->prepare('
-                        INSERT INTO patient_professional_access (
-                            id, patient_id, professional_id, source, appointment_id,
-                            origin_qr_code_id, hidden_by_patient, created_at
-                        ) VALUES (?, ?, ?, \'qr_origin\', ?, ?, 0, NOW())
-                        ON DUPLICATE KEY UPDATE
-                            source = \'qr_origin\',
-                            appointment_id = VALUES(appointment_id),
-                            origin_qr_code_id = VALUES(origin_qr_code_id)
-                    ');
-                    $access->execute([
-                        $accessId,
-                        (string) $patientId,
-                        (string) $profileId,
-                        $appointmentId,
-                        $qrCodeId,
-                    ]);
+                if ($patientId) {
+                    $this->linkPatientToQrOwner($qrCodeId, (string) $profileId, (string) $patientId, $appointmentId);
                 }
             } catch (Throwable $e) {
                 error_log('qr_conversion patient origin: ' . $e->getMessage());
@@ -204,6 +216,46 @@ class QrCodeService
                 error_log('qr_conversion notification: ' . $e->getMessage());
             }
         }
+    }
+
+    /**
+     * Commande pharmacie passée par le patient après scan du QR de cette même pharmacie :
+     * la pharmacie devient sa pharmacie liée (lien qr_origin), comme pour un RDV.
+     */
+    public function recordPharmacyOrderConversion(string $utmQr, string $pharmacyId, string $patientId): bool
+    {
+        $qrCodeId = $this->resolveAttributionQrId($utmQr);
+        if ($qrCodeId === null) {
+            return false;
+        }
+        $stmt = $this->db->prepare('SELECT profile_id FROM qr_codes WHERE id = ? LIMIT 1');
+        $stmt->execute([$qrCodeId]);
+        $ownerId = (string) $stmt->fetchColumn();
+        if ($ownerId === '' || $ownerId !== $pharmacyId) {
+            return false;
+        }
+
+        return $this->linkPatientToQrOwner($qrCodeId, $ownerId, $patientId, null);
+    }
+
+    private function linkPatientToQrOwner(string $qrCodeId, string $professionalId, string $patientId, ?string $appointmentId): bool
+    {
+        if ($patientId === '' || $patientId === $professionalId) {
+            return false;
+        }
+        $access = $this->db->prepare('
+            INSERT INTO patient_professional_access (
+                id, patient_id, professional_id, source, appointment_id,
+                origin_qr_code_id, hidden_by_patient, created_at
+            ) VALUES (?, ?, ?, \'qr_origin\', ?, ?, 0, NOW())
+            ON DUPLICATE KEY UPDATE
+                source = \'qr_origin\',
+                appointment_id = COALESCE(VALUES(appointment_id), appointment_id),
+                origin_qr_code_id = VALUES(origin_qr_code_id)
+        ');
+        $access->execute([$this->generateUuid(), $patientId, $professionalId, $appointmentId, $qrCodeId]);
+
+        return true;
     }
 
     /** @return array<string, mixed>|null */
@@ -345,8 +397,12 @@ class QrCodeService
         return $this->poster->renderBrandedPoster($qr, $profile, $format);
     }
 
-    public function buildRedirectUrl(string $profileId, string $role): string
+    /** @param array<string, mixed>|null $profile */
+    public function buildRedirectUrl(string $profileId, string $role, ?array $profile = null): string
     {
+        if ($role === 'pro' && $this->isPharmacyWithModule($profile ?? $this->fetchProfileRow($profileId))) {
+            return $this->siteUrl . '/pharmacie/' . rawurlencode($profileId);
+        }
         $providerType = $role === 'subaccount' ? 'lab' : $role;
         $params = http_build_query([
             'provider_id' => $profileId,
@@ -354,6 +410,17 @@ class QrCodeService
         ]);
 
         return $this->siteUrl . '/rendez-vous/nouveau?' . $params;
+    }
+
+    /** @param array<string, mixed>|null $profile */
+    private function isPharmacyWithModule(?array $profile): bool
+    {
+        if ($profile === null) {
+            return false;
+        }
+        $config = (new PharmacyModuleConfig($this->db))->getConfig();
+
+        return !empty($config['module_enabled']) && PharmacyModuleConfig::isPharmacyAccount($profile, $config);
     }
 
     /** @return array<string, mixed> */
@@ -379,7 +446,12 @@ class QrCodeService
         $display = $this->buildDisplayName($profile);
         $role = (string) ($qr['user_role'] ?? $profile['role'] ?? 'nurse');
         $custom = trim((string) ($qr['marketing_tagline'] ?? ''));
-        $effectiveTagline = $custom !== '' ? $custom : $this->defaultTagline($role, $display);
+        $effectiveTagline = $custom;
+        if ($effectiveTagline === '') {
+            $effectiveTagline = $role === 'pro' && $this->isPharmacyWithModule($profile)
+                ? "Scannez pour prendre rendez-vous ou commander vos médicaments chez {$display}."
+                : $this->defaultTagline($role, $display);
+        }
         $token = (string) ($qr['token'] ?? '');
 
         return array_merge($qr, [

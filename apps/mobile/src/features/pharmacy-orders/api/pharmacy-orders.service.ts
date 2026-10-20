@@ -22,11 +22,14 @@ export async function fetchPharmacyCatalog(params: {
   postal_code?: string;
   fulfillment_mode?: string;
   patient_id?: string;
+  /** Pharmacie du QR : renvoyée même si le code postal l'exclurait. */
+  include_id?: string;
 }) {
   const q = new URLSearchParams();
   if (params.postal_code?.trim()) q.set('postal_code', params.postal_code.trim());
   if (params.fulfillment_mode?.trim()) q.set('fulfillment_mode', params.fulfillment_mode.trim());
   if (params.patient_id?.trim()) q.set('patient_id', params.patient_id.trim());
+  if (params.include_id?.trim()) q.set('include_id', params.include_id.trim());
   const suffix = q.toString() ? `?${q.toString()}` : '';
   return api.get<PharmacyCatalogItem[]>(`/pharmacies${suffix}`);
 }

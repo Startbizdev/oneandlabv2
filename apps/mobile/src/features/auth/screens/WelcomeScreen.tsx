@@ -8,7 +8,7 @@ import { BiometricLoginButton } from '@/features/auth/components/BiometricLoginB
 import { LegalLinks } from '@/features/auth/components/LegalLinks';
 import { LoginBottomSheet } from '@/features/auth/components/LoginBottomSheet';
 import { RegisterBottomSheet } from '@/features/auth/components/RegisterBottomSheet';
-import { getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { replaceWithPostLoginRoute } from '@/features/auth/hooks/use-auth-guard';
 import { useAuthStore } from '@/store/auth-store';
 import type { RegisterRole } from '@/features/auth/api/registration.service';
 import {
@@ -61,7 +61,7 @@ export function WelcomeScreen() {
 
   function goHome() {
     const role = useAuthStore.getState().user?.role;
-    if (role) router.replace(getRoleHome(role));
+    if (role) replaceWithPostLoginRoute(router, role);
   }
 
   function openRegister(email = '') {

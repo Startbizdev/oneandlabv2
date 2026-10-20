@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { safeQrRedirectPath } from '~/utils/qr-redirect';
+
 const route = useRoute();
 const config = useRuntimeConfig();
 
@@ -21,10 +23,7 @@ if (import.meta.server && token.value) {
       `${base}/qr/resolve?token=${encodeURIComponent(token.value)}`,
     );
     if (res.success && res.data?.redirect_url) {
-      const target = new URL(res.data.redirect_url, siteUrl);
-      if (target.origin === new URL(siteUrl).origin && target.pathname === '/rendez-vous/nouveau') {
-        destination = target.pathname + target.search + target.hash;
-      }
+      destination = safeQrRedirectPath(res.data.redirect_url, siteUrl);
     }
   } catch {
     // Keep the token: the client can retry the existing QR redirect endpoint.
@@ -43,7 +42,7 @@ onMounted(async () => {
   <div class="flex min-h-screen items-center justify-center bg-gray-50">
     <div class="text-center">
       <UIcon name="i-lucide-loader-2" class="mx-auto mb-3 h-8 w-8 animate-spin text-teal-600" />
-      <p class="text-sm text-gray-600">Redirection vers la prise de rendez-vous…</p>
+      <p class="text-sm text-gray-600">Redirection en cours…</p>
     </div>
   </div>
 </template>

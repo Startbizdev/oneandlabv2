@@ -4,14 +4,18 @@ export type PharmacyCatalogRow = PharmacyCatalogItem & {
   is_patient_pharmacy?: boolean;
 };
 
+/** `pinnedPharmacyId` : pharmacie choisie via son QR code, affichée en tête des préférées. */
 export function splitPharmacyCatalog(
   items: PharmacyCatalogRow[],
   ownPharmacyId: string,
+  pinnedPharmacyId = '',
 ): { preferred: PharmacyCatalogRow[]; others: PharmacyCatalogRow[] } {
   const preferred: PharmacyCatalogRow[] = [];
   const others: PharmacyCatalogRow[] = [];
   for (const item of items) {
-    if (item.is_patient_pharmacy === true || (ownPharmacyId !== '' && item.id === ownPharmacyId)) {
+    if (pinnedPharmacyId !== '' && item.id === pinnedPharmacyId) {
+      preferred.unshift(item);
+    } else if (item.is_patient_pharmacy === true || (ownPharmacyId !== '' && item.id === ownPharmacyId)) {
       preferred.push(item);
     } else {
       others.push(item);

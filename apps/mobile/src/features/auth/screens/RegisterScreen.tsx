@@ -30,7 +30,7 @@ import {
 import { showAppNotAccessibleAlert } from '@/lib/auth/mobile-access';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useToast } from '@/providers/ToastProvider';
-import { LOGIN_HREF, getRoleHome } from '@/features/auth/hooks/use-auth-guard';
+import { LOGIN_HREF, replaceWithPostLoginRoute } from '@/features/auth/hooks/use-auth-guard';
 import { offerBiometricEnrollmentAfterLogin } from '@/features/auth/utils/offer-biometric-enrollment';
 import { registerHeaderTitle } from '@/navigation/RegisterHeaderTitle';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
@@ -169,7 +169,7 @@ export function RegisterScreen({ role: roleProp }: RegisterScreenProps) {
         return null;
       }
       const sessionUser = (me ?? user) as Parameters<typeof setSession>[1];
-      void offerBiometricEnrollmentAfterLogin(token, sessionUser, () => router.replace(getRoleHome(r)));
+      void offerBiometricEnrollmentAfterLogin(token, sessionUser, () => replaceWithPostLoginRoute(router, r));
       return null;
     } catch (e) {
       setOtp('');

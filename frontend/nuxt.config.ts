@@ -26,12 +26,22 @@ export default defineNuxtConfig({
     runtimeConfig: {
       // PHP origin for SSR when the browser uses the relative /api endpoint.
       apiInternalBase: process.env.NUXT_API_INTERNAL_BASE || 'http://127.0.0.1:8888/api',
+      // Liens universels iOS / App Links Android (vides → fichiers d'association en 404).
+      appleTeamId: process.env.NUXT_APPLE_TEAM_ID || '',
+      androidSha256Fingerprints: process.env.NUXT_ANDROID_SHA256_FINGERPRINTS || '',
       public: {
         // En dev : /api pour passer par le proxy Nitro (évite CORS / connexion refusée)
         apiBase: process.env.NUXT_PUBLIC_API_BASE || (process.env.NODE_ENV === 'development' ? '/api' : 'https://cary.bio/api'),
         siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://cary.bio',
       },
     },
+
+    // Hors server/routes : les dossiers commençant par un point n'y sont pas scannés.
+    serverHandlers: [
+      { route: '/.well-known/apple-app-site-association', method: 'get', handler: '~/server/app-links/apple-app-site-association.ts' },
+      { route: '/apple-app-site-association', method: 'get', handler: '~/server/app-links/apple-app-site-association.ts' },
+      { route: '/.well-known/assetlinks.json', method: 'get', handler: '~/server/app-links/assetlinks.ts' },
+    ],
 
     nitro: {
       ...(process.env.NUXT_OUTPUT_DIR ? { output: { dir: process.env.NUXT_OUTPUT_DIR } } : {}),

@@ -76,7 +76,8 @@
             type="button"
             class="flex items-center gap-3 rounded-xl border px-3 py-2 text-left"
             :class="pharmacyId === pharmacy.id ? 'border-primary bg-primary/5' : 'border-default'"
-            @click="pharmacyId = pharmacy.id"
+            :aria-pressed="pharmacyId === pharmacy.id"
+            @click="choosePharmacy(pharmacy.id)"
           >
             <img
               v-if="profileImageUrl(pharmacy.profile_image_url)"
@@ -92,9 +93,19 @@
             </span>
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium">{{ pharmacy.display_name }}</span>
-              <span v-if="pharmacy.postal_code" class="block text-xs text-muted">{{ pharmacy.postal_code }}</span>
+              <span v-if="pharmacy.id === pinnedPharmacyId" class="block text-xs text-primary">Pharmacie du QR code</span>
+              <span v-else-if="pharmacy.postal_code" class="block text-xs text-muted">{{ pharmacy.postal_code }}</span>
             </span>
+            <UIcon
+              v-if="pharmacyId === pharmacy.id"
+              name="i-lucide-check"
+              class="h-5 w-5 shrink-0 text-primary"
+              aria-hidden="true"
+            />
           </button>
+          <p v-if="pinnedPharmacyMissing" class="text-sm text-muted">
+            {{ pinnedPharmacyName || 'La pharmacie du QR code' }} ne propose pas ce mode de retrait.
+          </p>
           <UButton
             type="button"
             color="neutral"
@@ -249,6 +260,10 @@ const props = withDefaults(
     initialPatientId?: string;
     /** Le patient commande pour lui (ou un proche), sans chercher un dossier. */
     forSelf?: boolean;
+    /** Pharmacie choisie via son QR code : présélectionnée et toujours listée. */
+    initialPharmacyId?: string;
+    /** Jeton du QR pharmacie scanné, transmis à la création (attribution). */
+    utmQr?: string;
   }>(),
   { redirectToList: true, forSelf: false },
 );
@@ -256,7 +271,7 @@ const props = withDefaults(
 const router = useRouter();
 const toast = useAppToast();
 const { user } = useAuth();
-const { createOrder, fetchPharmacies, uiFlags, fetchModuleFlags } = usePharmacyModule();
+const { createOrder, fetchPharmacies, fetchPharmacyProfile, uiFlags, fetchModuleFlags } = usePharmacyModule();
 const { profileImageUrl } = useProfileImageUrl();
 const isOwnPharmacy = computed(() => uiFlags.value?.is_pharmacy_account === true);
 const forSelf = computed(() => props.forSelf);
@@ -271,6 +286,10 @@ const selectedPatientLabel = ref(props.initialPatientId ? 'Patient présélectio
 const postalCode = ref('');
 const fulfillmentMode = ref<PharmacyFulfillmentMode>('click_collect');
 const pharmacyId = ref('');
+const pinnedPharmacyId = (props.initialPharmacyId ?? '').trim();
+const pinnedPharmacyName = ref('');
+/** Un choix manuel n'est plus écrasé par la présélection QR. */
+const pharmacyTouched = ref(false);
 const pharmaciesLoading = ref(false);
 const pharmacyCatalog = ref<PharmacyCatalogRow[]>([]);
 const showOtherPharmacies = ref(false);
@@ -345,8 +364,15 @@ watch(
 
 const pharmacySplit = computed(() => {
   const ownId = isOwnPharmacy.value ? selfUserId() : '';
-  return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalog.value, ownId), ownId);
+  return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalog.value, ownId), ownId, pinnedPharmacyId);
 });
+
+const pinnedPharmacyMissing = computed(() => (
+  pinnedPharmacyId !== ''
+  && !isOwnPharmacy.value
+  && !pharmaciesLoading.value
+  && !pharmacyCatalog.value.some((item) => item.id === pinnedPharmacyId)
+));
 
 const visiblePharmacyRows = computed(() => {
   if (pharmacySplit.value.preferred.length > 0 && !showOtherPharmacies.value) {
@@ -365,6 +391,25 @@ const visiblePharmacyOptions = computed(() => {
 const otherPharmacyCount = computed(() => (
   pharmacySplit.value.preferred.length > 0 ? pharmacySplit.value.others.length : 0
 ));
+
+function choosePharmacy(id: string) {
+  pharmacyTouched.value = true;
+  pharmacyId.value = id;
+}
+
+/** Mode de retrait proposé par la pharmacie du QR (sinon elle serait filtrée du catalogue). */
+async function applyPinnedPharmacyMode() {
+  if (!pinnedPharmacyId) return;
+  try {
+    const profile = await fetchPharmacyProfile(pinnedPharmacyId);
+    pinnedPharmacyName.value = profile.display_name;
+    if (!profile.accepts_click_collect && profile.accepts_home_delivery) {
+      fulfillmentMode.value = 'home_delivery';
+    }
+  } catch (cause) {
+    console.warn('[pharmacie] fiche QR', cause);
+  }
+}
 
 function openPharmacyProfile() {
   profileOpen.value = true;
@@ -477,11 +522,16 @@ async function loadPharmacies() {
       postalCode.value,
       fulfillmentMode.value,
       selectedPatientId.value,
+      pinnedPharmacyId,
     );
     pharmacyCatalog.value = items;
     const ownId = isOwnPharmacy.value ? selfUserId() : '';
     if (ownId) {
       pharmacyId.value = ownId;
+      return;
+    }
+    if (pinnedPharmacyId && !pharmacyTouched.value && items.some((item) => item.id === pinnedPharmacyId)) {
+      pharmacyId.value = pinnedPharmacyId;
       return;
     }
     const patientPharmacy = items.find((item) => item.is_patient_pharmacy === true);
@@ -559,6 +609,7 @@ async function submit() {
         : null,
       prescription_document_ids: [...selectedDocIds.value, ...uploadedIds],
       requester_comment: comment.value.trim() || null,
+      ...(props.utmQr?.trim() ? { utm_qr: props.utmQr.trim() } : {}),
     });
     toast.add({ title: 'Commande créée', color: 'success' });
     await router.push(props.redirectToList ? props.roleBase : `${props.roleBase}/${order.id}`);
@@ -594,6 +645,7 @@ onMounted(() => {
     });
   }
   void loadPharmacies();
+  void applyPinnedPharmacyMode();
   if (selectedPatientId.value) void loadDocuments(selectedPatientId.value);
 });
 </script>

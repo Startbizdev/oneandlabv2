@@ -130,4 +130,6 @@ export type CreatePharmacyOrderPayload = {
   prescription_document_ids: string[];
   /** Même clé et même contenu : l'API renvoie la commande déjà créée au lieu d'en créer une autre. */
   client_request_id?: string;
+  /** Jeton du QR code pharmacie scanné (attribution de la commande). */
+  utm_qr?: string | null;
 };

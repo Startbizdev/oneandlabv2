@@ -5,11 +5,24 @@ http.createServer((request, response) => {
   response.setHeader('Content-Type', 'application/json');
   if (url.pathname === '/api/qr/resolve') {
     const token = url.searchParams.get('token');
+    if (token === 'fixture-pharmacy-qr') {
+      return response.end(JSON.stringify({ success: true, data: { redirect_url: 'https://cary.bio/pharmacie/00000000-0000-4000-8000-0000000000aa?utm_qr=fixture-pharmacy-qr' } }));
+    }
     if (token !== 'fixture-qr') {
       response.writeHead(404);
       return response.end(JSON.stringify({ success: false, error: 'QR introuvable' }));
     }
     return response.end(JSON.stringify({ success: true, data: { redirect_url: 'https://cary.bio/rendez-vous/nouveau?qr=fixture-qr&assigned_nurse_id=fixture-nurse' } }));
+  }
+  if (url.pathname === '/api/public/pharmacy') {
+    const id = url.searchParams.get('id');
+    if (id !== '00000000-0000-4000-8000-0000000000aa') {
+      response.writeHead(404);
+      return response.end(JSON.stringify({ success: false, error: 'Pharmacie introuvable' }));
+    }
+    return response.end(JSON.stringify({ success: true, data: {
+      id, name: 'Pharmacie Exemple', city: 'Paris', orders_open: true, accepts_click_collect: true, accepts_home_delivery: false,
+    } }));
   }
   const profileMatch = url.pathname.match(/^\/api\/public\/(nurse|lab|pro)\/([^/]+)$/);
   if (profileMatch) {

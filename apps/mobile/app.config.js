@@ -5,6 +5,10 @@ const appJson = require('./app.json');
 const IS_DEV = process.env.APP_VARIANT === 'development';
 const DEV_SCHEME = 'com.carybioapp.app.dev';
 
+/** Liens universels cary.bio (QR des professionnels) : servis par le web, ouverts par l'app si installée. */
+const UNIVERSAL_LINK_HOST = 'cary.bio';
+const UNIVERSAL_LINK_PATH_PREFIXES = ['/qr/', '/pharmacie/'];
+
 const basePlugins = (appJson.expo.plugins ?? []).filter(
   (plugin) =>
     plugin !== 'expo-dev-client' &&
@@ -45,6 +49,8 @@ module.exports = {
     ios: {
       ...appJson.expo.ios,
       bundleIdentifier: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.ios.bundleIdentifier,
+      // Le site doit publier /.well-known/apple-app-site-association pour ce bundle (Team ID inclus).
+      associatedDomains: [`applinks:${UNIVERSAL_LINK_HOST}`],
       infoPlist: {
         ...appJson.expo.ios.infoPlist,
         CFBundleDisplayName: IS_DEV ? 'Cary Dev' : appJson.expo.ios.infoPlist?.CFBundleDisplayName,
@@ -61,6 +67,19 @@ module.exports = {
       ...appJson.expo.android,
       package: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.android.package,
       softwareKeyboardLayoutMode: 'resize',
+      // Vérifié via /.well-known/assetlinks.json (empreinte SHA-256 de la clé de signature Play).
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: UNIVERSAL_LINK_PATH_PREFIXES.map((pathPrefix) => ({
+            scheme: 'https',
+            host: UNIVERSAL_LINK_HOST,
+            pathPrefix,
+          })),
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     ...(IS_DEV
       ? {

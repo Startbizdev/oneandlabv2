@@ -3,9 +3,25 @@ import { useRouter, useSegments, type Href } from 'expo-router';
 import { useAuthStore, isMobileRole } from '@/store/auth-store';
 import { useNavigationReady } from '@/navigation/use-navigation-ready';
 import { GLOBAL_SEGMENTS, isSheetSegment } from '@/navigation/global-segments';
+import { usePendingDeepLinkStore } from '@/features/navigation/store/pending-deep-link-store';
 
 /** Accueil avec la feuille de connexion ouverte (session expirée, lien profond sans session). */
 export const LOGIN_HREF: Href = { pathname: '/(auth)/welcome', params: { login: '1' } };
+
+/**
+ * Fin de connexion / inscription : rejoue le lien universel ouvert sans session, sinon l'accueil du rôle.
+ * Un lien tout juste rejoué n'est pas écrasé par une redirection d'accueil plus tardive (biométrie, OTP).
+ */
+export function replaceWithPostLoginRoute(router: { replace: (href: Href) => void }, role: string): void {
+  const pending = usePendingDeepLinkStore.getState();
+  const href = pending.take();
+  if (href) {
+    router.replace(href);
+    return;
+  }
+  if (pending.wasJustResumed()) return;
+  router.replace(getRoleHome(role));
+}
 
 export function useAuthGuard() {
   const { token, user, isHydrated } = useAuthStore();
@@ -20,13 +36,14 @@ export function useAuthGuard() {
     const inAuth = String(segments[0]) === '(auth)';
 
     if (!token) {
+      usePendingDeepLinkStore.getState().clearResume();
       if (!inAuth) router.replace(LOGIN_HREF);
       return;
     }
 
     if (inAuth) {
       if (user?.role && isMobileRole(user.role)) {
-        router.replace(getRoleHome(user.role));
+        replaceWithPostLoginRoute(router, user.role);
       }
       return;
     }

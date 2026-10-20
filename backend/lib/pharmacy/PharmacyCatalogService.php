@@ -77,6 +77,7 @@ final class PharmacyCatalogService
         ?string $fulfillmentMode = null,
         ?string $favoriteUserId = null,
         array $patientPharmacyIds = [],
+        ?string $includeId = null,
     ): array {
         $config = $this->moduleConfig->getConfig();
         $receiverEmplois = $config['pharmacy_receiver_emplois'] ?? ['Pharmacien'];
@@ -121,7 +122,8 @@ final class PharmacyCatalogService
             if ($fulfillmentMode === 'home_delivery' && empty($item['accepts_home_delivery'])) {
                 continue;
             }
-            if (!$isPatientPharmacy && $postalCode !== null && $postalCode !== '') {
+            $isIncluded = $includeId !== null && $includeId !== '' && $item['id'] === $includeId;
+            if (!$isPatientPharmacy && !$isIncluded && $postalCode !== null && $postalCode !== '') {
                 $pc = (string) ($item['postal_code'] ?? '');
                 if ($pc !== '' && !str_starts_with($pc, substr($postalCode, 0, 2))) {
                     continue;
@@ -235,6 +237,48 @@ final class PharmacyCatalogService
             'click_collect_days' => $item['click_collect_days'],
             'home_delivery_days' => $item['home_delivery_days'],
             'catalog_visible' => !empty($row['pharmacy_orders_enabled']) && empty($row['pharmacy_orders_paused']),
+        ];
+    }
+
+    /**
+     * Page publique d'arrivée du QR pharmacie : nom, ville et ouverture des commandes, sans coordonnées.
+     *
+     * @return array{id: string, name: string, city: ?string, orders_open: bool, accepts_click_collect: bool, accepts_home_delivery: bool}|null
+     */
+    public function qrLandingSummary(string $pharmacyId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT p.id, p.role, p.emploi,
+                   p.company_name_encrypted, p.company_name_dek,
+                   p.first_name_encrypted, p.first_name_dek,
+                   p.last_name_encrypted, p.last_name_dek,
+                   p.address_encrypted, p.address_dek,
+                   p.pharmacy_accepts_click_collect, p.pharmacy_accepts_home_delivery,
+                   p.pharmacy_orders_paused, p.pharmacy_orders_enabled
+            FROM profiles p
+            WHERE p.id = ? AND p.role = 'pro'
+            LIMIT 1
+        ");
+        $stmt->execute([trim($pharmacyId)]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $config = $this->moduleConfig->getConfig();
+        if (!is_array($row) || !PharmacyModuleConfig::isPharmacyAccount($row, $config)) {
+            return null;
+        }
+
+        try {
+            $address = $this->decryptAddress($row);
+        } catch (Throwable) {
+            $address = null;
+        }
+
+        return [
+            'id' => (string) $row['id'],
+            'name' => $this->decryptName($row),
+            'city' => $this->nullableString(is_array($address) ? ($address['city'] ?? null) : null),
+            'orders_open' => PharmacyModuleConfig::canReceive($row, $config),
+            'accepts_click_collect' => !empty($row['pharmacy_accepts_click_collect']),
+            'accepts_home_delivery' => !empty($row['pharmacy_accepts_home_delivery']),
         ];
     }
 

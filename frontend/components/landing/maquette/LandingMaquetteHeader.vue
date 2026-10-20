@@ -1,6 +1,6 @@
 <template>
   <header
-    class="fixed top-0 left-0 right-0 z-[200] border-b border-[#E8E8F0] bg-white/92 backdrop-blur-xl backdrop-saturate-150 transition-shadow duration-200 pt-[env(safe-area-inset-top)] dark:bg-gray-950/92 dark:border-gray-800"
+    class="fixed top-[var(--app-banner-offset,0px)] left-0 right-0 z-[200] border-b border-[#E8E8F0] bg-white/92 backdrop-blur-xl backdrop-saturate-150 transition-shadow duration-200 pt-[env(safe-area-inset-top)] dark:bg-gray-950/92 dark:border-gray-800"
     :class="{ 'shadow-[0_2px_20px_rgba(0,0,0,0.06)]': scrolled }"
   >
     <div
@@ -60,7 +60,7 @@
             </button>
             <div
               v-if="notificationsMenuOpen"
-              class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[220] max-h-[min(24rem,calc(100dvh-5rem))] w-auto overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-[220] md:w-80 md:max-h-96 dark:border-gray-700 dark:bg-gray-900"
+              class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3.5rem)] z-[220] max-h-[min(24rem,calc(100dvh-5rem))] w-auto overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-[220] md:w-80 md:max-h-96 dark:border-gray-700 dark:bg-gray-900"
             >
               <div
                 v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)"
@@ -124,7 +124,7 @@
             >
               <div
                 v-if="userMenuOpen"
-                class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-[220] max-h-[min(24rem,calc(100dvh-5rem))] w-auto overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:z-[220] md:mt-2 md:w-64 md:max-h-none md:overflow-hidden dark:border-gray-700 dark:bg-gray-900 dark:shadow-none"
+                class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3.5rem)] z-[220] max-h-[min(24rem,calc(100dvh-5rem))] w-auto overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:z-[220] md:mt-2 md:w-64 md:max-h-none md:overflow-hidden dark:border-gray-700 dark:bg-gray-900 dark:shadow-none"
               >
                 <div
                   class="border-b border-gray-100 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50"

@@ -50,6 +50,7 @@ import {
   createPharmacyOrder,
   fetchPharmacyCatalog,
   fetchPharmacyFavoriteIds,
+  fetchPharmacyPublicProfile,
   removePharmacyFavorite,
 } from '../api/pharmacy-orders.service';
 import { pickPrescriptionPage, uploadPrescriptionPages } from '../api/prescription-pages';
@@ -61,6 +62,14 @@ import {
   pharmacyFulfillmentLabel,
 } from '../utils/order-display';
 import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
+import {
+  catalogItemFromPharmacyProfile,
+  initialModeForPharmacy,
+  pharmacyAcceptsMode,
+  preselectedPharmacyIssue,
+  sortWizardCatalog,
+  visibleWizardCatalog,
+} from '../utils/pharmacy-preselection';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import {
@@ -100,9 +109,13 @@ const WIZARD_COPY = {
 interface Props {
   rolePrefix: StaffRoutePrefix | '/(patient)';
   initialPatientId?: string;
+  /** Pharmacie présélectionnée (lien QR `https://cary.bio/pharmacie/{id}`). */
+  initialPharmacyId?: string;
+  /** Jeton du QR scanné, transmis à la création pour l'attribution. */
+  utmQr?: string;
 }
 
-export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Props) {
+export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId, initialPharmacyId, utmQr }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const field = useStyles(buildFieldStyles);
@@ -114,6 +127,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const isPatient = rolePrefix === '/(patient)';
   const copy = WIZARD_COPY[isPatient ? 'patient' : 'staff'];
   const fixedPatientId = isPatient ? userId : initialPatientId;
+  // Un compte pharmacie prépare lui-même : la présélection QR ne s'applique pas.
+  const qrPharmacyId = !isOwnPharmacy ? initialPharmacyId?.trim() || null : null;
 
   const [step, setStep] = useState(1);
   const [fulfillmentMode, setFulfillmentMode] = useState<PharmacyFulfillmentMode>('click_collect');
@@ -121,7 +136,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const [relativeId, setRelativeId] = useState<string | null>(null);
   const [address, setAddress] = useState<AddressPayload | null>(null);
   const [addressComplement, setAddressComplement] = useState('');
-  const [selectedPharmacyId, setSelectedPharmacyId] = useState('');
+  const [selectedPharmacyId, setSelectedPharmacyId] = useState(() => initialPharmacyId?.trim() ?? '');
+  const userPickedPharmacyRef = useRef(false);
   const [profilePharmacyId, setProfilePharmacyId] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [rxFiles, setRxFiles] = useState<DocumentFileRef[]>([]);
@@ -155,12 +171,13 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
   const postalCode = address?.postal_code?.trim() ?? '';
 
   const catalogQ = useQuery({
-    queryKey: queryKeys.pharmacyOrders.catalog(postalCode, fulfillmentMode, patientId),
+    queryKey: [...queryKeys.pharmacyOrders.catalog(postalCode, fulfillmentMode, patientId), qrPharmacyId ?? ''],
     queryFn: async () => {
       const res = await fetchPharmacyCatalog({
         postal_code: postalCode || undefined,
         fulfillment_mode: fulfillmentMode,
         patient_id: patientId || undefined,
+        include_id: qrPharmacyId ?? undefined,
       });
       if (!res.success || !res.data) throw new Error(res.error ?? 'Catalogue indisponible');
       return res.data;
@@ -177,6 +194,44 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     },
     enabled: !isOwnPharmacy && !!userId && step >= 3,
   });
+
+  const qrPharmacyQ = useQuery({
+    queryKey: queryKeys.pharmacyOrders.pharmacy(qrPharmacyId ?? ''),
+    queryFn: () => fetchPharmacyPublicProfile(qrPharmacyId ?? ''),
+    enabled: !!qrPharmacyId,
+    staleTime: 60_000,
+  });
+  const qrPharmacy = useMemo(
+    () => (qrPharmacyQ.data ? catalogItemFromPharmacyProfile(qrPharmacyQ.data) : null),
+    [qrPharmacyQ.data],
+  );
+  const qrPharmacyIssue = preselectedPharmacyIssue(qrPharmacy, fulfillmentMode, desiredDate);
+
+  // Pharmacie du QR introuvable (supprimée, module coupé) : on revient au choix habituel.
+  const qrPharmacyFailed = qrPharmacyQ.isError;
+  useEffect(() => {
+    if (!qrPharmacyFailed || !qrPharmacyId) return;
+    setSelectedPharmacyId((current) => (current === qrPharmacyId ? '' : current));
+    toast('Pharmacie introuvable', { message: 'Choisissez une pharmacie dans la liste.', type: 'error' });
+  }, [qrPharmacyFailed, qrPharmacyId, toast]);
+
+  // Premier chargement : le mode par défaut s'aligne sur ce que propose la pharmacie du QR.
+  const qrModeAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!qrPharmacy || qrModeAppliedRef.current) return;
+    qrModeAppliedRef.current = true;
+    setFulfillmentMode((current) => initialModeForPharmacy(qrPharmacy, current));
+  }, [qrPharmacy]);
+
+  // Mode incompatible : on la retire ; compatible à nouveau, on la remet tant que l'utilisateur n'a pas choisi.
+  useEffect(() => {
+    if (!qrPharmacy || userPickedPharmacyRef.current) return;
+    const compatible = pharmacyAcceptsMode(qrPharmacy, fulfillmentMode);
+    setSelectedPharmacyId((current) => {
+      if (!compatible) return current === qrPharmacy.id ? '' : current;
+      return qrPharmacy.id;
+    });
+  }, [fulfillmentMode, qrPharmacy]);
 
   useEffect(() => {
     setShowOtherPharmacies(false);
@@ -204,7 +259,9 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     : initialPatientQ.data
       ? personDisplayName(initialPatientQ.data.first_name, initialPatientQ.data.last_name)
       : null;
-  const selectedPharmacy = catalogQ.data?.find((p) => p.id === selectedPharmacyId);
+  const selectedPharmacy =
+    catalogQ.data?.find((p) => p.id === selectedPharmacyId) ??
+    (qrPharmacy?.id === selectedPharmacyId ? qrPharmacy : undefined);
   const selectedRelative = (relativesQ.data ?? []).find((r) => r.id === relativeId);
   const missingAddressError =
     addressMissing && !address?.label?.trim()
@@ -283,23 +340,12 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
     selectedRelative,
   ]);
 
-  const sortedCatalog = useMemo(() => {
-    const items = catalogQ.data ?? [];
-    const fav = favoritesQ.data ?? new Set<string>();
-    return [...items].sort((a, b) => {
-      const ap = a.is_patient_pharmacy ? 0 : 1;
-      const bp = b.is_patient_pharmacy ? 0 : 1;
-      if (ap !== bp) return ap - bp;
-      const af = fav.has(a.id) ? 1 : 0;
-      const bf = fav.has(b.id) ? 1 : 0;
-      if (af !== bf) return bf - af;
-      return a.display_name.localeCompare(b.display_name, 'fr');
-    });
-  }, [catalogQ.data, favoritesQ.data]);
-
-  const patientPharmacies = sortedCatalog.filter((item) => item.is_patient_pharmacy);
-  const visibleCatalog =
-    patientPharmacies.length > 0 && !showOtherPharmacies ? patientPharmacies : sortedCatalog;
+  const sortedCatalog = useMemo(
+    () =>
+      sortWizardCatalog(catalogQ.data ?? [], favoritesQ.data ?? new Set<string>(), qrPharmacy, fulfillmentMode),
+    [catalogQ.data, favoritesQ.data, fulfillmentMode, qrPharmacy],
+  );
+  const visibleCatalog = visibleWizardCatalog(sortedCatalog, showOtherPharmacies, qrPharmacyId);
 
   const wizardSteps = isOwnPharmacy ? 3 : CATALOG_WIZARD_STEPS;
   const stepLabels = isOwnPharmacy
@@ -412,6 +458,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
           delivery_address: deliveryAddress,
           desired_fulfillment_date: desiredDate,
           requester_comment: comment.trim() || null,
+          // Attribution au QR seulement si la commande part bien vers la pharmacie scannée.
+          ...(utmQr && pharmacyId === qrPharmacyId ? { utm_qr: utmQr } : {}),
         },
         createPharmacyOrder,
       );
@@ -487,6 +535,9 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                 ? copy.collectHint
                 : 'La pharmacie livrera à l’adresse indiquée à l’étape suivante.'}
             </AppText>
+            {qrPharmacyIssue?.kind === 'mode' ? (
+              <AppText style={styles.qrIssue}>{qrPharmacyIssue.message}</AppText>
+            ) : null}
           </View>
         ) : null}
 
@@ -600,12 +651,18 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
               minimumDate={new Date()}
               maximumDate={new Date(Date.now() + 90 * 86400000)}
             />
+            {qrPharmacyIssue?.kind === 'date' && selectedPharmacyId === qrPharmacyId ? (
+              <AppText style={styles.qrIssue}>{qrPharmacyIssue.message}</AppText>
+            ) : null}
           </View>
         ) : null}
 
         {step === 3 && !isOwnPharmacy ? (
           <View style={styles.block}>
             <AppText style={styles.sectionLabel}>Choisir une pharmacie</AppText>
+            {qrPharmacyIssue && (qrPharmacyIssue.kind === 'mode' || selectedPharmacyId === qrPharmacyId) ? (
+              <AppText style={styles.qrIssue}>{qrPharmacyIssue.message}</AppText>
+            ) : null}
             {catalogQ.isLoading ? (
               <ActivityIndicator color={c.primary} style={styles.loader} />
             ) : catalogQ.isError ? (
@@ -627,7 +684,10 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                       selected={selectedPharmacyId === item.id}
                       favorite={fav}
                       favoriteLoading={favoritePendingId === item.id}
-                      onPress={() => setSelectedPharmacyId(item.id)}
+                      onPress={() => {
+                        userPickedPharmacyRef.current = true;
+                        setSelectedPharmacyId(item.id);
+                      }}
                       onViewProfile={() => setProfilePharmacyId(item.id)}
                       onToggleFavorite={() =>
                         favoriteMut.mutate({ pharmacyId: item.id, favorite: fav })
@@ -635,7 +695,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
                     />
                   );
                 })}
-                {patientPharmacies.length > 0 && !showOtherPharmacies && sortedCatalog.length > patientPharmacies.length ? (
+                {!showOtherPharmacies && sortedCatalog.length > visibleCatalog.length ? (
                   <Pressable
                     onPress={() => setShowOtherPharmacies(true)}
                     accessibilityRole="button"
@@ -731,7 +791,7 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId }: Prop
       />
       <PharmacyPublicProfileSheet
         pharmacyId={profilePharmacyId}
-        title={catalogQ.data?.find((item) => item.id === profilePharmacyId)?.display_name}
+        title={sortedCatalog.find((item) => item.id === profilePharmacyId)?.display_name}
         onClose={() => setProfilePharmacyId(null)}
       />
       <UnsavedChangesGuard dirty={hasDraft && !submitMut.isPending && !submitMut.isSuccess} />
@@ -759,6 +819,12 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       lineHeight: fontSize.sm * 1.45,
     },
     loader: { marginVertical: spacing[4] },
+    qrIssue: {
+      ...font.medium,
+      fontSize: fontSize.sm,
+      color: c.warning,
+      lineHeight: fontSize.sm * 1.45,
+    },
     fixedPatient: { gap: spacing[0.5] },
     relativeBlock: { gap: spacing[2] },
     relativePill: {

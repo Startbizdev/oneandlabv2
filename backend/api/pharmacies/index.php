@@ -39,5 +39,10 @@ if ($patientId !== '' && Validation::uuid($patientId)) {
     }
 }
 
-$items = $catalogService->listPharmacies($postalCode, $mode, $favoriteUserId, $patientPharmacyIds);
+$includeId = strtolower(trim((string) ($_GET['include_id'] ?? '')));
+if (!Validation::uuid($includeId)) {
+    $includeId = null;
+}
+
+$items = $catalogService->listPharmacies($postalCode, $mode, $favoriteUserId, $patientPharmacyIds, $includeId);
 echo json_encode(['success' => true, 'data' => $items]);

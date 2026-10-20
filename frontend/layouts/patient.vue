@@ -136,7 +136,7 @@
                 <!-- Dropdown Notifications -->
                 <div
                   v-if="notificationsMenuOpen"
-                    class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900 md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
+                    class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900 md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-80 md:max-h-96"
                 >
                   <div v-if="notificationItems.length === 0 || (notificationItems.length === 1 && notificationItems[0].disabled)" class="px-4 py-3 text-sm text-gray-500 text-center">
                     Aucune notification
@@ -195,7 +195,7 @@
                 >
                   <div
                     v-if="userMenuOpen"
-                    class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-700 dark:bg-gray-900 dark:shadow-none md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-64 md:max-h-none md:overflow-hidden"
+                    class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto max-h-[min(24rem,calc(100dvh-5rem))] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-700 dark:bg-gray-900 dark:shadow-none md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-64 md:max-h-none md:overflow-hidden"
                   >
                     <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
                       <div class="flex items-center gap-3">
@@ -261,7 +261,7 @@
                 >
                   <div
                     v-if="guestMenuOpen"
-                    class="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-700 dark:bg-gray-900 dark:shadow-black/30 md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-56"
+                    class="fixed inset-x-3 top-[calc(var(--app-banner-offset,0px)+env(safe-area-inset-top)+3rem+0.5rem)] z-[200] w-auto rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-gray-200/50 dark:border-gray-700 dark:bg-gray-900 dark:shadow-black/30 md:absolute md:inset-x-auto md:left-auto md:right-0 md:top-auto md:mt-2 md:z-50 md:w-56"
                   >
                     <div class="py-1.5">
                       <NuxtLink

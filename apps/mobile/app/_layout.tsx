@@ -69,6 +69,9 @@ function RootLayoutInner() {
         <Stack.Screen name="(patient)" />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
+        {/* Liens universels cary.bio : simples aiguilleurs, remplacés dès la résolution. */}
+        <Stack.Screen name="qr/[token]" options={{ animation: 'none' }} />
+        <Stack.Screen name="pharmacie/[id]" options={{ animation: 'none' }} />
         <Stack.Screen name="sheet/[id]" options={({ route }) => sheetScreenOptions(theme, route.params)} />
       </Stack>
       <MustChangePasswordGate />

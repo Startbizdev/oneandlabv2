@@ -12,6 +12,7 @@ require_once __DIR__ . '/../MedicalDocumentSubject.php';
 require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../DatabaseTransaction.php';
 require_once __DIR__ . '/../AppointmentCreationRequest.php';
+require_once __DIR__ . '/../QrCodeService.php';
 
 /**
  * CRUD et transitions commandes pharmacie.
@@ -171,8 +172,25 @@ final class PharmacyOrderService
         if ($order === null) {
             throw new RuntimeException('Création commande échouée');
         }
+        $this->attributeQrScan($input['utm_qr'] ?? null, $role, $uid, $pharmacyId, $patientId);
 
         return ['order' => $order, 'notify' => !$responseServed];
+    }
+
+    /**
+     * Patient qui commande après avoir scanné le QR de cette pharmacie : elle devient sa pharmacie liée.
+     * Une attribution impossible ne fait jamais échouer la commande.
+     */
+    private function attributeQrScan(mixed $utmQr, string $role, string $uid, string $pharmacyId, string $patientId): void
+    {
+        if (!is_string($utmQr) || trim($utmQr) === '' || $role !== 'patient' || $uid !== $patientId) {
+            return;
+        }
+        try {
+            (new QrCodeService($this->db))->recordPharmacyOrderConversion($utmQr, $pharmacyId, $patientId);
+        } catch (Throwable $e) {
+            error_log('pharmacy_order qr attribution: ' . $e->getMessage());
+        }
     }
 
     /**

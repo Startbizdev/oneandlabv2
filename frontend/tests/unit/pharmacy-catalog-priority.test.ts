@@ -26,6 +26,16 @@ describe('catalogue pharmacie prioritaire', () => {
     expect(split.others.map((item) => item.id)).toEqual(['a', 'c']);
   });
 
+  it('place la pharmacie du QR code en tête', () => {
+    const split = splitPharmacyCatalog(
+      [row('a'), row('b', { is_patient_pharmacy: true }), row('qr')],
+      '',
+      'qr',
+    );
+    expect(split.preferred.map((item) => item.id)).toEqual(['qr', 'b']);
+    expect(split.others.map((item) => item.id)).toEqual(['a']);
+  });
+
   it('garde la pharmacie du compte même hors catalogue', () => {
     const items = withOwnPharmacyOption([row('other')], 'own');
     const split = splitPharmacyCatalog(items, 'own');

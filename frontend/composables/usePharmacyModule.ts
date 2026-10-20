@@ -41,6 +41,9 @@ export type PharmacyReceivedStats = {
   to: string;
 };
 
+/** `utm_qr` : jeton du QR pharmacie scanné (attribution, lie la pharmacie au patient). */
+export type CreatePharmacyOrderInput = CreatePharmacyOrderPayload & { utm_qr?: string | null };
+
 export type PharmacyOrderMessagesResponse = {
   messages: PharmacyOrderMessage[];
   can_post: boolean;
@@ -118,7 +121,7 @@ export function usePharmacyModule() {
     return res.data;
   }
 
-  async function createOrder(payload: CreatePharmacyOrderPayload): Promise<PharmacyOrder> {
+  async function createOrder(payload: CreatePharmacyOrderInput): Promise<PharmacyOrder> {
     const res = (await apiFetch('/pharmacy-orders', {
       method: 'POST',
       body: payload,
@@ -194,11 +197,14 @@ export function usePharmacyModule() {
     postalCode?: string,
     fulfillmentMode?: string,
     patientId?: string,
+    /** Toujours inclure cette pharmacie (QR), même hors filtre code postal. */
+    includeId?: string,
   ): Promise<Array<PharmacyCatalogItem & { is_patient_pharmacy?: boolean }>> {
     const params = new URLSearchParams();
     if (postalCode?.trim()) params.set('postal_code', postalCode.trim());
     if (fulfillmentMode) params.set('fulfillment_mode', fulfillmentMode);
     if (patientId?.trim()) params.set('patient_id', patientId.trim());
+    if (includeId?.trim()) params.set('include_id', includeId.trim());
     const qs = params.toString();
     const res = (await apiFetch(`/pharmacies${qs ? `?${qs}` : ''}`, { method: 'GET' })) as ApiResponse<
       Array<PharmacyCatalogItem & { is_patient_pharmacy?: boolean }>
