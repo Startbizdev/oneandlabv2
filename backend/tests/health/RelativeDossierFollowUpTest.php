@@ -30,6 +30,8 @@ final class RelativeDossierFollowUpTest extends TestCase
     use SkipsWithoutPdo;
 
     private const TOUR_DATE = '2030-01-08';
+    /** `end_date` est le jour de retour (exclusif) : absent le jour de la tournée, de retour le lendemain. */
+    private const RETURN_DATE = '2030-01-09';
 
     private PDO $db;
     /** @var array{nurse: string, patient: string, category: string}|null */
@@ -143,7 +145,7 @@ final class RelativeDossierFollowUpTest extends TestCase
         $ownerAbsence = (new PatientAbsenceService($this->db))->create($this->fixtures['nurse'], $this->fixtures['patient'], $this->fixtures['nurse'], [
             'absence_type' => 'other',
             'start_date' => self::TOUR_DATE,
-            'end_date' => self::TOUR_DATE,
+            'end_date' => self::RETURN_DATE,
         ]);
         $stop = $this->tourStop($appointmentId);
         $this->assertSame($this->fixtures['patient'], $stop['patient_id']);
@@ -154,7 +156,7 @@ final class RelativeDossierFollowUpTest extends TestCase
         $relativeAbsence = (new PatientAbsenceService($this->db))->create($this->fixtures['nurse'], $this->relativeProfileId, $this->fixtures['nurse'], [
             'absence_type' => 'other',
             'start_date' => self::TOUR_DATE,
-            'end_date' => self::TOUR_DATE,
+            'end_date' => self::RETURN_DATE,
         ]);
         $stop = $this->tourStop($appointmentId);
         $this->assertTrue($stop['is_patient_absent_today']);

@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   incomingOfferIdsCoveredByOpen,
   planIncomingOfferEnqueue,
+  type IncomingOfferClusterSource,
 } from '@oneandlab/shared-utils';
 
 function line(
   id: string,
-  overrides: Record<string, unknown> = {},
-) {
+  overrides: Partial<Omit<IncomingOfferClusterSource, 'id'>> = {},
+): IncomingOfferClusterSource & { id: string } {
   return {
     id,
     type: 'nursing',
@@ -33,8 +34,8 @@ describe('file de la fenêtre nouveau rendez-vous', () => {
     );
     expect(plan.enqueue.map((item) => item.id)).toEqual(['a']);
     expect(plan.coveredIds).toEqual(['b']);
-    expect(plan.enqueue[0].batch_siblings?.map((sibling) => sibling.id)).toEqual(['b']);
-    expect(plan.enqueue[0].batch_siblings?.[0].separate_offer_line).toBe(false);
+    expect(plan.enqueue[0].batch_siblings?.map((sibling) => sibling?.id)).toEqual(['b']);
+    expect(plan.enqueue[0].batch_siblings?.[0]?.separate_offer_line).toBe(false);
   });
 
   it('regroupe le même patient créé dans les deux minutes sans lot', () => {
@@ -47,7 +48,7 @@ describe('file de la fenêtre nouveau rendez-vous', () => {
     );
     expect(plan.enqueue).toHaveLength(1);
     expect(plan.coveredIds).toEqual(['b']);
-    expect(plan.enqueue[0].batch_siblings?.[0].separate_offer_line).toBe(true);
+    expect(plan.enqueue[0].batch_siblings?.[0]?.separate_offer_line).toBe(true);
   });
 
   it('laisse deux fenêtres si les lignes sont trop éloignées ou pour un autre patient', () => {

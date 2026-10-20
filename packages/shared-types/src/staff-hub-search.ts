@@ -72,4 +72,8 @@ export type StaffHubSearchItem =
 
 export type StaffHubSearchResponse = {
   items: StaffHubSearchItem[];
+  /** Page suivante disponible (`offset` + `limit`). */
+  has_more?: boolean;
+  /** Nombre total de résultats, toutes pages confondues. */
+  total?: number;
 };

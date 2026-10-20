@@ -28,6 +28,7 @@ export const queryKeys = {
     historyCount: (id: string) => ['patients', 'history', 'count', id] as const,
     lookup: (query: string) => ['patients', 'lookup', query] as const,
     hubSearch: (query: string) => ['patients', 'hub-search', query] as const,
+    hubSearchPages: (query: string) => ['patients', 'hub-search', 'pages', query] as const,
     phones: (id: string) => ['patients', 'phones', id] as const,
     relative: (id: string, relativeId: string) => ['patients', 'relative', id, relativeId] as const,
     transmissions: (id: string) => ['patients', 'transmissions', id] as const,

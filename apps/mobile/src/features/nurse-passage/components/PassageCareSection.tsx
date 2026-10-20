@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { Pressable, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import {
@@ -49,6 +49,8 @@ type Props = {
     phase: 'picker' | 'options' | 'selected',
     meta?: { categoryName?: string },
   ) => void;
+  /** Phase options : action « Ajouter » appelée depuis le pied fixe de la sheet parente. */
+  optionsConfirmRef?: RefObject<(() => void) | null>;
 };
 
 function toNursingItem(
@@ -66,13 +68,15 @@ function toNursingItem(
 }
 
 /** Sélection des soins d'un passage, remontée à chaque ouverture de la feuille parente. */
-export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) {
+export function PassageCareSection({ items, onChange, onUiPhaseChange, optionsConfirmRef }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const qc = useQueryClient();
   const { show: toast } = useToast();
   const [addingMore, setAddingMore] = useState(false);
   const [optionsCat, setOptionsCat] = useState<CareCategory | null>(null);
+  /** Chargement des options d'un soin en cours : un second appui ne relance rien. */
+  const pickingRef = useRef(false);
 
   const categoriesQ = useQuery({
     queryKey: queryKeys.categories.list('nursing', 'picker'),
@@ -138,17 +142,25 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
 
   const handlePickCategory = useCallback(
     async (cat: CareCategory) => {
-      if (takenIds.has(cat.id)) return;
-      const ready = await ensureCategoryReady(cat);
-      const optionCount = ready.options?.length ?? 0;
-      if (isCareCategoryWithoutBookingOptions(ready) || optionCount === 0) {
-        addItem({ category_id: ready.id, label: ready.name });
-        setAddingMore(false);
-        return;
+      if (takenIds.has(cat.id) || pickingRef.current) return;
+      pickingRef.current = true;
+      try {
+        const ready = await ensureCategoryReady(cat);
+        const optionCount = ready.options?.length ?? 0;
+        if (isCareCategoryWithoutBookingOptions(ready) || optionCount === 0) {
+          addItem({ category_id: ready.id, label: ready.name });
+          setAddingMore(false);
+          return;
+        }
+        setOptionsCat(ready);
+      } catch (e) {
+        console.warn('[passage] care options load failed', e);
+        toast('Impossible de charger les options de ce soin. Réessayez.', { type: 'error' });
+      } finally {
+        pickingRef.current = false;
       }
-      setOptionsCat(ready);
     },
-    [addItem, ensureCategoryReady, takenIds],
+    [addItem, ensureCategoryReady, takenIds, toast],
   );
 
   const handleOptionsConfirm = useCallback(
@@ -181,6 +193,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
           categories={categories}
           onlyCategoryOptions
           confirmLabel="Ajouter"
+          confirmRef={optionsConfirmRef}
           onClose={closeOptions}
           onConfirm={handleOptionsConfirm}
         />
@@ -197,11 +210,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
         ) : categoriesQ.isError ? (
           <ErrorState title="Soins indisponibles" error={categoriesQ.error} onRetry={() => void categoriesQ.refetch()} />
         ) : (
-          <ScrollView
-            contentContainerStyle={styles.pickerList}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+          <View style={styles.pickerList}>
             {categories.map((cat) => {
               const taken = takenIds.has(cat.id);
               return (
@@ -218,7 +227,7 @@ export function PassageCareSection({ items, onChange, onUiPhaseChange }: Props) 
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
         )}
       </View>
     );
@@ -280,7 +289,7 @@ function buildStyles({ colors: c, font }: Theme) {
       marginBottom: spacing[1],
     },
     backLinkText: { ...font.semiBold, color: c.primary },
-    pickerList: { paddingBottom: spacing[4], gap: spacing[2] },
+    pickerList: { gap: spacing[2] },
     pickerRow: {
       ...layoutRowCenter(spacing[3]),
       minHeight: MIN_TOUCH_TARGET,

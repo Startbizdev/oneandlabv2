@@ -10,15 +10,18 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { SheetKeyboardProvider } from '../sheet-keyboard-context';
 import type { SheetEntry } from './sheet-store';
 
-/** Au-delà, le contenu défile dans la sheet (hauteur ajustée au contenu). */
-const MAX_FIT_CONTENT_RATIO = 0.92;
+/** Hauteur maximale d'une sheet ajustée au contenu (en-tête et pied compris) ; au-delà, le contenu défile. */
+const MAX_FIT_CONTENT_RATIO = 0.88;
 
 /**
- * En-tête puis ScrollView, enfants directs de l'écran : sur un palier fixe, iOS ne dimensionne
- * le ScrollView d'une formSheet que s'il est le 1er enfant, ou le 2e derrière un en-tête non aplati.
- * Le pied fixe d'un palier fixe vient donc en 3e enfant, après le ScrollView, et suit le clavier
- * (la sheet à palier fixe ne remonte pas d'elle-même) ; le champ actif reste au-dessus de lui.
- * Ajustée au contenu, la sheet native remonte elle-même au-dessus du clavier : pas de marge clavier en plus.
+ * Une seule colonne non aplatie `[en-tête | ScrollView | pied fixe]`, quelle que soit la hauteur de la sheet.
+ * iOS ne voit donc jamais le ScrollView comme enfant direct de la sheet : react-native-screens ne force pas
+ * sa hauteur à « sheet − en-tête », ce qui poussait le pied (Valider / Créer) sous le bord de la sheet.
+ * - Palier fixe (`snapPoints`) : la colonne remplit la sheet (`sheetScreenOptions` ancre le conteneur),
+ *   le ScrollView prend la place restante.
+ * - Ajustée au contenu : la colonne suit son contenu, le ScrollView est borné pour que la sheet, pied compris,
+ *   tienne à l'écran quand le contenu grandit (champ révélé, message d'erreur…).
+ * Le pied reste toujours visible : l'action principale ne dépend jamais de la longueur du contenu.
  */
 export function NativeSheetBody({ entry }: { entry: SheetEntry }) {
   const c = useAppColors();
@@ -28,115 +31,89 @@ export function NativeSheetBody({ entry }: { entry: SheetEntry }) {
   const fitToContents = entry.detents === 'fitToContents';
   /** iOS ajoute lui-même la zone de l'indicateur d'accueil sous une sheet ajustée au contenu. */
   const bottomInset = Platform.OS === 'ios' && fitToContents ? 0 : insets.bottom;
-  /** Palier fixe : l'action principale reste visible quelle que soit la longueur du contenu. */
-  const pinnedFooter = Boolean(entry.footer) && !fitToContents && !entry.disableScroll;
-  /** Hauteur réelle du pied fixe (un ou plusieurs boutons) ; sa marge basse disparaît clavier ouvert. */
-  const [pinnedFooterHeight, setPinnedFooterHeight] = useState(0);
-  const footerAboveKeyboard = pinnedFooter ? Math.max(0, pinnedFooterHeight - bottomInset) : 0;
+  const hasFooter = Boolean(entry.footer);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  /** Hauteur réelle du pied (un ou plusieurs boutons) ; sa marge basse disparaît clavier ouvert. */
+  const [footerHeight, setFooterHeight] = useState(0);
+  const footerAboveKeyboard = hasFooter ? Math.max(0, footerHeight - bottomInset) : 0;
+  const maxFitScrollHeight = Math.max(0, height * MAX_FIT_CONTENT_RATIO - headerHeight - footerHeight);
 
-  const content = (
-    <>
-      {entry.content}
-      {entry.footer && !pinnedFooter ? <View style={styles.footer}>{entry.footer}</View> : null}
-    </>
-  );
   const bodyStyle = [
     styles.body,
     entry.contentStyle,
-    { paddingBottom: spacing[4] + (pinnedFooter ? 0 : bottomInset) },
+    { paddingBottom: spacing[4] + (hasFooter ? 0 : bottomInset) },
   ];
   const header = (
-      <View collapsable={false} style={styles.header}>
-        {Platform.OS === 'android' ? <View style={styles.handle} /> : null}
-        <Row gap={spacing[2]} style={styles.headerRow}>
-          {entry.onBack ? (
-            <Pressable onPress={entry.onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
-              <ChevronLeft size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
-            </Pressable>
-          ) : null}
-          <View style={styles.headerText}>
-            <AppText variant="headline" accessibilityRole="header">
-              {entry.title}
-            </AppText>
-            {entry.subtitle ? <AppText variant="secondary">{entry.subtitle}</AppText> : null}
-          </View>
-        </Row>
-      </View>
+    <View
+      collapsable={false}
+      style={styles.header}
+      onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+    >
+      {Platform.OS === 'android' ? <View style={styles.handle} /> : null}
+      <Row gap={spacing[2]} style={styles.headerRow}>
+        {entry.onBack ? (
+          <Pressable onPress={entry.onBack} hitSlop={12} style={styles.backBtn} accessibilityLabel="Retour">
+            <ChevronLeft size={iconSize.lg} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
+          </Pressable>
+        ) : null}
+        <View style={styles.headerText}>
+          <AppText variant="headline" accessibilityRole="header">
+            {entry.title}
+          </AppText>
+          {entry.subtitle ? <AppText variant="secondary">{entry.subtitle}</AppText> : null}
+        </View>
+      </Row>
+    </View>
   );
-  /**
-   * Android : une colonne pleine largeur. Le pied reste dans la sheet.
-   * `KeyboardStickyView` le colle au bas de l'écran, donc sous une sheet trop courte le bouton disparaît.
-   * iOS : l'en-tête puis le ScrollView restent les deux premiers enfants (sinon la formSheet ne se dimensionne pas).
-   */
-  if (Platform.OS === 'android') {
-    return (
-      <View style={styles.androidSheet}>
-        {header}
-        <SheetKeyboardProvider>
-          {entry.disableScroll ? (
-            <View style={[bodyStyle, styles.fill]}>{content}</View>
-          ) : (
-            <KeyboardScrollView
-              enabled={!fitToContents}
-              bottomOffset={spacing[4] + footerAboveKeyboard}
-              contentInsetAdjustmentBehavior="never"
-              nestedScrollEnabled
-              style={styles.fill}
-              contentContainerStyle={bodyStyle}
-            >
-              {content}
-            </KeyboardScrollView>
-          )}
-          {pinnedFooter ? (
-            <View
-              style={[styles.pinnedFooter, { paddingBottom: spacing[3] + bottomInset }]}
-              onLayout={(e) => setPinnedFooterHeight(e.nativeEvent.layout.height)}
-            >
-              {entry.footer}
-            </View>
-          ) : null}
-        </SheetKeyboardProvider>
-      </View>
-    );
-  }
+  const footer = hasFooter ? (
+    <View
+      style={[styles.footer, { paddingBottom: spacing[3] + bottomInset }]}
+      onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+    >
+      {entry.footer}
+    </View>
+  ) : null;
+
   return (
-    <>
+    <View collapsable={false} style={fitToContents ? styles.fitColumn : styles.fixedColumn}>
       {header}
       <SheetKeyboardProvider>
         {entry.disableScroll ? (
-          <View style={bodyStyle}>{content}</View>
+          <View style={[bodyStyle, fitToContents ? null : styles.fill]}>{entry.content}</View>
         ) : (
           <KeyboardScrollView
+            /** Ajustée au contenu, la sheet native remonte elle-même au-dessus du clavier. */
             enabled={!fitToContents}
             bottomOffset={spacing[4] + footerAboveKeyboard}
             contentInsetAdjustmentBehavior="never"
             nestedScrollEnabled
-            style={fitToContents ? { maxHeight: height * MAX_FIT_CONTENT_RATIO } : styles.fill}
+            style={fitToContents ? { maxHeight: maxFitScrollHeight } : styles.fill}
             contentContainerStyle={bodyStyle}
           >
-            {content}
+            {entry.content}
           </KeyboardScrollView>
         )}
-        {pinnedFooter ? (
-          <KeyboardStickyView offset={{ closed: 0, opened: bottomInset }}>
-            <View
-              style={[styles.pinnedFooter, { paddingBottom: spacing[3] + bottomInset }]}
-              onLayout={(e) => setPinnedFooterHeight(e.nativeEvent.layout.height)}
-            >
-              {entry.footer}
-            </View>
-          </KeyboardStickyView>
-        ) : null}
+        {/* Palier fixe sur iOS : la sheet ne remonte pas avec le clavier, le pied le suit. Android remonte la sheet. */}
+        {footer && Platform.OS === 'ios' && !fitToContents ? (
+          <KeyboardStickyView offset={{ closed: 0, opened: bottomInset }}>{footer}</KeyboardStickyView>
+        ) : (
+          footer
+        )}
       </SheetKeyboardProvider>
-    </>
+    </View>
   );
 }
 
 function buildStyles({ colors: c }: Theme) {
   return {
     fill: { flex: 1, minHeight: 0 },
-    androidSheet: {
+    fixedColumn: {
       flex: 1,
+      minHeight: 0,
+      width: '100%' as const,
+      alignSelf: 'stretch' as const,
+    },
+    fitColumn: {
       width: '100%' as const,
       alignSelf: 'stretch' as const,
     },
@@ -175,13 +152,6 @@ function buildStyles({ colors: c }: Theme) {
       gap: spacing[3],
     },
     footer: {
-      marginTop: spacing[2],
-      paddingTop: spacing[3],
-      gap: spacing[2],
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: c.borderLight,
-    },
-    pinnedFooter: {
       paddingTop: spacing[3],
       paddingHorizontal: spacing[4],
       gap: spacing[2],

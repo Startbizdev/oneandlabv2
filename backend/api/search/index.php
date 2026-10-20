@@ -37,6 +37,7 @@ if (!in_array($user['role'] ?? '', ['nurse', 'pro'], true)) {
 
 $query = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
 $limit = isset($_GET['limit']) ? (int) $_GET['limit'] : 50;
+$offset = isset($_GET['offset']) ? (int) $_GET['offset'] : 0;
 
 try {
     $config = require __DIR__ . '/../../config/database.php';
@@ -50,7 +51,7 @@ try {
     $db = new PDO($dsn, $config['username'], $config['password'], $config['options']);
 
     $search = new StaffPatientHubSearch($db);
-    $result = $search->search($user, $query, $limit);
+    $result = $search->search($user, $query, $limit, $offset);
 
     echo json_encode([
         'success' => true,

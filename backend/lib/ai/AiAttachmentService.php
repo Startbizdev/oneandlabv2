@@ -54,7 +54,7 @@ final class AiAttachmentService
             throw new InvalidArgumentException('medical_document_id requis');
         }
         $doc = $this->requireAccessibleDocument($user, $medicalDocumentId);
-        $conversationPatientId = isset($conv['patient_id']) ? (string) $conv['patient_id'] : null;
+        $conversationPatientId = AiConversationScope::conversationPatientId($conv, $user);
         if (!AiConversationScope::documentMatchesPatient($conversationPatientId, isset($doc['patient_id']) ? (string) $doc['patient_id'] : null)) {
             throw HttpStatusException::forbidden('Ce document n\'appartient pas au patient de la conversation');
         }

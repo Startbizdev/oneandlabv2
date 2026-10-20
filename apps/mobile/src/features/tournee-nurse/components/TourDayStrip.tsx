@@ -9,6 +9,7 @@ import { formatMiniDateCalendarParts } from '@/utils/mini-date-calendar-parts';
 import { formatCountBadge } from '@/components/navigation/CountBadge';
 import { ICON_STROKE_WIDTH, H_PADDING, elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { hexToRgba } from '@/theme/color-utils';
+import { useTodayTourDate } from '../hooks/use-nurse-tour';
 
 type Props = {
   selectedDate: string;
@@ -76,8 +77,8 @@ export function TourDayStrip({ selectedDate, dayCounts, onSelectDate, embedded =
   const c = useAppColors();
   const styles = useStyles(buildStyles);
   const scrollRef = useRef<ScrollView>(null);
-  const today = useMemo(() => dayjs().startOf('day'), []);
-  const todayIso = today.format('YYYY-MM-DD');
+  const todayIso = useTodayTourDate();
+  const today = useMemo(() => dayjs(todayIso).startOf('day'), [todayIso]);
   const cellStride = CALENDAR_PX + CELL_GAP;
 
   const days = useMemo(() => {

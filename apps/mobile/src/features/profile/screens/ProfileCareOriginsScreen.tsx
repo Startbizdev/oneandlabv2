@@ -82,7 +82,7 @@ export function ProfileCareOriginsScreen() {
                   <ListRowShell
                     style={settings.row}
                     onBodyPress={
-                      canBook
+                      canBook && providerType
                         ? () =>
                             router.push(
                               bookingNewHref('/(patient)', {

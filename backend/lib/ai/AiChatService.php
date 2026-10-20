@@ -730,7 +730,7 @@ final class AiChatService
                 continue;
             }
             if (!AiConversationScope::documentMatchesPatient(
-                isset($conv['patient_id']) ? (string) $conv['patient_id'] : null,
+                AiConversationScope::conversationPatientId($conv, $user),
                 isset($docRow['patient_id']) ? (string) $docRow['patient_id'] : null,
             )) {
                 continue;

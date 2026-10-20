@@ -197,7 +197,7 @@ export function PassageDetailScreen() {
   const [customDuration, setCustomDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [planningState, setPlanningState] = useState<PassagePlanningFormState>(() =>
-    defaultPlanningFormState(new Date().toISOString().slice(0, 10)),
+    defaultPlanningFormState(todayTourDate()),
   );
   const [nursingItems, setNursingItems] = useState<NursePassageNursingItem[]>([]);
   const formInitialized = useRef(false);
@@ -234,7 +234,7 @@ export function PassageDetailScreen() {
   }, [apt?.scheduled_at, series?.first_date, planningState.startDate]);
 
   const absencesQ = useQuery({
-    queryKey: ['patient-absences', patientId, passageDate],
+    queryKey: ['patient-absences', patientId],
     queryFn: () => fetchPatientAbsences(patientId, true),
     enabled: Boolean(patientId),
   });
@@ -251,7 +251,7 @@ export function PassageDetailScreen() {
   const refreshAfterAbsenceChange = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ['patient-absences', patientId] });
     invalidatePassage();
-    toast('Absence enregistrée', { type: 'success' });
+    toast('Absence mise à jour', { type: 'success' });
   }, [invalidatePassage, patientId, qc, toast]);
 
   const { data: careCategories = [] } = useAppointmentCareCategories();
@@ -264,7 +264,7 @@ export function PassageDetailScreen() {
     if (!series || formInitialized.current) return;
     const cfg = series.planning_config as PassagePlanningConfig;
     const fallbackStart =
-      series.first_date ?? apt?.scheduled_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+      series.first_date ?? apt?.scheduled_at?.slice(0, 10) ?? todayTourDate();
     setTimeSlot(series.time_slot);
     setCustomTime(series.custom_time ?? '09:00');
     setDailyTimeSlots(seriesDailySlots(series));
@@ -306,7 +306,7 @@ export function PassageDetailScreen() {
     setNotes(fields.notes ?? '');
     setNursingItems(fields.nursing_items);
     setPlanningState(
-      defaultPlanningFormState(apt.scheduled_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)),
+      defaultPlanningFormState(apt.scheduled_at?.slice(0, 10) ?? todayTourDate()),
     );
     formInitialized.current = true;
   }, [apt, formFromAppointment]);
@@ -387,14 +387,15 @@ export function PassageDetailScreen() {
     onError: (e: Error) => toast(e.message, { type: 'error' }),
   });
 
+  /** Champ affiché avant l'appel : `revert` restaure la valeur précédente si le serveur refuse. */
   const persistUpdate = useCallback(
-    (payload: Partial<NursePassageSeriesInput>) => {
+    (payload: Partial<NursePassageSeriesInput>, revert: () => void) => {
       if (isAppointmentOnly || seriesQ.isError || isCoNurseViewer(apt)) {
-        saveAppointmentMut.mutate(payload);
+        saveAppointmentMut.mutate(payload, { onError: revert });
         return;
       }
       if (!seriesId) return;
-      saveMut.mutate(payload);
+      saveMut.mutate(payload, { onError: revert });
     },
     [apt, isAppointmentOnly, saveAppointmentMut, saveMut, seriesId, seriesQ.isError],
   );
@@ -423,7 +424,7 @@ export function PassageDetailScreen() {
       await updateNurseTourStopStatus(stopId, 'en_route');
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+      invalidatePassage();
       toast('Patient prévenu, vous êtes en route', { type: 'success' });
     },
     onError: (e: Error) => toast(e.message, { type: 'error' }),
@@ -456,7 +457,7 @@ export function PassageDetailScreen() {
       await updateNurseTourStopStatus(stopId, 'done', { finalizeAppointment: true });
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+      invalidatePassage();
       toast('Passage marqué comme effectué', { type: 'success' });
       navigation.goBack();
     },
@@ -663,6 +664,7 @@ export function PassageDetailScreen() {
         nursingItems={nursingItems}
         onClose={closeSheet}
         onConfirm={(next) => {
+          const prev = planningState;
           setPlanningState(next);
           const built = buildPlanningPayload(next, nursingItems);
           persistUpdate({
@@ -672,7 +674,7 @@ export function PassageDetailScreen() {
               series?.planning_config.time_range ?? null,
               dailyTimeSlots,
             ),
-          });
+          }, () => setPlanningState(prev));
         }}
       />
       <PassageFormDailyTimesSheet
@@ -680,6 +682,7 @@ export function PassageDetailScreen() {
         slots={dailyTimeSlots}
         onClose={closeSheet}
         onConfirm={(slots) => {
+          const prev = dailyTimeSlots;
           setDailyTimeSlots(slots);
           const primary = slots[0];
           const built = buildPlanningPayload(planningState, nursingItems);
@@ -688,7 +691,7 @@ export function PassageDetailScreen() {
             custom_time: primary.time_slot === 'all_day' ? null : primary.custom_time ?? null,
             time_range: null,
             planning_config: embedTimeRangeInPlanningConfig(built.planning_config, null, slots),
-          });
+          }, () => setDailyTimeSlots(prev));
         }}
       />
       <PassageFormTimeSheet
@@ -699,6 +702,7 @@ export function PassageDetailScreen() {
         passageDate={planningState.startDate}
         onClose={closeSheet}
         onConfirm={(slot, time, range) => {
+          const prev = { timeSlot, customTime, timeRange };
           setTimeSlot(slot);
           setCustomTime(time);
           setTimeRange(range);
@@ -717,6 +721,10 @@ export function PassageDetailScreen() {
             }),
             time_range: effectiveRange,
             planning_config: nextPlanningConfig,
+          }, () => {
+            setTimeSlot(prev.timeSlot);
+            setCustomTime(prev.customTime);
+            setTimeRange(prev.timeRange);
           });
         }}
       />
@@ -727,8 +735,9 @@ export function PassageDetailScreen() {
         patientAddressRaw={patient?.address}
         onClose={closeSheet}
         onConfirm={(nextAtHome) => {
+          const prev = atHome;
           setAtHome(nextAtHome);
-          persistUpdate({ at_home: nextAtHome });
+          persistUpdate({ at_home: nextAtHome }, () => setAtHome(prev));
         }}
       />
       <PassageFormDurationSheet
@@ -737,9 +746,13 @@ export function PassageDetailScreen() {
         customDuration={customDuration}
         onClose={closeSheet}
         onConfirm={(d, custom) => {
+          const prev = { duration, customDuration };
           setDuration(d);
           setCustomDuration(custom);
-          persistUpdate({ duration_minutes: resolveDurationMinutes(d, custom) });
+          persistUpdate({ duration_minutes: resolveDurationMinutes(d, custom) }, () => {
+            setDuration(prev.duration);
+            setCustomDuration(prev.customDuration);
+          });
         }}
       />
       <PassageFormCareSheet
@@ -747,8 +760,9 @@ export function PassageDetailScreen() {
         items={nursingItems}
         onClose={closeSheet}
         onConfirm={(items) => {
+          const prev = nursingItems;
           setNursingItems(items);
-          persistUpdate({ nursing_items: items });
+          persistUpdate({ nursing_items: items }, () => setNursingItems(prev));
         }}
       />
       <PassageFormNotesSheet
@@ -756,8 +770,9 @@ export function PassageDetailScreen() {
         notes={notes}
         onClose={closeSheet}
         onConfirm={(nextNotes) => {
+          const prev = notes;
           setNotes(nextNotes);
-          persistUpdate({ notes: nextNotes.trim() || null });
+          persistUpdate({ notes: nextNotes.trim() || null }, () => setNotes(prev));
         }}
       />
 

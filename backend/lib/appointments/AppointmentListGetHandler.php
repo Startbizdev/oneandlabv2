@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
+require_once __DIR__ . '/AppointmentListSearchScan.php';
 
 final class AppointmentListGetHandler
 {
@@ -67,6 +68,7 @@ final class AppointmentListGetHandler
         }
 
         $view = isset($_GET['view']) ? trim((string) $_GET['view']) : '';
+        $search = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
         $skipCount = !empty($_GET['skip_count'])
             && in_array(strtolower(trim((string) $_GET['skip_count'])), ['1', 'true', 'yes'], true);
 
@@ -188,7 +190,7 @@ final class AppointmentListGetHandler
         AppointmentApiLogging::logAppointment('Requête COUNT construite', ['countSql' => $countSql]);
 
         $total = 0;
-        if (!$skipCount) {
+        if (!$skipCount && $search === '') {
             try {
                 AppointmentApiLogging::logAppointment('Exécution de la requête COUNT');
                 $countStmt = $db->prepare($countSql);
@@ -210,6 +212,18 @@ final class AppointmentListGetHandler
 
         [$orderBy, $orderParams] = $listSqlBuilder->buildOrderByClause();
         $params = array_merge($params, $orderParams);
+
+        if ($search !== '') {
+            self::respondSearch($db, $appointmentModel, $listEnricher, $user, $userId, $sql . $orderBy, $params, $search, [
+                'page' => $page,
+                'limit' => $limit,
+                'cursor' => isset($_GET['cursor']) ? (int) $_GET['cursor'] : $offset,
+                'light' => $lightListPayload,
+                'merged' => $hasMergedColumn,
+            ]);
+            return;
+        }
+
         $sql .= $orderBy . ' LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
 
         AppointmentApiLogging::logAppointment('Exécution de la requête principale', ['sql' => $sql, 'params' => $params]);
@@ -291,27 +305,6 @@ final class AppointmentListGetHandler
         }
 
         $returnedCount = count($decryptedAppointments);
-        $search = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
-        if ($search !== '') {
-            $needle = mb_strtolower($search);
-            $decryptedAppointments = array_values(array_filter(
-                $decryptedAppointments,
-                static function (array $appointment) use ($needle): bool {
-                    $form = is_array($appointment['form_data'] ?? null) ? $appointment['form_data'] : [];
-                    $haystack = mb_strtolower(implode(' ', [
-                        (string) ($form['first_name'] ?? ''),
-                        (string) ($form['last_name'] ?? ''),
-                        (string) ($form['phone'] ?? ''),
-                        (string) ($appointment['category_name'] ?? ''),
-                        is_string($appointment['address'] ?? null) ? $appointment['address'] : '',
-                    ]));
-
-                    return str_contains($haystack, $needle);
-                }
-            ));
-            $returnedCount = count($decryptedAppointments);
-            $total = $returnedCount;
-        }
         // COUNT SQL incohérent (total=0 alors qu’il y a des lignes) : borne minimale pour l’UI.
         $countIncoherent = ($total === 0 && $returnedCount > 0);
         if ($countIncoherent) {
@@ -362,5 +355,83 @@ final class AppointmentListGetHandler
             exit;
         }
         echo $json;
+    }
+
+    /**
+     * Recherche (`q`) : parcours de la liste triée côté serveur, les champs patient étant chiffrés.
+     * `pagination.next_cursor` reprend la recherche ; `page` est ignoré.
+     *
+     * @param array<string, mixed> $user
+     * @param array<int|string, mixed> $params
+     * @param array{page: int, limit: int, cursor: int, light: bool, merged: bool} $options
+     */
+    private static function respondSearch(
+        PDO $db,
+        Appointment $appointmentModel,
+        AppointmentListEnricher $listEnricher,
+        array $user,
+        string $userId,
+        string $orderedSql,
+        array $params,
+        string $search,
+        array $options,
+    ): void {
+        $scan = AppointmentListSearchScan::run(
+            static function (int $from, int $count) use ($db, $appointmentModel, $listEnricher, $user, $userId, $orderedSql, $params, $options): array {
+                $stmt = $db->prepare($orderedSql . ' LIMIT ' . $count . ' OFFSET ' . $from);
+                $stmt->execute($params);
+
+                return $listEnricher->enrich(
+                    $db,
+                    $appointmentModel,
+                    $stmt->fetchAll(),
+                    $user,
+                    $userId,
+                    $options['light'],
+                    $options['merged']
+                );
+            },
+            self::searchMatcher($search),
+            $options['limit'],
+            $options['cursor']
+        );
+
+        echo json_encode([
+            'success' => true,
+            'data' => $scan['items'],
+            'pagination' => [
+                'page' => $options['page'],
+                'limit' => $options['limit'],
+                'total' => count($scan['items']),
+                'pages' => 1,
+                'has_more' => $scan['has_more'],
+                'next_cursor' => $scan['next_cursor'],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Nom, téléphone, soin ou adresse contenant la recherche (insensible à la casse).
+     *
+     * @return callable(array<string, mixed>): bool
+     */
+    public static function searchMatcher(string $search): callable
+    {
+        $needle = mb_strtolower(trim($search));
+
+        return static function (array $appointment) use ($needle): bool {
+            $form = is_array($appointment['form_data'] ?? null) ? $appointment['form_data'] : [];
+            $formAddress = is_array($form['address'] ?? null) ? (string) ($form['address']['label'] ?? '') : '';
+            $haystack = mb_strtolower(implode(' ', [
+                (string) ($form['first_name'] ?? ''),
+                (string) ($form['last_name'] ?? ''),
+                (string) ($form['phone'] ?? ''),
+                (string) ($appointment['category_name'] ?? ''),
+                is_string($appointment['address'] ?? null) ? $appointment['address'] : '',
+                $formAddress,
+            ]));
+
+            return str_contains($haystack, $needle);
+        };
     }
 }

@@ -32,6 +32,28 @@ final class AiConversationScope
         return $draftPatient === '' || $draftPatient === $conversationPatientId;
     }
 
+    /**
+     * Patient du dossier de la conversation. Celle d'un patient sans dossier explicite porte sur lui-même ;
+     * celle d'un soignant sans patient ne porte sur aucun dossier.
+     *
+     * @param array<string, mixed> $conversation
+     * @param array<string, mixed> $user
+     */
+    public static function conversationPatientId(array $conversation, array $user): ?string
+    {
+        $patientId = trim((string) ($conversation['patient_id'] ?? ''));
+        if ($patientId !== '') {
+            return $patientId;
+        }
+        if (($user['role'] ?? '') === 'patient' && (string) ($conversation['user_id'] ?? '') === (string) ($user['user_id'] ?? '')) {
+            $own = trim((string) ($user['user_id'] ?? ''));
+
+            return $own !== '' ? $own : null;
+        }
+
+        return null;
+    }
+
     public static function documentMatchesPatient(?string $conversationPatientId, ?string $documentPatientId): bool
     {
         $conversationPatientId = trim((string) $conversationPatientId);

@@ -14,6 +14,7 @@ import {
   offerOpenFailureFromError,
   type OpenIncomingOfferFailure,
 } from '@/lib/errors/offer-open-failure';
+import { useSheetStore } from '@/components/ui/sheet/sheet-store';
 import { fetchAppointment } from '../api/appointments.service';
 
 export type OpenIncomingOfferResult = { ok: true } | { ok: false; reason: OpenIncomingOfferFailure };
@@ -100,6 +101,8 @@ interface OfferQueueState {
   displayedBatchKeys: Set<string>;
   coveredSnapshots: IncomingOfferClusterSource[];
   visible: boolean;
+  /** Offre prête mais une sheet est ouverte : présentée dès qu'elles sont toutes fermées. */
+  awaitingSheet: boolean;
   selected: Appointment | null;
   shareToken: string | null;
   enqueueMany: (items: Appointment[]) => void;
@@ -116,6 +119,44 @@ interface OfferQueueState {
 }
 
 let processNextInFlight: Promise<void> | null = null;
+let stopWaitingForSheets: (() => void) | null = null;
+
+function hasOpenSheet(): boolean {
+  return Object.keys(useSheetStore.getState().entries).length > 0;
+}
+
+function cancelWaitForSheets() {
+  stopWaitingForSheets?.();
+  stopWaitingForSheets = null;
+}
+
+/** Une seule formSheet à la fois : l'offre attend la fermeture des sheets ouvertes (dont la sienne). */
+function presentOffer(marked: Partial<OfferQueueState>) {
+  const store = useOfferQueueStore;
+  if (store.getState().visible) {
+    store.setState(marked);
+    return;
+  }
+  if (!hasOpenSheet()) {
+    cancelWaitForSheets();
+    store.setState({ ...marked, visible: true, awaitingSheet: false });
+    return;
+  }
+  store.setState({ ...marked, awaitingSheet: true });
+  if (stopWaitingForSheets) return;
+  stopWaitingForSheets = useSheetStore.subscribe((sheets) => {
+    if (Object.keys(sheets.entries).length > 0) return;
+    cancelWaitForSheets();
+    const current = store.getState();
+    if (!current.awaitingSheet) return;
+    store.setState({ visible: Boolean(current.selected), awaitingSheet: false });
+  });
+}
+
+function hideOffer(marked?: Partial<OfferQueueState>) {
+  cancelWaitForSheets();
+  useOfferQueueStore.setState({ ...marked, visible: false, awaitingSheet: false, selected: null });
+}
 
 export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   queue: [],
@@ -123,6 +164,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   displayedBatchKeys: new Set(),
   coveredSnapshots: [],
   visible: false,
+  awaitingSheet: false,
   selected: null,
   shareToken: null,
 
@@ -130,7 +172,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
 
   enqueueMany: (items) => {
     const state = get();
-    const displayedId = state.visible && state.selected?.id ? state.selected.id : '';
+    const displayedId = (state.visible || state.awaitingSheet) && state.selected?.id ? state.selected.id : '';
     const candidates = items.filter((item) => item?.id && item.id !== displayedId);
     const already = [
       ...state.coveredSnapshots,
@@ -172,7 +214,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
     processNextInFlight = (async () => {
     for (let guard = 0; guard < 50; guard += 1) {
       const state = get();
-      if (state.visible || state.queue.length === 0 || !role || !userId) return;
+      if (state.visible || state.awaitingSheet || state.queue.length === 0 || !role || !userId) return;
 
       const next = state.queue[0];
       if (!next?.id) {
@@ -192,12 +234,10 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         }
         const data = res.data;
         if (!canOpenOffer(data, role, userId)) {
-          const marked = rememberOpened(get(), data);
-          set({ ...marked, selected: null, visible: false });
+          hideOffer(rememberOpened(get(), data));
           continue;
         }
-        const marked = rememberOpened(get(), data);
-        set({ ...marked, visible: true });
+        presentOffer(rememberOpened(get(), data));
         return;
       } catch {
         const current = get();
@@ -223,19 +263,16 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
         ? preview
         : null;
 
-    if (previewData) {
-      const marked = rememberOpened(get(), previewData);
-      set({ ...marked, visible: true });
-    }
+    if (previewData) presentOffer(rememberOpened(get(), previewData));
 
     try {
       const res = await fetchAppointment(appointmentId, { includeBatch: true });
       if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
-        set({ visible: false, selected: null });
+        hideOffer();
         return { ok: false, reason: 'already_accepted' };
       }
       if (res.success && (res as { appointmentUnavailable?: boolean }).appointmentUnavailable) {
-        set({ visible: false, selected: null });
+        hideOffer();
         return { ok: false, reason: 'unavailable' };
       }
       if (!res.success || !res.data) {
@@ -245,34 +282,32 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
       const data = res.data;
 
       if (!canOpenOffer(data, role, userId)) {
-        const marked = rememberOpened(get(), data);
-        set({ ...marked, visible: false, selected: null });
+        hideOffer(rememberOpened(get(), data));
         return { ok: false, reason: 'unavailable' };
       }
 
-      const marked = rememberOpened(get(), data);
-      set({ ...marked, visible: true });
+      presentOffer(rememberOpened(get(), data));
       return { ok: true };
     } catch (error) {
       const reason = offerOpenFailureFromError(error);
       if (previewData && (reason === 'network' || reason === 'error')) return { ok: true };
       if (reason === 'error') console.warn('[offer-queue] ouverture de l’offre impossible', error);
-      set({ visible: false, selected: null });
+      hideOffer();
       return { ok: false, reason };
     }
   },
 
-  closeModal: () => {
-    set({ visible: false, selected: null });
-  },
+  closeModal: () => hideOffer(),
 
   reset: () => {
+    cancelWaitForSheets();
     set({
       queue: [],
       displayedIds: new Set(),
       displayedBatchKeys: new Set(),
       coveredSnapshots: [],
       visible: false,
+      awaitingSheet: false,
       selected: null,
       shareToken: null,
     });

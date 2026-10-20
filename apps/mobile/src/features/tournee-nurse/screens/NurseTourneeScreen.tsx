@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Users } from 'lucide-react-native';
@@ -28,8 +29,14 @@ import {
   isTourStopDone,
   tourDateFromParam,
 } from '@oneandlab/shared-utils';
-import { useNurseTour } from '../hooks/use-nurse-tour';
-import { todayTourDate } from '../hooks/nurse-tour-query';
+import { useNurseTour, useTodayTourDate } from '../hooks/use-nurse-tour';
+import {
+  NURSE_TOUR_QUERY_ROOT,
+  NURSE_TOUR_STALE_MS,
+  NURSE_TOUR_SUMMARY_QUERY_ROOT,
+  nurseTourQueryKey,
+  todayTourDate,
+} from '../hooks/nurse-tour-query';
 import { useNurseTourStopCompletion, useNurseTourStopItemDone } from '../hooks/use-nurse-tour-stop-status';
 import { NurseNextPassageCard } from '../components/NurseNextPassageCard';
 import { nursePassageDetailHref } from '../utils/passage-detail-href';
@@ -50,9 +57,13 @@ import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
 import { countTodayActiveStops } from '../utils/tour-calendar';
 
+/** Relecture GPS au focus au plus toutes les 5 min. */
+const ORIGIN_REFRESH_MS = 5 * 60_000;
+
 export function NurseTourneeScreen() {
   const styles = useStyles(buildStyles);
   const router = useRouter();
+  const qc = useQueryClient();
   const { show: showToast } = useToast();
   const viewerId = useAuthStore((s) => s.user?.id);
   const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
@@ -84,12 +95,35 @@ export function NurseTourneeScreen() {
   const { openStopActions, actionsSheet, rescheduleStop, closeReschedule, absenceStop, closeAbsence } =
     useTourStopActions(refetch);
   const absenceDossierId = appointmentDossierPatientId(absenceStop);
-  const isToday = date === todayTourDate();
+  const today = useTodayTourDate();
+  const isToday = date === today;
+  const lastOriginAtRef = useRef(0);
+  const prevTodayRef = useRef(today);
 
+  /** Passé minuit, la tournée affichée sur « aujourd'hui » suit le nouveau jour. */
+  useEffect(() => {
+    const prev = prevTodayRef.current;
+    prevTodayRef.current = today;
+    if (prev !== today) setDate((d) => (d === prev ? today : d));
+  }, [today]);
+
+  /** Au focus : GPS limité dans le temps, refetch seulement si la tournée est périmée ou la position relue. */
   useFocusEffect(
     useCallback(() => {
-      void refreshOrigin().then(() => refetch());
-    }, [refreshOrigin, refetch]),
+      const key = nurseTourQueryKey(date);
+      const isStale = () =>
+        Date.now() - (qc.getQueryState(key)?.dataUpdatedAt ?? 0) > NURSE_TOUR_STALE_MS &&
+        qc.isFetching({ queryKey: key }) === 0;
+      const now = Date.now();
+      if (now - lastOriginAtRef.current < ORIGIN_REFRESH_MS) {
+        if (isStale()) void refetch();
+        return;
+      }
+      lastOriginAtRef.current = now;
+      void refreshOrigin().then((located) => {
+        if (located || isStale()) void refetch();
+      });
+    }, [date, qc, refreshOrigin, refetch]),
   );
 
   useEffect(() => {
@@ -144,6 +178,16 @@ export function NurseTourneeScreen() {
     },
     [optimize, refetch, showToast],
   );
+
+  const handleReset = useCallback(async () => {
+    try {
+      await resetOrder();
+      setManualOrderActive(false);
+      showToast('Ordre réinitialisé', { type: 'success' });
+    } catch (e) {
+      handleApiError(e, showToast, 'nurse-tour-reset', 'Réinitialisation impossible');
+    }
+  }, [resetOrder, showToast]);
 
   const handleMove = useCallback(
     async (stopId: string, dir: 'up' | 'down') => {
@@ -331,7 +375,8 @@ export function NurseTourneeScreen() {
           onClose={closeAbsence}
           onSaved={() => {
             showToast('Tournée actualisée', { type: 'success' });
-            void refetch();
+            void qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT });
+            void qc.invalidateQueries({ queryKey: NURSE_TOUR_SUMMARY_QUERY_ROOT });
           }}
         />
       ) : null}
@@ -343,7 +388,7 @@ export function NurseTourneeScreen() {
           locked={tour.plan.manual_order_locked}
           onClose={() => setSortSheetOpen(false)}
           onSelect={handleOptimize}
-          onReset={() => void resetOrder()}
+          onReset={() => void handleReset()}
         />
       ) : null}
 

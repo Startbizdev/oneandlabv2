@@ -7,24 +7,31 @@ import { queryKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { fetchAppointmentsPaginated } from '../api/appointments.service';
 
+/**
+ * Liste paginée. Avec `q`, le serveur parcourt la liste (champs chiffrés) : la page suivante
+ * reprend à `pagination.next_cursor` au lieu de `page + 1`.
+ */
 export function useInfiniteAppointmentsList(filters: AppointmentListFilters) {
   const token = useAuthStore((s) => s.token);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const pageSize = filters.limit ?? APPOINTMENTS_LIST_PAGE_SIZE;
+  const searching = Boolean(filters.q?.trim());
 
   return useInfiniteQuery({
     queryKey: queryKeys.appointments.infinite(filters),
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam }) => {
       const result = await fetchAppointmentsPaginated({
         ...filters,
-        page: pageParam,
+        ...(searching ? { cursor: pageParam } : { page: pageParam }),
         limit: pageSize,
       });
       return result;
     },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) =>
-      lastPage.pagination.has_more ? lastPage.pagination.page + 1 : undefined,
+    initialPageParam: searching ? 0 : 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination.has_more) return undefined;
+      return searching ? lastPage.pagination.next_cursor : lastPage.pagination.page + 1;
+    },
     enabled: isHydrated && Boolean(token),
     staleTime: CACHE_STALE_APPOINTMENTS_LIST_MS,
     placeholderData: keepPreviousData,

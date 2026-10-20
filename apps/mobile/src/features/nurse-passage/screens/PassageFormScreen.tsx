@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import dayjs from 'dayjs';
 import { ScrollView, View } from 'react-native';
 import { ClipboardList, FileText, HeartPulse } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -82,7 +83,7 @@ export function PassageFormScreen() {
   const user = useAuthStore((s) => s.user);
 
   const patientId = paramString(params.patient_id);
-  const stripDate = paramString(params.start_date) || new Date().toISOString().slice(0, 10);
+  const stripDate = paramString(params.start_date) || dayjs().format('YYYY-MM-DD');
   const flowMode = paramString(params.mode);
 
   const patientQ = usePassagePatient(patientId);

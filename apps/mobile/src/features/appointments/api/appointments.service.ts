@@ -16,6 +16,8 @@ export function buildAppointmentsQuery(filters: AppointmentListFilters): string 
   if (filters.assigned_only) qs.set('assigned_only', '1');
   if (filters.preleveur_segment) qs.set('preleveur_segment', filters.preleveur_segment);
   if (filters.patient_period) qs.set('patient_period', filters.patient_period);
+  if (filters.q?.trim()) qs.set('q', filters.q.trim());
+  if (filters.cursor != null) qs.set('cursor', String(filters.cursor));
   return `/appointments?${qs.toString()}`;
 }
 
@@ -29,6 +31,8 @@ export type AppointmentsPagination = {
   total: number;
   pages: number;
   has_more: boolean;
+  /** Recherche (`q`) : position de reprise pour la page suivante. */
+  next_cursor?: number;
 };
 
 export async function fetchAppointmentsPaginated(
@@ -46,6 +50,7 @@ export async function fetchAppointmentsPaginated(
         pages?: number;
         total_pages?: number;
         has_more?: boolean;
+        next_cursor?: number;
       }
     | undefined;
   const page = p?.page ?? filters.page ?? 1;
@@ -55,7 +60,7 @@ export async function fetchAppointmentsPaginated(
   const has_more = p?.has_more ?? page < pages;
   return {
     appointments: res.data ?? [],
-    pagination: { page, limit, total, pages, has_more },
+    pagination: { page, limit, total, pages, has_more, next_cursor: p?.next_cursor },
   };
 }
 

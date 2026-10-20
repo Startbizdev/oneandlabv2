@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 import type { Appointment, NursePassageNursingItem, NursePassageSeriesInput, PassageTimeSlot } from '@oneandlab/shared-types';
 import {
   resolvePassageTimeSlotForAppointment,
@@ -102,7 +103,7 @@ export function buildAppointmentPassageUpdateBody(
   fd.availability = passageAvailabilityJson(timeSlot, customTime, timeRange);
 
   const dateYmd =
-    apt.scheduled_at?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+    apt.scheduled_at?.slice(0, 10) ?? dayjs().format('YYYY-MM-DD');
   const scheduledAt =
     timeSlot === 'all_day'
       ? `${dateYmd} 08:00:00`

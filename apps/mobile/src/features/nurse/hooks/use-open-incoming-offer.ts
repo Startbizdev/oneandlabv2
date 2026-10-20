@@ -29,12 +29,18 @@ export function useOpenIncomingOffer(onUnavailable: () => void) {
   return useCallback(
     (row: AppointmentListRow, apt: Appointment) => {
       if (!apt.id || !userId) return;
-      void openIncomingOffer(apt.id, 'nurse', userId, offerPreviewFromListRow(row)).then((result) => {
-        if (result.ok) return;
-        const message = OFFER_FAILURE_MESSAGES[result.reason];
-        if (message) toast(message.text, { type: message.type });
-        onUnavailable();
-      });
+      void openIncomingOffer(apt.id, 'nurse', userId, offerPreviewFromListRow(row))
+        .then((result) => {
+          if (result.ok) return;
+          const message = OFFER_FAILURE_MESSAGES[result.reason];
+          if (message) toast(message.text, { type: message.type });
+          onUnavailable();
+        })
+        .catch((error: unknown) => {
+          console.warn('[offer] ouverture de l’offre impossible', error);
+          const message = OFFER_FAILURE_MESSAGES.error;
+          if (message) toast(message.text, { type: message.type });
+        });
     },
     [onUnavailable, openIncomingOffer, toast, userId],
   );

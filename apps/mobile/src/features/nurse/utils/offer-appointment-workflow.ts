@@ -155,11 +155,15 @@ export async function snoozeOfferBatch(
   const ids = collectIncomingOfferIds(row, userId);
   if (!ids.length) return { ok: false, error: 'Aucune offre à reporter' };
 
-  for (const id of ids) {
-    const res = await snoozeOfferAppointment(id);
-    if (!res.success) {
-      return { ok: false, error: res.error ?? res.message ?? 'Impossible de reporter' };
+  try {
+    for (const id of ids) {
+      const res = await snoozeOfferAppointment(id);
+      if (!res.success) {
+        return { ok: false, error: res.error ?? res.message ?? 'Impossible de reporter' };
+      }
     }
+  } catch (e) {
+    return parseUpdateError(e);
   }
   return { ok: true, count: ids.length };
 }

@@ -34,16 +34,19 @@ final class StaffPatientHubSearch
     }
 
     /**
-     * @return array{items: list<array<string, mixed>>}
+     * Résultats triés par activité, paginés par `offset` : `has_more` indique une page suivante.
+     *
+     * @return array{items: list<array<string, mixed>>, has_more: bool, total: int}
      */
-    public function search(array $user, string $query, int $limit = 50): array
+    public function search(array $user, string $query, int $limit = 50, int $offset = 0): array
     {
         $role = (string) ($user['role'] ?? '');
         if (!in_array($role, ['nurse', 'pro'], true)) {
-            return ['items' => []];
+            return ['items' => [], 'has_more' => false, 'total' => 0];
         }
 
         $limit = max(1, min(80, $limit));
+        $offset = max(0, $offset);
         $q = $this->normalizeText($query);
         $patients = $this->loadScopedPatients($user);
         $patientMap = [];
@@ -52,7 +55,7 @@ final class StaffPatientHubSearch
         }
         $patientIds = array_keys($patientMap);
         if ($patientIds === []) {
-            return ['items' => []];
+            return ['items' => [], 'has_more' => false, 'total' => 0];
         }
 
         $matchedPatientIds = [];
@@ -85,7 +88,7 @@ final class StaffPatientHubSearch
 
         $items = array_merge($items, $relativeItems, $docItems, $exchangeItems);
 
-        return ['items' => $this->dedupeAndSort($items, $limit)];
+        return $this->dedupeAndSort($items, $limit, $offset);
     }
 
     /**
@@ -585,7 +588,10 @@ final class StaffPatientHubSearch
      * @param list<array<string, mixed>> $items
      * @return list<array<string, mixed>>
      */
-    private function dedupeAndSort(array $items, int $limit): array
+    /**
+     * @return array{items: list<array<string, mixed>>, has_more: bool, total: int}
+     */
+    private function dedupeAndSort(array $items, int $limit, int $offset): array
     {
         $byId = [];
         $docSlots = [];
@@ -619,17 +625,18 @@ final class StaffPatientHubSearch
         usort($unique, static function (array $a, array $b): int {
             $ta = strtotime((string) ($a['sort_at'] ?? '')) ?: 0;
             $tb = strtotime((string) ($b['sort_at'] ?? '')) ?: 0;
-            return $tb <=> $ta;
+            // Ordre total : les pages successives ne se chevauchent pas à date égale.
+            return ($tb <=> $ta) ?: strcmp((string) $a['id'], (string) $b['id']);
         });
 
         $out = [];
-        foreach (array_slice($unique, 0, $limit) as $item) {
+        foreach (array_slice($unique, $offset, $limit) as $item) {
             $item['activity_at'] = $item['sort_at'] ?? null;
             unset($item['sort_at']);
             $out[] = $item;
         }
 
-        return $out;
+        return ['items' => $out, 'has_more' => count($unique) > $offset + $limit, 'total' => count($unique)];
     }
 
     /**

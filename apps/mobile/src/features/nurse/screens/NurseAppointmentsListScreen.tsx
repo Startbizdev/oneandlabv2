@@ -1,12 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Platform,
   RefreshControl,
-  ScrollView,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+  type ListRenderItem,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { isNursePassageAppointment, isPendingIncomingOffer } from '@oneandlab/shared-utils';
@@ -33,6 +32,7 @@ import { useAppForegroundRefetch } from '@/lib/hooks/use-network-status';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useAuthStore } from '@/store/auth-store';
+import { useDebouncedValue } from '@/lib/hooks/use-debounced-value';
 import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { useAppColors } from '@/theme/use-app-colors';
 import {
@@ -46,21 +46,6 @@ import {
 import { isAppointmentPastForList } from '@/utils/patient-appointment-list';
 import { spacing, useStyles, type Theme } from '@/theme';
 
-function matchesSearch(apt: Appointment, q: string): boolean {
-  const s = q.toLowerCase().trim();
-  if (!s) return true;
-  const fd = apt.form_data as Record<string, unknown> | undefined;
-  const name = `${fd?.first_name ?? ''} ${fd?.last_name ?? ''}`.toLowerCase();
-  const phone = String(fd?.phone ?? '').toLowerCase();
-  const addr = String((fd?.address as { label?: string })?.label ?? apt.address ?? '').toLowerCase();
-  return (
-    name.includes(s) ||
-    phone.includes(s) ||
-    addr.includes(s) ||
-    (apt.category_name ?? '').toLowerCase().includes(s)
-  );
-}
-
 function rowKey(row: AppointmentListRow): string {
   return row.kind === 'batch' ? row.key : row.appointment.id;
 }
@@ -70,11 +55,11 @@ function isIncomingOfferRow(row: AppointmentListRow, userId: string | undefined)
   return apts.some((a) => a.status === 'pending' && isPendingIncomingOffer(a, userId));
 }
 
-/** Liste RDV infirmier — ScrollView natif (pattern PatientsListScreen). */
+/** Liste RDV infirmier — FlatList paginée (`onEndReached`, y compris sur une liste courte). */
 export function NurseAppointmentsListScreen() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<FlatList<AppointmentListRow>>(null);
   useScrollToTopOnPop(scrollRef);
   const fabClearance = useScreenFabScrollClearance();
 
@@ -84,6 +69,8 @@ export function NurseAppointmentsListScreen() {
   const [tab, setTab] = useState<NurseListTab>('soins');
   const [segment, setSegment] = useState<NurseSegment>('tous');
   const [search, setSearch] = useState('');
+  /** Recherche faite par le serveur sur tous les RDV (et pas seulement les pages chargées). */
+  const debouncedSearch = useDebouncedValue(search).trim();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const apiSegment = segment === 'tous' ? undefined : normalizeNurseSegment(segment);
@@ -93,14 +80,12 @@ export function NurseAppointmentsListScreen() {
     nurse_segment: apiSegment,
     patient_period: nurseSegmentPeriod(segment),
     limit: APPOINTMENTS_LIST_PAGE_SIZE,
+    ...(debouncedSearch ? { q: debouncedSearch } : {}),
   });
 
-  const data = useMemo(
-    () => flattenInfiniteAppointments(query.data?.pages),
-    [query.data?.pages],
-  );
+  const data = useMemo(() => flattenInfiniteAppointments(query.data?.pages), [query.data?.pages]);
 
-  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = query;
+  const { refetch, fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = query;
   const { refreshing, onRefresh } = useManualRefresh(refetch);
 
   const filtered = useMemo(() => {
@@ -108,9 +93,8 @@ export function NurseAppointmentsListScreen() {
     if (segment !== 'historique') {
       list = list.filter((a) => !isAppointmentPastForList(a));
     }
-    if (search.trim()) list = list.filter((a) => matchesSearch(a, search));
     return list;
-  }, [data, search, segment]);
+  }, [data, segment]);
 
   const sortDirection = segment === 'historique' ? ('past' as const) : ('upcoming' as const);
 
@@ -147,22 +131,17 @@ export function NurseAppointmentsListScreen() {
   const isInitialLoading = query.isPending && !query.data;
   const isInitialError = query.isError && !query.data;
 
-  const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const canLoadMore = Boolean(hasNextPage) && !isFetchingNextPage && !isFetchNextPageError;
 
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-      const pad = Math.max(96, contentSize.height * 0.05);
-      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - pad) {
-        loadMore();
-      }
-    },
-    [loadMore],
-  );
+  const loadMore = useCallback(() => {
+    if (canLoadMore) void fetchNextPage();
+  }, [canLoadMore, fetchNextPage]);
+
+  /** Les RDV passés sont masqués côté client : on enchaîne les pages tant que l'écran n'est pas rempli. */
+  useEffect(() => {
+    if (!query.data || filtered.length >= APPOINTMENTS_LIST_PAGE_SIZE) return;
+    loadMore();
+  }, [query.data, filtered.length, loadMore]);
 
   const isDemandesSegment = segment === 'en_attente';
 
@@ -185,10 +164,36 @@ export function NurseAppointmentsListScreen() {
     [openOffer, router, user?.id],
   );
 
-  const emptyTitle = isDemandesSegment ? 'Aucune demande' : 'Aucun rendez-vous';
-  const emptyDescription = isDemandesSegment
-    ? 'Les nouvelles demandes s’afficheront ici.'
-    : 'Les soins acceptés s’afficheront ici.';
+  const renderRow: ListRenderItem<AppointmentListRow> = useCallback(
+    ({ item: row, index }) => {
+      const isOffer = isDemandesSegment && isIncomingOfferRow(row, user?.id);
+      return (
+        <AppointmentListRowCard
+          row={row}
+          index={index}
+          role={isOffer ? 'demande' : 'nurse'}
+          viewerId={user?.id}
+          onPress={(apt) => onRowPress(row, apt, isOffer)}
+          footer={
+            row.kind === 'single' && isNursePassageAppointment(row.appointment) ? (
+              <View style={styles.badgeRow}>
+                <Badge label="Passage" variant="primary" size="sm" />
+              </View>
+            ) : undefined
+          }
+        />
+      );
+    },
+    [isDemandesSegment, onRowPress, styles.badgeRow, user?.id],
+  );
+
+  const searching = debouncedSearch.length > 0;
+  const emptyTitle = searching ? 'Aucun résultat' : isDemandesSegment ? 'Aucune demande' : 'Aucun rendez-vous';
+  const emptyDescription = searching
+    ? 'Essayez un autre nom, téléphone, soin ou adresse.'
+    : isDemandesSegment
+      ? 'Les nouvelles demandes s’afficheront ici.'
+      : 'Les soins acceptés s’afficheront ici.';
 
   return (
     <View style={styles.screen}>
@@ -202,75 +207,55 @@ export function NurseAppointmentsListScreen() {
           chips={filterChips}
         />
       </View>
-      <ScrollView
-        ref={scrollRef}
-        style={styles.list}
-        collapsable={false}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        nestedScrollEnabled={Platform.OS === 'android'}
-        contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.primary}
-          />
-        }
-        onScroll={handleScroll}
-        scrollEventThrottle={200}
-      >
-
-        {isInitialLoading ? (
+      {isInitialLoading ? (
+        <View style={styles.skeleton}>
           <SkeletonList count={4} itemHeight={116} gap={spacing[3]} />
-        ) : isInitialError ? (
-          <View style={styles.emptyWrap}>
-            <ErrorState
-              title="Rendez-vous indisponibles"
-              error={query.error}
-              onRetry={() => void refetch()}
-            />
-          </View>
-        ) : displayRows.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <EmptyState
-              title={emptyTitle}
-              description={emptyDescription}
-              illustration={isDemandesSegment ? 'requests' : 'appointments'}
-            />
-          </View>
-        ) : (
-          <View style={styles.rows}>
-            {displayRows.map((row, index) => {
-              const isOffer = isDemandesSegment && isIncomingOfferRow(row, user?.id);
-              return (
-                <AppointmentListRowCard
-                  key={rowKey(row)}
-                  row={row}
-                  index={index}
-                  role={isOffer ? 'demande' : 'nurse'}
-                  viewerId={user?.id}
-                  onPress={(apt) => onRowPress(row, apt, isOffer)}
-                  footer={
-                    row.kind === 'single' && isNursePassageAppointment(row.appointment) ? (
-                      <View style={styles.badgeRow}>
-                        <Badge label="Passage" variant="primary" size="sm" />
-                      </View>
-                    ) : undefined
-                  }
+        </View>
+      ) : isInitialError ? (
+        <View style={styles.emptyWrap}>
+          <ErrorState
+            title="Rendez-vous indisponibles"
+            error={query.error}
+            onRetry={() => void refetch()}
+          />
+        </View>
+      ) : (
+        <FlatList
+          ref={scrollRef}
+          style={styles.list}
+          data={displayRows}
+          keyExtractor={rowKey}
+          renderItem={renderRow}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={Platform.OS === 'android'}
+          contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            isFetchingNextPage || hasNextPage ? null : (
+              <View style={styles.emptyWrap}>
+                <EmptyState
+                  title={emptyTitle}
+                  description={emptyDescription}
+                  illustration={searching ? 'search' : isDemandesSegment ? 'requests' : 'appointments'}
                 />
-              );
-            })}
-          </View>
-        )}
-
-        {isFetchingNextPage ? (
-          <View style={styles.footerLoader}>
-            <ActivityIndicator color={c.primary} />
-          </View>
-        ) : null}
-      </ScrollView>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator color={c.primary} />
+              </View>
+            ) : null
+          }
+        />
+      )}
 
       <AppointmentsFilterSheet
         visible={sheetOpen}
@@ -295,17 +280,8 @@ export function NurseAppointmentsListScreen() {
 
 function buildStyles({ colors: c }: Theme) {
   return {
-    screen: {
-      minWidth: 0,
-      minHeight: 0,
-      flex: 1,
-      backgroundColor: c.background,
-    },
-    list: {
-      minWidth: 0,
-      minHeight: 0,
-      flex: 1,
-    },
+    screen: { minWidth: 0, minHeight: 0, flex: 1, backgroundColor: c.background },
+    list: { minWidth: 0, minHeight: 0, flex: 1 },
     listContent: {
       minWidth: 0,
       paddingHorizontal: spacing[4],
@@ -318,13 +294,8 @@ function buildStyles({ colors: c }: Theme) {
       width: '100%' as const,
       paddingHorizontal: spacing[4],
     },
-    rows: {
-      minWidth: 0,
-      alignSelf: 'stretch' as const,
-    },
-    badgeRow: {
-      flexDirection: 'row' as const,
-    },
+    skeleton: { minWidth: 0, flex: 1, paddingHorizontal: spacing[4], paddingTop: spacing[2] },
+    badgeRow: { flexDirection: 'row' as const },
     emptyWrap: {
       minWidth: 0,
       flexGrow: 1,

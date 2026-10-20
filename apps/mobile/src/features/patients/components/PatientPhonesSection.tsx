@@ -72,7 +72,10 @@ export function PatientPhonesSection({ patientId, canEdit, onCall }: Props) {
                 <IconActionButton
                   label={`Supprimer le numéro ${labelFr(entry.label)}`}
                   variant="ghost"
-                  onPress={() => setToDelete(entry)}
+                  onPress={() => {
+                    deleteMut.reset();
+                    setToDelete(entry);
+                  }}
                 >
                   <Trash2 size={iconSize.sm} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />
                 </IconActionButton>
@@ -107,7 +110,13 @@ export function PatientPhonesSection({ patientId, canEdit, onCall }: Props) {
               loading={deleteMut.isPending}
               onPress={() => toDelete && deleteMut.mutate(toDelete.id)}
             />
-            <Button title="Annuler" variant="ghost" fullWidth onPress={() => setToDelete(null)} />
+            <Button
+              title="Annuler"
+              variant="ghost"
+              fullWidth
+              disabled={deleteMut.isPending}
+              onPress={() => setToDelete(null)}
+            />
           </Stack>
         }
       >

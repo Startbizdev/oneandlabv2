@@ -1,13 +1,14 @@
-import { Fragment, useCallback, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { StaffHubPatientItem, StaffHubSearchItem } from '@oneandlab/shared-types';
 import { useScreenFabScrollClearance } from '@/components/ui/ScreenFab';
-import { SceneScrollView } from '@/components/navigation/SceneScrollView';
 import { queryKeys } from '@/lib/query-keys';
+import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
+import { useAppColors } from '@/theme/use-app-colors';
 import { deletePatient } from '../api/patients.service';
-import { fetchStaffPatientHubSearch } from '../api/staff-hub-search.service';
+import { useInfiniteStaffHubSearch } from '../hooks/use-infinite-staff-hub-search';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { DeletePatientConfirmSheet } from '../components/DeletePatientConfirmSheet';
@@ -40,6 +41,9 @@ export function PatientsListScreen({
   onCreateOpenChange: setCreateOpen,
 }: Props) {
   const styles = useStyles(buildStyles);
+  const c = useAppColors();
+  const listRef = useRef<FlatList<StaffHubSearchItem>>(null);
+  useScrollToTopOnPop(listRef);
   const fabClearance = useScreenFabScrollClearance();
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
@@ -51,18 +55,13 @@ export function PatientsListScreen({
   const debouncedSearch = useDebouncedValue(search);
   const hasQuery = search.trim().length > 0;
 
-  const hubQ = useQuery({
-    queryKey: queryKeys.patients.hubSearch(debouncedSearch.trim()),
-    queryFn: async () => {
-      const res = await fetchStaffPatientHubSearch(debouncedSearch.trim());
-      if (!res.success) throw new Error(res.error ?? 'Recherche impossible');
-      return res.data?.items ?? [];
-    },
-    staleTime: 15_000,
-  });
-
-  const items = hubQ.data ?? [];
+  const { query: hubQ, items, total } = useInfiniteStaffHubSearch(debouncedSearch);
   const { refreshing, onRefresh } = useManualRefresh(hubQ.refetch);
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isFetchNextPageError } = hubQ;
+  const canLoadMore = Boolean(hasNextPage) && !isFetchingNextPage && !isFetchNextPageError;
+  const loadMore = useCallback(() => {
+    if (canLoadMore) void fetchNextPage();
+  }, [canLoadMore, fetchNextPage]);
 
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
@@ -124,63 +123,87 @@ export function PatientsListScreen({
   );
 
   const countLabel = hasQuery
-    ? `${items.length} résultat${items.length > 1 ? 's' : ''}`
-    : `${items.length} patient${items.length > 1 ? 's' : ''}`;
+    ? `${total} résultat${total > 1 ? 's' : ''}`
+    : `${total} patient${total > 1 ? 's' : ''}`;
+
+  /** Une page peut ne pas remplir l'écran (recherche mixte) : on charge la suivante. */
+  useEffect(() => {
+    if (hubQ.data && items.length < 20) loadMore();
+  }, [hubQ.data, items.length, loadMore]);
+
+  const lastIndex = items.length - 1;
+  const renderItem: ListRenderItem<StaffHubSearchItem> = useCallback(
+    ({ item, index }) => (
+      <View style={[styles.cardRow, index === 0 && styles.cardRowFirst, index === lastIndex && styles.cardRowLast]}>
+        {index > 0 ? <View style={styles.rowDivider} /> : null}
+        <StaffPatientHubListRow
+          item={item}
+          onPress={() => onItemPress(item)}
+          onLongPress={item.kind === 'patient' ? () => openPatientMenu(item) : undefined}
+        />
+      </View>
+    ),
+    [lastIndex, onItemPress, openPatientMenu, styles],
+  );
+
+  const header = (
+    <View style={styles.listSection}>
+      <AppointmentsListFilterBar
+        embedded
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Patient, document, échange…"
+      />
+      {items.length > 0 ? (
+        <AppText variant="secondary" style={styles.count}>
+          {countLabel}
+        </AppText>
+      ) : null}
+    </View>
+  );
+
+  const empty = hubQ.isLoading ? (
+    <SkeletonPatientList count={8} />
+  ) : hubQ.isError && !hubQ.data ? (
+    <View style={styles.emptyWrap}>
+      <ErrorState title="Patients indisponibles" error={hubQ.error} onRetry={() => void hubQ.refetch()} />
+    </View>
+  ) : (
+    <View style={styles.emptyWrap}>
+      {hasQuery ? (
+        <EmptyState illustration="search" title="Aucun résultat" description="Essayez un autre nom ou mot-clé." />
+      ) : (
+        <EmptyState
+          illustration="patients"
+          title="Aucun patient"
+          description="Ajoutez un patient pour gérer ses rendez-vous et documents."
+          actionLabel="Ajouter un patient"
+          onAction={() => setCreateOpen(true)}
+        />
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.screen}>
-      <SceneScrollView
+      <FlatList
+        ref={listRef}
+        style={styles.list}
+        data={items}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        ListFooterComponent={
+          isFetchingNextPage ? <ActivityIndicator style={styles.footerLoader} color={c.primary} /> : null
+        }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.listContent, { paddingBottom: spacing[4] + fabClearance }]}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-      >
-        <AppointmentsListFilterBar
-          embedded
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Patient, document, échange…"
-        />
-
-        {hubQ.isLoading ? (
-          <SkeletonPatientList count={8} />
-        ) : hubQ.isError && !hubQ.data ? (
-          <View style={styles.emptyWrap}>
-            <ErrorState title="Patients indisponibles" error={hubQ.error} onRetry={() => void hubQ.refetch()} />
-          </View>
-        ) : items.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            {hasQuery ? (
-              <EmptyState illustration="search" title="Aucun résultat" description="Essayez un autre nom ou mot-clé." />
-            ) : (
-              <EmptyState
-                illustration="patients"
-                title="Aucun patient"
-                description="Ajoutez un patient pour gérer ses rendez-vous et documents."
-                actionLabel="Ajouter un patient"
-                onAction={() => setCreateOpen(true)}
-              />
-            )}
-          </View>
-        ) : (
-          <View style={styles.listSection}>
-            <AppText variant="secondary" style={styles.count}>
-              {countLabel}
-            </AppText>
-            <View style={styles.listCard}>
-              {items.map((item, index) => (
-                <Fragment key={item.id}>
-                  {index > 0 ? <View style={styles.rowDivider} /> : null}
-                  <StaffPatientHubListRow
-                    item={item}
-                    onPress={() => onItemPress(item)}
-                    onLongPress={item.kind === 'patient' ? () => openPatientMenu(item) : undefined}
-                  />
-                </Fragment>
-              ))}
-            </View>
-          </View>
-        )}
-      </SceneScrollView>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+      />
 
       <CreatePatientModal
         visible={createOpen}
@@ -224,20 +247,37 @@ function buildStyles({ colors: c }: Theme) {
       paddingTop: spacing[2],
       flexGrow: 1,
     },
+    list: {
+      minWidth: 0,
+      flex: 1,
+    },
     listSection: {
       gap: spacing[2],
+      marginBottom: spacing[2],
+    },
+    footerLoader: {
+      paddingVertical: spacing[4],
     },
     count: {
       paddingHorizontal: spacing[1],
     },
-    listCard: {
-      width: '100%' as const,
-      alignSelf: 'stretch' as const,
+    /** Lignes d'une même carte : bords latéraux partout, arrondis en tête et en fin de liste. */
+    cardRow: {
       backgroundColor: c.surface,
-      borderRadius: radius.lg,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
       borderColor: c.cardBorder,
       overflow: 'hidden' as const,
+    },
+    cardRowFirst: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
+    },
+    cardRowLast: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomLeftRadius: radius.lg,
+      borderBottomRightRadius: radius.lg,
     },
     rowDivider: {
       height: StyleSheet.hairlineWidth,

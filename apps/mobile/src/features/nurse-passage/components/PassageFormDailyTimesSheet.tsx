@@ -1,6 +1,6 @@
 import { hexToRgba } from '@/theme/color-utils';
 import { useAppColors } from '@/theme/use-app-colors';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Plus, X } from 'lucide-react-native';
 import { SheetModal } from '@/components/ui/SheetModal';
@@ -30,7 +30,10 @@ import {
 
 const ALL_DAY_SLOT: PassageTimeSlot = 'all_day';
 const CHIP_OPTIONS: PassageTimeSlot[] = [...PRESET_DAILY_SLOTS, ALL_DAY_SLOT];
-const DEFAULT_ENTRIES: PassageDailyTimeSlot[] = [{ time_slot: 'morning', custom_time: null }];
+const DEFAULT_SLOTS: PassageDailyTimeSlot[] = [{ time_slot: 'morning', custom_time: null }];
+
+/** Clé locale stable : un retrait au milieu ne décale pas l'état des sélecteurs d'heure suivants. */
+type Entry = { key: number; slot: PassageDailyTimeSlot };
 
 type Props = {
   visible: boolean;
@@ -39,8 +42,8 @@ type Props = {
   onConfirm: (slots: PassageDailyTimeSlot[]) => void;
 };
 
-function nextFreeTime(entries: PassageDailyTimeSlot[]): string {
-  const taken = new Set(entries.map(dailySlotTime));
+function nextFreeTime(entries: Entry[]): string {
+  const taken = new Set(entries.map((e) => dailySlotTime(e.slot)));
   for (let hour = 9; hour < 24; hour++) {
     const candidate = `${String(hour).padStart(2, '0')}:00`;
     if (!taken.has(candidate)) return candidate;
@@ -51,40 +54,42 @@ function nextFreeTime(entries: PassageDailyTimeSlot[]): string {
 export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
-  const [entries, setEntries] = useState<PassageDailyTimeSlot[]>(DEFAULT_ENTRIES);
+  const nextKey = useRef(0);
+  const toEntry = (slot: PassageDailyTimeSlot): Entry => ({ key: nextKey.current++, slot });
+  const [entries, setEntries] = useState<Entry[]>(() => DEFAULT_SLOTS.map(toEntry));
 
   useEffect(() => {
     if (!visible) return;
-    setEntries(slots.length > 0 ? slots : DEFAULT_ENTRIES);
+    setEntries((slots.length > 0 ? slots : DEFAULT_SLOTS).map((slot) => ({ key: nextKey.current++, slot })));
   }, [visible, slots]);
 
-  const isAllDay = entries.some((e) => e.time_slot === ALL_DAY_SLOT);
+  const isAllDay = entries.some((e) => e.slot.time_slot === ALL_DAY_SLOT);
 
   const toggleChip = (id: PassageTimeSlot) => {
     setEntries((prev) => {
-      if (id === ALL_DAY_SLOT) return [{ time_slot: ALL_DAY_SLOT, custom_time: null }];
-      const timed = prev.filter((e) => e.time_slot !== ALL_DAY_SLOT);
-      if (timed.some((e) => e.time_slot === id)) {
-        const remaining = timed.filter((e) => e.time_slot !== id);
+      if (id === ALL_DAY_SLOT) return [toEntry({ time_slot: ALL_DAY_SLOT, custom_time: null })];
+      const timed = prev.filter((e) => e.slot.time_slot !== ALL_DAY_SLOT);
+      if (timed.some((e) => e.slot.time_slot === id)) {
+        const remaining = timed.filter((e) => e.slot.time_slot !== id);
         return remaining.length > 0 ? remaining : timed;
       }
-      return [...timed, { time_slot: id, custom_time: null }];
+      return [...timed, toEntry({ time_slot: id, custom_time: null })];
     });
   };
 
   const addExactTime = () => {
     setEntries((prev) => {
-      const timed = prev.filter((e) => e.time_slot !== ALL_DAY_SLOT);
-      return [...timed, { time_slot: 'custom', custom_time: nextFreeTime(timed) }];
+      const timed = prev.filter((e) => e.slot.time_slot !== ALL_DAY_SLOT);
+      return [...timed, toEntry({ time_slot: 'custom', custom_time: nextFreeTime(timed) })];
     });
   };
 
-  const updateTime = (index: number, hhmm: string) => {
-    setEntries((prev) => prev.map((e, i) => (i === index ? withDailySlotTime(e, hhmm) : e)));
+  const updateTime = (key: number, hhmm: string) => {
+    setEntries((prev) => prev.map((e) => (e.key === key ? { key, slot: withDailySlotTime(e.slot, hhmm) } : e)));
   };
 
-  const removeEntry = (index: number) => {
-    setEntries((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  const removeEntry = (key: number) => {
+    setEntries((prev) => (prev.length > 1 ? prev.filter((e) => e.key !== key) : prev));
   };
 
   return (
@@ -97,7 +102,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
         <Button
           title="Valider"
           onPress={() => {
-            onConfirm(normalizeDailySlots(entries));
+            onConfirm(normalizeDailySlots(entries.map((e) => e.slot)));
             onClose();
           }}
         />
@@ -106,7 +111,7 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
       <View style={styles.body}>
         <View style={styles.presetWrap}>
           {CHIP_OPTIONS.map((id) => {
-            const on = entries.some((e) => e.time_slot === id);
+            const on = entries.some((e) => e.slot.time_slot === id);
             return (
               <Pressable
                 key={id}
@@ -131,20 +136,20 @@ export function PassageFormDailyTimesSheet({ visible, slots, onClose, onConfirm 
 
         {isAllDay ? null : (
           <View style={styles.times}>
-            {entries.map((entry, index) => {
+            {entries.map(({ key, slot: entry }) => {
               const label = entry.time_slot === 'custom' ? 'Heure précise' : PASSAGE_TIME_SLOT_LABELS[entry.time_slot];
               return (
-                <Row key={`${entry.time_slot}-${index}`} align="end">
+                <Row key={key} align="end">
                   <View style={styles.timePicker}>
                     <PassageTimePicker
                       label={label}
                       value={dailySlotTime(entry) ?? ''}
-                      onChange={(hhmm) => updateTime(index, hhmm)}
+                      onChange={(hhmm) => updateTime(key, hhmm)}
                     />
                   </View>
                   {entries.length > 1 ? (
                     <Pressable
-                      onPress={() => removeEntry(index)}
+                      onPress={() => removeEntry(key)}
                       style={styles.removeBtn}
                       accessibilityRole="button"
                       accessibilityLabel={`Retirer ${label}`}

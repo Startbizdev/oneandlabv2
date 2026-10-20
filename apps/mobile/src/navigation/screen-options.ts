@@ -1,6 +1,6 @@
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { radius, type AppColors, type Theme } from '@/theme';
-import { getSheet } from '@/components/ui/sheet/sheet-store';
+import { getSheet, type SheetDetents } from '@/components/ui/sheet/sheet-store';
 
 function sceneContentStyle(c: AppColors): NativeStackNavigationOptions['contentStyle'] {
   return { minWidth: 0, flex: 1, backgroundColor: c.background };
@@ -39,10 +39,11 @@ export function sheetScreenOptions(
   params: object | undefined,
 ): NativeStackNavigationOptions {
   const entry = getSheet(sheetIdFromParams(params));
+  const detents = entry?.detents ?? 'fitToContents';
   return {
     headerShown: false,
     presentation: 'formSheet',
-    sheetAllowedDetents: entry?.detents ?? 'fitToContents',
+    sheetAllowedDetents: detents,
     /** Ouvre au palier le plus haut. Android fige les paliers au premier layout. */
     sheetInitialDetentIndex: 'last',
     /**
@@ -53,8 +54,19 @@ export function sheetScreenOptions(
     sheetGrabberVisible: true,
     sheetCornerRadius: radius['2xl'],
     gestureEnabled: entry?.dismissible ?? true,
-    contentStyle: { flex: 1, width: '100%', backgroundColor: c.surface },
+    contentStyle: sheetContentStyle(c, detents),
   };
+}
+
+/**
+ * Ajustée au contenu : la hauteur vient des enfants, aucun `flex` (sinon taille circulaire).
+ * Palier fixe : le conteneur remplit la sheet. Sur iOS (RN < 0.82) react-native-screens le positionne
+ * en absolu sans `bottom` : on l'ancre en bas pour que la colonne en-tête / scroll / pied ait la hauteur
+ * de la sheet et que le pied reste visible.
+ */
+function sheetContentStyle(c: AppColors, detents: SheetDetents): NativeStackNavigationOptions['contentStyle'] {
+  if (detents === 'fitToContents') return { width: '100%', backgroundColor: c.surface };
+  return { flex: 1, width: '100%', bottom: 0, backgroundColor: c.surface };
 }
 
 /** Tutoriel startup — plein écran, sans header stack. */

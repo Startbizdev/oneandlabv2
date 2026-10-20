@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { layoutRowBetween } from '@/theme/layout-styles';
 import { useAppColors } from '@/theme/use-app-colors';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Check, RotateCcw } from 'lucide-react-native';
+import { Button } from '@/components/ui/Button';
 import { SheetModal } from '@/components/ui/SheetModal';
-import { Row } from '@/components/layout/primitives';
+import { Row, Stack } from '@/components/layout/primitives';
 import type { TourSortMode } from '../api/nurse-tour.service';
 import { ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
@@ -32,6 +34,12 @@ type Props = {
 export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect, onReset }: Props) {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
+  /** Mode choisi alors que l'ordre manuel est verrouillé : confirmé dans le pied de la sheet. */
+  const [pendingMode, setPendingMode] = useState<TourSortMode | null>(null);
+
+  useEffect(() => {
+    if (!visible) setPendingMode(null);
+  }, [visible]);
 
   const handleSelect = (mode: TourSortMode) => {
     if (mode === active) {
@@ -39,21 +47,7 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
       return;
     }
     if (locked && mode !== 'manual') {
-      Alert.alert(
-        'Remplacer votre ordre ?',
-        'Votre ordre manuel sera remplacé par une optimisation.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Confirmer',
-            style: 'destructive',
-            onPress: () => {
-              onSelect(mode, true);
-              onClose();
-            },
-          },
-        ],
-      );
+      setPendingMode(mode);
       return;
     }
     onSelect(mode, false);
@@ -66,6 +60,26 @@ export function TourSortFilterSheet({ visible, active, locked, onClose, onSelect
       onClose={onClose}
       title="Ordre des passages"
       subtitle={`Actuel : ${tourSortModeLabel(active)}`}
+      footer={
+        pendingMode ? (
+          <Stack gap={spacing[2]}>
+            <AppText variant="secondary" style={styles.confirmText}>
+              Votre ordre manuel sera remplacé par le tri « {tourSortModeLabel(pendingMode)} ».
+            </AppText>
+            <Button
+              title="Remplacer l’ordre"
+              variant="destructive"
+              size="lg"
+              fullWidth
+              onPress={() => {
+                onSelect(pendingMode, true);
+                onClose();
+              }}
+            />
+            <Button title="Annuler" variant="ghost" fullWidth onPress={() => setPendingMode(null)} />
+          </Stack>
+        ) : undefined
+      }
     >
       <View style={styles.list}>
         {TOUR_SORT_MODES.map((mode) => {
@@ -136,5 +150,6 @@ function buildStyles({ fontSize }: Theme) {
       alignItems: 'center' as const,
     },
     resetText: { ...font.semiBold, fontSize: fontSize.sm },
+    confirmText: { textAlign: 'center' as const },
   };
 }

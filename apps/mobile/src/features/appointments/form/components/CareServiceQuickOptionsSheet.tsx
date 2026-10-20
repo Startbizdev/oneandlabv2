@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { View } from 'react-native';
 import { FilterOptionChips } from '@/components/ui/FilterOptionChips';
 import {
@@ -15,6 +15,7 @@ import type { SelectedServiceInput } from '@oneandlab/shared-utils';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useFormScroll } from '@/components/layout/form-scroll-context';
 import type { CareCategory, CareCategoryOption } from '@/features/categories/api/categories.service';
 import type { BookingServiceFormSlice } from '../utils/booking-service-form-slice';
 import { resolveRdvCareDisplayLabel } from '@/utils/rdv-care-display-label';
@@ -44,6 +45,11 @@ interface Props {
   embedded?: boolean;
   /** Libellé du bouton de confirmation (défaut : « Valider et ajouter »). */
   confirmLabel?: string;
+  /**
+   * Intégré : la sheet parente affiche le bouton dans son pied fixe et appelle cette action.
+   * Sans elle, le bouton reste en fin de formulaire.
+   */
+  confirmRef?: RefObject<(() => void) | null>;
   onClose: () => void;
   onConfirm: (payload: { service: SelectedServiceInput; slice: BookingServiceFormSlice }) => void;
 }
@@ -80,10 +86,12 @@ export function CareServiceQuickOptionsSheet({
   onlyCategoryOptions,
   embedded = false,
   confirmLabel = 'Valider et ajouter',
+  confirmRef,
   onClose,
   onConfirm,
 }: Props) {
   const styles = useStyles(buildStyles);
+  const formScroll = useFormScroll();
   const [localError, setLocalError] = useState('');
   const [careOptions, setCareOptions] = useState<Record<string, string | number>>({});
   const [bloodTestType, setBloodTestType] = useState('single');
@@ -179,6 +187,8 @@ export function CareServiceQuickOptionsSheet({
     const err = validate();
     if (err) {
       setLocalError(err);
+      /** L'erreur s'affiche en tête du formulaire, loin du bouton : la ramener à l'écran. */
+      formScroll?.scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
     if (!category) return;
@@ -342,12 +352,20 @@ export function CareServiceQuickOptionsSheet({
 
   const confirmButton = <Button title={confirmLabel} onPress={handleConfirm} fullWidth size="lg" />;
 
+  useEffect(() => {
+    if (!confirmRef) return undefined;
+    confirmRef.current = isOpen ? handleConfirm : null;
+    return () => {
+      confirmRef.current = null;
+    };
+  });
+
   if (embedded) {
     if (!isOpen) return null;
     return (
       <View style={styles.embeddedBody}>
         {formBody}
-        <View style={styles.sheetFooter}>{confirmButton}</View>
+        {confirmRef ? null : <View style={styles.sheetFooter}>{confirmButton}</View>}
       </View>
     );
   }

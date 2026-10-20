@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Row } from '@/components/layout/primitives';
 import { ChevronDown } from 'lucide-react-native';
 import { SheetModal } from './SheetModal';
@@ -90,16 +90,8 @@ export function SelectField({
       </Pressable>
 
       {inSheet && open ? (
-        <View style={styles.inlinePanel}>
-          <ScrollView
-            style={styles.inlineList}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {optionItems}
-          </ScrollView>
-        </View>
+        // La sheet parente défile déjà : options en vues simples.
+        <View style={styles.inlinePanel}>{optionItems}</View>
       ) : null}
 
       {error ? (
@@ -114,9 +106,7 @@ export function SelectField({
           onClose={() => setOpen(false)}
           title={sheetTitle ?? label}
         >
-          <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
-            {optionItems}
-          </ScrollView>
+          <View>{optionItems}</View>
         </SheetModal>
       ) : null}
     </View>
@@ -158,7 +148,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       backgroundColor: c.surface,
       overflow: 'hidden' as const,
     },
-    inlineList: { maxHeight: 220 },
     triggerText: {
       minWidth: 0,
       flex: 1,
@@ -167,7 +156,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       color: c.textPrimary,
     },
     placeholder: { color: c.textTertiary },
-    list: { maxHeight: 360 },
     item: {
       minHeight: FIELD_MIN_HEIGHT,
       justifyContent: 'center' as const,

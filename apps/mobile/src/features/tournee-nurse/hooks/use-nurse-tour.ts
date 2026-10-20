@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { moveTourStopWithinSlot } from '@oneandlab/shared-utils';
+import { useAppActive } from '@/lib/hooks/use-app-active';
 import {
   fetchNurseTourSummary,
   optimizeNurseTour,
@@ -12,16 +13,28 @@ import {
   type TourSortMode,
 } from '../api/nurse-tour.service';
 import {
+  NURSE_TOUR_QUERY_ROOT,
   NURSE_TOUR_STALE_MS,
   NURSE_TOUR_SUMMARY_QUERY_ROOT,
   findNextTourStop,
   nurseTourQueryKey,
   nurseTourQueryOptions,
+  todayTourDate,
   withDerivedSummary,
 } from './nurse-tour-query';
 import { useTourOrigin } from './use-tour-origin';
 
 const FORWARD_SUMMARY_DAYS = 21;
+
+/** Date du jour recalculée au retour au premier plan : l'app peut rester ouverte après minuit. */
+export function useTodayTourDate(): string {
+  const appActive = useAppActive();
+  const [today, setToday] = useState(todayTourDate);
+  useEffect(() => {
+    if (appActive) setToday(todayTourDate());
+  }, [appActive]);
+  return today;
+}
 
 export function useNurseTour(date: string) {
   const qc = useQueryClient();
@@ -49,25 +62,41 @@ export function useNurseTour(date: string) {
     }
   }, [date, getOrigin, qc]);
 
+  /** Tournée du jour renvoyée par l'API ; les autres jours et les pastilles du bandeau sont invalidés. */
   const applyTour = useCallback(
     (data: NurseTourPayload) => {
-      qc.setQueryData(nurseTourQueryKey(date), data);
+      const key = nurseTourQueryKey(date);
+      qc.setQueryData(key, data);
+      void qc.invalidateQueries({
+        queryKey: NURSE_TOUR_QUERY_ROOT,
+        predicate: (query) => query.queryKey[1] !== key[1],
+      });
+      void qc.invalidateQueries({ queryKey: NURSE_TOUR_SUMMARY_QUERY_ROOT });
     },
     [date, qc],
   );
 
+  /** Déplacements en file : chaque appui part de l'ordre à jour, pas de celui capturé au rendu. */
+  const moveChainRef = useRef<Promise<void>>(Promise.resolve());
+
   const moveStop = useCallback(
-    async (stopId: string, direction: 'up' | 'down') => {
-      if (!tour) return;
-      const reordered = moveTourStopWithinSlot(tour.stops, stopId, direction);
-      if (!reordered) return;
-      const updated = await patchNurseTourOrder(
-        date,
-        reordered.map((s) => s.appointment_id),
-      );
-      applyTour(updated);
+    (stopId: string, direction: 'up' | 'down') => {
+      const run = async () => {
+        const current = qc.getQueryData<NurseTourPayload>(nurseTourQueryKey(date));
+        if (!current) return;
+        const reordered = moveTourStopWithinSlot(current.stops, stopId, direction);
+        if (!reordered) return;
+        const updated = await patchNurseTourOrder(
+          date,
+          reordered.map((s) => s.appointment_id),
+        );
+        applyTour(updated);
+      };
+      const next = moveChainRef.current.then(run);
+      moveChainRef.current = next.catch(() => undefined);
+      return next;
     },
-    [applyTour, date, tour],
+    [applyTour, date, qc],
   );
 
   const optimize = useCallback(

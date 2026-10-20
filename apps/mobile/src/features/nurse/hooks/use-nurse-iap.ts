@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getAvailablePurchases,
+  getPendingTransactionsIOS,
   useIAP,
   type Purchase,
 } from 'expo-iap';
@@ -52,6 +53,21 @@ async function verifyPurchaseOnServer(purchase: Purchase): Promise<NurseIapSubsc
   throw new Error('IAP disponible uniquement sur iOS et Android');
 }
 
+/** Achats payés mais jamais finalisés (validation serveur échouée, app fermée…). */
+async function fetchUnfinishedPurchases(): Promise<Purchase[]> {
+  if (Platform.OS === 'ios') {
+    return getPendingTransactionsIOS();
+  }
+  if (Platform.OS === 'android') {
+    const purchases = await getAvailablePurchases();
+    // Non acquitté sous 3 jours = remboursé automatiquement par Google Play.
+    return purchases.filter(
+      (p) => p.purchaseState === 'purchased' && 'isAcknowledgedAndroid' in p && p.isAcknowledgedAndroid === false,
+    );
+  }
+  return [];
+}
+
 export function useNurseIap() {
   const qc = useQueryClient();
   const { show: toast } = useToast();
@@ -59,6 +75,10 @@ export function useNurseIap() {
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [storeLoading, setStoreLoading] = useState(false);
   const finishRef = useRef<((purchase: Purchase) => Promise<void>) | null>(null);
+  const retryingRef = useRef(false);
+  // Achat ou restauration en cours : ils valident eux-mêmes la transaction.
+  const busyRef = useRef(false);
+  busyRef.current = purchaseLoading || restoreLoading;
 
   const reportPurchaseError = useCallback(
     (context: string, error: unknown) => {
@@ -109,6 +129,42 @@ export function useNurseIap() {
   finishRef.current = async (purchase: Purchase) => {
     await finishTransaction({ purchase, isConsumable: false });
   };
+
+  /** Revalide côté serveur les achats non finalisés ; ne finalise qu'en cas de succès. */
+  const retryUnfinishedPurchases = useCallback(async () => {
+    if (!connected || retryingRef.current || busyRef.current) return;
+    retryingRef.current = true;
+    try {
+      const pending = (await fetchUnfinishedPurchases()).filter((p) => p.productId === NURSE_IAP_PRODUCT_ID);
+      let finished = false;
+      for (const purchase of pending) {
+        try {
+          await verifyPurchaseOnServer(purchase);
+          await finishRef.current?.(purchase);
+          finished = true;
+        } catch (error) {
+          console.warn('[iap] nouvelle validation échouée', purchase.transactionId ?? purchase.id, error);
+        }
+      }
+      if (finished) {
+        await qc.invalidateQueries({ queryKey: queryKeys.iap.subscription });
+        await qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
+      }
+    } catch (error) {
+      console.warn('[iap] lecture des achats non finalisés impossible', error);
+    } finally {
+      retryingRef.current = false;
+    }
+  }, [connected, qc]);
+
+  useEffect(() => {
+    if (!connected) return;
+    void retryUnfinishedPurchases();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void retryUnfinishedPurchases();
+    });
+    return () => sub.remove();
+  }, [connected, retryUnfinishedPurchases]);
 
   const loadStoreProduct = useCallback(async () => {
     if (!connected) {

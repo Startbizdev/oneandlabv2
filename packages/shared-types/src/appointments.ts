@@ -146,4 +146,8 @@ export interface AppointmentListFilters {
   preleveur_segment?: 'mes_demandes';
   /** Patient mobile : à venir vs passés (pagination serveur). */
   patient_period?: 'upcoming' | 'past';
+  /** Recherche serveur (nom, téléphone, soin, adresse) ; paginée par `cursor`, pas par `page`. */
+  q?: string;
+  /** Recherche : position renvoyée par `pagination.next_cursor` de la page précédente. */
+  cursor?: number;
 }

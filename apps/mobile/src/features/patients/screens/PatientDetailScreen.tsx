@@ -126,6 +126,8 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
     },
     onSuccess: () => {
       setDeleteOpen(false);
+      void qc.invalidateQueries({ queryKey: queryKeys.patients.all });
+      void qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] });
       toast('Patient supprimé', { type: 'success' });
       navigation.goBack();
     },

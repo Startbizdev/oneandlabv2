@@ -11,20 +11,26 @@ import { useRemoveNurseCollaboration } from '../hooks/use-nurse-collaborations';
 export function useCollaborationRemoval(viewerId: string | null | undefined, appointmentId?: string) {
   const removeMut = useRemoveNurseCollaboration(appointmentId);
 
+  /** Retrait sans confirmation : à l'appelant de confirmer (ex. pied de sheet, jamais d'Alert sur une sheet). */
+  const remove = (item: NurseCollaboration, options?: { onSelfRemoved?: () => void; onSettled?: () => void }) => {
+    const copy = nurseCollaborationRowCopy(item, viewerId);
+    removeMut.mutate(item.id, {
+      onSuccess: copy.guest ? options?.onSelfRemoved : undefined,
+      onSettled: options?.onSettled,
+    });
+  };
+
   const confirmRemove = (item: NurseCollaboration, onSelfRemoved?: () => void) => {
     const copy = nurseCollaborationRowCopy(item, viewerId);
     Alert.alert(copy.confirmTitle, copy.confirmMessage, [
       { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Retirer',
-        style: 'destructive',
-        onPress: () => removeMut.mutate(item.id, { onSuccess: copy.guest ? onSelfRemoved : undefined }),
-      },
+      { text: 'Retirer', style: 'destructive', onPress: () => remove(item, { onSelfRemoved }) },
     ]);
   };
 
   return {
     confirmRemove,
+    remove,
     removingId: removeMut.isPending ? removeMut.variables : undefined,
   };
 }

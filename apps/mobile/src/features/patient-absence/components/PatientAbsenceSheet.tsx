@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { PATIENT_ABSENCE_TYPE_OPTIONS } from '@oneandlab/shared-constants';
 import type { PatientAbsence, PatientAbsenceType } from '@oneandlab/shared-types';
-import { Row } from '@/components/layout/primitives';
+import { Row, Stack } from '@/components/layout/primitives';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
-import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
 import { Input } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/SelectField';
@@ -61,7 +60,9 @@ export function PatientAbsenceSheet({
   const [endDate, setEndDate] = useState(defaultStartDate);
   const [openEnded, setOpenEnded] = useState(false);
   const [note, setNote] = useState('');
-  const [confirmLiftOpen, setConfirmLiftOpen] = useState(false);
+  const [confirmLift, setConfirmLift] = useState(false);
+  /** Absence pour laquelle le formulaire a été initialisé : un refetch de `existing` ne doit pas écraser la saisie. */
+  const initializedForRef = useRef<string | null>(null);
 
   const historyQ = useQuery({
     queryKey: ['patient-absences', patientId, 'all'],
@@ -89,7 +90,14 @@ export function PatientAbsenceSheet({
   }, []);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      initializedForRef.current = null;
+      return;
+    }
+    const initKey = existing?.id ?? '';
+    if (initializedForRef.current === initKey) return;
+    initializedForRef.current = initKey;
+    setConfirmLift(false);
     if (existing) {
       setTab('declare');
       applyAbsenceToForm(existing);
@@ -143,7 +151,7 @@ export function PatientAbsenceSheet({
       await deletePatientAbsence(patientId, editingAbsence.id);
     },
     onSuccess: async () => {
-      setConfirmLiftOpen(false);
+      setConfirmLift(false);
       await afterChange();
     },
     onError: (err) => handleApiError(err, toast, 'patient-absence-delete', 'Suppression impossible'),
@@ -152,6 +160,7 @@ export function PatientAbsenceSheet({
   const handleSelectHistoryItem = useCallback(
     (absence: PatientAbsence) => {
       applyAbsenceToForm(absence);
+      setConfirmLift(false);
       setTab('declare');
     },
     [applyAbsenceToForm],
@@ -160,6 +169,7 @@ export function PatientAbsenceSheet({
   const handleTabChange = useCallback(
     (next: SheetTab) => {
       setTab(next);
+      setConfirmLift(false);
       if (next === 'declare' && !editingAbsence) {
         resetFormForNew();
       }
@@ -191,118 +201,135 @@ export function PatientAbsenceSheet({
     editingAbsence?.absence_type === 'hospitalization' ? 'Fin de l’hospitalisation' : 'Fin de l’absence';
 
   return (
-    <>
-      <SheetModal
-        visible={visible}
-        onClose={onClose}
-        title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
-        snapPoints={['92%']}
-        dismissible={!busy}
-        footer={
-          tab === 'declare' ? (
+    <SheetModal
+      visible={visible}
+      onClose={onClose}
+      title={patientName ? `Absence de ${patientName}` : 'Absence du patient'}
+      snapPoints={['92%']}
+      dismissible={!busy}
+      footer={
+        tab !== 'declare' ? undefined : confirmLift ? (
+          <Stack gap={spacing[2]}>
+            <AppText variant="secondary" style={styles.confirmText}>
+              L’absence est supprimée et les passages redeviennent actifs.
+            </AppText>
             <Button
-              title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
-              onPress={() => saveMut.mutate()}
-              loading={saveMut.isPending}
-              disabled={busy && !saveMut.isPending}
+              title="Lever l’absence"
+              variant="destructive"
+              size="lg"
               fullWidth
+              loading={deleteMut.isPending}
+              disabled={busy && !deleteMut.isPending}
+              onPress={() => deleteMut.mutate()}
             />
-          ) : undefined
-        }
-      >
-        <View style={styles.body}>
-          <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
+            <Button
+              title="Annuler"
+              variant="ghost"
+              fullWidth
+              disabled={deleteMut.isPending}
+              onPress={() => setConfirmLift(false)}
+            />
+          </Stack>
+        ) : (
+          <Button
+            title={isEditing ? 'Mettre à jour' : 'Enregistrer l’absence'}
+            onPress={() => saveMut.mutate()}
+            loading={saveMut.isPending}
+            disabled={busy && !saveMut.isPending}
+            fullWidth
+          />
+        )
+      }
+    >
+      <View style={styles.body}>
+        <FullWidthSegmentBar segments={segments} value={tab} onChange={handleTabChange} />
 
-          {tab === 'declare' ? (
-            <View style={styles.tabBody}>
-              <AppText variant="secondary">Le passage reste sur la tournée, grisé jusqu’à la date de retour. Ce jour-là, le soin reprend.</AppText>
+        {tab === 'declare' ? (
+          <View style={styles.tabBody}>
+            <AppText variant="secondary">Le passage reste sur la tournée, grisé jusqu’à la date de retour. Ce jour-là, le soin reprend.</AppText>
 
-              <SelectField
-                label="Motif"
-                value={absenceType}
-                options={ABSENCE_TYPE_OPTIONS}
-                onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
+            <SelectField
+              label="Motif"
+              value={absenceType}
+              options={ABSENCE_TYPE_OPTIONS}
+              onChange={(v) => setAbsenceType(v as PatientAbsenceType)}
+            />
+
+            <IsoDatePicker label="Du" value={startDate} onChange={handleStartDateChange} />
+
+            <Row gap={spacing[3]} style={styles.toggleRow}>
+              <AppText variant="body" style={styles.toggleLabel}>
+                Jusqu’à nouvel ordre
+              </AppText>
+              <ToggleSwitch
+                value={openEnded}
+                onValueChange={setOpenEnded}
+                accessibilityLabel="Absence jusqu’à nouvel ordre, sans date de fin"
               />
+            </Row>
 
-              <IsoDatePicker label="Du" value={startDate} onChange={handleStartDateChange} />
-
-              <Row gap={spacing[3]} style={styles.toggleRow}>
-                <AppText variant="body" style={styles.toggleLabel}>
-                  Jusqu’à nouvel ordre
-                </AppText>
-                <ToggleSwitch
-                  value={openEnded}
-                  onValueChange={setOpenEnded}
-                  accessibilityLabel="Absence jusqu’à nouvel ordre, sans date de fin"
-                />
-              </Row>
-
-              {openEnded ? null : (
-                <IsoDatePicker
-                  label="Date de retour (facultatif)"
-                  value={endDate}
-                  onChange={setEndDate}
-                  minimumDate={new Date(`${startDate}T12:00:00`)}
-                />
-              )}
-
-              <Input
-                label="Précision (optionnel)"
-                value={note}
-                onChangeText={setNote}
-                placeholder="Ex. CHU, chez la famille…"
-                multiline
+            {openEnded ? null : (
+              <IsoDatePicker
+                label="Date de retour (facultatif)"
+                value={endDate}
+                onChange={setEndDate}
+                minimumDate={new Date(`${startDate}T12:00:00`)}
               />
+            )}
 
-              {isEditing ? (
-                <>
-                  {canEndToday ? (
-                    <Button
-                      title={endTodayLabel}
-                      variant="outline"
-                      onPress={() => endTodayMut.mutate()}
-                      loading={endTodayMut.isPending}
-                      disabled={busy && !endTodayMut.isPending}
-                      fullWidth
-                    />
-                  ) : null}
+            <Input
+              label="Précision (optionnel)"
+              value={note}
+              onChangeText={setNote}
+              placeholder="Ex. CHU, chez la famille…"
+              multiline
+            />
+
+            {isEditing ? (
+              <>
+                {canEndToday ? (
                   <Button
-                    title="Patient de retour"
-                    variant="dangerOutline"
-                    onPress={() => setConfirmLiftOpen(true)}
-                    disabled={busy}
+                    title={endTodayLabel}
+                    variant="outline"
+                    onPress={() => endTodayMut.mutate()}
+                    loading={endTodayMut.isPending}
+                    disabled={busy && !endTodayMut.isPending}
                     fullWidth
                   />
-                  <Button title="Nouvelle absence" variant="ghost" onPress={resetFormForNew} fullWidth />
-                </>
-              ) : null}
-            </View>
-          ) : (
-            <View style={styles.tabBody}>
-              <PatientAbsenceHistoryList
-                historyQ={historyQ}
-                onSelect={handleSelectHistoryItem}
-                onDeclare={() => {
-                  resetFormForNew();
-                  setTab('declare');
-                }}
-              />
-            </View>
-          )}
-        </View>
-      </SheetModal>
-
-      <ConfirmSheet
-        visible={confirmLiftOpen}
-        title="Lever l’absence ?"
-        message="L’absence est supprimée et les passages redeviennent actifs."
-        confirmLabel="Lever l’absence"
-        tone="destructive"
-        loading={deleteMut.isPending}
-        onConfirm={() => deleteMut.mutate()}
-        onClose={() => setConfirmLiftOpen(false)}
-      />
-    </>
+                ) : null}
+                <Button
+                  title="Patient de retour"
+                  variant="dangerOutline"
+                  onPress={() => setConfirmLift(true)}
+                  disabled={busy}
+                  fullWidth
+                />
+                <Button
+                  title="Nouvelle absence"
+                  variant="ghost"
+                  onPress={() => {
+                    setConfirmLift(false);
+                    resetFormForNew();
+                  }}
+                  fullWidth
+                />
+              </>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.tabBody}>
+            <PatientAbsenceHistoryList
+              historyQ={historyQ}
+              onSelect={handleSelectHistoryItem}
+              onDeclare={() => {
+                resetFormForNew();
+                setTab('declare');
+              }}
+            />
+          </View>
+        )}
+      </View>
+    </SheetModal>
   );
 }
 
@@ -312,5 +339,6 @@ function buildStyles() {
     tabBody: { gap: spacing[3] },
     toggleRow: { alignItems: 'center' as const, minWidth: 0 },
     toggleLabel: { flex: 1, minWidth: 0 },
+    confirmText: { textAlign: 'center' as const },
   };
 }

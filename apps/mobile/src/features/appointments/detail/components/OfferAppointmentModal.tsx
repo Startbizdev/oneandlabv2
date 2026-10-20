@@ -172,6 +172,8 @@ export function OfferAppointmentModal() {
     const r = await acceptOfferBatch(row, user?.id, shareToken);
 
     if (!r.ok) {
+      // Fermer avant de quitter la préparation : sinon la sheet est re-présentée puis refermée.
+      closeModal();
       setPreparing(false);
       setLoading(false);
       if (r.planLimit) {
@@ -228,7 +230,7 @@ export function OfferAppointmentModal() {
 
     setLoading(false);
     setPrepComplete(true);
-  }, [finishAndNext, qc, row, selected, shareToken, termsAccepted, toast, user?.id]);
+  }, [closeModal, finishAndNext, qc, row, selected, shareToken, termsAccepted, toast, user?.id]);
 
   const onPrepFinish = useCallback(() => {
     const aptId = acceptedAptIdRef.current ?? selected?.id ?? null;
@@ -330,6 +332,7 @@ export function OfferAppointmentModal() {
           dismissible={!busy}
           title={confirmRefuse ? 'Refuser la demande ?' : 'Nouvelle demande'}
           subtitle={lotLabel || undefined}
+          footer={footer}
         >
           {siblingsLoading ? (
             <SkeletonList count={2} itemHeight={100} gap={spacing[3]} />
@@ -348,7 +351,6 @@ export function OfferAppointmentModal() {
               </AppText>
             </Row>
           ) : null}
-          {footer}
         </SheetModal>
       ) : null}
       <OfferAcceptPreparationOverlay

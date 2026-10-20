@@ -35,7 +35,7 @@ export function pharmacyOrderMessagesHref(
   messageId?: string,
 ): Href | null {
   if (!orderId) return null;
-  const params: RouteParams = { id: orderId };
+  const params: RouteParams & { id: string } = { id: orderId };
   if (messageId) params.messageId = messageId;
   switch (rolePrefix) {
     case '/(patient)':

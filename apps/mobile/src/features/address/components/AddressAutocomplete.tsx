@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Keyboard, Platform, Pressable, View } from 'react-native';
 import { MapPin, X } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { useFormScroll, useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
@@ -18,6 +18,9 @@ interface Props {
   /** Adresse en texte libre (contact importé) : lance la recherche pour que l'utilisateur choisisse la bonne. */
   prefillQuery?: string;
 }
+
+/** Peu de suggestions : affichées sans défilement propre. */
+const MAX_SUGGESTIONS = 5;
 
 /** Remplissage automatique iOS d'une adresse complète : lignes séparées par des retours à la ligne. */
 function toSearchQuery(text: string): string {
@@ -88,7 +91,7 @@ export function AddressAutocomplete({
     setLoading(true);
     setSearchFailed(false);
     try {
-      const res = await searchAddresses(text, 10);
+      const res = await searchAddresses(text, MAX_SUGGESTIONS);
       if (!res.success) {
         console.warn('[address-autocomplete] recherche refusée', res.error);
         setSearchFailed(true);
@@ -178,12 +181,8 @@ export function AddressAutocomplete({
       </View>
 
       {open && suggestions.length > 0 ? (
-        <ScrollView
-          style={[styles.dropdown, elevation.md]}
-          nestedScrollEnabled
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator
-        >
+        // Liste courte en vues simples : le formulaire parent défile (keyboardShouldPersistTaps='handled').
+        <View style={[styles.dropdown, elevation.md]}>
           {suggestions.map((s, i) => (
             <Pressable
               key={`${s.label}-${i}`}
@@ -200,7 +199,7 @@ export function AddressAutocomplete({
               ) : null}
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       ) : null}
 
       {open && !loading && searchFailed ? (
@@ -247,7 +246,6 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     borderWidth: 1,
     borderColor: c.borderLight,
     overflow: 'hidden' as const,
-    maxHeight: 220,
   },
   suggestion: {
     paddingHorizontal: spacing[4],

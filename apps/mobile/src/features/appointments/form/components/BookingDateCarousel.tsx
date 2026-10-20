@@ -22,7 +22,7 @@ import {
   slideIndexForBookingDate,
 } from '../utils/booking-date-utils';
 import { FullWidthSegmentBar } from '@/components/ui/FullWidthSegmentBar';
-import { ICON_STROKE_WIDTH, animation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, type Theme } from '@/theme';
+import { ICON_STROKE_WIDTH, animation, radius, spacing, iconSize, AppText, useStyles, useTheme, font, palette, type Theme } from '@/theme';
 import { lh } from '@/theme/typography';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -519,7 +519,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
     dayNumToday: {
       color: c.primary,
     },
-    textOn: { color: '#0F172A' },
+    textOn: { color: palette.slate[900] },
     textOff: { color: c.textTertiary },
   };
 }

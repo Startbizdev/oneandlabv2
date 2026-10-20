@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NursePassageNursingItem } from '@oneandlab/shared-types';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,8 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
   const [draft, setDraft] = useState(items);
   const [phase, setPhase] = useState<CareSheetPhase>('picker');
   const [optionsCategoryName, setOptionsCategoryName] = useState<string | null>(null);
+  /** « Ajouter » du soin paramétré, fourni par le formulaire d'options intégré. */
+  const optionsConfirmRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (visible) setDraft(items);
@@ -55,7 +57,9 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
       subtitle={sheetSubtitle}
       snapPoints={['85%']}
       footer={
-        phase === 'selected' ? (
+        phase === 'options' ? (
+          <Button title="Ajouter" onPress={() => optionsConfirmRef.current?.()} fullWidth size="lg" />
+        ) : phase === 'selected' ? (
           <Button
             title="Valider"
             disabled={draft.length === 0}
@@ -71,6 +75,7 @@ export function PassageFormCareSheet({ visible, items, onClose, onConfirm }: Pro
         items={draft}
         onChange={setDraft}
         onUiPhaseChange={handleUiPhaseChange}
+        optionsConfirmRef={optionsConfirmRef}
       />
     </SheetModal>
   );

@@ -34,4 +34,40 @@ final class AiConversationScopeTest extends TestCase
         $this->assertTrue(AiConversationScope::documentMatchesPatient('patient-b', 'patient-b'));
         $this->assertFalse(AiConversationScope::documentMatchesPatient(null, 'patient-a'));
     }
+
+    public function testPatientGeneralConversationIsAboutThePatient(): void
+    {
+        $user = ['user_id' => 'patient-a', 'role' => 'patient'];
+        $scope = AiConversationScope::conversationPatientId(['user_id' => 'patient-a', 'patient_id' => null], $user);
+
+        $this->assertSame('patient-a', $scope);
+        $this->assertTrue(AiConversationScope::documentMatchesPatient($scope, 'patient-a'));
+        $this->assertFalse(AiConversationScope::documentMatchesPatient($scope, 'patient-b'));
+    }
+
+    public function testExplicitConversationDossierWins(): void
+    {
+        $user = ['user_id' => 'patient-a', 'role' => 'patient'];
+
+        $this->assertSame(
+            'relative-dossier',
+            AiConversationScope::conversationPatientId(['user_id' => 'patient-a', 'patient_id' => 'relative-dossier'], $user),
+        );
+    }
+
+    public function testStaffConversationWithoutPatientTakesNoPatientDocument(): void
+    {
+        $user = ['user_id' => 'nurse-1', 'role' => 'nurse'];
+        $scope = AiConversationScope::conversationPatientId(['user_id' => 'nurse-1', 'patient_id' => null], $user);
+
+        $this->assertNull($scope);
+        $this->assertFalse(AiConversationScope::documentMatchesPatient($scope, 'patient-a'));
+    }
+
+    public function testAnotherUsersConversationIsNotScopedToTheViewer(): void
+    {
+        $user = ['user_id' => 'patient-a', 'role' => 'patient'];
+
+        $this->assertNull(AiConversationScope::conversationPatientId(['user_id' => 'patient-b', 'patient_id' => null], $user));
+    }
 }

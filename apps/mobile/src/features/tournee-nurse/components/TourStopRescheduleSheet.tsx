@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { FormScheduleSection } from '@/features/appointments/form/components/FormScheduleSection';
 import {
@@ -14,6 +14,17 @@ import { normalizeRescheduleDate } from '@/features/appointments/reschedule/util
 import type { NurseTourStop } from '../api/nurse-tour.service';
 import { buildTourReschedulePayload } from '../utils/build-tour-reschedule-payload';
 
+function initialDraft(stop: NurseTourStop | null) {
+  if (!stop) return null;
+  const parsed = parseAvailabilityField(stop.availability);
+  const type: AvailabilityType = parsed.type === 'urgent' ? 'custom' : parsed.type;
+  return {
+    date: normalizeRescheduleDate(stop.scheduled_at?.slice(0, 10)),
+    type,
+    range: parsed.range,
+  };
+}
+
 type Props = {
   stop: NurseTourStop | null;
   visible: boolean;
@@ -23,28 +34,24 @@ type Props = {
 
 export function TourStopRescheduleSheet({ stop, visible, onClose, onConfirm }: Props) {
   const { show: toast } = useToast();
-  const initial = useMemo(() => {
-    if (!stop) return null;
-    const parsed = parseAvailabilityField(stop.availability);
-    const type: AvailabilityType = parsed.type === 'urgent' ? 'custom' : parsed.type;
-    return {
-      date: normalizeRescheduleDate(stop.scheduled_at?.slice(0, 10)),
-      type,
-      range: parsed.range,
-    };
-  }, [stop]);
+  const initial = useMemo(() => initialDraft(stop), [stop]);
 
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [availabilityType, setAvailabilityType] = useState<AvailabilityType>('custom');
-  const [range, setRange] = useState<[number, number]>([9, 11]);
+  /** Brouillon (ré)initialisé pendant le rendu à chaque ouverture : jamais de premier frame vide. */
+  const draftKey = visible && stop ? stop.stop_id : null;
+  const [draftFor, setDraftFor] = useState(draftKey);
+  const [scheduledAt, setScheduledAt] = useState(() => initial?.date ?? '');
+  const [availabilityType, setAvailabilityType] = useState<AvailabilityType>(() => initial?.type ?? 'custom');
+  const [range, setRange] = useState<[number, number]>(() => initial?.range ?? [9, 11]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!initial) return;
-    setScheduledAt(initial.date);
-    setAvailabilityType(initial.type);
-    setRange(initial.range);
-  }, [initial]);
+  if (draftFor !== draftKey) {
+    setDraftFor(draftKey);
+    if (initial) {
+      setScheduledAt(initial.date);
+      setAvailabilityType(initial.type);
+      setRange(initial.range);
+    }
+  }
 
   if (!stop || !initial) return null;
 

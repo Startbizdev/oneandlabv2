@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { BirthDatePicker } from '@/components/ui/BirthDatePicker';
 import { Input } from '@/components/ui/Input';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -43,9 +44,12 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
     enabled: visible && Boolean(patientId),
   });
 
-  useEffect(() => {
+  // Formulaire initialisé une fois par ouverture, sur des données fraîches : un refetch n'écrase pas la saisie.
+  const [initialized, setInitialized] = useState(false);
+  if (!visible && initialized) setInitialized(false);
+  if (visible && !initialized && profileQ.data && !profileQ.isFetching) {
     const d = profileQ.data;
-    if (!d || !visible) return;
+    setInitialized(true);
     setFirstName(d.first_name ?? '');
     setLastName(d.last_name ?? '');
     setPhone(d.phone ?? '');
@@ -55,7 +59,8 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
     const parsed = parseProfileAddress(d.address);
     setAddress(parsed);
     setAddressComplement(parsed?.complement ?? '');
-  }, [profileQ.data, visible]);
+  }
+  const loadFailed = !initialized && !profileQ.isFetching && (profileQ.isError || !profileQ.data);
 
   const saveMut = useMutation({
     mutationFn: () => {
@@ -96,11 +101,19 @@ export function StaffPatientEditSheet({ visible, patientId, onClose, onSaved }: 
       title="Fiche patient"
       subtitle="Modifier les informations du patient"
       snapPoints={['92%']}
+      dismissible={!saveMut.isPending}
       footer={
-        <Button title="Enregistrer" loading={saveMut.isPending} onPress={() => saveMut.mutate()} />
+        <Button
+          title="Enregistrer"
+          loading={saveMut.isPending}
+          disabled={!initialized}
+          onPress={() => saveMut.mutate()}
+        />
       }
     >
-      {profileQ.isLoading ? (
+      {loadFailed ? (
+        <ErrorState title="Fiche indisponible" error={profileQ.error} onRetry={() => void profileQ.refetch()} />
+      ) : !initialized ? (
         <SkeletonList count={4} itemHeight={48} gap={spacing[2]} />
       ) : (
         <View style={styles.form}>

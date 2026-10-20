@@ -190,6 +190,10 @@ export function CreatePatientModal({
       if (!res.success || !res.data?.id) throw new Error(res.error ?? 'Création impossible');
       const patientId = res.data.id;
       await uploadPersonalFiles(patientId);
+      void Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
+        qc.invalidateQueries({ queryKey: ['prescriptions', 'patients'] }),
+      ]);
       const created: CreatedPatientResult = {
         id: patientId,
         first_name: firstName.trim(),
@@ -236,10 +240,24 @@ export function CreatePatientModal({
           {duplicate ? null : errorText}
           <Row gap={spacing[3]}>
             <View style={styles.actionBtn}>
-              <Button title="Annuler" variant="outline" onPress={onClose} fullWidth size="lg" />
+              <Button
+                title="Annuler"
+                variant="outline"
+                onPress={onClose}
+                disabled={loading || adopting}
+                fullWidth
+                size="lg"
+              />
             </View>
             <View style={styles.actionBtn}>
-              <Button title="Créer" loading={loading} onPress={() => void submit()} fullWidth size="lg" />
+              <Button
+                title="Créer"
+                loading={loading}
+                disabled={adopting}
+                onPress={() => void submit()}
+                fullWidth
+                size="lg"
+              />
             </View>
           </Row>
         </>
