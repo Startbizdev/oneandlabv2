@@ -2,24 +2,23 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { todayTourDate } from '@/features/tournee-nurse/hooks/nurse-tour-query';
 import { buildAppointmentPassageUpdateBody, initPassageFormFromAppointment } from '../passage-appointment-update';
 
-/** 00h30 à Paris le 21 octobre = encore le 20 en UTC : une date tirée de `toISOString()` serait la veille. */
-const PARIS_AFTER_MIDNIGHT = new Date('2026-10-20T22:30:00Z');
+/**
+ * Instants construits en heure locale de la machine (le fuseau ne se change pas depuis un test jest) :
+ * 00h30 et 23h30 le 21 octobre. Hors UTC, l'un des deux tombe un autre jour en UTC : une date tirée de
+ * `toISOString()` donnerait la veille ou le lendemain.
+ */
+const LOCAL_AFTER_MIDNIGHT = new Date(2026, 9, 21, 0, 30);
+const LOCAL_BEFORE_MIDNIGHT = new Date(2026, 9, 21, 23, 30);
 
-const previousTz = process.env.TZ;
+afterEach(() => jest.useRealTimers());
 
-beforeAll(() => {
-  process.env.TZ = 'Europe/Paris';
-  jest.useFakeTimers({ now: PARIS_AFTER_MIDNIGHT });
-});
+describe.each([
+  ['00h30', LOCAL_AFTER_MIDNIGHT],
+  ['23h30', LOCAL_BEFORE_MIDNIGHT],
+])('dates par défaut des passages à %s, heure locale', (_label, now) => {
+  beforeEach(() => jest.useFakeTimers({ now }));
 
-afterAll(() => {
-  jest.useRealTimers();
-  process.env.TZ = previousTz;
-});
-
-describe('dates par défaut des passages en heure locale', () => {
-  it('le jour de tournée est le jour local, pas le jour UTC', () => {
-    expect(PARIS_AFTER_MIDNIGHT.toISOString().slice(0, 10)).toBe('2026-10-20');
+  it('le jour de tournée est le jour local', () => {
     expect(todayTourDate()).toBe('2026-10-21');
   });
 
@@ -30,4 +29,10 @@ describe('dates par défaut des passages en heure locale', () => {
 
     expect(body.scheduled_at).toBe('2026-10-21 08:00:00');
   });
+});
+
+it('le jeu d’instants couvre un jour UTC différent dès que la machine n’est pas en UTC', () => {
+  const utcDays = [LOCAL_AFTER_MIDNIGHT, LOCAL_BEFORE_MIDNIGHT].map((d) => d.toISOString().slice(0, 10));
+  const offsetMinutes = LOCAL_AFTER_MIDNIGHT.getTimezoneOffset();
+  if (offsetMinutes !== 0) expect(utcDays).not.toEqual(['2026-10-21', '2026-10-21']);
 });

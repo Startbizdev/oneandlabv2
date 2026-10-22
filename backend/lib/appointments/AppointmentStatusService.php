@@ -46,6 +46,30 @@ final class AppointmentStatusService
         return $cache[$key];
     }
 
+    /**
+     * PHP-FPM : exécuté à l'arrêt du script, après `fastcgi_finish_request()` de l'endpoint (réponse déjà envoyée).
+     * CLI / serveur intégré : immédiat (cron, tests, dev local inchangés).
+     *
+     * @return bool true si la tâche est différée
+     */
+    public static function runAfterResponse(callable $task, ?string $sapi = null, ?bool $canFinishRequest = null): bool
+    {
+        $sapi ??= PHP_SAPI;
+        $canFinishRequest ??= function_exists('fastcgi_finish_request');
+        if (!$canFinishRequest || $sapi === 'cli' || $sapi === 'cli-server') {
+            $task();
+            return false;
+        }
+        register_shutdown_function(static function () use ($task): void {
+            try {
+                $task();
+            } catch (Throwable $e) {
+                error_log('AppointmentStatusService notifications après réponse: ' . $e->getMessage());
+            }
+        });
+        return true;
+    }
+
     private function generateUUID(): string
     {
         $data = random_bytes(16);
@@ -726,18 +750,19 @@ final class AppointmentStatusService
             $delExpiredOffers->execute([$id]);
         }
 
+        // Push Expo / SMS = appels réseau synchrones : envoyés après la réponse pour ne pas bloquer l'acceptation.
         if (!$redispatch) {
-            $this->appointmentNotificationService->sendStatusNotifications($id, $newStatus, $actorId, $actorRole);
-        }
-
-        // Partage lien confrère : l’infirmier ayant repassé le RDV en attente est informé de l’acceptation + prénom/nom du confrère (cloche non liée au détail)
-        if (
-            !$redispatch
-            && $newStatus === 'confirmed'
-            && $actorRole === 'nurse'
-            && ($appointment['type'] ?? '') === 'nursing'
-        ) {
-            $this->appointmentNotificationService->notifyShareLinkSharerNurseIfNeeded($id, $actorId);
+            $notifications = $this->appointmentNotificationService;
+            $notifySharer = $newStatus === 'confirmed'
+                && $actorRole === 'nurse'
+                && ($appointment['type'] ?? '') === 'nursing';
+            self::runAfterResponse(static function () use ($notifications, $id, $newStatus, $actorId, $actorRole, $notifySharer): void {
+                $notifications->sendStatusNotifications($id, $newStatus, $actorId, $actorRole);
+                // Partage lien confrère : l’infirmier ayant repassé le RDV en attente est informé de l’acceptation + prénom/nom du confrère (cloche non liée au détail)
+                if ($notifySharer) {
+                    $notifications->notifyShareLinkSharerNurseIfNeeded($id, $actorId);
+                }
+            });
         }
 
         // Lien patient ↔ professionnel lors de l’acceptation (RDV confirmé avec patient)

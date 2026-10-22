@@ -48,7 +48,7 @@ export function ScreenFab({ onPress, accessibilityLabel, Icon = Plus }: ScreenFa
           pressed && styles.pressed,
         ]}
       >
-        <Icon size={iconSize.lg} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
+        <Icon size={iconSize.lg} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
       </Pressable>
     </View>
   );

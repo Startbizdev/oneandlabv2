@@ -257,8 +257,14 @@ export function useBookingWizard(opts: {
     staleTime: CACHE_STALE_RELATIVES_MS,
   });
 
+  const relativeRequestRef = useRef<string | null>(null);
   const applyRelativeToForm = useCallback(
-    async (relativeId: string, cached?: PatientRelative | null) => {
+    async (
+      relativeId: string,
+      cached?: PatientRelative | null,
+      options?: { prefillAddress?: boolean },
+    ) => {
+      relativeRequestRef.current = relativeId;
       let rel = cached ?? relativesQ.data?.find((r) => r.id === relativeId) ?? null;
       if (!rel || !normalizePatientGender(rel.gender) || !rel.birth_date?.trim()) {
         try {
@@ -271,22 +277,23 @@ export function useBookingWizard(opts: {
           console.warn('[booking-wizard] fiche du proche indisponible, liste locale utilisée', error);
         }
       }
-      if (!rel) return;
+      if (!rel || relativeRequestRef.current !== relativeId) return;
       wizard.form.setValue('first_name', rel.first_name ?? '');
       wizard.form.setValue('last_name', rel.last_name ?? '');
       wizard.form.setValue('gender', normalizePatientGender(rel.gender));
       wizard.form.setValue('birth_date', rel.birth_date ?? '');
       if (rel.phone) wizard.form.setValue('phone', rel.phone);
       if (rel.email) wizard.form.setValue('email', rel.email);
-      if (rel.address) {
-        await wizard.onAddressChange({
+      // Adresse proposée uniquement au choix du proche : jamais réappliquée sur une saisie, ni écrite dans un profil.
+      if (options?.prefillAddress !== false && rel.address) {
+        wizard.form.setValue('address', {
           label: rel.address.label,
           lat: rel.address.lat,
           lng: rel.address.lng,
           city: rel.address.city,
           postal_code: rel.address.postal_code,
         });
-        if (rel.address.complement) wizard.setAddressComplement(String(rel.address.complement));
+        wizard.setAddressComplement(rel.address.complement ? String(rel.address.complement) : '');
       }
     },
     [relativesQ.data, opts.mode, wizard],
@@ -303,6 +310,7 @@ export function useBookingWizard(opts: {
   const selectRelative = useCallback(
     (relativeId: string | null) => {
       setSelectedRelativeId(relativeId);
+      if (opts.mode === 'patient') return;
       if (relativeId) {
         void applyRelativeToForm(relativeId);
       } else if (opts.mode === 'dashboard' && wizard.selectedPatientId) {
@@ -312,12 +320,27 @@ export function useBookingWizard(opts: {
     [applyRelativeToForm, opts.mode, wizard],
   );
 
+  const applyRelativeRef = useRef(applyRelativeToForm);
+  applyRelativeRef.current = applyRelativeToForm;
+  /** Bénéficiaire dont l'adresse a déjà été proposée (brouillon repris = déjà fait). */
+  const prefilledBeneficiaryRef = useRef<string | null | undefined>(
+    draft?.patient.address?.label ? (draft.selectedRelativeId ?? null) : undefined,
+  );
+  const { loadProfileAddress } = wizard;
   useEffect(() => {
     if (opts.mode !== 'patient') return;
+    const previous = prefilledBeneficiaryRef.current;
+    if (previous === selectedRelativeId) return;
+    prefilledBeneficiaryRef.current = selectedRelativeId;
     if (selectedRelativeId) {
-      void applyRelativeToForm(selectedRelativeId);
-      return;
+      void applyRelativeRef.current(selectedRelativeId);
+    } else if (previous && user?.id) {
+      void loadProfileAddress(user.id);
     }
+  }, [opts.mode, selectedRelativeId, user?.id, loadProfileAddress]);
+
+  useEffect(() => {
+    if (opts.mode !== 'patient' || selectedRelativeId) return;
     if (!user) return;
     wizard.form.setValue('first_name', user.first_name ?? '');
     wizard.form.setValue('last_name', user.last_name ?? '');
@@ -326,7 +349,7 @@ export function useBookingWizard(opts: {
     const row = patientProfileQ.data as { gender?: string; birth_date?: string } | undefined;
     if (row?.gender) wizard.form.setValue('gender', normalizePatientGender(row.gender));
     if (row?.birth_date) wizard.form.setValue('birth_date', row.birth_date);
-  }, [opts.mode, selectedRelativeId, applyRelativeToForm, user, patientProfileQ.data, wizard.form]);
+  }, [opts.mode, selectedRelativeId, user, patientProfileQ.data, wizard.form]);
 
   const allCategories = useMemo(
     () => [...wizard.nursingCategories, ...wizard.bloodCategories],
@@ -419,14 +442,15 @@ export function useBookingWizard(opts: {
   const isFinalWizardStep = section === 'review';
 
   const profileAddressLoadedRef = useRef(false);
-  const { loadProfileAddress } = wizard;
+  const wizardForm = wizard.form;
 
   useEffect(() => {
     if (opts.mode !== 'patient' || section !== 'personal' || !user?.id) return;
     if (profileAddressLoadedRef.current) return;
     profileAddressLoadedRef.current = true;
+    if (wizardForm.getValues('address')?.label) return;
     void loadProfileAddress(user.id);
-  }, [opts.mode, section, user?.id, loadProfileAddress]);
+  }, [opts.mode, section, user?.id, loadProfileAddress, wizardForm]);
 
   const progress = bookingWizardProgress({
     mode: opts.mode,
@@ -804,7 +828,7 @@ export function useBookingWizard(opts: {
   const wizardNext = useCallback(() => {
     void (async () => {
       if (section === 'personal' && opts.mode === 'patient' && selectedRelativeId) {
-        await applyRelativeToForm(selectedRelativeId);
+        await applyRelativeToForm(selectedRelativeId, null, { prefillAddress: false });
       }
       if (!validateCurrentStep()) return;
       if (isFinalWizardStep) {

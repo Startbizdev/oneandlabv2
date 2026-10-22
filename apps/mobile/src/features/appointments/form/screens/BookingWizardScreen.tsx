@@ -13,6 +13,7 @@ import { LabBrandPreferenceStep } from '../components/LabBrandPreferenceStep';
 import { BookingActionBar } from '../components/BookingActionBar';
 import { bookingWizardFooterCtaCopy } from '../utils/booking-wizard-titles';
 import { selectionRequiresFasting } from '../utils/booking-review-summary';
+import { careFilterTabForCareType } from '../utils/booking-care-catalog';
 import { CareSelectionStep } from '../components/CareSelectionStep';
 import { BookingSlotStep } from '../components/BookingSlotStep';
 import { Button } from '@/components/ui/Button';
@@ -60,15 +61,18 @@ export function BookingWizardScreen(props: Props) {
     patient_id: patientIdParam,
     relative_id: relativeIdParam,
     provider_id: providerIdParam,
+    care_type: careTypeParam,
   } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
     provider_id?: string;
+    care_type?: string;
   }>();
   const focused = useIsFocused();
+  // Lien avec une intention (patient, proche, soignant, type de soin) : pas de proposition de reprise de brouillon.
   const draftResume = useBookingDraftResume(
     useBookingDraftOwnerKey(),
-    focused && !patientIdParam && !relativeIdParam && !providerIdParam,
+    focused && !patientIdParam && !relativeIdParam && !providerIdParam && !careTypeParam,
   );
   const restart = useCallback(() => {
     setInitialDraft(null);
@@ -109,11 +113,14 @@ function BookingWizardFlow({
     relative_id: relativeIdParam,
     provider_id: providerIdParam,
     provider_role: providerRoleParam,
+    care_type: careTypeParam,
   } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
     provider_id?: string;
     provider_role?: string;
+    /** `blood_test` | `nursing` : filtre initial de l'étape soins. */
+    care_type?: string;
   }>();
   const [directedProvider, setDirectedProvider] = useState<DirectedProvider | null>(() =>
     mode === 'patient'
@@ -245,6 +252,7 @@ function BookingWizardFlow({
               formDataByService={w.formDataByService}
               loading={w.saving}
               phases={phases}
+              initialFilterTab={careFilterTabForCareType(careTypeParam)}
               contextBanner={
                 bw.directedProvider && providerName ? (
                   <DirectedProviderBanner

@@ -26,7 +26,7 @@ import {
   DetailActionList,
   type DetailActionItem,
 } from './layout/DetailActionList';
-import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
+import { buildAssistantLink } from '@/features/assistant/utils/assistant-link';
 
 interface Props {
   role: string;
@@ -140,9 +140,9 @@ export function DetailSidebarActions({
       tone: 'neutral',
       onPress: () => {
         router.push(
-          buildAiDeepLink(role, {
-            conversation_type: 'appointment',
-            appointment_id: apt.id,
+          buildAssistantLink(role, {
+            context_type: 'appointment',
+            context_id: apt.id,
             patient_id: appointmentDossierPatientId(apt) ?? undefined,
           }),
         );

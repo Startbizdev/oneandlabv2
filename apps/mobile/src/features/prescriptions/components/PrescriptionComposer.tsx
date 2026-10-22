@@ -575,7 +575,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderColor: c.primary,
     },
     checkMark: {
-      color: c.textInverse,
+      color: c.onPrimary,
       fontSize: fontSize.xs,
       ...font.bold,
     },

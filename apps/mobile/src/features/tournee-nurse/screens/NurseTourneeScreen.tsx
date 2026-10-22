@@ -4,6 +4,7 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { HeaderAction } from '@/components/navigation/HeaderAction';
+import { HeaderAssistantButton } from '@/navigation/TabHeaderActions';
 import { useAuthStore } from '@/store/auth-store';
 import { TourCollaborationsSheet } from '@/features/nurse-collaborations/components/TourCollaborationsSheet';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -272,6 +273,7 @@ export function NurseTourneeScreen() {
     <StackChromeScreen
       headerRight={
         <Row align="center">
+          <HeaderAssistantButton />
           <HeaderAction
             icon={Users}
             accessibilityLabel="Confrères et remplacements"

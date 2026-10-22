@@ -475,20 +475,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
         }
 
-        if (in_array($documentType, ['resultats', 'ordonnance', 'autre'], true)) {
-            try {
-                require_once __DIR__ . '/../../lib/rag/AiDocumentJobService.php';
-                $resolvedPatient = $postPatientId
-                    ?? ($appointment['patient_id'] ?? null)
-                    ?? (($user['role'] ?? '') === 'patient' ? ($user['user_id'] ?? null) : null);
-                if ($resolvedPatient) {
-                    (new AiDocumentJobService($db))->queueDocument((string) $resolvedPatient, (string) $id);
-                }
-            } catch (Throwable $ocrQueueErr) {
-                error_log('Queue OCR IA: ' . $ocrQueueErr->getMessage());
-            }
-        }
-        
         echo json_encode([
             'success' => true,
             'data' => MedicalDocumentsInternal::uploadPayload($stored),

@@ -236,6 +236,16 @@ export function buildCareFilterTabs(categories: CareCategory[]): CareFilterTab[]
   ];
 }
 
+/**
+ * Filtre initial de l'étape soins selon le type demandé (`care_type` du lien, ex. assistant) :
+ * prise de sang → « Prélèvements », soin infirmier → « Soins », sinon « Tous ».
+ */
+export function careFilterTabForCareType(careType: string | undefined): string {
+  if (careType === 'blood_test') return 'examens';
+  if (careType === 'nursing') return 'soins';
+  return 'all';
+}
+
 export function filterCategoriesByTab(
   categories: CareCategory[],
   tab: string,

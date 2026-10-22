@@ -124,7 +124,9 @@ export function useMultiAppointmentWizard(opts: {
   });
 
   const getProfileId = useCallback(() => {
-    if (opts.syncPatientSelfAddress && user?.id) return opts.patientRelativeId ? null : user.id;
+    // RDV pour un proche : l'adresse saisie reste celle du RDV, jamais celle du titulaire.
+    if (opts.patientRelativeId) return null;
+    if (opts.syncPatientSelfAddress && user?.id) return user.id;
     if (patientMode === 'existing' && selectedPatientId && selectedPatientId !== NEW_PATIENT_ID) {
       return selectedPatientId;
     }

@@ -56,7 +56,7 @@ function PendingReviewCard({
             <Row justify="between" align="center" gap={spacing[2]}>
               <AppText style={[cardStyles.kicker, { color: c.primaryDark }]}>Votre avis compte</AppText>
               <View style={[cardStyles.timePill, { backgroundColor: c.primary }]}>
-                <AppText style={[cardStyles.timePillText, { color: c.textInverse }]}>2 min</AppText>
+                <AppText style={[cardStyles.timePillText, { color: c.onPrimary }]}>2 min</AppText>
               </View>
             </Row>
 

@@ -51,32 +51,6 @@ if ($mode === 'backup') {
     if ($actual !== ['actor_id','request_key','request_hash','appointment_id','response_completed','created_at']) throw new RuntimeException('Unexpected idempotency schema');
     echo "Migration 107 verified; no existing records modified.\n";
 
-    $transportCol = $db->query("SHOW COLUMNS FROM voice_sessions LIKE 'transport'")->fetch(PDO::FETCH_ASSOC);
-    if ($transportCol === false) {
-        $db->exec("ALTER TABLE voice_sessions
-            ADD COLUMN transport ENUM('rest', 'realtime') NOT NULL DEFAULT 'rest' AFTER channel,
-            ADD COLUMN xai_conversation_id VARCHAR(128) NULL AFTER ai_conversation_id,
-            ADD COLUMN token_expires_at DATETIME NULL AFTER ended_at,
-            ADD COLUMN last_event_id VARCHAR(128) NULL AFTER token_expires_at");
-        echo "Migration 108 applied: voice_sessions realtime columns.\n";
-    } else {
-        echo "Migration 108 verified: voice_sessions.transport present.\n";
-    }
-
-    $db->exec('CREATE TABLE IF NOT EXISTS voice_realtime_events (
-        id CHAR(36) PRIMARY KEY,
-        session_id CHAR(36) NOT NULL,
-        event_id VARCHAR(128) NOT NULL,
-        event_type VARCHAR(64) NOT NULL,
-        payload_json JSON NULL,
-        latency_ms INT UNSIGNED NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uniq_voice_rt_event (session_id, event_id),
-        KEY idx_voice_rt_session (session_id, created_at),
-        CONSTRAINT fk_voice_rt_session FOREIGN KEY (session_id) REFERENCES voice_sessions(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
-    echo "Migration 108 verified: voice_realtime_events table.\n";
-
     $woundUpdate = $db->exec("
         UPDATE care_category_options AS cco
         INNER JOIN care_categories AS cc ON cc.id = cco.care_category_id
@@ -114,14 +88,21 @@ if ($mode === 'backup') {
     require_once $releaseRoot . '/backend/lib/RelativeProfileBackfill.php';
     echo 'Backfill 126 relative profiles: ' . json_encode(RelativeProfileBackfill::run($db, true)) . "\n";
     echo applyMigration128MedicalDocumentsReplacement($db, $releaseRoot . '/database/migrations') . "\n";
-    require_once $releaseRoot . '/backend/scripts/migrations/ai-assistant-migrations.php';
-    echo applyMigration124AiMessagesIdempotence($db, $releaseRoot . '/database/migrations') . "\n";
-    echo applyMigration125AiConversationsContext($db, $releaseRoot . '/database/migrations') . "\n";
+    // 130 is intentionally destructive: drops the legacy AI assistant tables (allowlisted in verify).
+    require_once $releaseRoot . '/backend/scripts/migrations/assistant-migrations.php';
+    echo applyMigration130AssistantRebuild($db, $releaseRoot . '/database/migrations') . "\n";
 } elseif ($mode === 'verify') {
+    require_once dirname(__DIR__) . '/backend/scripts/migrations/assistant-migrations.php';
     $before=json_decode(file_get_contents($dir.'/counts-before.json'),true,512,JSON_THROW_ON_ERROR);
-    $missing=array_diff_key($before,$counts);
+    // Only the legacy AI tables dropped by migration 130 may disappear; any other missing table fails.
+    $missing=array_diff_key($before,$counts,array_flip(MIGRATION_130_DROPPED_TABLES));
     if ($missing) throw new RuntimeException('An original table is missing');
-    $decreased=[]; foreach($before as $name=>$n) if($counts[$name]<$n) $decreased[$name]=[$n,$counts[$name]];
+    $decreased=[]; foreach($before as $name=>$n) if(isset($counts[$name]) && $counts[$name]<$n) $decreased[$name]=[$n,$counts[$name]];
+    // Migration 130 deletes at most the 2 legacy AI settings from the shared platform_settings table.
+    if (isset($decreased['platform_settings']) && $decreased['platform_settings'][0]-$decreased['platform_settings'][1] <= 2
+        && (int)$db->query("SELECT COUNT(*) FROM platform_settings WHERE setting_key IN ('ai_disclaimer_fr','ai_temperature')")->fetchColumn() === 0) {
+        unset($decreased['platform_settings']);
+    }
     file_put_contents($dir.'/counts-after.json',json_encode($counts,JSON_PRETTY_PRINT));
     echo json_encode(['original_tables_present'=>true,'row_count_decreases'=>$decreased,'creation_table'=>isset($counts['appointment_creation_requests'])]).PHP_EOL;
     if($decreased) exit(2);

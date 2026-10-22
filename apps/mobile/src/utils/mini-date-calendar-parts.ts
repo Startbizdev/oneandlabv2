@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import 'dayjs/locale/fr';
+import { appointmentDayFrance } from '@oneandlab/shared-utils';
 import { capitalizeFrench } from '@/utils/appointment-datetime-fr';
 
 dayjs.locale('fr');
@@ -21,10 +22,12 @@ export function formatMiniDateCalendarParts(
 ): MiniDateCalendarParts | null {
   if (!value) return null;
 
-  const d = dayjs(value);
+  // Chaîne API (DATETIME Paris ou ISO à décalage) : jour civil France, comme le détail du RDV.
+  const fromApi = typeof value === 'string';
+  const d = fromApi ? dayjs(appointmentDayFrance(value) || null) : dayjs(value);
   if (!d.isValid()) return null;
 
-  const today = dayjs().startOf('day');
+  const today = (fromApi ? dayjs(appointmentDayFrance(new Date())) : dayjs()).startOf('day');
   const target = d.startOf('day');
   const diff = target.diff(today, 'day');
 

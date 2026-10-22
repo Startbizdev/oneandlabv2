@@ -156,6 +156,9 @@ export function useProfileAddressSync({
 
   const onAddressChange = useCallback(
     (addr: AddressPayload | null) => {
+      // Le choix de l'utilisateur (y compris l'effacement) l'emporte sur une hydratation encore en cours.
+      addressVersion.current++;
+      hydratingRef.current = false;
       setFormAddress(addr);
       schedulePersist(addr, addressComplement);
     },

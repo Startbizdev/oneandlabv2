@@ -3,6 +3,7 @@
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
+require_once __DIR__ . '/../../../middleware/CSRFMiddleware.php';
 require_once __DIR__ . '/../../../models/LabBrand.php';
 require_once __DIR__ . '/../../../config/cors.php';
 

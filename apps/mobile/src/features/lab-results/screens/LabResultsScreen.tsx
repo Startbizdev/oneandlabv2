@@ -11,7 +11,7 @@ import { useToast } from '@/providers/ToastProvider';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
-import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
+import { buildAssistantLink } from '@/features/assistant/utils/assistant-link';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { appointmentDocumentsHref } from '@/navigation/role-hrefs';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
@@ -62,9 +62,9 @@ export function LabResultsScreen({ role, rolePrefix }: Props) {
   const askCaryAboutResult = useCallback(
     (item: LabResultListItem) => {
       router.push(
-        buildAiDeepLink(role, {
-          conversation_type: 'lab_results',
-          lab_result_id: item.medical_document_id ?? item.id,
+        buildAssistantLink(role, {
+          context_type: 'lab_result',
+          context_id: item.medical_document_id ?? item.id,
           patient_id: item.patient_id ?? undefined,
         }),
       );

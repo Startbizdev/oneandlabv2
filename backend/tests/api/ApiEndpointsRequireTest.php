@@ -31,4 +31,24 @@ final class ApiEndpointsRequireTest extends TestCase
         }
         $this->addToAssertionCount(1);
     }
+
+    /**
+     * Un appel statique XxxMiddleware:: sans require du fichier provoque « Class not found » (500) à l'exécution
+     * (ex. PUT /admin/lab-brands/{id} : rattachement des labos jamais enregistré).
+     *
+     * @dataProvider endpointProvider
+     */
+    public function testStaticMiddlewareCallsAreRequired(string $file): void
+    {
+        $source = (string) file_get_contents($file);
+        preg_match_all('/\b([A-Za-z]+Middleware)::/', $source, $matches);
+        foreach (array_unique($matches[1]) as $class) {
+            $this->assertMatchesRegularExpression(
+                "#require(_once)?\\s+__DIR__\\s*\\.\\s*'[^']*/middleware/{$class}\\.php'#",
+                $source,
+                basename($file) . " utilise {$class}:: sans require de {$class}.php"
+            );
+        }
+        $this->addToAssertionCount(1);
+    }
 }

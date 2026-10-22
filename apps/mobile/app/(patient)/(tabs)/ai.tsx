@@ -1,5 +1,5 @@
-import { RoleAiHubRouteScreen } from '@/features/ai-hub/screens/RoleAiHubRouteScreen';
+import { AssistantScreen } from '@/features/assistant/screens/AssistantScreen';
 
-export default function PatientAiTab() {
-  return <RoleAiHubRouteScreen role="patient" />;
+export default function PatientAssistantTab() {
+  return <AssistantScreen role="patient" />;
 }

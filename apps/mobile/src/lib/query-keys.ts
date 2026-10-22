@@ -15,6 +15,10 @@ export const queryKeys = {
     history: (id: string) => ['appointments', 'history', id] as const,
     conversation: (id: string) => ['appointments', 'conversation', id] as const,
   },
+  assistant: {
+    conversations: ['assistant', 'conversations'] as const,
+    conversation: (id: string) => ['assistant', 'conversation', id] as const,
+  },
   notifications: {
     list: (limit?: number) => ['notifications', 'list', limit ?? 10] as const,
     feed: (pageSize: number) => ['notifications', 'feed', pageSize] as const,

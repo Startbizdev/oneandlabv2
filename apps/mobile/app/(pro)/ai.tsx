@@ -1,5 +1,5 @@
-import { RoleAiHubRouteScreen } from '@/features/ai-hub/screens/RoleAiHubRouteScreen';
+import { AssistantScreen } from '@/features/assistant/screens/AssistantScreen';
 
-export default function ProAiScreen() {
-  return <RoleAiHubRouteScreen role="pro" showBackButton />;
+export default function ProAssistantScreen() {
+  return <AssistantScreen role="pro" showBackButton />;
 }

@@ -22,8 +22,8 @@ export function PassageFab({ onPress }: Props) {
         accessibilityRole="button"
         accessibilityLabel="Ajouter un passage"
       >
-        <Plus size={iconSize.lg} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
-        <AppText style={[styles.label, { color: c.textInverse }]}>Ajouter un passage</AppText>
+        <Plus size={iconSize.lg} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+        <AppText style={[styles.label, { color: c.onPrimary }]}>Ajouter un passage</AppText>
       </Pressable>
     </View>
   );

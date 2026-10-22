@@ -5,13 +5,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../fixtures/SkipsWithoutPdo.php';
 require_once __DIR__ . '/../TestDatabase.php';
 require_once __DIR__ . '/../fixtures/NursePassageFixtures.php';
-require_once __DIR__ . '/../ai/support/AiHttpHarness.php';
+require_once __DIR__ . '/../support/HttpHarness.php';
 require_once __DIR__ . '/../../lib/appointments/bootstrap.php';
 require_once __DIR__ . '/../../lib/appointments/AppointmentCreateInputPolicy.php';
 require_once __DIR__ . '/../../lib/nurse-passage/NursePassageSeriesService.php';
 require_once __DIR__ . '/../../lib/nurse-tour/NurseTourService.php';
 require_once __DIR__ . '/../../lib/nurse-tour/PatientAbsenceService.php';
-require_once __DIR__ . '/../../lib/ai/AiConversationService.php';
 require_once __DIR__ . '/../../lib/PrescriptionService.php';
 require_once __DIR__ . '/../../lib/StaffPatientHubSearch.php';
 require_once __DIR__ . '/../../lib/pharmacy/PharmacyOrderService.php';
@@ -23,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Suivi d'un proche depuis son dossier : RDV et passages saisis sur le dossier stockés sous le titulaire
- * (+ relative_id), tournée, ordonnance, conversation Cary, hub soignant et commandes pharmacie.
+ * (+ relative_id), tournée, ordonnance, hub soignant et commandes pharmacie.
  */
 final class RelativeDossierFollowUpTest extends TestCase
 {
@@ -76,7 +75,6 @@ final class RelativeDossierFollowUpTest extends TestCase
             foreach ($this->documentIds as $documentId) {
                 $this->db->prepare('DELETE FROM medical_documents WHERE id = ?')->execute([$documentId]);
             }
-            $this->db->prepare('DELETE FROM ai_conversations WHERE user_id = ?')->execute([$nurseId]);
             $this->db->prepare('DELETE FROM patient_absences WHERE nurse_id = ?')->execute([$nurseId]);
             $this->db->prepare('DELETE FROM appointments WHERE patient_id = ? OR patient_id = ?')
                 ->execute([$this->fixtures['patient'], $this->relativeProfileId]);
@@ -138,7 +136,7 @@ final class RelativeDossierFollowUpTest extends TestCase
         $this->assertSame([$this->fixtures['patient'], $this->relativeId], [$rows[0]['patient_id'], $rows[0]['relative_id']]);
         $appointmentId = (string) $rows[0]['id'];
 
-        $ownerList = AiHttpHarness::request('GET', '/api/appointments?limit=50', AiHttpHarness::token($this->fixtures['patient'], 'patient'));
+        $ownerList = HttpHarness::request('GET', '/api/appointments?limit=50', HttpHarness::token($this->fixtures['patient'], 'patient'));
         $this->assertSame(200, $ownerList['status'], $ownerList['raw']);
         $this->assertContains($appointmentId, array_column($ownerList['json']['data'] ?? [], 'id'), 'Le titulaire voit le passage de son proche');
 
@@ -164,14 +162,11 @@ final class RelativeDossierFollowUpTest extends TestCase
         $this->assertNotSame($ownerAbsence['id'], $relativeAbsence['id']);
     }
 
-    public function testPrescriptionAndCaryConversationUseTheRelativeDossier(): void
+    public function testPrescriptionUsesTheRelativeDossier(): void
     {
         $appointmentId = (string) ($this->relativePassage()['appointment_ids'][0] ?? '');
         $this->assertNotSame('', $appointmentId);
         $nurse = $this->nurse();
-
-        $conversation = (new AiConversationService($this->db))->create($nurse, ['context_type' => 'appointment', 'context_id' => $appointmentId]);
-        $this->assertSame($this->relativeProfileId, $conversation['conversation']['patient_id']);
 
         $adeli = (new Crypto())->encryptField('751234567');
         $this->db->prepare('UPDATE profiles SET adeli_encrypted = ?, adeli_dek = ?, prescription_generation_enabled = 1 WHERE id = ?')

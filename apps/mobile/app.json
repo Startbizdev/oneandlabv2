@@ -26,8 +26,8 @@
         "NSLocationWhenInUseUsageDescription": "Cary utilise votre position pour optimiser l’ordre de votre tournée et afficher les distances entre vos passages.",
         "NSCalendarsUsageDescription": "Cary ajoute vos passages de tournée à votre calendrier.",
         "NSCalendarsFullAccessUsageDescription": "Cary ajoute vos passages de tournée à votre calendrier.",
-        "NSMicrophoneUsageDescription": "Cary utilise le micro pour le mode vocal de l’assistant.",
-        "NSSpeechRecognitionUsageDescription": "Cary transcrit votre voix pour répondre en conversation.",
+        "NSMicrophoneUsageDescription": "Cary utilise le micro quand vous parlez à l’assistant ou dictez un compte rendu. Votre voix n’est pas enregistrée.",
+        "NSSpeechRecognitionUsageDescription": "La reconnaissance vocale de votre appareil transcrit votre voix en texte pour vos questions à l’assistant Cary et vos dictées de comptes rendus.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
@@ -110,8 +110,8 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "Cary utilise le micro pour le mode vocal de l’assistant.",
-          "speechRecognitionPermission": "Cary transcrit votre voix pour répondre en conversation."
+          "microphonePermission": "Cary utilise le micro quand vous parlez à l’assistant ou dictez un compte rendu. Votre voix n’est pas enregistrée.",
+          "speechRecognitionPermission": "La reconnaissance vocale de votre appareil transcrit votre voix en texte pour vos questions à l’assistant Cary et vos dictées de comptes rendus."
         }
       ],
       [

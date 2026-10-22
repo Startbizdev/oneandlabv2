@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { ScreenFrame } from '@/components/navigation/ScreenFrame';
-import { HeaderNotificationBell } from '@/navigation/HeaderNotificationButton';
+import { TabHeaderActions } from '@/navigation/TabHeaderActions';
 
 type Props = {
   title: ReactNode;
-  /** Action à droite — cloche de notifications par défaut, `null` pour aucune. */
+  /** Action à droite — assistant (soignant) et cloche de notifications par défaut, `null` pour aucune. */
   headerRight?: ReactNode;
   children: ReactNode;
 };
@@ -15,7 +15,7 @@ export function TabScreenFrame({ title, headerRight, children }: Props) {
     <ScreenFrame
       variant="large"
       title={title}
-      right={headerRight !== undefined ? headerRight : <HeaderNotificationBell />}
+      right={headerRight !== undefined ? headerRight : <TabHeaderActions />}
     >
       {children}
     </ScreenFrame>

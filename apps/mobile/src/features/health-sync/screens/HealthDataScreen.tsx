@@ -9,7 +9,7 @@ import { SkeletonList } from '@/components/ui/skeletons';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { useToast } from '@/providers/ToastProvider';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
-import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
+import { buildAssistantLink } from '@/features/assistant/utils/assistant-link';
 import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { HealthActivityHero } from '../components/HealthActivityHero';
 import { HealthConnectOnboarding } from '../components/HealthConnectOnboarding';
@@ -155,7 +155,7 @@ export function HealthDataScreen() {
                       label: "Demander à l'assistant",
                       accessibilityHint: "Ouvre l'assistant Cary",
                       onPress: () =>
-                        router.push(buildAiDeepLink('patient', { conversation_type: 'health_tracking' })),
+                        router.push(buildAssistantLink('patient', { context_type: 'health' })),
                     },
                   ]}
                 />

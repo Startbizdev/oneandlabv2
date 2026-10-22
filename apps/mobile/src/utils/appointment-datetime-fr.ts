@@ -3,10 +3,9 @@
  */
 
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import 'dayjs/locale/fr';
 import {
+  appointmentDayFrance,
   formatPassageTimeSlotFromFormData,
   isNursePassageFormData,
   parseAppointmentDateFrance,
@@ -17,12 +16,15 @@ import {
 } from './patient-urgency-display';
 
 dayjs.locale('fr');
-dayjs.extend(utc);
-dayjs.extend(timezone);
 
+/**
+ * Jour civil France (Intl), puis mise en forme dayjs d'une date sans heure.
+ * Pas de `dayjs().tz()` : sous Hermes il relit `toLocaleString('en-US')` via `new Date(string)`,
+ * obtient NaN et retombe en UTC — un RDV à 00h00/00h30 à Paris s'affichait la veille.
+ */
 function appointmentCalendarDate(scheduledAt: string, pattern: string): string {
-  const date = parseAppointmentDateFrance(scheduledAt);
-  return Number.isNaN(date.getTime()) ? '' : dayjs(date).tz('Europe/Paris').format(pattern);
+  const dayKey = appointmentDayFrance(scheduledAt);
+  return dayKey ? dayjs(dayKey).format(pattern) : '';
 }
 
 /** « vendredi » → « Vendredi » */

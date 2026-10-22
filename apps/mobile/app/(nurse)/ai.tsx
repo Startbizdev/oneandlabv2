@@ -1,5 +1,5 @@
-import { RoleAiHubRouteScreen } from '@/features/ai-hub/screens/RoleAiHubRouteScreen';
+import { AssistantScreen } from '@/features/assistant/screens/AssistantScreen';
 
-export default function NurseAiScreen() {
-  return <RoleAiHubRouteScreen role="nurse" showBackButton />;
+export default function NurseAssistantScreen() {
+  return <AssistantScreen role="nurse" showBackButton />;
 }

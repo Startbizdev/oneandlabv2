@@ -422,7 +422,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textPrimary,
     },
-    dayNumSelected: { ...font.semiBold, color: c.textInverse },
+    dayNumSelected: { ...font.semiBold, color: c.onPrimary },
     dayNumToday: { ...font.semiBold, color: c.primary },
     dot: {
       width: DOT_SIZE,

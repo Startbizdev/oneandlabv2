@@ -672,7 +672,6 @@ const breadcrumbItems = computed(() => {
     "/admin/notifications": { label: "Notifications", icon: "i-lucide-bell" },
     "/admin/abonnements": { label: "Abonnements", icon: "i-lucide-credit-card" },
     "/admin/commandes-pharmacie": { label: "Commandes pharmacie", icon: "i-lucide-pill" },
-    "/admin/ai": { label: "IA Cary", icon: "i-lucide-sparkles" },
     "/admin/logs": { label: "Logs", icon: "i-lucide-file-text" },
     
     // Routes lab
@@ -892,12 +891,6 @@ const navigationItems = computed(() => {
           icon: "i-lucide-pill",
           to: "/admin/commandes-pharmacie",
           active: active("/admin/commandes-pharmacie"),
-        },
-        {
-          label: "IA Cary",
-          icon: "i-lucide-sparkles",
-          to: "/admin/ai",
-          active: active("/admin/ai"),
         },
         {
           label: "Logs HDS",

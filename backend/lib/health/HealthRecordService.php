@@ -118,21 +118,12 @@ final class HealthRecordService
             error_log('[health-record] metrics summary: ' . $e->getMessage());
         }
 
-        $trends = [];
-        try {
-            if (class_exists('TrendEngine')) {
-                require_once __DIR__ . '/../ai/TrendEngine.php';
-                $trends = (new TrendEngine($this->db))->listForPatient($patientId, 6);
-            }
-        } catch (Throwable $e) {
-            error_log('[health-record] trends: ' . $e->getMessage());
-        }
-
         return [
             'completion' => $completion,
             'sections' => $sections,
             'health_summary' => $metricsSummary,
-            'trends' => $trends,
+            // Champ conservé pour les clients existants : les tendances calculées par l'ancien assistant n'existent plus.
+            'trends' => [],
             'open_gaps' => $completion['open_gaps'] ?? [],
             'disclaimer_fr' => HealthRecordSchema::definition()['disclaimer_fr'] ?? '',
             'staff_view' => $staffView,

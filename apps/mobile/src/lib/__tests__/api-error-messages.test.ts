@@ -1,7 +1,5 @@
 import {
   REVIEW_RESPONSE_MAX_LENGTH,
-  aiBookingDraftErrorMessage,
-  isAiDraftClosedError,
   isManualOrderLockedError,
   isReviewResponseConflict,
   nursePassageCreateErrorMessage,
@@ -9,7 +7,6 @@ import {
   reviewResponseErrorMessage,
   tourOptimizeErrorMessage,
 } from '@oneandlab/shared-api';
-import { canBookWithCaryAi } from '@/features/ai-hub/utils/ai-booking-access';
 import { ApiRequestError } from '@/lib/errors/api-request-error';
 import { apiErrorMessage } from '@/lib/errors/handle-api-error';
 
@@ -29,20 +26,6 @@ describe('messages d’erreur API par statut et code', () => {
     expect(tourOptimizeErrorMessage(409, 'manual_order_locked')).toMatch(/verrouillé/);
     expect(tourOptimizeErrorMessage(500, undefined)).toMatch(/Tri de la tournée impossible/);
     expect(tourOptimizeErrorMessage(400, undefined)).toBeNull();
-  });
-
-  it('brouillons Cary : codes métier et 403 sans code', () => {
-    expect(aiBookingDraftErrorMessage(403, undefined)).toMatch(/pas disponible pour votre profil/);
-    expect(aiBookingDraftErrorMessage(400, 'DRAFT_NOT_READY')).toMatch(/incomplet/);
-    expect(aiBookingDraftErrorMessage(400, 'DRAFT_EXPIRED')).toMatch(/expiré/);
-    expect(aiBookingDraftErrorMessage(409, 'DRAFT_ALREADY_CONFIRMED')).toMatch(/déjà été confirmé/);
-    expect(aiBookingDraftErrorMessage(409, 'EMAIL_ALREADY_USED')).toMatch(/e-mail est déjà utilisé/);
-    expect(aiBookingDraftErrorMessage(409, 'PATIENT_ALREADY_EXISTS')).toMatch(/patient existe déjà avec cet e-mail/);
-    expect(aiBookingDraftErrorMessage(400, 'PATIENT_BOOKING_CONSENT_REQUIRED')).toMatch(/consentement du patient/);
-    expect(aiBookingDraftErrorMessage(400, 'VALIDATION_ERROR')).toBeNull();
-    expect(isAiDraftClosedError('DRAFT_EXPIRED')).toBe(true);
-    expect(isAiDraftClosedError('DRAFT_ALREADY_CONFIRMED')).toBe(true);
-    expect(isAiDraftClosedError('DRAFT_NOT_READY')).toBe(false);
   });
 
   it('réponse à un avis : conflit 409 et limite de longueur', () => {
@@ -67,14 +50,5 @@ describe('apiErrorMessage (mobile)', () => {
 
   it('garde le message client pour une erreur non HTTP', () => {
     expect(apiErrorMessage(new Error('Réseau indisponible'), tourOptimizeErrorMessage)).toBe('Réseau indisponible');
-  });
-});
-
-describe('canBookWithCaryAi', () => {
-  it('reflète AiBookingAccess::ROLES : le préleveur passe par « Demander un prélèvement »', () => {
-    expect(canBookWithCaryAi('patient')).toBe(true);
-    expect(canBookWithCaryAi('pro')).toBe(true);
-    expect(canBookWithCaryAi('nurse')).toBe(true);
-    expect(canBookWithCaryAi('preleveur')).toBe(false);
   });
 });

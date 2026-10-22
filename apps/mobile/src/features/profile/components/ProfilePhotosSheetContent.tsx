@@ -100,9 +100,9 @@ export function ProfilePhotosSheetContent({
             </View>
             <View style={styles.cameraBadge}>
               {picking === 'profile' ? (
-                <ActivityIndicator color={c.textInverse} size="small" />
+                <ActivityIndicator color={c.onPrimary} size="small" />
               ) : (
-                <Camera size={iconSize.xs} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />
+                <Camera size={iconSize.xs} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />
               )}
             </View>
           </Pressable>
@@ -162,7 +162,7 @@ function PhotoActions({
           loading={loading}
           disabled={disabled}
           onPress={onPick}
-          leftIcon={<ImagePlus size={iconSize.md} color={c.textInverse} strokeWidth={ICON_STROKE_WIDTH} />}
+          leftIcon={<ImagePlus size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
         />
         {hasImage ? (
           <Button

@@ -1,7 +1,7 @@
 import { useRouter, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { buildAiDeepLink } from '@/features/ai-hub/utils/ai-navigation';
+import { buildAssistantLink } from '@/features/assistant/utils/assistant-link';
 import { bookingNewHref } from '@/navigation/role-hrefs';
 import type { HealthRecordGap } from '../api/health-record.service';
 import { recordGapAction } from '../api/health-record.service';
@@ -41,8 +41,8 @@ export function HealthRecordGapActionCard({ gap }: Props) {
       return;
     }
     router.push(
-      buildAiDeepLink('patient', {
-        conversation_type: 'assistant_health',
+      buildAssistantLink('patient', {
+        context_type: 'health',
         initial_message: gap.label_fr,
       }),
     );

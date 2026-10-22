@@ -845,7 +845,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       fontSize: fontSize.sm,
       color: c.textSecondary,
     },
-    relativePillTextActive: { color: c.textInverse },
+    relativePillTextActive: { color: c.onPrimary },
     addRelativeBtn: {
       minHeight: MIN_TOUCH_TARGET,
       justifyContent: 'center' as const,

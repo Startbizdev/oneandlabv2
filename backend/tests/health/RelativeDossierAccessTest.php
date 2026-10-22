@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../fixtures/SkipsWithoutPdo.php';
 require_once __DIR__ . '/../TestDatabase.php';
 require_once __DIR__ . '/../fixtures/TestFixtures.php';
-require_once __DIR__ . '/../ai/support/AiHttpHarness.php';
+require_once __DIR__ . '/../support/HttpHarness.php';
 require_once __DIR__ . '/../../lib/health/bootstrap.php';
 require_once __DIR__ . '/../../lib/health/HealthRecordService.php';
 require_once __DIR__ . '/../../lib/health/ClinicalVitalService.php';
@@ -204,40 +204,40 @@ final class RelativeDossierAccessTest extends TestCase
         $this->assertSame([$relativeAppointment], $this->staffListIds($this->relativeProfileId));
         $this->assertSame([$ownerAppointment], $this->staffListIds($this->ownerId));
 
-        $token = AiHttpHarness::token($this->nurseId, 'nurse');
-        $history = AiHttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->relativeProfileId, $token);
+        $token = HttpHarness::token($this->nurseId, 'nurse');
+        $history = HttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->relativeProfileId, $token);
         $this->assertSame(200, $history['status'], $history['raw']);
         $this->assertSame([$relativeAppointment], array_column($history['json']['data'] ?? [], 'id'));
         $row = $history['json']['data'][0];
         $this->assertSame($this->relativeProfileId, $row['relative_profile_id'] ?? null);
         $this->assertSame($this->relativeProfileId, $row['relative']['profile_id'] ?? null);
 
-        $legacy = AiHttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->ownerId . '&relative_id=' . $this->relativeId, $token);
+        $legacy = HttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->ownerId . '&relative_id=' . $this->relativeId, $token);
         $this->assertSame([$relativeAppointment], array_column($legacy['json']['data'] ?? [], 'id'));
 
-        $ownerHistory = AiHttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->ownerId, $token);
+        $ownerHistory = HttpHarness::request('GET', '/api/patient-history?patient_id=' . $this->ownerId, $token);
         $this->assertSame([$ownerAppointment], array_column($ownerHistory['json']['data'] ?? [], 'id'), 'Le dossier du titulaire exclut les RDV du proche');
     }
 
     public function testRelativeDossierEndpointsForOwnerOtherPatientAndUnlinkedNurse(): void
     {
         $this->appointment('pending', null, $this->relativeId);
-        $ownerToken = AiHttpHarness::token($this->ownerId, 'patient');
-        $otherToken = AiHttpHarness::token($this->otherPatientId, 'patient');
-        $nurseToken = AiHttpHarness::token($this->nurseId, 'nurse');
+        $ownerToken = HttpHarness::token($this->ownerId, 'patient');
+        $otherToken = HttpHarness::token($this->otherPatientId, 'patient');
+        $nurseToken = HttpHarness::token($this->nurseId, 'nurse');
         $carnetPath = '/api/patients/' . $this->relativeProfileId . '/health-record';
         $vitalsPath = '/api/patients/' . $this->relativeProfileId . '/clinical-vitals';
 
-        $this->assertSame(200, AiHttpHarness::request('GET', $carnetPath, $ownerToken)['status']);
-        $patched = AiHttpHarness::request('PATCH', $carnetPath, $ownerToken, ['answers' => ['allergies_has' => ['value' => 'no']]]);
+        $this->assertSame(200, HttpHarness::request('GET', $carnetPath, $ownerToken)['status']);
+        $patched = HttpHarness::request('PATCH', $carnetPath, $ownerToken, ['answers' => ['allergies_has' => ['value' => 'no']]]);
         $this->assertSame(200, $patched['status'], $patched['raw']);
-        $this->assertSame(403, AiHttpHarness::request('GET', $carnetPath, $otherToken)['status']);
-        $this->assertSame(403, AiHttpHarness::request('GET', '/api/patients/' . $this->ownerId . '/health-record', $ownerToken)['status'], 'Son propre carnet passe par /health-record');
-        $this->assertSame(403, AiHttpHarness::request('GET', $carnetPath, $nurseToken)['status'], 'Offre en attente : aucun accès au dossier');
+        $this->assertSame(403, HttpHarness::request('GET', $carnetPath, $otherToken)['status']);
+        $this->assertSame(403, HttpHarness::request('GET', '/api/patients/' . $this->ownerId . '/health-record', $ownerToken)['status'], 'Son propre carnet passe par /health-record');
+        $this->assertSame(403, HttpHarness::request('GET', $carnetPath, $nurseToken)['status'], 'Offre en attente : aucun accès au dossier');
 
-        $this->assertSame(200, AiHttpHarness::request('GET', $vitalsPath, $ownerToken)['status']);
-        $this->assertSame(403, AiHttpHarness::request('GET', $vitalsPath, $otherToken)['status']);
-        $this->assertSame(403, AiHttpHarness::request('POST', $vitalsPath, $ownerToken, ['vital_type' => 'heart_rate', 'value' => 70])['status']);
+        $this->assertSame(200, HttpHarness::request('GET', $vitalsPath, $ownerToken)['status']);
+        $this->assertSame(403, HttpHarness::request('GET', $vitalsPath, $otherToken)['status']);
+        $this->assertSame(403, HttpHarness::request('POST', $vitalsPath, $ownerToken, ['vital_type' => 'heart_rate', 'value' => 70])['status']);
     }
 
     public function testTransmissionCareItemsAndTeamComeFromTheRelativeAppointments(): void
@@ -304,10 +304,10 @@ final class RelativeDossierAccessTest extends TestCase
         $this->assertNull(PatientDossierAccess::resolveProfileDocumentsTarget($this->db, $users, $ownerNurse, $this->ownerId, $this->relativeId));
         $this->assertNull(PatientDossierAccess::resolveProfileDocumentsTarget($this->db, $users, ['user_id' => $this->otherPatientId, 'role' => 'patient'], $this->relativeProfileId, null));
 
-        $listed = AiHttpHarness::request('GET', '/api/patient-documents?user_id=' . $this->relativeProfileId, AiHttpHarness::token($this->nurseId, 'nurse'));
+        $listed = HttpHarness::request('GET', '/api/patient-documents?user_id=' . $this->relativeProfileId, HttpHarness::token($this->nurseId, 'nurse'));
         $this->assertSame(200, $listed['status'], $listed['raw']);
         $this->assertStringContainsString($documentId, $listed['raw']);
-        $refused = AiHttpHarness::request('GET', '/api/patient-documents?user_id=' . $this->relativeProfileId, AiHttpHarness::token($ownerNurseId, 'nurse'));
+        $refused = HttpHarness::request('GET', '/api/patient-documents?user_id=' . $this->relativeProfileId, HttpHarness::token($ownerNurseId, 'nurse'));
         $this->assertSame(403, $refused['status']);
     }
 

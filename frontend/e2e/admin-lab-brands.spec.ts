@@ -97,3 +97,44 @@ for (const width of [360, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
+
+test('lab brands: Enregistrer reste accessible sur un petit écran quand la liste des labos est longue', async ({ page }) => {
+  const user = { id: 'fixture-admin', role: 'super_admin', first_name: 'Camille', last_name: 'Exemple' };
+  await page.setViewportSize({ width: 360, height: 560 });
+  await page.addInitScript(user => {
+    localStorage.setItem('auth_token', 'local-ui-fixture');
+    localStorage.setItem('auth_user', JSON.stringify(user));
+    localStorage.setItem('oneandlab:onboarding-completed', JSON.stringify({ super_admin: true }));
+  }, user);
+  const labs = Array.from({ length: 6 }, (_, i) => ({ id: `lab-alpha-${i}`, company_name: `Labo Alpha ${i}`, email: `alpha${i}@alpha.test` }));
+  const brand = { id: 'brand-alpha', name: 'Alpha', slug: 'alpha', logo_url: null, website_url: null, is_active: 1, sort_order: 1, lab_ids: labs.slice(0, 3).map(lab => lab.id), appointment_count: 0 };
+  const puts: unknown[] = [];
+
+  await page.route(new URL('/api/**', process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').href, route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/auth/me')) return route.fulfill({ json: { success: true, user, data: user } });
+    if (path.endsWith('/users')) return route.fulfill({ json: { success: true, data: labs, pagination: { page: 1, pages: 1 } } });
+    if (path.endsWith('/admin/lab-brands/labs')) {
+      return route.fulfill({ json: { success: true, data: labs.map(lab => ({ id: lab.id, has_active_zone: true, is_accepting_appointments: true })) } });
+    }
+    if (path.endsWith('/admin/lab-brands/brand-alpha') && request.method() === 'PUT') {
+      puts.push(request.postDataJSON());
+      return route.fulfill({ json: { success: true } });
+    }
+    if (path.endsWith('/admin/lab-brands')) return route.fulfill({ json: { success: true, data: [brand] } });
+    return route.fulfill({ json: { success: true, data: [] } });
+  });
+
+  await page.goto('/admin/lab-brands');
+  await page.getByRole('button', { name: 'Modifier Alpha', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const save = dialog.getByRole('button', { name: 'Enregistrer', exact: true });
+  // Sans défilement : le bouton doit être entièrement visible (pas rogné par le modal).
+  await expect(save).toBeInViewport({ ratio: 1 });
+  const box = await save.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await expect(dialog).toBeHidden();
+  expect(puts).toEqual([expect.objectContaining({ name: 'Alpha', lab_ids: brand.lab_ids })]);
+});

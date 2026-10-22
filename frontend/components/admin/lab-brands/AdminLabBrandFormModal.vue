@@ -1,11 +1,8 @@
 <template>
-  <UModal v-model:open="open">
-    <template #content>
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-medium">{{ brand ? 'Modifier la marque' : 'Nouvelle marque' }}</h3>
-        </template>
-        <form class="space-y-5" @submit.prevent="saveBrand">
+  <UModal v-model:open="open" :title="brand ? 'Modifier la marque' : 'Nouvelle marque'">
+    <!-- Corps défilant et actions dans le pied fixe : le bouton Enregistrer reste visible quand la liste des labos s'allonge. -->
+    <template #body>
+        <form id="lab-brand-form" class="space-y-5" @submit.prevent="saveBrand">
           <UFormField label="Nom" required>
             <UInput v-model="form.name" placeholder="Nom du réseau" class="w-full" />
           </UFormField>
@@ -87,14 +84,15 @@
             :description="`${blockedLabs.map(lab => lab.label).join(', ')} : ajoutez une zone de prise de sang active ou activez les RDV sur leur compte.`"
           />
           <UAlert v-if="formError" color="error" variant="soft" :title="formError" />
-          <div class="flex justify-end gap-2">
-            <UButton variant="outline" color="neutral" @click="close">Annuler</UButton>
-            <UButton type="submit" color="primary" :loading="saving">
-              {{ confirmBlocked ? 'Enregistrer quand même' : 'Enregistrer' }}
-            </UButton>
-          </div>
         </form>
-      </UCard>
+    </template>
+    <template #footer>
+      <div class="flex w-full justify-end gap-2">
+        <UButton variant="outline" color="neutral" @click="close">Annuler</UButton>
+        <UButton type="submit" form="lab-brand-form" color="primary" :loading="saving">
+          {{ confirmBlocked ? 'Enregistrer quand même' : 'Enregistrer' }}
+        </UButton>
+      </div>
     </template>
   </UModal>
 </template>

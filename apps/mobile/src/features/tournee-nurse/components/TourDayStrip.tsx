@@ -63,7 +63,7 @@ function TourDayCell({ iso, active, isToday, count, onPress }: DayCellProps) {
               { backgroundColor: c.primary, borderColor: c.surface },
             ]}
           >
-            <AppText style={[styles.countText, { color: c.textInverse }]} maxFontSizeMultiplier={1.2}>
+            <AppText style={[styles.countText, { color: c.onPrimary }]} maxFontSizeMultiplier={1.2}>
               {formatCountBadge(count)}
             </AppText>
           </View>

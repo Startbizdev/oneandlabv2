@@ -836,6 +836,7 @@ import { servicesRequiringOwnSlots } from '~/utils/dashboard-unified-rdv';
 import { useNow } from '@vueuse/core';
 import { bookingLeadTimeAfterClosing, nextBookingDateAfterClosing } from '@oneandlab/shared-utils';
 import { availabilitySliderMinHourParis } from '~/utils/booking-paris-availability';
+import { bookingAddressAlreadyChosen } from '~/utils/booking-address-prefill';
 import { normalizeCategorySkipPrescriptionDocuments } from '~/utils/category-skip-prescription-documents';
 
 const props = defineProps<{
@@ -1508,8 +1509,10 @@ const prefillForm = async () => {
         form.gender = u.gender || '';
         form.email = u.email || '';
         form.phone = u.phone || '';
-        form.address = u.address || null;
-        form.address_complement = u.address?.complement || '';
+        if (!bookingAddressAlreadyChosen(props.modelValue)) {
+          form.address = u.address || null;
+          form.address_complement = u.address?.complement || '';
+        }
       }
     } catch {}
   } else if (props.relative) {
@@ -1519,7 +1522,9 @@ const prefillForm = async () => {
     form.gender = props.relative.gender || '';
     form.email = props.relative.email || user.value?.email || '';
     form.phone = props.relative.phone || user.value?.phone || '';
-    form.address = props.relative.address || null;
+    if (!bookingAddressAlreadyChosen(props.modelValue)) {
+      form.address = props.relative.address || null;
+    }
   }
 };
 

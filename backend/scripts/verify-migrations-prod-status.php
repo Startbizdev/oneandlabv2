@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/migrations/assistant-migrations.php';
 
 $config = require __DIR__ . '/../config/database.php';
 $dsn = sprintf(
@@ -55,11 +56,19 @@ $checks = [
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'patient_professional_access'
           AND COLUMN_NAME = 'source' AND COLUMN_TYPE LIKE '%''lab_assignment''%'
     ",
-    '124 ai_messages.seq' => "SHOW COLUMNS FROM ai_messages LIKE 'seq'",
-    '124 ai_messages.client_message_id' => "SHOW COLUMNS FROM ai_messages LIKE 'client_message_id'",
-    '124 ai_messages.reply_to_message_id' => "SHOW COLUMNS FROM ai_messages LIKE 'reply_to_message_id'",
-    '125 ai_conversations.context_type' => "SHOW COLUMNS FROM ai_conversations LIKE 'context_type'",
-    '125 ai_conversations.context_id' => "SHOW COLUMNS FROM ai_conversations LIKE 'context_id'",
+    '130 assistant_conversations' => "SHOW TABLES LIKE 'assistant_conversations'",
+    '130 assistant_messages' => "SHOW TABLES LIKE 'assistant_messages'",
+    '130 anciennes tables IA supprimées' => "
+        SELECT 1 FROM DUAL WHERE NOT EXISTS (
+            SELECT 1 FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('" . implode("', '", MIGRATION_130_DROPPED_TABLES) . "')
+        )
+    ",
+    '130 paramètres IA supprimés' => "
+        SELECT 1 FROM DUAL WHERE NOT EXISTS (
+            SELECT 1 FROM platform_settings WHERE setting_key IN ('ai_disclaimer_fr', 'ai_temperature')
+        )
+    ",
     '126 patient_relatives.profile_id' => "SHOW COLUMNS FROM patient_relatives LIKE 'profile_id'",
     '127 nurse_collaborations' => "SHOW TABLES LIKE 'nurse_collaborations'",
     '128 medical_documents.replaced_by_document_id' => "SHOW COLUMNS FROM medical_documents LIKE 'replaced_by_document_id'",

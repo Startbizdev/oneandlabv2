@@ -26,7 +26,8 @@ import { useOfferQueueStore } from '../../store/offer-queue-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { fetchAppointment } from '../../api/appointments.service';
-import { NURSE_TOUR_QUERY_ROOT } from '@/features/tournee-nurse/hooks/nurse-tour-query';
+import { syncCachesAfterOfferAccept } from '@/features/nurse/utils/offer-accept-cache';
+import { useHasOpenSheet } from '@/components/ui/sheet/sheet-store';
 import { appointmentDetailHref } from '@/navigation/role-hrefs';
 import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
@@ -78,6 +79,9 @@ export function OfferAppointmentModal() {
   /** iOS : le plein écran de préparation ne peut être présenté qu'une fois la sheet native retirée. */
   const [offerSheetGone, setOfferSheetGone] = useState(false);
   const acceptedAptIdRef = useRef<string | null>(null);
+  /** Double appui : le 2e PUT renverrait « déjà accepté » et fermerait l'offre en erreur. */
+  const acceptInFlightRef = useRef(false);
+  const hasOpenSheet = useHasOpenSheet();
 
   useEffect(() => {
     if (!visible && !preparing) {
@@ -161,7 +165,8 @@ export function OfferAppointmentModal() {
   }, [finishAndNext, row, toast, user?.id]);
 
   const handleAccept = useCallback(async () => {
-    if (!row || !selected || !termsAccepted) return;
+    if (!row || !selected || !termsAccepted || acceptInFlightRef.current) return;
+    acceptInFlightRef.current = true;
 
     setLoading(true);
     setOfferSheetGone(false);
@@ -176,6 +181,7 @@ export function OfferAppointmentModal() {
       closeModal();
       setPreparing(false);
       setLoading(false);
+      acceptInFlightRef.current = false;
       if (r.planLimit) {
         void qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
         toast('Limite atteinte — passez à l’offre Pro pour accepter sans limite.', {
@@ -195,32 +201,14 @@ export function OfferAppointmentModal() {
     const acceptedId = selected.id;
     acceptedAptIdRef.current = acceptedId;
 
-    qc.setQueryData<Appointment>(queryKeys.appointments.detail(acceptedId), (prev) =>
-      prev ? { ...prev, status: 'confirmed' } : prev,
-    );
-
-    try {
-      await Promise.all([
-        qc.prefetchQuery({
-          queryKey: queryKeys.appointments.detail(acceptedId),
-          queryFn: async () => {
-            const res = await fetchAppointment(acceptedId);
-            if (!res.success || !res.data) {
-              throw new Error(res.error ?? 'RDV introuvable');
-            }
-            return res.data;
-          },
-        }),
-        qc.invalidateQueries({ queryKey: queryKeys.appointments.all }),
-        qc.invalidateQueries({ queryKey: queryKeys.patients.all }),
-        qc.invalidateQueries({ queryKey: ['patients', 'hub-search'] }),
-        qc.invalidateQueries({ queryKey: NURSE_TOUR_QUERY_ROOT }),
-        qc.invalidateQueries({ queryKey: queryKeys.planLimits.current }),
-      ]);
-    } catch (prefetchError) {
-      // Navigation maintenue : le cache optimiste porte déjà le statut confirmé.
-      console.warn('[offer] préchargement après acceptation incomplet', prefetchError);
-    }
+    // Seule la fiche ouverte ensuite est attendue ; listes et tournée se rafraîchissent en arrière-plan.
+    await syncCachesAfterOfferAccept(qc, acceptedId, async (id) => {
+      const res = await fetchAppointment(id, { includeBatch: true });
+      if (!res.success || !res.data) {
+        throw new Error(res.error ?? 'RDV introuvable');
+      }
+      return res.data;
+    });
 
     const minOverlayMs = 1400;
     const elapsed = Date.now() - startedAt;
@@ -238,6 +226,7 @@ export function OfferAppointmentModal() {
 
     setPreparing(false);
     setPrepComplete(false);
+    acceptInFlightRef.current = false;
     closeModal();
 
     toast(
@@ -354,7 +343,7 @@ export function OfferAppointmentModal() {
         </SheetModal>
       ) : null}
       <OfferAcceptPreparationOverlay
-        visible={preparing && offerSheetGone}
+        visible={preparing && (offerSheetGone || !hasOpenSheet)}
         complete={prepComplete}
         onFinish={onPrepFinish}
       />

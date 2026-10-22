@@ -1,5 +1,5 @@
-import { RoleAiHubRouteScreen } from '@/features/ai-hub/screens/RoleAiHubRouteScreen';
+import { AssistantScreen } from '@/features/assistant/screens/AssistantScreen';
 
-export default function PreleveurAiScreen() {
-  return <RoleAiHubRouteScreen role="preleveur" showBackButton />;
+export default function PreleveurAssistantScreen() {
+  return <AssistantScreen role="preleveur" showBackButton />;
 }

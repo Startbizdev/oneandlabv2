@@ -10,7 +10,6 @@ require_once __DIR__ . '/../MedicalDocumentAccess.php';
 require_once __DIR__ . '/../MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../pharmacy/PharmacyModuleConfig.php';
 require_once __DIR__ . '/../pharmacy/PharmacyOrderService.php';
-require_once __DIR__ . '/../rag/AiDocumentJobService.php';
 
 /**
  * Remplacement d'une ordonnance par un soignant ayant accès au document : la nouvelle reprend le RDV, le patient
@@ -98,25 +97,8 @@ final class MedicalDocumentReplacement
             'replaces_document_id' => $documentId,
             'file_name' => $stored['file_name'],
         ]);
-        $this->queueOcr($document, $stored['id']);
 
         return MedicalDocumentsInternal::uploadPayload($stored);
-    }
-
-    /**
-     * @param array<string, mixed> $document ancienne ordonnance (colonnes de loadForAccess)
-     */
-    private function queueOcr(array $document, string $newDocumentId): void
-    {
-        $patientId = (string) ($document['patient_id'] ?? '') ?: (string) ($document['apt_patient_id'] ?? '');
-        if ($patientId === '') {
-            return;
-        }
-        try {
-            (new AiDocumentJobService($this->db))->queueDocument($patientId, $newDocumentId);
-        } catch (Throwable $e) {
-            error_log('[medical-documents/replace] file OCR IA : ' . $e->getMessage());
-        }
     }
 
     private static function alreadyReplaced(): HttpStatusException

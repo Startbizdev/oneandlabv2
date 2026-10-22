@@ -1,5 +1,5 @@
 export * from './appointments';
-export * from './ai';
+export * from './assistant';
 export * from './health';
 export * from './clinical-vitals';
 export * from './mobile-app';

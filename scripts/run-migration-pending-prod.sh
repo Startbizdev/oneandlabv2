@@ -1,5 +1,5 @@
 #!/bin/bash
-# Migrations prod idempotentes après déploiement (093–109).
+# Migrations prod idempotentes après déploiement (093–130).
 # Usage: ./scripts/run-migration-pending-prod.sh
 set -euo pipefail
 
@@ -18,7 +18,7 @@ if [[ ! -f "$SSH_KEY" ]]; then
   exit 1
 fi
 
-echo "==> Migrations prod (093–109) sur $SSH_HOST..."
+echo "==> Migrations prod (093–130) sur $SSH_HOST..."
 
 echo "==> Copie des fichiers SQL (aucune donnée effacée)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "mkdir -p $REMOTE_BASE/database/migrations"
@@ -94,12 +94,6 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 echo "==> Migration 122 (transmissions de l'équipe soignante)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-122.php"
 
-echo "==> Migration 124 (messages Cary)..."
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-124.php"
-
-echo "==> Migration 125 (contexte des conversations Cary)..."
-ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-125.php"
-
 echo "==> Migration 126 (dossier patient des proches + backfill)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-126.php"
 
@@ -111,6 +105,9 @@ ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-m
 
 echo "==> Migration 129 (dates de visite d'un bilan)..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-129.php"
+
+echo "==> Migration 130 (nouvel assistant Cary ; supprime les tables de l'ancien assistant IA)..."
+ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/apply-migration-130.php"
 
 echo "==> Vérification finale..."
 ssh "${SSH_OPTS[@]}" "$SSH_HOST" "cd $REMOTE_BASE/backend && php scripts/verify-migrations-prod-status.php"

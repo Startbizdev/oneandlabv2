@@ -54,7 +54,7 @@ function buildStyles({ colors: c, fontSize }: Theme) {
       borderColor: c.primary,
     },
     checkmark: {
-      color: c.textInverse,
+      color: c.onPrimary,
       fontSize: fontSize.sm,
       ...font.semiBold,
       lineHeight: 16,

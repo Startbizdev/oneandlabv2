@@ -48,6 +48,8 @@ interface Props {
   phases: readonly string[];
   /** Contexte de la réservation sous la progression (soignant présélectionné). */
   contextBanner?: ReactNode;
+  /** Filtre affiché à l'ouverture (ex. « Prélèvements » depuis l'assistant) ; l'utilisateur peut en changer. */
+  initialFilterTab?: string;
 }
 
 function CareListTile({
@@ -113,6 +115,7 @@ export function CareSelectionStep({
   loading,
   phases,
   contextBanner,
+  initialFilterTab = 'all',
 }: Props) {
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
@@ -121,7 +124,7 @@ export function CareSelectionStep({
   const [modalCat, setModalCat] = useState<CareCategory | null>(null);
   /** Invalide les `ensureCategoryReady` en cours après fermeture ou nouveau tap. */
   const optionsSheetSessionRef = useRef(0);
-  const [filterTab, setFilterTab] = useState('all');
+  const [filterTab, setFilterTab] = useState(initialFilterTab);
 
   const resetFilterAfterAdd = useCallback(() => {
     setFilterTab('all');
@@ -144,11 +147,11 @@ export function CareSelectionStep({
   const filterTabs = useMemo(() => buildCareFilterTabs(fullList), [fullList]);
 
   useEffect(() => {
-    if (filterTab === 'all') return;
+    if (filterTab === 'all' || fullList.length === 0) return;
     if (!filterTabs.some((t) => t.value === filterTab)) {
       setFilterTab('all');
     }
-  }, [filterTab, filterTabs]);
+  }, [filterTab, filterTabs, fullList.length]);
 
   const displayList = useMemo(
     () =>
