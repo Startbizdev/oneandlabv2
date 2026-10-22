@@ -179,7 +179,8 @@ export function resolveNotificationNavigation(
     // La fiche passage mobile s'ouvre depuis un arrêt (RDV) : une série ouvre la tournée du jour.
     case 'passage_series':
     case 'nurse_tour':
-      return r === 'nurse' ? nurseTourHref(intent.date) : null;
+      if (r !== 'nurse') return null;
+      return nurseTourHref(intent.date);
     case 'none':
       return null;
   }

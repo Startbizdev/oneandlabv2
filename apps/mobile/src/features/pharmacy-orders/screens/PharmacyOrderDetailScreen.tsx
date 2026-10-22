@@ -265,12 +265,13 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
     linkItems.push({
       icon: UserRound,
       label: 'Fiche patient',
-      onPress: () =>
-        router.push(
-          order.relative_profile_id
-            ? staffPatientHref('/(pro)', order.relative_profile_id)
-            : staffPatientHref('/(pro)', order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}),
-        ),
+      onPress: () => {
+        if (order.relative_profile_id) {
+          router.push(staffPatientHref('/(pro)', order.relative_profile_id));
+          return;
+        }
+        router.push(staffPatientHref('/(pro)', order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}));
+      },
     });
     if (hasStaffRequester) {
       linkItems.push({

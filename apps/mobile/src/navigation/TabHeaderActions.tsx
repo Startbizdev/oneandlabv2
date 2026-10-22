@@ -11,7 +11,8 @@ import { useAuthStore } from '@/store/auth-store';
 
 /** Raccourci d'en-tête vers l'assistant : soignants seulement (le patient a l'onglet « Assistant »). */
 export function headerAssistantHref(role: string | undefined): Href | null {
-  return role === 'nurse' || role === 'pro' || role === 'preleveur' ? buildAssistantLink(role) : null;
+  if (role !== 'nurse' && role !== 'pro' && role !== 'preleveur') return null;
+  return buildAssistantLink(role);
 }
 
 /** Pastille ronde teintée (même encombrement qu'une icône d'en-tête) : se distingue des actions de l'écran. */

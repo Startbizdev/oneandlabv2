@@ -58,7 +58,7 @@ describe('fichiers d’association app', () => {
     expect(appleAppSiteAssociation('ABCDE12345')).toEqual({
       applinks: {
         apps: [],
-        details: [{ appIDs: ['ABCDE12345.com.carybioapp.app'], components: [{ '/': '/qr/*' }, { '/': '/pharmacie/*' }] }],
+        details: [{ appIDs: ['ABCDE12345.com.carybioapp.app'], components: [{ '/': '/qr/*' }, { '/': '/pharmacie/*' }, { '/': '/p/rdv/*' }] }],
       },
     });
   });

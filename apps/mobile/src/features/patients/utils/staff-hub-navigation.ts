@@ -26,9 +26,8 @@ export function staffHubItemRoute(item: StaffHubSearchItem, role: CarePhotoExcha
   const prefix = role === 'pro' ? '/(pro)' : '/(nurse)';
   if (item.kind === 'relative') {
     const profileId = item.profile_id?.trim();
-    return profileId
-      ? staffPatientHref(prefix, profileId)
-      : staffPatientHref(prefix, item.patient_id, undefined, { relative_id: item.relative_id });
+    if (profileId) return staffPatientHref(prefix, profileId);
+    return staffPatientHref(prefix, item.patient_id, undefined, { relative_id: item.relative_id });
   }
   if (item.kind === 'patient') {
     return staffPatientHref(prefix, item.patient_id);

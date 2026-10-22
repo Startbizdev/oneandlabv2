@@ -1,7 +1,7 @@
 /** Fichiers d'association app ↔ site (liens universels iOS, App Links Android). */
 
 export const APP_BUNDLE_ID = 'com.carybioapp.app'
-export const APP_LINK_PATHS = ['/qr/*', '/pharmacie/*']
+export const APP_LINK_PATHS = ['/qr/*', '/pharmacie/*', '/p/rdv/*']
 
 export function appleAppSiteAssociation(teamId: string): Record<string, unknown> | null {
   const team = teamId.trim()

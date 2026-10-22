@@ -41,8 +41,17 @@ function offerSnapshot(apt: Appointment | IncomingOfferClusterSource): IncomingO
   };
 }
 
+/** Offres acceptées ou refusées pendant la session : jamais représentées (polling, liste, notification). */
+const handledIds = new Set<string>();
+
+function isHandled(apt: { id?: string | null; batch_siblings?: Array<{ id?: string | null }> | null }): boolean {
+  if (apt?.id && handledIds.has(String(apt.id))) return true;
+  return (apt?.batch_siblings ?? []).some((sibling) => Boolean(sibling?.id) && handledIds.has(String(sibling.id)));
+}
+
 function canOpenOffer(data: Appointment, role: string, userId: string): boolean {
   if (!data?.id) return false;
+  if (isHandled(data)) return false;
   if (['canceled', 'cancelled', 'refused', 'expired'].includes(String(data.status ?? ''))) {
     return false;
   }
@@ -114,6 +123,8 @@ interface OfferQueueState {
     preview?: Appointment | null,
   ) => Promise<OpenIncomingOfferResult>;
   closeModal: () => void;
+  /** Acceptée ou refusée : retirée de la file et plus jamais présentée pendant la session. */
+  markHandled: (ids: string[]) => void;
   setShareToken: (token: string | null) => void;
   reset: () => void;
 }
@@ -173,7 +184,7 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
   enqueueMany: (items) => {
     const state = get();
     const displayedId = (state.visible || state.awaitingSheet) && state.selected?.id ? state.selected.id : '';
-    const candidates = items.filter((item) => item?.id && item.id !== displayedId);
+    const candidates = items.filter((item) => item?.id && item.id !== displayedId && !isHandled(item));
     const already = [
       ...state.coveredSnapshots,
       ...[...state.displayedIds].map((id) => ({ id })),
@@ -299,8 +310,14 @@ export const useOfferQueueStore = create<OfferQueueState>((set, get) => ({
 
   closeModal: () => hideOffer(),
 
+  markHandled: (ids) => {
+    for (const id of ids) if (id) handledIds.add(String(id));
+    set({ queue: get().queue.filter((item) => !isHandled(item)) });
+  },
+
   reset: () => {
     cancelWaitForSheets();
+    handledIds.clear();
     set({
       queue: [],
       displayedIds: new Set(),

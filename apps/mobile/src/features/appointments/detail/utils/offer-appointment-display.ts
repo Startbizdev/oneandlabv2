@@ -95,6 +95,25 @@ export function offerDateTimeLabel(appt: Appointment): string {
   return slot ? `${cap} · ${slot}` : cap;
 }
 
+/**
+ * Toutes les visites d'une offre (lot complet ou frères connus seulement par leur date), dans l'ordre :
+ * l'infirmier voit chaque passage avant d'accepter.
+ */
+export function offerVisitDateLabels(primary: Appointment, batch: Appointment[]): string[] {
+  const byId = new Map<string, Appointment>();
+  for (const appt of [primary, ...batch]) {
+    if (appt?.id) byId.set(String(appt.id), appt);
+  }
+  for (const sibling of primary.batch_siblings ?? []) {
+    const id = sibling?.id ? String(sibling.id) : '';
+    if (id && !byId.has(id)) byId.set(id, { ...primary, ...sibling, id } as Appointment);
+  }
+  return [...byId.values()]
+    .filter((appt) => Boolean(appt.scheduled_at))
+    .sort((a, b) => dayjs(a.scheduled_at).valueOf() - dayjs(b.scheduled_at).valueOf())
+    .map(offerDateTimeLabel);
+}
+
 export function offerDateShort(appt: Appointment): string {
   if (!appt.scheduled_at) return '';
   const fd = appt.form_data as { availability?: unknown } | undefined;

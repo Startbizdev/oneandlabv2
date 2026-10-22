@@ -1,7 +1,7 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { InteractionManager, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
 import { Row } from '@/components/layout/primitives';
 import { useRouter } from 'expo-router';
@@ -27,9 +27,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
 import { fetchAppointment } from '../../api/appointments.service';
 import { syncCachesAfterOfferAccept } from '@/features/nurse/utils/offer-accept-cache';
-import { useHasOpenSheet } from '@/components/ui/sheet/sheet-store';
 import { appointmentDetailHref } from '@/navigation/role-hrefs';
-import { OfferAcceptPreparationOverlay } from './offer/OfferAcceptPreparationOverlay';
 import { OfferAppointmentPreviewBody } from './offer/OfferAppointmentPreviewBody';
 import { ICON_STROKE_WIDTH, spacing, iconSize, AppText, useStyles, type Theme } from '@/theme';
 
@@ -45,7 +43,17 @@ function rowFromAppointment(apt: Appointment): AppointmentListRow {
   return { kind: 'batch', key, appointments: all };
 }
 
-/** Offres entrantes : réservées à l'infirmier, la fiche ouverte après acceptation est la sienne. */
+function offerIds(row: AppointmentListRow, selected: Appointment): string[] {
+  const ids = row.kind === 'batch' ? row.appointments.map((a) => a.id) : [row.appointment.id];
+  for (const sibling of selected.batch_siblings ?? []) ids.push(sibling.id);
+  return ids.filter(Boolean).map(String);
+}
+
+/**
+ * Offres entrantes : réservées à l'infirmier, la fiche ouverte après acceptation est la sienne.
+ * Accepter se confirme dans la sheet, qui se ferme ensuite : la suite (fiche, offre suivante) ne part
+ * qu'une fois la sheet native retirée (`onDismissed`), sans vue plein écran par-dessus.
+ */
 export function OfferAppointmentModal() {
   const c = useAppColors();
   const styles = useStyles(buildStyles);
@@ -58,6 +66,7 @@ export function OfferAppointmentModal() {
   const selectedId = selected?.id;
   const shareToken = useOfferQueueStore((s) => s.shareToken);
   const closeModal = useOfferQueueStore((s) => s.closeModal);
+  const markHandled = useOfferQueueStore((s) => s.markHandled);
   const userId = user?.id;
   const termsAccepted = useAppPreferencesStore(
     (s) => Boolean(userId) && s.offerTermsAcceptedUserId === userId,
@@ -73,24 +82,18 @@ export function OfferAppointmentModal() {
   const [showTerms, setShowTerms] = useState(!termsAccepted);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
   const [refusing, setRefusing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [preparing, setPreparing] = useState(false);
-  const [prepComplete, setPrepComplete] = useState(false);
-  /** iOS : le plein écran de préparation ne peut être présenté qu'une fois la sheet native retirée. */
-  const [offerSheetGone, setOfferSheetGone] = useState(false);
-  const acceptedAptIdRef = useRef<string | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  /** Fermeture demandée depuis la sheet : l'offre reste sélectionnée jusqu'à `onDismissed`. */
+  const [leaving, setLeaving] = useState(false);
+  const afterCloseRef = useRef<(() => void) | null>(null);
   /** Double appui : le 2e PUT renverrait « déjà accepté » et fermerait l'offre en erreur. */
   const acceptInFlightRef = useRef(false);
-  const hasOpenSheet = useHasOpenSheet();
-
-  useEffect(() => {
-    if (!visible && !preparing) {
-      setPrepComplete(false);
-    }
-  }, [visible, preparing]);
 
   useEffect(() => {
     setConfirmRefuse(false);
+    setAccepting(false);
+    setLeaving(false);
+    acceptInFlightRef.current = false;
     const acceptedBy = useAppPreferencesStore.getState().offerTermsAcceptedUserId;
     setShowTerms(!userId || acceptedBy !== userId);
   }, [selectedId, userId]);
@@ -112,46 +115,51 @@ export function OfferAppointmentModal() {
     return batchLotSummaryLabel(batchSorted);
   }, [batchSorted, isMultiBatch, selected]);
 
+  const showNext = useCallback(() => {
+    if (user?.role && user.id) {
+      void useOfferQueueStore.getState().processNext(user.role, user.id);
+    }
+  }, [user?.id, user?.role]);
 
-  /** Fermeture backdrop / swipe — on retire la sheet tout de suite, puis snooze et offre suivante. */
+  /** Ferme la sheet puis lance `after` une fois la route native retirée. */
+  const leave = useCallback((after?: () => void) => {
+    afterCloseRef.current = after ?? null;
+    setLeaving(true);
+  }, []);
+
+  /**
+   * La sélection est vidée d'abord : remettre `leaving` à false avant rendrait la sheet de nouveau
+   * visible et la représenterait (offre qui se rouvre après Accepter). L'état local se remet à zéro
+   * au changement d'offre ; la suite part après la fin de la transition native.
+   */
+  const onDismissed = useCallback(() => {
+    const after = afterCloseRef.current;
+    afterCloseRef.current = null;
+    closeModal();
+    if (after) InteractionManager.runAfterInteractions(after);
+  }, [closeModal]);
+
+  /** Geste ou retour Android : la sheet est déjà retirée, on met l'offre de côté puis on passe à la suivante. */
   const dismissOffer = useCallback(() => {
     const current = row;
     closeModal();
     if (!current) return;
-    void (async () => {
-      await snoozeOfferBatch(current, user?.id);
-      if (user?.role && user.id) {
-        void useOfferQueueStore.getState().processNext(user.role, user.id);
-      }
-    })();
-  }, [closeModal, row, user?.id, user?.role]);
+    void snoozeOfferBatch(current, user?.id).finally(showNext);
+  }, [closeModal, row, showNext, user?.id]);
 
-  /** « Plus tard » — on retire la sheet tout de suite, puis snooze et offre suivante. */
   const deferOffer = useCallback(() => {
     const current = row;
-    closeModal();
     if (!current) return;
-    void (async () => {
-      const r = await snoozeOfferBatch(current, user?.id);
-      if (!r.ok) {
-        toast(r.error, { type: 'error' });
-      }
-      if (user?.role && user.id) {
-        void useOfferQueueStore.getState().processNext(user.role, user.id);
-      }
-    })();
-  }, [closeModal, row, toast, user?.id, user?.role]);
-
-  const finishAndNext = useCallback(async () => {
-    await qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-    closeModal();
-    if (user?.role && user.id) {
-      void useOfferQueueStore.getState().processNext(user.role, user.id);
-    }
-  }, [closeModal, qc, user?.id, user?.role]);
+    leave(() => {
+      void snoozeOfferBatch(current, user?.id).then((r) => {
+        if (!r.ok) toast(r.error, { type: 'error' });
+        showNext();
+      });
+    });
+  }, [leave, row, showNext, toast, user?.id]);
 
   const handleRefuse = useCallback(async () => {
-    if (!row) return;
+    if (!row || !selected) return;
     setRefusing(true);
     const r = await refuseOfferBatch(row, user?.id);
     setRefusing(false);
@@ -159,100 +167,67 @@ export function OfferAppointmentModal() {
       toast(r.error, { type: 'error' });
       return;
     }
-    setConfirmRefuse(false);
-    toast(r.count > 1 ? `Offre refusée (${r.count} soins)` : 'Offre refusée', { type: 'info' });
-    await finishAndNext();
-  }, [finishAndNext, row, toast, user?.id]);
+    markHandled(offerIds(row, selected));
+    leave(() => {
+      toast(r.count > 1 ? `Offre refusée (${r.count} soins)` : 'Offre refusée', { type: 'info' });
+      void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      showNext();
+    });
+  }, [leave, markHandled, qc, row, selected, showNext, toast, user?.id]);
 
   const handleAccept = useCallback(async () => {
     if (!row || !selected || !termsAccepted || acceptInFlightRef.current) return;
     acceptInFlightRef.current = true;
-
-    setLoading(true);
-    setOfferSheetGone(false);
-    setPreparing(true);
-    setPrepComplete(false);
-    const startedAt = Date.now();
+    setAccepting(true);
 
     const r = await acceptOfferBatch(row, user?.id, shareToken);
 
     if (!r.ok) {
-      // Fermer avant de quitter la préparation : sinon la sheet est re-présentée puis refermée.
-      closeModal();
-      setPreparing(false);
-      setLoading(false);
-      acceptInFlightRef.current = false;
-      if (r.planLimit) {
-        void qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
-        toast('Limite atteinte — passez à l’offre Pro pour accepter sans limite.', {
-          type: 'error',
-        });
-      } else if (r.alreadyTaken) {
-        toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
-      } else {
-        toast(r.error, { type: 'error' });
-      }
-      await finishAndNext();
+      if (r.alreadyTaken) markHandled(offerIds(row, selected));
+      leave(() => {
+        if (r.planLimit) {
+          void qc.invalidateQueries({ queryKey: queryKeys.planLimits.current });
+          toast('Limite atteinte — passez à l’offre Pro pour accepter sans limite.', { type: 'error' });
+        } else if (r.alreadyTaken) {
+          toast('Ce rendez-vous a déjà été pris par un autre professionnel.', { type: 'info' });
+        } else {
+          toast(r.error, { type: 'error' });
+        }
+        void qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
+        showNext();
+      });
       return;
     }
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    const acceptedId = selected.id;
-    acceptedAptIdRef.current = acceptedId;
+    // Lot : la fiche ouverte est celle du premier passage.
+    const acceptedId = batchSorted[0]?.id ?? selected.id;
+    markHandled(offerIds(row, selected));
 
     // Seule la fiche ouverte ensuite est attendue ; listes et tournée se rafraîchissent en arrière-plan.
-    await syncCachesAfterOfferAccept(qc, acceptedId, async (id) => {
-      const res = await fetchAppointment(id, { includeBatch: true });
-      if (!res.success || !res.data) {
-        throw new Error(res.error ?? 'RDV introuvable');
-      }
-      return res.data;
-    });
-
-    const minOverlayMs = 1400;
-    const elapsed = Date.now() - startedAt;
-    if (elapsed < minOverlayMs) {
-      await new Promise((resolve) => setTimeout(resolve, minOverlayMs - elapsed));
+    try {
+      await syncCachesAfterOfferAccept(qc, acceptedId, async (id) => {
+        const res = await fetchAppointment(id, { includeBatch: true });
+        if (!res.success || !res.data) throw new Error(res.error ?? 'RDV introuvable');
+        return res.data;
+      });
+    } catch {
+      // La fiche se charge d'elle-même si le préchargement échoue.
     }
 
-    setLoading(false);
-    setPrepComplete(true);
-  }, [closeModal, finishAndNext, qc, row, selected, shareToken, termsAccepted, toast, user?.id]);
-
-  const onPrepFinish = useCallback(() => {
-    const aptId = acceptedAptIdRef.current ?? selected?.id ?? null;
-    acceptedAptIdRef.current = null;
-
-    setPreparing(false);
-    setPrepComplete(false);
-    acceptInFlightRef.current = false;
-    closeModal();
-
-    toast(
-      batchCount > 1 ? `Lot accepté (${batchCount} soins)` : 'Rendez-vous accepté !',
-      { type: 'success' },
-    );
-
-    if (!aptId) {
-      if (user?.role && user.id) {
-        void useOfferQueueStore.getState().processNext(user.role, user.id);
-      }
-      return;
-    }
-
-    InteractionManager.runAfterInteractions(() => {
-      router.push(appointmentDetailHref('/(nurse)', aptId));
+    leave(() => {
+      toast(batchCount > 1 ? `Lot accepté (${batchCount} soins)` : 'Rendez-vous accepté !', { type: 'success' });
+      router.push(appointmentDetailHref('/(nurse)', acceptedId));
     });
-  }, [batchCount, closeModal, router, selected?.id, toast, user?.id, user?.role]);
+  }, [batchCount, batchSorted, leave, markHandled, qc, router, row, selected, shareToken, showNext, termsAccepted, toast, user?.id]);
 
-  if (!preparing && (!visible || !selected || !row)) {
+  if (!visible || !selected || !row) {
     return null;
   }
 
-  const busy = loading || refusing;
+  const busy = accepting || refusing || leaving;
 
-  const footer = confirmRefuse ? (
+  const footer = accepting ? undefined : confirmRefuse ? (
     <View style={styles.footer}>
       <AppText style={styles.refuseText}>
         {batchCount > 1
@@ -265,13 +240,14 @@ export function OfferAppointmentModal() {
         size="lg"
         fullWidth
         loading={refusing}
+        disabled={leaving}
         onPress={() => void handleRefuse()}
       />
       <Button
         title="Retour"
         variant="ghost"
         fullWidth
-        disabled={refusing}
+        disabled={refusing || leaving}
         onPress={() => setConfirmRefuse(false)}
       />
     </View>
@@ -279,8 +255,7 @@ export function OfferAppointmentModal() {
     <View style={styles.footer}>
       <Button
         title={batchCount > 1 ? `Accepter (${batchCount} soins)` : 'Accepter'}
-        loading={loading}
-        disabled={!termsAccepted || refusing}
+        disabled={!termsAccepted || busy}
         leftIcon={<Check size={iconSize.md} color={c.onPrimary} strokeWidth={ICON_STROKE_WIDTH} />}
         onPress={() => void handleAccept()}
         fullWidth
@@ -293,7 +268,7 @@ export function OfferAppointmentModal() {
             variant="outline"
             disabled={busy}
             leftIcon={<Clock size={iconSize.md} color={c.textSecondary} strokeWidth={ICON_STROKE_WIDTH} />}
-            onPress={() => void deferOffer()}
+            onPress={deferOffer}
             fullWidth
           />
         </View>
@@ -312,42 +287,40 @@ export function OfferAppointmentModal() {
   );
 
   return (
-    <>
-      {selected ? (
-        <SheetModal
-          visible={visible && !preparing}
-          onClose={dismissOffer}
-          onDismissed={() => setOfferSheetGone(true)}
-          dismissible={!busy}
-          title={confirmRefuse ? 'Refuser la demande ?' : 'Nouvelle demande'}
-          subtitle={lotLabel || undefined}
-          footer={footer}
-        >
-          {siblingsLoading ? (
-            <SkeletonList count={2} itemHeight={100} gap={spacing[3]} />
-          ) : (
-            <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
-          )}
-          {showTerms ? (
-            <Row align="center" gap={spacing[3]} style={styles.termsRow}>
-              <ToggleSwitch
-                value={termsAccepted}
-                onValueChange={setTermsAccepted}
-                accessibilityLabel="Je m’engage à prendre en charge ce patient et à respecter sa confidentialité"
-              />
-              <AppText style={styles.termsText}>
-                Je m’engage à prendre en charge ce patient et à respecter sa confidentialité.
-              </AppText>
-            </Row>
-          ) : null}
-        </SheetModal>
+    <SheetModal
+      visible={!leaving}
+      onClose={dismissOffer}
+      onDismissed={onDismissed}
+      dismissible={!busy}
+      title={accepting ? 'Confirmation du rendez-vous' : confirmRefuse ? 'Refuser la demande ?' : 'Nouvelle demande'}
+      subtitle={accepting ? undefined : lotLabel || undefined}
+      footer={footer}
+    >
+      {accepting ? (
+        <View style={styles.accepting} accessibilityRole="progressbar" accessibilityLabel="Confirmation du rendez-vous">
+          <ActivityIndicator size="large" color={c.primary} />
+          <AppText variant="secondary" style={styles.acceptingText}>
+            {batchCount > 1 ? `Nous réservons vos ${batchCount} soins…` : 'Nous réservons ce rendez-vous pour vous…'}
+          </AppText>
+        </View>
+      ) : siblingsLoading ? (
+        <SkeletonList count={2} itemHeight={100} gap={spacing[3]} />
+      ) : (
+        <OfferAppointmentPreviewBody primary={selected} batch={batchSorted} />
+      )}
+      {showTerms && !confirmRefuse && !accepting ? (
+        <Row align="center" gap={spacing[3]} style={styles.termsRow}>
+          <ToggleSwitch
+            value={termsAccepted}
+            onValueChange={setTermsAccepted}
+            accessibilityLabel="Je m’engage à prendre en charge ce patient et à respecter sa confidentialité"
+          />
+          <AppText style={styles.termsText}>
+            Je m’engage à prendre en charge ce patient et à respecter sa confidentialité.
+          </AppText>
+        </Row>
       ) : null}
-      <OfferAcceptPreparationOverlay
-        visible={preparing && (offerSheetGone || !hasOpenSheet)}
-        complete={prepComplete}
-        onFinish={onPrepFinish}
-      />
-    </>
+    </SheetModal>
   );
 }
 
@@ -369,6 +342,14 @@ function buildStyles({ colors: c, text }: Theme) {
   refuseText: {
     ...text.body,
     color: c.textPrimary,
+  },
+  accepting: {
+    alignItems: 'center' as const,
+    gap: spacing[3],
+    paddingVertical: spacing[8],
+  },
+  acceptingText: {
+    textAlign: 'center' as const,
   },
 };
 }

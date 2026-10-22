@@ -93,8 +93,10 @@ export function dispatchQrLinkTarget(
   canOrder: boolean,
 ): QrLinkDispatch {
   if (target.kind === 'pharmacy') {
-    const href = canOrder ? pharmacyOrderWizardHref(role, target.pharmacyId, target.utmQr) : null;
-    return href ? { href, message: null } : { href: home, message: NO_ORDER_MESSAGE };
+    if (!canOrder) return { href: home, message: NO_ORDER_MESSAGE };
+    const href: Href | null = pharmacyOrderWizardHref(role, target.pharmacyId, target.utmQr);
+    if (!href) return { href: home, message: NO_ORDER_MESSAGE };
+    return { href, message: null };
   }
   if (target.kind === 'booking') {
     if (role !== 'patient') return { href: home, message: NO_BOOKING_MESSAGE };

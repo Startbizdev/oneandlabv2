@@ -47,3 +47,7 @@ export function pharmacyLinkHref(pharmacyId: string, utmQr: string | null): Href
   const query = utmQr ? `?utm_qr=${encodeURIComponent(utmQr)}` : '';
   return `/pharmacie/${encodeURIComponent(pharmacyId)}${query}` as Href;
 }
+
+export function sharedRdvLinkHref(token: string): Href {
+  return `/p/rdv/${encodeURIComponent(token)}` as Href;
+}

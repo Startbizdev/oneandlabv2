@@ -33,6 +33,7 @@ import {
   offerDurationLabel,
   offerFrequencyLabel,
   offerLabPartnerFromAppointment,
+  offerVisitDateLabels,
 } from '../../utils/offer-appointment-display';
 import { buildRdvListCardTypography } from '@/features/appointments/components/rdv-list-card-typography';
 import { OfferInfoRow } from './OfferInfoRow';
@@ -102,8 +103,13 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
 
   const rows: { icon: LucideIcon; label: string; value: string }[] = [];
 
-  const dateTime = offerDateTimeLabel(primary);
-  if (dateTime) rows.push({ icon: Calendar, label: 'Date souhaitée', value: dateTime });
+  const visits = offerVisitDateLabels(primary, batch);
+  const dateTime = visits[0] ?? offerDateTimeLabel(primary);
+  if (visits.length > 1) {
+    visits.forEach((value, i) => rows.push({ icon: Calendar, label: `Passage ${i + 1} sur ${visits.length}`, value }));
+  } else if (dateTime) {
+    rows.push({ icon: Calendar, label: 'Date souhaitée', value: dateTime });
+  }
 
   if (isBloodTestAppointment(primary.type)) {
     const bt = offerBloodTestTypeLabel(primary);
@@ -117,7 +123,7 @@ function OfferCard({ primary, batch }: { primary: Appointment; batch: Appointmen
   if (freq) rows.push({ icon: Repeat, label: 'Fréquence', value: freq });
 
   const avail = offerAvailabilityLabel(primary);
-  if (avail && !(dateTime && dateTime.includes(avail))) {
+  if (avail && visits.length <= 1 && !(dateTime && dateTime.includes(avail))) {
     rows.push({ icon: Clock, label: 'Disponibilité', value: avail });
   }
 

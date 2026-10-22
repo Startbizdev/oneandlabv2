@@ -138,6 +138,9 @@ function extractCityFromAddressLine(full: string, postcode: string | null): stri
       if (seg.includes(pc)) {
         const rest = seg.replace(pc, '').trim().replace(/\bFrance\b/i, '').trim();
         if (rest && !/^\d/.test(rest)) return rest;
+        // « 10 rue X 13001 Marseille » sans virgule : la ville suit le code postal.
+        const after = seg.slice(seg.indexOf(pc) + pc.length).replace(/\bFrance\b/i, '').trim();
+        if (after && !/^\d/.test(after)) return after;
       }
     }
   }
@@ -221,8 +224,10 @@ export function formatStreetAndPostcodeOfferLine(
   postcode: string | null | undefined,
   city?: string | null,
 ): string {
-  const street = stripLeadingHouseNumberFromLine((streetLine || '').split(',')[0]?.trim() ?? '');
   const pc = (postcode || '').replace(/\D/g, '').slice(0, 5);
+  // Adresse sans virgule (« 10 rue X 13001 Marseille ») : la rue s'arrête au code postal, sinon il est répété.
+  const streetPart = ((streetLine || '').split(',')[0] ?? '').split(/\b\d{5}\b/)[0]?.trim() ?? '';
+  const street = stripLeadingHouseNumberFromLine(streetPart);
   let line = '';
   if (street && /^\d{5}$/.test(pc)) line = `${street} ${pc}`;
   else if (/^\d{5}$/.test(pc)) line = pc;
