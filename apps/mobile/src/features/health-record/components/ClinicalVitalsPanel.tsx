@@ -187,7 +187,11 @@ export function ClinicalVitalsPanel({ patientId, context, readOnly = false }: Pr
           onRetry={() => void vitalsQ.refetch()}
         />
       ) : rows.length === 0 ? (
-        <AppText variant="secondary">Aucune mesure pour l’instant.</AppText>
+        <AppText variant="secondary">
+          {readOnly
+            ? 'Aucune mesure pour l’instant. Les constantes relevées par votre infirmier(ère) apparaîtront ici.'
+            : 'Aucune mesure pour l’instant.'}
+        </AppText>
       ) : (
         <View style={styles.card}>
           {rows.map((cfg, index) => {

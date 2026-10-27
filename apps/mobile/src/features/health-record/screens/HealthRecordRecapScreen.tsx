@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SkeletonList } from '@/components/ui/skeletons';
@@ -19,6 +19,9 @@ import { HealthSourceRevokeSheet } from '@/features/health-sync/components/Healt
 import { useHealthSourceConnection } from '@/features/health-sync/hooks/use-health-source-connection';
 import { buildHealthMetricStats, buildHealthInsights, isHealthSyncRecent } from '@/features/health-sync/utils/health-metric-stats';
 import { HealthInsightCards } from '@/features/health-sync/components/HealthInsightCards';
+import { useAuthStore } from '@/store/auth-store';
+import { ClinicalVitalsPanel } from '../components/ClinicalVitalsPanel';
+import { clinicalVitalsQueryKey } from '../api/clinical-vitals.service';
 import { radius, spacing, progressRingSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 export function HealthRecordRecapScreen() {
@@ -29,8 +32,14 @@ export function HealthRecordRecapScreen() {
     queryFn: fetchHealthRecordRecap,
   });
   const healthConnection = useHealthSourceConnection();
+  const qc = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id ?? '');
   const { refreshing, onRefresh } = useManualRefresh(async () => {
-    await Promise.all([recapQ.refetch(), healthConnection.refetchAll()]);
+    await Promise.all([
+      recapQ.refetch(),
+      healthConnection.refetchAll(),
+      qc.refetchQueries({ queryKey: clinicalVitalsQueryKey(userId) }),
+    ]);
   });
 
   const data = recapQ.data;
@@ -120,6 +129,9 @@ export function HealthRecordRecapScreen() {
             ))}
           </View>
         ) : null}
+
+        {/* Constantes relevées par l'infirmier lors des passages : consultation seule. */}
+        {userId ? <ClinicalVitalsPanel patientId={userId} readOnly /> : null}
 
         <View style={styles.block}>
           <AppText style={styles.blockTitle} accessibilityRole="header">

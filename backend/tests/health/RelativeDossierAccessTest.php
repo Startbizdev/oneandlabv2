@@ -176,6 +176,25 @@ final class RelativeDossierAccessTest extends TestCase
         $this->assertFalse(PatientDossierAccess::canAccess($this->db, new User($this->db), $other, $this->relativeProfileId));
     }
 
+    public function testPatientReadsTheVitalsTheNurseRecordedOnTheirOwnCarnet(): void
+    {
+        $owner = ['user_id' => $this->ownerId, 'role' => 'patient'];
+        $other = ['user_id' => $this->otherPatientId, 'role' => 'patient'];
+        $nurse = $this->nurse();
+        $this->grantAccess($this->nurseId, $this->ownerId);
+
+        $vitals = new ClinicalVitalService($this->db);
+        $vitals->create($nurse, $this->ownerId, ['vital_type' => 'heart_rate', 'value' => 74]);
+
+        $this->assertArrayHasKey('heart_rate', $vitals->listForStaff($owner, $this->ownerId)['latest_by_type']);
+        $this->assertNotEmpty($vitals->historyForType($owner, $this->ownerId, 'heart_rate')['history']);
+        $this->assertForbidden(fn () => $vitals->create($owner, $this->ownerId, ['vital_type' => 'heart_rate', 'value' => 80]));
+        $this->assertForbidden(fn () => $vitals->listForStaff($other, $this->ownerId));
+
+        $response = HttpHarness::request('GET', '/api/patients/' . $this->ownerId . '/clinical-vitals', HttpHarness::token($this->ownerId, 'patient'));
+        $this->assertSame(200, $response['status'], $response['raw'] ?? '');
+    }
+
     public function testNurseAcceptingARelativeAppointmentOnlyGetsTheRelativeDossier(): void
     {
         $appointmentId = $this->appointment('pending', null, $this->relativeId);

@@ -154,11 +154,15 @@ final class ClinicalVitalService
         }
     }
 
-    /** Lecture : soignant du dossier, ou titulaire consultant le dossier d'un proche (sans écriture). */
+    /** Lecture : soignant du dossier, ou patient sur son propre carnet ou celui d'un proche (sans écriture). */
     private function assertReadAccess(array $viewer, string $patientId): void
     {
-        if (PatientDossierAccess::isRelativeOwner($this->db, $viewer, $patientId)) {
-            return;
+        if (($viewer['role'] ?? '') === 'patient') {
+            if ((string) ($viewer['user_id'] ?? '') === $patientId
+                || PatientDossierAccess::isRelativeOwner($this->db, $viewer, $patientId)) {
+                return;
+            }
+            throw HttpStatusException::forbidden('Accès carnet refusé');
         }
         $this->assertStaffAccess($viewer, $patientId);
     }

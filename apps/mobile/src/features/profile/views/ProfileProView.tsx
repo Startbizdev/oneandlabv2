@@ -63,8 +63,9 @@ export function ProfileProView() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
   const q = useQuery({
-    queryKey: queryKeys.profile.user(user?.id ?? ''),
-    queryFn: async () => (await fetchUser(user!.id)).data,
+    // Profil complet : la portée « mobile » n'inclut pas le RPPS (champ vide, puis effacé à l'enregistrement).
+    queryKey: queryKeys.profile.fullUser(user?.id ?? ''),
+    queryFn: async () => (await fetchUser(user!.id, 'full')).data,
     enabled: !!user?.id,
   });
 
@@ -130,7 +131,9 @@ export function ProfileProView() {
         body.rpps = split.rpps;
         body.adeli = split.adeli;
       } else {
-        body.rpps = rpps.replace(/\s/g, '') || null;
+        // Champ vide : on n'envoie rien, pour ne jamais effacer un numéro déjà enregistré.
+        const professionalId = rpps.replace(/\s/g, '');
+        if (professionalId) body.rpps = professionalId;
       }
       return updateUser(user!.id, body);
     },

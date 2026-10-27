@@ -50,7 +50,7 @@ $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=%s', $config['host'], $c
 $db = new PDO($dsn, $config['username'], $config['password'], $config['options'] ?? []);
 
 $stmt = $db->prepare('
-    SELECT id, type, status, scheduled_at, category_id, patient_id,
+    SELECT id, type, status, scheduled_at, category_id, patient_id, relative_id,
            address_encrypted, address_dek, form_data_encrypted, form_data_dek,
            assigned_nurse_id, created_by, creation_batch_id, created_at
     FROM appointments
@@ -236,7 +236,7 @@ if ($needsRepend && $shouldReleaseForShare) {
     }
 
     $stmt = $db->prepare('
-        SELECT id, type, status, scheduled_at, category_id, patient_id,
+        SELECT id, type, status, scheduled_at, category_id, patient_id, relative_id,
                address_encrypted, address_dek, form_data_encrypted, form_data_dek,
                assigned_nurse_id, created_by, creation_batch_id
         FROM appointments
@@ -298,34 +298,17 @@ if ($scheduledAt) {
 // Créneau : passage_time_slot ou plage availability → « le matin », « à midi », etc.
 $creneauPart = NotificationMessageFormatter::shareCreneauSuffix($formData);
 
-// Âge et genre du patient (profil patient)
+// Âge et genre de la personne soignée : le proche pour un RDV de proche, jamais le titulaire du compte.
 $patientAge = null;
 $patientGenre = null; // 'F' / 'female' => féminin, sinon masculin
-$patientId = $appointment['patient_id'] ?? null;
-if ($patientId) {
-    try {
-        $userModel = new User();
-        $patient = $userModel->getById($patientId, $user['user_id'] ?? 'system', $user['role'] ?? 'super_admin');
-        if ($patient) {
-            if (!empty($patient['birth_date'])) {
-                $birthDate = $patient['birth_date'];
-                $birth = DateTime::createFromFormat('Y-m-d', $birthDate);
-                if (!$birth && is_string($birthDate) && preg_match('/^\d{4}-\d{2}-\d{2}/', $birthDate)) {
-                    $birth = new DateTime(substr($birthDate, 0, 10));
-                }
-                if ($birth) {
-                    $now = new DateTime();
-                    $patientAge = $now->diff($birth)->y;
-                }
-            }
-            if (!empty($patient['gender'])) {
-                $patientGenre = trim((string) $patient['gender']);
-            }
-        }
-    } catch (Exception $e) {
-        $patientAge = null;
-        $patientGenre = null;
-    }
+try {
+    require_once __DIR__ . '/../../../lib/AppointmentBeneficiary.php';
+    $beneficiary = AppointmentBeneficiary::birthAndGender($db, $crypto, $appointment);
+    $patientAge = AppointmentBeneficiary::ageFromBirthDate($beneficiary['birth_date']);
+    $patientGenre = $beneficiary['gender'];
+} catch (Throwable $e) {
+    $patientAge = null;
+    $patientGenre = null;
 }
 $agePart = $patientAge !== null ? $patientAge . ' ans' : '';
 // Un patient / une patiente selon le genre

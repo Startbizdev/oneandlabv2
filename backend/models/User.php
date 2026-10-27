@@ -835,8 +835,16 @@ class User
             }
             if ($rawId !== '') {
                 $split = ProfessionalId::split($rawId);
+                if ($split['rpps'] === null && $split['adeli'] === null) {
+                    // Numéro mal formé : on refuse au lieu d'effacer silencieusement celui enregistré.
+                    throw new InvalidArgumentException(ProfessionalId::validate($rawId) ?? 'Numéro ' . ProfessionalId::LABEL . ' invalide.');
+                }
                 $data['rpps'] = $split['rpps'];
                 $data['adeli'] = $split['adeli'];
+            } elseif ($actorId === $id && in_array($targetRole, ['pro', 'nurse', 'preleveur'], true)) {
+                // Un soignant n'efface jamais son propre numéro en enregistrant son profil (anciennes versions de
+                // l'app qui renvoyaient un RPPS vide) : seul un administrateur peut le retirer.
+                unset($data['rpps'], $data['adeli'], $data['professional_id']);
             }
         }
         

@@ -1,0 +1,20 @@
+diff --git a/node_modules/@react-native/dev-middleware/dist/inspector-proxy/InspectorProxy.js b/node_modules/@react-native/dev-middleware/dist/inspector-proxy/InspectorProxy.js
+index 1c60c0a..8e88c9c 100644
+--- a/node_modules/@react-native/dev-middleware/dist/inspector-proxy/InspectorProxy.js
++++ b/node_modules/@react-native/dev-middleware/dist/inspector-proxy/InspectorProxy.js
+@@ -237,6 +237,7 @@ class InspectorProxy {
+       noServer: true,
+       perMessageDeflate: true,
+       maxPayload: 0,
++      maxFragments: 0,
+     });
+     wss.on("connection", async (socket, req) => {
+       const wssTimestamp = Date.now();
+@@ -370,6 +371,7 @@ class InspectorProxy {
+       noServer: true,
+       perMessageDeflate: false,
+       maxPayload: 0,
++      maxFragments: 0,
+     });
+     wss.on("connection", async (socket, req) => {
+       const wssTimestamp = Date.now();

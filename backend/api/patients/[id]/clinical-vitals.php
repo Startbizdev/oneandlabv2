@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../lib/health/ClinicalVitalService.php';
 
 health_handle_options(['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS']);
 $method = $_SERVER['REQUEST_METHOD'] ?? '';
-// patient : lecture seule du dossier d'un de ses proches (vérifiée par ClinicalVitalService).
+// patient : lecture seule de son propre carnet ou de celui d'un proche (vérifiée par ClinicalVitalService).
 $user = health_record_require_user($method === 'GET' ? ['patient', 'nurse', 'pro', 'super_admin'] : ['nurse', 'pro', 'super_admin']);
 $patientId = trim((string) ($_GET['id'] ?? ''));
 if ($patientId === '') {

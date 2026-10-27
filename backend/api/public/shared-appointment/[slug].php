@@ -67,7 +67,7 @@ $appointmentId = $row['appointment_id'];
 
 try {
     $stmt = $db->prepare('
-        SELECT a.id, a.type, a.status, a.scheduled_at, a.category_id, a.patient_id,
+        SELECT a.id, a.type, a.status, a.scheduled_at, a.category_id, a.patient_id, a.relative_id,
                a.address_encrypted, a.address_dek, a.form_data_encrypted, a.form_data_dek,
                a.creation_batch_id
         FROM appointments a
@@ -213,29 +213,13 @@ if (!empty($appointment['form_data_encrypted']) && !empty($appointment['form_dat
 require_once __DIR__ . '/../../../lib/AddressDisplayFr.php';
 $addressFull = AddressDisplayFr::enrichLabelWithFormData($addressFull, $shareFormData);
 
+// Âge de la personne soignée : le proche pour un RDV de proche, jamais le titulaire du compte.
 $patientAge = null;
-$patientId = $appointment['patient_id'] ?? null;
-if ($patientId) {
-    try {
-        $userStmt = $db->prepare('SELECT birth_date_encrypted, birth_date_dek FROM users WHERE id = ? AND role = ?');
-        $userStmt->execute([$patientId, 'patient']);
-        $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
-        if ($userRow && !empty($userRow['birth_date_encrypted']) && !empty($userRow['birth_date_dek'])) {
-            $birthDate = $crypto->decryptField($userRow['birth_date_encrypted'], $userRow['birth_date_dek']);
-            $birth = DateTime::createFromFormat('Y-m-d', $birthDate);
-            if (!$birth && is_string($birthDate) && preg_match('/^\d{4}-\d{2}-\d{2}/', $birthDate)) {
-                $birth = new DateTime(substr($birthDate, 0, 10));
-            }
-            if ($birth) {
-                $now = new DateTime();
-                $patientAge = $now->diff($birth)->y;
-            }
-        }
-    } catch (PDOException $e) {
-        $patientAge = null;
-    } catch (Exception $e) {
-        $patientAge = null;
-    }
+try {
+    require_once __DIR__ . '/../../../lib/AppointmentBeneficiary.php';
+    $patientAge = AppointmentBeneficiary::ageFromBirthDate(AppointmentBeneficiary::birthAndGender($db, $crypto, $appointment)['birth_date']);
+} catch (Throwable $e) {
+    $patientAge = null;
 }
 
 $tokenIdStr = (string) $appointmentId;

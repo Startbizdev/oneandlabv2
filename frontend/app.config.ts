@@ -27,6 +27,9 @@ export default defineAppConfig({
         { color: 'primary', variant: 'outline', class: 'text-primary-900 dark:text-primary-300' },
         { color: 'primary', variant: 'ghost', class: 'text-primary-900 dark:text-primary-300' },
         { color: 'primary', variant: 'link', class: 'text-primary-900 dark:text-primary-300' },
+        // Turquoise sur turquoise pâle illisible (bouton « Messages » de la fiche RDV patient) : texte foncé.
+        { color: 'primary', variant: 'soft', class: 'text-primary-900 dark:text-primary-300' },
+        { color: 'primary', variant: 'subtle', class: 'text-primary-900 dark:text-primary-300' },
       ],
       defaultVariants: {
         size: 'md',
