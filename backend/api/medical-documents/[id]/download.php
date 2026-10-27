@@ -67,7 +67,7 @@ try {
     }
     
     // Vérifier les permissions
-    $hasAccess = MedicalDocumentAccess::userCanAccess($db, $user, $document);
+    $hasAccess = MedicalDocumentAccess::userCanRead($db, $user, $document);
     
     if (!$hasAccess) {
         http_response_code(403);

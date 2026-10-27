@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../lib/Crypto.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../lib/PatientDossierDocuments.php';
+require_once __DIR__ . '/../../lib/pharmacy/PharmacyOrderAccess.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
 require_once __DIR__ . '/../../models/User.php';
 
@@ -82,6 +83,10 @@ $userModel = new User();
 
 // Documents d'un proche : stockés sous (titulaire, relative_id), accessibles au titulaire et aux soignants du proche.
 $documentsTarget = PatientDossierAccess::resolveProfileDocumentsTarget($db, $userModel, $user, $targetPatientId, $relativeId);
+// Pharmacie destinataire d'une commande : lecture seule (l'upload garde son propre contrôle).
+if ($documentsTarget === null && ($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
+    $documentsTarget = PharmacyOrderAccess::profileDocumentsReadTarget($db, $user, $targetPatientId, $relativeId);
+}
 if ($documentsTarget === null) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => $relativeId !== null ? 'Proche introuvable ou accès refusé' : 'Accès refusé']);

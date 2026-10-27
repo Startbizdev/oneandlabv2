@@ -919,6 +919,7 @@
             <!-- Staff / admin édition patient : documents médicaux + bouton Enregistrer en dessous -->
             <template v-if="isProEditingPatient || (isAdmin && editingUserId && role === 'patient')">
               <ProfileDocuments
+                :read-only="pharmacyUiFlags?.is_pharmacy_account === true"
                 :documents="documents"
                 :is-loading="loadingDocuments"
                 :uploading-type="uploadingDocument"
@@ -1508,7 +1509,9 @@ const showStaffCareTeamPanels = computed(
 const showStaffPatientHealthRecord = computed(
   () =>
     showStaffPatientClinicalFile.value &&
-    ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? '')
+    ['pro', 'nurse', 'lab', 'subaccount', 'preleveur'].includes(user.value?.role ?? '') &&
+    // Pharmacie : documents seulement, pas de carnet de santé (refusé par le serveur).
+    pharmacyUiFlags.value?.is_pharmacy_account !== true
 )
 /** Constantes médicales : saisie infirmier / pro uniquement */
 const showStaffClinicalVitals = computed(

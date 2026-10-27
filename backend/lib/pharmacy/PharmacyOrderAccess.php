@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/PharmacyModuleConfig.php';
+require_once __DIR__ . '/../RelativeProfile.php';
 
 /**
  * ACL commandes pharmacie.
@@ -90,6 +91,38 @@ final class PharmacyOrderAccess
 
         return (string) ($order['requester_id'] ?? '') === $uid
             || (($user['role'] ?? '') === 'patient' && (string) ($order['patient_id'] ?? '') === $uid);
+    }
+
+    /**
+     * Pharmacie destinataire d'une commande (ni refusée, ni annulée) : lecture des documents de profil du patient
+     * (carte Vitale, mutuelle, ordonnances) sans avoir à les redemander. Accepte l'id du dossier d'un proche.
+     *
+     * @return array{patient_id: string, relative_id: ?string}|null
+     */
+    public static function profileDocumentsReadTarget(PDO $db, array $user, string $targetId, ?string $relativeId): ?array
+    {
+        $pharmacyId = (string) ($user['user_id'] ?? '');
+        if (($user['role'] ?? '') !== 'pro' || $pharmacyId === '' || $targetId === '') {
+            return null;
+        }
+        $patientId = $targetId;
+        $relative = RelativeProfile::resolve($db, $targetId);
+        if ($relative !== null) {
+            if ($relativeId !== null && $relativeId !== $relative['relative_id']) {
+                return null;
+            }
+            $patientId = $relative['owner_id'];
+            $relativeId = $relative['relative_id'];
+        }
+        $stmt = $db->prepare(
+            "SELECT 1 FROM pharmacy_orders
+             WHERE pharmacy_id = ? AND patient_id = ? AND relative_id <=> ?
+               AND status NOT IN ('refusee', 'annulee')
+             LIMIT 1"
+        );
+        $stmt->execute([$pharmacyId, $patientId, $relativeId]);
+
+        return $stmt->fetchColumn() ? ['patient_id' => $patientId, 'relative_id' => $relativeId] : null;
     }
 
     public static function canTransitionPharmacy(array $user, array $order): bool

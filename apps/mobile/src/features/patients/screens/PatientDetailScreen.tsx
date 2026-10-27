@@ -227,11 +227,14 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
       onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'transmissions')),
     });
   }
-  dossierItems.push({
-    icon: HeartPulse,
-    label: 'Carnet de santé',
-    onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'health-record')),
-  });
+  // Pharmacie : documents seulement, pas de carnet de santé (refusé par le serveur).
+  if (!isOwnPharmacy) {
+    dossierItems.push({
+      icon: HeartPulse,
+      label: 'Carnet de santé',
+      onPress: () => router.push(staffPatientHref(rolePrefix, patientId, 'health-record')),
+    });
+  }
   if (canOrder) {
     dossierItems.push({
       icon: Pill,

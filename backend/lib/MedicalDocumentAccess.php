@@ -149,6 +149,24 @@ class MedicalDocumentAccess
     }
 
     /**
+     * Consultation seule (métadonnées, téléchargement) : en plus de userCanAccess, la pharmacie destinataire
+     * d'une commande lit les documents de profil du patient (carte Vitale, mutuelle…). Jamais pour modifier.
+     */
+    public static function userCanRead(PDO $db, array $user, array $document): bool
+    {
+        if (self::userCanAccess($db, $user, $document)) {
+            return true;
+        }
+        if (!empty($document['appointment_id'])) {
+            return false;
+        }
+        $owner = self::resolveProfileDocumentOwner($db, (string) ($document['id'] ?? ''));
+
+        return $owner !== null
+            && PharmacyOrderAccess::profileDocumentsReadTarget($db, $user, $owner['patient_id'], $owner['relative_id']) !== null;
+    }
+
+    /**
      * Document de profil d'un proche : le titulaire, ou un soignant ayant accès au dossier du proche
      * (un accès au seul dossier du titulaire ne suffit pas).
      *

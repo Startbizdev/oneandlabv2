@@ -6,6 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../../lib/pharmacy/bootstrap.php';
 require_once __DIR__ . '/../fixtures/TestFixtures.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 
 /**
  * Ajout d'ordonnance après commande : accès, statut, document d'un autre patient (base de test Docker).
@@ -48,6 +49,7 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
                 $this->db->prepare('DELETE FROM pharmacy_orders WHERE id = ?')->execute([$id]);
             }
             foreach ($this->documentIds as $id) {
+                $this->db->prepare('DELETE FROM patient_documents WHERE medical_document_id = ?')->execute([$id]);
                 $this->db->prepare('DELETE FROM medical_documents WHERE id = ?')->execute([$id]);
             }
             foreach ($this->profileIds as $id) {
@@ -262,6 +264,32 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
     private function patientA(): array
     {
         return ['user_id' => TestFixtures::PATIENT_A, 'role' => 'patient'];
+    }
+
+    public function testReceivingPharmacyReadsThePatientProfileDocumentsButCannotChangeThem(): void
+    {
+        $this->insertOrder('en_attente');
+        $documentId = $this->insertDocument(TestFixtures::PATIENT_A, TestFixtures::PATIENT_A);
+        $this->db->prepare('INSERT INTO patient_documents (id, patient_id, document_type, medical_document_id) VALUES (?, ?, ?, ?)')
+            ->execute([PharmacyOrderService::newUuid(), TestFixtures::PATIENT_A, 'autres_assurances', $documentId]);
+        $document = MedicalDocumentAccess::loadForAccess($this->db, $documentId);
+        $pharmacy = ['user_id' => $this->pharmacyId, 'role' => 'pro'];
+
+        $this->assertSame(
+            ['patient_id' => TestFixtures::PATIENT_A, 'relative_id' => null],
+            PharmacyOrderAccess::profileDocumentsReadTarget($this->db, $pharmacy, TestFixtures::PATIENT_A, null)
+        );
+        $this->assertNull(PharmacyOrderAccess::profileDocumentsReadTarget($this->db, $pharmacy, TestFixtures::PATIENT_B, null));
+        $this->assertTrue(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $document));
+        $this->assertFalse(MedicalDocumentAccess::userCanAccess($this->db, $pharmacy, $document));
+    }
+
+    public function testPharmacyLosesTheProfileDocumentsOnceTheOrderIsRefused(): void
+    {
+        $this->insertOrder('refusee');
+        $pharmacy = ['user_id' => $this->pharmacyId, 'role' => 'pro'];
+
+        $this->assertNull(PharmacyOrderAccess::profileDocumentsReadTarget($this->db, $pharmacy, TestFixtures::PATIENT_A, null));
     }
 
     private function insertOrder(string $status): string

@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         
         // Vérifier les permissions (document lié à un RDV ou document de profil)
-        $hasAccess = MedicalDocumentAccess::userCanAccess($db, $user, $document);
+        $hasAccess = MedicalDocumentAccess::userCanRead($db, $user, $document);
         if (!$hasAccess) {
             http_response_code(403);
             echo json_encode(['success' => false, 'error' => 'Accès refusé']);

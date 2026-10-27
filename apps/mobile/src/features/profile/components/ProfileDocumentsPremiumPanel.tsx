@@ -50,9 +50,11 @@ interface Props {
   embedded?: boolean;
   /** Dossier patient staff (pro / infirmier). Sinon patient connecté. */
   patientUserId?: string;
+  /** Consultation seule (pharmacie destinataire d'une commande) : ni ajout, ni remplacement. */
+  readOnly?: boolean;
 }
 
-export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props) {
+export function ProfileDocumentsPremiumPanel({ embedded, patientUserId, readOnly = false }: Props) {
   const c = useAppColors();
   const section = useRdvDetailSectionStyles();
   const headStyles = useMedicalDocumentsStackHeadStyles();
@@ -92,8 +94,8 @@ export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props)
   );
 
   const stackRows = useMemo(
-    () => buildDocumentStackRows(list, PROFILE_DOC_TYPES, uploadTypesFiltered),
-    [list, uploadTypesFiltered],
+    () => buildDocumentStackRows(list, PROFILE_DOC_TYPES, readOnly ? [] : uploadTypesFiltered),
+    [list, readOnly, uploadTypesFiltered],
   );
 
   const uploadMut = useMutation({
@@ -204,7 +206,7 @@ export function ProfileDocumentsPremiumPanel({ embedded, patientUserId }: Props)
                 doc={row.doc}
                 topBorder={topBorder}
                 cacheScopeKey={`patient:${targetUserId}`}
-                canReplace
+                canReplace={!readOnly}
                 onPreview={handlePreview}
                 onReplace={() => runUploadForType(row.doc.document_type)}
               />

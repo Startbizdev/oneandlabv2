@@ -4,7 +4,7 @@
       <CardHeader
         icon="i-lucide-file-text"
         title="Documents médicaux"
-        description="Déposez ou téléchargez vos documents de couverture santé."
+        :description="readOnly ? 'Documents de couverture santé du patient, en consultation.' : 'Déposez ou téléchargez vos documents de couverture santé.'"
       />
     </template>
 
@@ -35,9 +35,9 @@
       :documents="documentsList"
       :loading="false"
       empty-description="Aucun document de couverture enregistré."
-      :show-upload-area="true"
-      :upload-types="[...profileUploadTypes]"
-      :can-replace="true"
+      :show-upload-area="!readOnly"
+      :upload-types="readOnly ? [] : [...profileUploadTypes]"
+      :can-replace="!readOnly"
       :downloading-ids="downloadingIdsSet"
       :uploading-types="uploadingTypesSet"
       @download="onSectionDownload"
@@ -68,6 +68,8 @@ interface Props {
   loadError?: string | null
   /** Optionnel : id du document médical en cours de téléchargement (pour le spinner) */
   downloadingDocumentId?: string | null
+  /** Consultation seule (pharmacie destinataire d'une commande) : ni ajout, ni remplacement. */
+  readOnly?: boolean
 }
 
 interface Emits {
@@ -79,6 +81,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   downloadingDocumentId: null,
+  readOnly: false,
 })
 
 const emit = defineEmits<Emits>()

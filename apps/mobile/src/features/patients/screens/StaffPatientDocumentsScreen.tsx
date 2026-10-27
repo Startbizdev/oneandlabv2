@@ -6,13 +6,15 @@ import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { queryKeys } from '@/lib/query-keys';
 import { StackChromeScreen } from '@/navigation/StackChromeScreen';
 import { ProfileDocumentsPremiumPanel } from '@/features/profile/components/ProfileDocumentsPremiumPanel';
+import { usePharmacyModuleEnabled } from '@/features/pharmacy-orders/hooks/use-pharmacy-module-enabled';
 import { spacing, useStyles, type Theme } from '@/theme';
 
-/** Documents du dossier patient (vue infirmier / pro). */
+/** Documents du dossier patient (vue infirmier / pro). Pharmacie : consultation seule. */
 export function StaffPatientDocumentsScreen() {
   const styles = useStyles(buildStyles);
   const { id } = useLocalSearchParams<{ id: string }>();
   const qc = useQueryClient();
+  const { isOwnPharmacy } = usePharmacyModuleEnabled();
 
   const pullRefresh = useManualRefresh(() =>
     qc.invalidateQueries({ queryKey: queryKeys.documents.patient(id ?? '') }),
@@ -26,7 +28,7 @@ export function StaffPatientDocumentsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<AppRefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />}
       >
-        {id ? <ProfileDocumentsPremiumPanel patientUserId={id} /> : null}
+        {id ? <ProfileDocumentsPremiumPanel patientUserId={id} readOnly={isOwnPharmacy} /> : null}
       </ScrollView>
     </StackChromeScreen>
   );
