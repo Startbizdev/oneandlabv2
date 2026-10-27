@@ -11,7 +11,7 @@ require_once __DIR__ . '/PharmacyModuleConfig.php';
 final class PharmacyOrderAccess
 {
     /** @var list<string> */
-    public const PRESCRIPTION_ATTACHABLE_STATUSES = ['en_attente', 'complement_demande'];
+    public const PRESCRIPTION_ATTACHABLE_STATUSES = ['en_attente', 'complement_demande', 'acceptee', 'en_cours'];
 
     public static function canAccess(array $user, array $order, ?PharmacyModuleConfig $configService = null): bool
     {
@@ -74,7 +74,7 @@ final class PharmacyOrderAccess
         return !in_array($status, ['annulee', 'refusee', 'terminee'], true);
     }
 
-    /** Demandeur ou patient de la commande, tant que la pharmacie ne l'a pas prise en charge. */
+    /** Demandeur ou patient de la commande, tant qu'elle n'est ni terminée, ni refusée, ni annulée. */
     public static function canAttachPrescriptions(array $user, array $order): bool
     {
         return self::isRequesterOrPatient($user, $order)

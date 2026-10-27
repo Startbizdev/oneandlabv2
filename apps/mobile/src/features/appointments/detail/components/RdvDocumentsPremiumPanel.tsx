@@ -98,7 +98,10 @@ export function RdvDocumentsPremiumPanel({
 
   const uploadTypesFiltered = useMemo(() => {
     if (!canUpload) return [];
-    return filterUploadTypesForStack(orderedTypes, existingTypes);
+    // Une ordonnance s'ajoute à tout moment, même s'il y en a déjà une (pas seulement « remplacer »).
+    return filterUploadTypesForStack(orderedTypes, existingTypes, {
+      alwaysAllowReplace: ['other', 'autres_assurances', 'ordonnance'],
+    });
   }, [canUpload, orderedTypes, existingTypes]);
 
   const stackRows = useMemo(

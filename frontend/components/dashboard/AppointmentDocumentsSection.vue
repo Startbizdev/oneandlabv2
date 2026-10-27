@@ -905,7 +905,8 @@ const resultatsDocuments = computed(() => (props.documents || []).filter((d: any
 
 const standardUploadTypesWithoutDoc = computed(() => {
   if (!standardUploadTypes.value.length) return [];
-  return standardUploadTypes.value.filter((t) => getDocsByType(t.value).length === 0);
+  // Une ordonnance s'ajoute à tout moment, même s'il y en a déjà une (pas seulement « remplacer »).
+  return standardUploadTypes.value.filter((t) => t.value === 'ordonnance' || getDocsByType(t.value).length === 0);
 });
 const resultatsUploadTypesWithoutDoc = computed(() => {
   if (!resultatsUploadTypes.value.length) return [];

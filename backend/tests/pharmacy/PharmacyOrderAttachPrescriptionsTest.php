@@ -116,6 +116,20 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
         $this->assertSame(0, (int) $events->fetchColumn());
     }
 
+    /** Après acceptation par la pharmacie, une ordonnance s'ajoute toujours, sans changer le statut. */
+    public function testAttachingAfterAcceptanceIsAllowedAndKeepsTheStatus(): void
+    {
+        foreach (['acceptee', 'en_cours'] as $status) {
+            $orderId = $this->insertOrder($status);
+            $documentId = $this->insertDocument(TestFixtures::NURSE, TestFixtures::PATIENT_A);
+
+            $order = $this->service->attachPrescriptions($this->nurse(), $orderId, [$documentId]);
+
+            $this->assertSame($status, $order['status']);
+            $this->assertContains($documentId, $this->storedPrescriptionIds($orderId));
+        }
+    }
+
     public function testPharmacyCannotAttach(): void
     {
         $orderId = $this->insertOrder('en_attente');
@@ -156,8 +170,6 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
     public static function lockedStatusProvider(): array
     {
         return [
-            'acceptée' => ['acceptee'],
-            'en cours' => ['en_cours'],
             'terminée' => ['terminee'],
             'refusée' => ['refusee'],
             'annulée' => ['annulee'],
@@ -232,7 +244,11 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
         $this->assertTrue(PharmacyOrderAccess::canAttachPrescriptions($this->nurse(), $order));
         $this->assertTrue(PharmacyOrderAccess::canAttachPrescriptions($this->patientA(), $order));
         $this->assertFalse(PharmacyOrderAccess::canAttachPrescriptions(['user_id' => $this->pharmacyId, 'role' => 'pro'], $order));
-        $this->assertFalse(PharmacyOrderAccess::canAttachPrescriptions($this->nurse(), ['status' => 'acceptee'] + $order));
+        $this->assertTrue(PharmacyOrderAccess::canAttachPrescriptions($this->nurse(), ['status' => 'acceptee'] + $order));
+        $this->assertTrue(PharmacyOrderAccess::canAttachPrescriptions($this->nurse(), ['status' => 'en_cours'] + $order));
+        foreach (['terminee', 'refusee', 'annulee'] as $closed) {
+            $this->assertFalse(PharmacyOrderAccess::canAttachPrescriptions($this->nurse(), ['status' => $closed] + $order));
+        }
         $this->assertFalse(PharmacyOrderAccess::canAttachPrescriptions(['user_id' => TestFixtures::PATIENT_A, 'role' => 'nurse'], $order));
     }
 
