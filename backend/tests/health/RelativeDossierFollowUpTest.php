@@ -253,12 +253,7 @@ final class RelativeDossierFollowUpTest extends TestCase
 
     public function testPharmacyOrderPlacedOnTheRelativeDossierIsStoredUnderTheOwner(): void
     {
-        $pharmacyId = $this->extraProfile('pro');
-        $this->db->prepare("
-            UPDATE profiles SET emploi = 'Pharmacien', pharmacy_orders_enabled = 1, pharmacy_orders_paused = 0,
-                pharmacy_accepts_click_collect = 1, pharmacy_click_collect_days_json = '[1,2,3,4,5,6,7]'
-            WHERE id = ?
-        ")->execute([$pharmacyId]);
+        $pharmacyId = $this->openPharmacy();
         $prescriptionId = NursePassageFixtures::uuid();
         $this->db->prepare("
             INSERT INTO medical_documents (id, appointment_id, uploaded_by, file_name, file_path, file_size, mime_type, document_type, patient_id)
@@ -284,6 +279,31 @@ final class RelativeDossierFollowUpTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
         $service->create($this->nurse(), ['relative_id' => NursePassageFixtures::uuid()] + $input);
+    }
+
+    public function testNurseBookedOnHerProfileOrdersForThePatientWithoutExplicitLink(): void
+    {
+        $pharmacyId = $this->openPharmacy();
+        $bookedNurse = $this->extraProfile('nurse');
+        $this->db->prepare(
+            "INSERT INTO appointments (id, type, status, created_by, created_by_role, form_type, location_lat, location_lng,
+                address_encrypted, address_dek, scheduled_at, patient_id, assigned_nurse_id)
+             VALUES (?, 'nursing', 'confirmed', ?, 'patient', 'nursing', 43.29, 5.38, 'fixture-addr', 'fixture-dek', ?, ?, ?)"
+        )->execute([NursePassageFixtures::uuid(), $this->fixtures['patient'], self::TOUR_DATE . ' 09:00:00', $this->fixtures['patient'], $bookedNurse]);
+        $service = new PharmacyOrderService($this->db, new PharmacyModuleConfig($this->db));
+        $input = [
+            'patient_id' => $this->fixtures['patient'],
+            'pharmacy_id' => $pharmacyId,
+            'fulfillment_mode' => 'click_collect',
+            'desired_fulfillment_date' => (new DateTimeImmutable('tomorrow', new DateTimeZone('Europe/Paris')))->format('Y-m-d'),
+        ];
+
+        $order = $service->create(['user_id' => $bookedNurse, 'role' => 'nurse'], $input)['order'];
+        $this->orderIds[] = (string) $order['id'];
+        $this->assertSame($this->fixtures['patient'], $order['patient_id']);
+
+        $this->expectExceptionMessage('Accès patient refusé');
+        $service->create(['user_id' => $this->extraProfile('nurse'), 'role' => 'nurse'], $input);
     }
 
     public function testBackfillMovesAppointmentsSavedOnTheRelativeDossierUnderTheOwner(): void
@@ -336,6 +356,18 @@ final class RelativeDossierFollowUpTest extends TestCase
             }
         }
         $this->fail('Passage absent de la tournée');
+    }
+
+    private function openPharmacy(): string
+    {
+        $pharmacyId = $this->extraProfile('pro');
+        $this->db->prepare("
+            UPDATE profiles SET emploi = 'Pharmacien', pharmacy_orders_enabled = 1, pharmacy_orders_paused = 0,
+                pharmacy_accepts_click_collect = 1, pharmacy_click_collect_days_json = '[1,2,3,4,5,6,7]'
+            WHERE id = ?
+        ")->execute([$pharmacyId]);
+
+        return $pharmacyId;
     }
 
     private function pharmacyOrder(string $pharmacyId, ?string $relativeId): string

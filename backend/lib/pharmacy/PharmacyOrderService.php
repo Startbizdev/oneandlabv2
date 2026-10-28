@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
 require_once __DIR__ . '/../MedicalDocumentAccess.php';
 require_once __DIR__ . '/../MedicalDocumentSubject.php';
+require_once __DIR__ . '/../PatientDossierAccess.php';
 require_once __DIR__ . '/../RelativeProfile.php';
 require_once __DIR__ . '/../DatabaseTransaction.php';
 require_once __DIR__ . '/../AppointmentCreationRequest.php';
@@ -74,10 +75,9 @@ final class PharmacyOrderService
             throw new InvalidArgumentException('Patient et pharmacie requis');
         }
 
-        $userModel = new User();
         $role = (string) ($user['role'] ?? '');
-        $isPatientSelf = $role === 'patient' && $uid === $patientId;
-        if (!$isPatientSelf && !$userModel->hasProfessionalAccessToPatient($uid, $patientId)) {
+        // Même périmètre que la fiche patient : infirmière d'un RDV pris sur son profil, sans lien explicite.
+        if (!PatientDossierAccess::canAccess($this->db, new User(), $user, $patientId)) {
             throw new RuntimeException('Accès patient refusé');
         }
 
