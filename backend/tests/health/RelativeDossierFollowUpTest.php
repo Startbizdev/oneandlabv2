@@ -235,6 +235,22 @@ final class RelativeDossierFollowUpTest extends TestCase
         $this->assertNull($listed[$ownerOrder]);
     }
 
+    public function testReceivingPharmacyOpensTheRelativeDossierOfItsOrder(): void
+    {
+        $pharmacyId = $this->extraProfile('pro');
+        $token = HttpHarness::token($pharmacyId, 'pro');
+        $openDossier = fn (): int => HttpHarness::request('GET', '/api/users/' . $this->relativeProfileId, $token)['status'];
+
+        $this->pharmacyOrder($pharmacyId, null);
+        $this->assertSame(403, $openDossier(), 'Une commande du titulaire n\'ouvre pas le dossier de son proche');
+
+        $relativeOrder = $this->pharmacyOrder($pharmacyId, $this->relativeId);
+        $this->assertSame(200, $openDossier());
+
+        $this->db->prepare("UPDATE pharmacy_orders SET status = 'refusee' WHERE id = ?")->execute([$relativeOrder]);
+        $this->assertSame(403, $openDossier(), 'Commande refusée : plus d\'accès au dossier du proche');
+    }
+
     public function testPharmacyOrderPlacedOnTheRelativeDossierIsStoredUnderTheOwner(): void
     {
         $pharmacyId = $this->extraProfile('pro');

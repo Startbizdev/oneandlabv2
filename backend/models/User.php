@@ -1976,7 +1976,10 @@ class User
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
-    /** La pharmacie a déjà une commande avec ce patient ou ce demandeur. */
+    /**
+     * La pharmacie a déjà une commande avec ce patient ou ce demandeur.
+     * Dossier d'un proche : commande (ni refusée, ni annulée) passée pour ce proche.
+     */
     public function pharmacyHasOrderWithUser(string $pharmacyId, string $targetId): bool
     {
         if ($pharmacyId === '' || $targetId === '') {
@@ -1990,6 +1993,22 @@ class User
                 LIMIT 1
             ');
             $stmt->execute([$pharmacyId, $targetId, $targetId]);
+            if ($stmt->fetchColumn()) {
+                return true;
+            }
+
+            require_once __DIR__ . '/../lib/RelativeProfile.php';
+            $relative = RelativeProfile::resolve($this->db, $targetId);
+            if ($relative === null) {
+                return false;
+            }
+            $stmt = $this->db->prepare("
+                SELECT 1 FROM pharmacy_orders
+                WHERE pharmacy_id = ? AND patient_id = ? AND relative_id = ?
+                  AND status NOT IN ('refusee', 'annulee')
+                LIMIT 1
+            ");
+            $stmt->execute([$pharmacyId, $relative['owner_id'], $relative['relative_id']]);
             return (bool) $stmt->fetchColumn();
         } catch (PDOException) {
             return false;
