@@ -71,3 +71,6 @@ frontend/test-results/
 frontend/playwright-report/
 apps/mobile/dist-verification/
 .preview-verification-path
+
+# Certificat HDS AWS : document confidentiel AWS, ne pas publier
+DOCSHDS/CERTIFICAT-HDS-AWS.pdf
