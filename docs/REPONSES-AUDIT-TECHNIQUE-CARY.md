@@ -72,7 +72,7 @@ Oui, techniquement, à condition d'avoir les accès ci-dessus.
 | Applications iPhone et Android | React Native avec Expo (un seul code pour les deux plateformes) |
 | API (serveur) | PHP 8.2 sans framework, servi par Nginx et PHP-FPM |
 | Base de données | MySQL (environ 6,8 Go aujourd'hui) |
-| Fichiers (ordonnances, documents, photos) | Stockés **chiffrés** sur le disque du serveur (environ 6 Go), copiés chaque nuit sur AWS S3 Paris |
+| Fichiers (ordonnances, documents, photos) | Stockés **chiffrés** sur **AWS S3, région Paris** (bucket `cary-files-519428392323`, privé, versionné) depuis le 29 octobre 2026. Chaque fichier est chiffré par l'application avant l'envoi, puis par S3. |
 | Tâches automatiques | 6 tâches planifiées : clôture des RDV, expiration des offres, relances, purge des journaux… |
 
 ### Outils no-code ou services externes ?
@@ -177,7 +177,8 @@ Oui, en partie :
 - ✅ **Copie hors du serveur vers AWS S3, région Paris, en place depuis le 29 octobre 2026 :**
   - bucket privé `cary-backups-519428392323`, sur le compte AWS de ZENFACT SAS ;
   - accès public bloqué, chiffrement S3 activé, historique des versions activé ;
-  - chaque nuit, la base chiffrée y est envoyée, et **tous les fichiers** (ordonnances, PDF, photos, documents, déjà chiffrés par l'application) y sont synchronisés ;
+  - chaque nuit, la base chiffrée y est envoyée. Les fichiers présents sur le disque au 29/10 y ont été copiés ;
+  - depuis le 29/10, les documents sont stockés directement sur S3 (bucket `cary-files-519428392323`), **avec l'historique des versions** : un fichier supprimé ou écrasé reste récupérable 30 jours. Le serveur ne peut pas effacer ces anciennes versions ;
   - **conservation de 30 jours** : sauvegardes de la base et anciennes versions de fichiers supprimées automatiquement au-delà ;
   - le serveur n'a qu'un droit **d'écriture** (rôle IAM `cary-server-backup`). Il ne peut ni lire ni supprimer les sauvegardes : même un serveur piraté ne peut pas les effacer ;
   - premier envoi vérifié le 29 octobre 2026 : **7 468 fichiers (6,3 Go), identiques au serveur**, plus la base (148 Mo). Durée totale : 3 min 30.
@@ -253,7 +254,7 @@ Aujourd'hui, environ **2 100 comptes** : 1 580 patients, 412 infirmiers, 70 prof
 
 Le code tiendrait. **Le serveur, non, en l'état.** Ce qui casserait, dans l'ordre :
 1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble, dont la moitié est déjà utilisée. → Machine plus grosse et base séparée (AWS RDS).
-2. **Le disque.** 69 % occupé (33 Go sur 48 Go), avec environ 6 Go de fichiers médicaux. À 10 fois plus de fichiers, il serait plein. → Déplacer les fichiers vers un stockage objet (S3).
+2. **Le disque.** ✅ Réglé pour les documents : depuis le 29 octobre 2026, ils sont sur S3, sans limite de taille. Le disque est passé de 70 % à 64 %. Il reste 3,1 Go de fichiers orphelins, qu'aucun document en base ne référence : copiés dans les sauvegardes, à supprimer après validation.
 3. **Une seule machine = aucune redondance.** Si elle tombe, tout est coupé, pendant les mises à jour aussi. → Deux serveurs derrière un répartiteur de charge.
 4. Le volume de la base (6,8 Go) est à surveiller : certaines tables de journaux grossissent vite.
 
@@ -309,7 +310,7 @@ Pistes à valider avec les laboratoires clients (❓ besoin à confirmer) :
 | 3 | Conformité HDS : infogérant HDS sur AWS, ou migration vers un hébergeur HDS clé en main | 1 à 3 mois |
 | 4 | SMS via un fournisseur UE avec contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
 | 5 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
-| 6 | Base de données et fichiers séparés du serveur (préparation de la croissance) | Avec le point 3 |
+| 6 | Fichiers : ✅ sur S3 depuis le 29/10. Reste : base de données séparée du serveur (RDS) | Avec le point 3 |
 | 7 | Test d'intrusion par un prestataire indépendant | Avant levée de fonds ou grand compte |
 | 8 | Règles de conservation des données de santé (avec un juriste) + AIPD | 1 à 2 mois |
 
