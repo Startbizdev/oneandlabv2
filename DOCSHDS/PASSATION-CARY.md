@@ -29,4 +29,4 @@ L'accompagnement du nouveau prestataire par Startbiz LLC (**réversibilité**) e
 | Assistance après reprise | Réponses aux questions de l'équipe reprenante pendant le premier mois | 3 à 4 jours |
 | **Total** | | **15 à 20 jours** |
 
-**Estimation : 10 000 € à 16 000 € HT**, sur la base de 650 à 800 € HT par jour, le tarif d'un développeur senior full-stack en France. Montant définitif fixé par devis, au tarif de Startbiz LLC en vigueur au moment de la demande.
+**Estimation : 7 500 € à 10 000 €**, sur la base de **500 € par jour**. Montant définitif fixé par devis, au tarif de Startbiz LLC en vigueur au moment de la demande.
