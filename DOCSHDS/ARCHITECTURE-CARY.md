@@ -5,56 +5,13 @@
 | **Propriétaire de la plateforme Cary** | **ZENFACT SAS** |
 | **Prestataire de développement** | **Startbiz LLC** — License 2218328.01 |
 
-Ce document présente l'architecture générale de la plateforme Cary. Il décrit les grandes briques et la circulation des données, pas le détail de la configuration ni des procédures d'exploitation.
+Ce document présente l'architecture générale de la plateforme Cary : les grandes briques et la circulation des données.
 
 ---
 
 ## 1. Vue d'ensemble
 
-```mermaid
-flowchart TB
-    U["Utilisateurs<br/>patients, infirmiers, préleveurs,<br/>laboratoires, pharmacies, professionnels"]
-
-    subgraph Clients["Accès"]
-        M["Applications iPhone et Android<br/>React Native / Expo"]
-        W["Site web cary.bio<br/>Nuxt 3 / Vue.js"]
-    end
-
-    subgraph AWS["Compte AWS de ZENFACT SAS — région Paris (eu-west-3), certifiée HDS"]
-        subgraph SRV["Serveur applicatif"]
-            N["Nginx<br/>HTTPS, TLS 1.2 / 1.3"]
-            API["API PHP<br/>contrôle des rôles et des droits"]
-            DB[("MySQL<br/>données sensibles chiffrées<br/>AES-256-GCM")]
-            T["Tâches planifiées<br/>RDV, relances, maintenance,<br/>durées de conservation"]
-        end
-        S3D[("Stockage S3 : documents<br/>chiffrés, privé, versionné")]
-        S3B[("Stockage S3 : sauvegardes et archives<br/>chiffrées, espace séparé")]
-        V["Coffre-fort de secrets<br/>AWS Systems Manager + KMS"]
-        SUP["Supervision<br/>alertes automatiques"]
-    end
-
-    subgraph EXT["Services externes (transmission, pas d'hébergement)"]
-        E["Brevo<br/>e-mails et SMS"]
-        SMS["Twilio<br/>SMS de secours"]
-        P["Expo<br/>notifications"]
-        G["Google Maps<br/>adresses"]
-        X["xAI (Grok)<br/>assistant, rétention zéro"]
-        PAY["Stripe, Apple, Google<br/>abonnements"]
-    end
-
-    U --> M & W
-    M -- HTTPS --> N
-    W -- HTTPS --> N
-    N --> API
-    API --> DB
-    API --> S3D
-    T --> DB
-    DB -. sauvegarde quotidienne chiffrée .-> S3B
-    SRV -. copie des clés .-> V
-    SUP -. surveille .-> SRV
-    API --> E & SMS & P & X & PAY
-    M & W --> G
-```
+![Architecture de la plateforme Cary](architecture-cary.png)
 
 ---
 
@@ -70,42 +27,35 @@ flowchart TB
 | **Sauvegardes et archives** | Sauvegarde quotidienne de la base, archives du journal d'accès. Espace séparé, protégé contre la suppression depuis le serveur. | AWS S3 Paris |
 | **Coffre-fort de secrets** | Copie chiffrée des clés et de la configuration. | AWS Paris |
 | **Supervision** | Surveillance continue du service, alertes automatiques en cas d'anomalie. | AWS Paris |
+| **Services externes** | E-mails et SMS (Brevo, Twilio), notifications (Expo), adresses (Google Maps), assistant (xAI), abonnements (Stripe, Apple, Google). | Hors AWS |
 
 ---
 
 ## 3. Circulation des données de santé
 
-```mermaid
-flowchart LR
-    A["Utilisateur"] -- "HTTPS" --> B["API Cary<br/>vérification des droits"]
-    B -- "chiffrement AES-256-GCM" --> C[("Base MySQL<br/>AWS Paris")]
-    B -- "chiffrement AES-256-GCM" --> D[("Documents S3<br/>AWS Paris")]
-    B -- "chaque accès tracé" --> J[("Journal d'accès")]
-    C -. "sauvegarde chiffrée" .-> E[("Sauvegardes S3<br/>AWS Paris")]
-    J -. "archivage mensuel chiffré" .-> E
-```
+1. L'utilisateur se connecte depuis l'appli ou le site, en **HTTPS** (connexion chiffrée).
+2. L'**API** vérifie qui il est, son rôle et son lien avec le patient.
+3. Les données sont **chiffrées** (AES-256-GCM) puis enregistrées dans la **base** ou dans le **stockage des documents**, chez AWS Paris.
+4. **Chaque accès** à une donnée de santé est inscrit dans le **journal d'accès**.
+5. Chaque nuit, la base est **sauvegardée**, chiffrée, dans un espace séparé. Le journal d'accès est **archivé** chaque mois.
 
-- Les données de santé sont **stockées uniquement chez AWS, région Paris**, sur le compte de ZENFACT SAS.
-- Elles sont **chiffrées** en transit (HTTPS) et au repos (AES-256-GCM, puis chiffrement du stockage AWS).
-- **Chaque accès** à une donnée de santé est enregistré dans le journal d'accès.
-- Les services externes **ne stockent pas** le dossier patient : ils transmettent des messages courts (e-mail, SMS, notification) ou reçoivent des données masquées (assistant IA).
+Les données de santé sont **stockées uniquement chez AWS, région Paris**, sur le compte de ZENFACT SAS. Les services externes ne stockent pas le dossier patient : ils transmettent des messages courts (e-mail, SMS, notification) ou reçoivent des données masquées (assistant IA).
 
 ---
 
 ## 4. Séparation des accès
 
-```mermaid
-flowchart TB
-    R["Demande d'un utilisateur"] --> AUTH{"Connexion valide ?<br/>jeton signé"}
-    AUTH -- non --> REF["Refus"]
-    AUTH -- oui --> ROLE{"Rôle autorisé ?"}
-    ROLE -- non --> REF
-    ROLE -- oui --> LINK{"Lien réel avec le patient ?<br/>RDV, lien patient, commande"}
-    LINK -- non --> REF
-    LINK -- oui --> OK["Accès accordé et tracé"]
-```
+À chaque demande, le serveur vérifie trois choses, dans cet ordre :
 
-Rôles : patient, infirmier, préleveur, laboratoire, sous-compte de laboratoire, professionnel (médecin, pharmacie…), administrateur. Tous les contrôles sont faits **côté serveur**.
+| Contrôle | Si non |
+|---|---|
+| 1. La connexion est-elle valide ? | Refus |
+| 2. Le rôle permet-il cette action ? | Refus |
+| 3. L'utilisateur a-t-il un lien réel avec ce patient (RDV, lien patient, commande) ? | Refus |
+
+Si les trois sont validés, l'accès est accordé **et tracé**.
+
+Rôles : patient, infirmier, préleveur, laboratoire, sous-compte de laboratoire, professionnel (médecin, pharmacie…), administrateur.
 
 ---
 
