@@ -240,7 +240,7 @@ Non compris, car payés à part ou prélevés sur les ventes :
 
 
 ### Qu'est-ce qui reste à développer pour bien servir les laboratoires ?
-Les fonctionnalités existantes et les évolutions prévues sont détaillées dans le document **Pistes d'évolution**.
+Les fonctionnalités existantes et les évolutions prévues sont détaillées dans un **document confidentiel** établi avec **Joseph Zenou**.
 
 ### Que referait-on différemment en repartant de zéro ?
 **Rien de fondamental.** Les choix techniques de Cary ont été faits volontairement, et ils restent adaptés :
