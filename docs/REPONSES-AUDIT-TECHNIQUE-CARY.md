@@ -254,7 +254,7 @@ Aujourd'hui, environ **2 100 comptes** : 1 580 patients, 412 infirmiers, 70 prof
 
 Le code tiendrait. **Le serveur, non, en l'état.** Ce qui casserait, dans l'ordre :
 1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble, dont la moitié est déjà utilisée. → Machine plus grosse et base séparée (AWS RDS).
-2. **Le disque.** ✅ Réglé pour les documents : depuis le 29 octobre 2026, ils sont sur S3, sans limite de taille. Le disque est passé de 70 % à 64 %. Il reste 3,1 Go de fichiers orphelins, qu'aucun document en base ne référence : copiés dans les sauvegardes, à supprimer après validation.
+2. **Le disque.** ✅ Réglé pour les documents : depuis le 29 octobre 2026, ils sont sur S3, sans limite de taille. Le disque est passé de 70 % à **58 %** (21 Go libres). Les 1 876 fichiers orphelins (3,1 Go) n'étaient référencés par aucun document en base. Ils ont été archivés avant suppression dans `s3://cary-backups-519428392323/archives/orphelins-medical-20261029.tar`, vérifié fichier par fichier, avec leur liste et une empreinte SHA-256. Pour les restaurer, il suffit d'extraire l'archive dans `uploads/medical/`.
 3. **Une seule machine = aucune redondance.** Si elle tombe, tout est coupé, pendant les mises à jour aussi. → Deux serveurs derrière un répartiteur de charge.
 4. Le volume de la base (6,8 Go) est à surveiller : certaines tables de journaux grossissent vite.
 
