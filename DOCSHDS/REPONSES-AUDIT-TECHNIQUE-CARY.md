@@ -41,8 +41,8 @@ Cette cession doit être **écrite et signée** par les deux sociétés : en dro
 |---|---|---|
 | Serveur et stockage AWS | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Domaine cary.bio | ✅ **ZENFACT SAS** | Au nom de la société. |
-| Apple App Store (Apple Developer) | ✅ **ZENFACT SAS** | Au nom de la société. |
-| Google Play Console | ✅ **ZENFACT SAS** | Au nom de la société. Passage au type de compte « Organisation » en cours de validation par Google. |
+| Apple App Store (Apple Developer) | ✅ **ZENFACT SAS** | Passage du compte personnel en compte « Organisation » en cours de validation par Apple. |
+| Google Play Console | ✅ **ZENFACT SAS** | Passage du compte personnel en compte « Organisation » en cours de validation par Google. |
 | Stripe (paiements web) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Brevo (e-mails) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Twilio (SMS) | ✅ **ZENFACT SAS** | Au nom de la société. |
