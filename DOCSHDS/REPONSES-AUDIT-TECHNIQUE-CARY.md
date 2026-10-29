@@ -13,7 +13,7 @@
 
 | Sujet | État |
 |---|---|
-| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : code source (GitHub), AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : signature de l'attestation de cession (annexe A). |
+| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : code source (GitHub), AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : signature de l'attestation de cession des droits. |
 | Coût actuel | Environ 50 USD/mois, soit environ 45 €/mois. |
 | Technologies | ✅ Standards et répandues : PHP, MySQL, Nuxt/Vue, React Native/Expo. Faciles à reprendre. |
 | Chiffrement des données de santé | ✅ AES-256-GCM, dans la base comme sur les fichiers. |
@@ -33,7 +33,7 @@
 ### Le code appartient-il bien à Cary (contrat avec cession des droits) ?
 ✅ **Oui.** Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS. Startbiz LLC intervient comme prestataire de développement, et cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'elle a développé pour Cary.
 
-Cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit préciser les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est en **annexe A**, à faire relire par l'avocat de ZENFACT SAS puis à signer.
+Cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit préciser les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est dans le document **Attestation de cession des droits**, à faire relire par l'avocat de ZENFACT SAS puis à signer.
 
 ### Le code, l'hébergement et le nom de domaine sont-ils au nom de la société ?
 
@@ -255,19 +255,7 @@ Non compris, car payés à part ou prélevés sur les ventes :
 
 
 ### Qu'est-ce qui reste à développer pour bien servir les laboratoires ?
-Ce qui existe déjà :
-- abonnements Lab Starter et Lab Pro ;
-- gestion des préleveurs et des sous-comptes ;
-- tournées des préleveurs ;
-- RDV de prélèvement à domicile ;
-- statistiques et dépôt des résultats.
-
-Évolutions prévues, à prioriser avec les laboratoires clients :
-- **connexion au logiciel du laboratoire (SIL)** pour recevoir les demandes et renvoyer les résultats automatiquement ;
-- **traçabilité des tubes** : étiquettes, code-barres, heure de prélèvement, conditions de transport ;
-- **facturation tiers payant** et lien avec l'Assurance maladie ;
-- **tableau de bord multi-sites** pour les groupes de laboratoires ;
-- **signature électronique et transmission sécurisée des comptes rendus** (messagerie MSSanté).
+Les fonctionnalités existantes et les évolutions prévues sont détaillées dans le document **Pistes d'évolution**.
 
 ### Que referait-on différemment en repartant de zéro ?
 1. **Mettre en place la supervision dès le premier jour.**
@@ -281,53 +269,12 @@ Ce qui existe déjà :
 
 | Priorité | Action | Délai indicatif |
 |---|---|---|
-| 1 | Signer l'attestation de cession (annexe A) | 2 semaines |
+| 1 | Signer l'attestation de cession des droits | 2 semaines |
 | 2 | Valider et signer le registre des traitements et l'analyse d'impact | 2 semaines |
 | 3 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
 | 4 | Automatiser les durées de conservation longues (assistant, comptes inactifs, archives des dossiers) | Avant fin 2027 |
 | 5 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 6 | Optionnel : test d'intrusion par un prestataire indépendant | À la demande d'un grand compte ou d'un investisseur |
-
----
-
-## Annexe A — Attestation de cession des droits (modèle)
-
-> **Modèle à faire relire par l'avocat de ZENFACT SAS avant signature.** Il ne remplace pas un conseil juridique.
-
-**ATTESTATION DE CESSION DE DROITS DE PROPRIÉTÉ INTELLECTUELLE**
-
-Entre :
-
-**Startbiz LLC**, License n° 2218328.01, représentée par ____________________, ci-après « le Cédant » ;
-
-et :
-
-**ZENFACT SAS**, immatriculée sous le n° SIREN 927 659 508, dont le siège est situé 230 B avenue Corot, 13014 Marseille, représentée par Mme Shany Amar, Présidente, ci-après « le Cessionnaire ».
-
-**Article 1 — Objet.** Le Cédant cède au Cessionnaire, à titre exclusif, l'ensemble des droits patrimoniaux d'auteur sur les créations qu'il a réalisées pour la plateforme **Cary** (ci-après « les Créations ») :
-- le code source et le code objet du site web, des applications mobiles iOS et Android, de l'API et des scripts ;
-- les schémas et migrations de base de données ;
-- la documentation, les maquettes, les éléments graphiques et les textes ;
-- toutes les versions passées, présentes et futures réalisées dans le cadre de la prestation.
-
-**Article 2 — Droits cédés.** Les droits de reproduction, de représentation, d'adaptation, de modification, de traduction, d'arrangement, de correction, d'intégration dans d'autres logiciels, de commercialisation, de distribution (y compris sur l'App Store et Google Play), de mise à disposition du public et de sous-licence, sur tout support et par tout moyen, connu ou inconnu à ce jour.
-
-**Article 3 — Étendue.** La cession vaut pour le monde entier et pour toute la durée légale de protection des droits d'auteur.
-
-**Article 4 — Prix.** La cession est comprise dans le prix de la prestation de développement déjà facturée et réglée. Elle ne donne lieu à aucune rémunération supplémentaire.
-
-**Article 5 — Comptes et accès.** Le Cédant s'engage à transférer au Cessionnaire, ou à remettre sur simple demande, les dépôts de code, les comptes de service, les clés et les accès techniques liés à Cary. Il s'engage aussi à n'en conserver aucune copie au-delà de ce qui est nécessaire à la poursuite de sa mission.
-
-**Article 6 — Composants tiers.** Les bibliothèques open source utilisées restent soumises à leurs licences respectives. Le Cédant garantit qu'elles permettent l'usage commercial de Cary.
-
-**Article 7 — Garantie.** Le Cédant garantit être l'auteur des Créations, ou titulaire des droits sur celles-ci, et qu'elles ne portent pas atteinte aux droits d'un tiers.
-
-Fait à ____________________, le ____ / ____ / ________, en deux exemplaires.
-
-| Pour Startbiz LLC | Pour ZENFACT SAS |
-|---|---|
-| Nom : | Shany Amar, Présidente |
-| Signature : | Signature : |
 
 ---
 
