@@ -127,8 +127,8 @@ Aucun outil no-code. Services externes utilisés :
 - ✅ Chez **Amazon Web Services, région Paris (eu-west-3)** : un serveur EC2 sous Ubuntu 24.04 et un stockage S3.
 - ✅ AWS est certifié HDS pour cette région, pour la partie infrastructure : datacenters, matériel, réseau, virtualisation, stockage.
 - ✅ **ZENFACT SAS administre sa propre plateforme en tant que responsable de traitement.** La certification HDS vise les prestataires qui hébergent des données de santé **pour le compte de tiers** (article L.1111-8 du Code de la santé publique). Un responsable de traitement qui héberge ses propres données chez un hébergeur certifié n'est pas lui-même soumis à la certification : c'est le cas de ZENFACT SAS avec AWS.
-- ❓ À confirmer dans les conditions générales et les contrats avec les professionnels de santé : ZENFACT SAS y est désignée comme responsable de traitement.
-- ❓ Vérifier que le compte AWS de la société a accepté les conditions HDS d'AWS (avenant disponible dans « AWS Artifact »).
+- ✅ **Rôle confirmé dans les documents publics de Cary** : la politique de confidentialité désigne ZENFACT SAS comme responsable du traitement, et les conditions générales de vente présentent Cary comme la plateforme de mise en relation et de gestion des rendez-vous. Les professionnels de santé sont des clients abonnés qui utilisent la plateforme : ils n'en confient pas l'hébergement à ZENFACT.
+- ✅ **AWS figure sur la liste officielle des hébergeurs certifiés HDS** publiée par l'ANS. La certification s'applique à tous les clients des régions couvertes, dont Paris : il n'y a pas d'avenant particulier à signer.
 
 ### Toutes les données de santé (base, fichiers, sauvegardes) sont-elles chez l'hébergeur HDS ?
 - ✅ **Base de données** : sur le serveur AWS Paris.
@@ -288,10 +288,9 @@ Pistes à valider avec les laboratoires clients (❓) :
 | 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
 | 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
 | 4 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
-| 5 | Conditions générales : ZENFACT SAS désignée responsable de traitement ; avenant HDS AWS accepté | 1 mois |
-| 6 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
-| 7 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
-| 8 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
+| 5 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
+| 6 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
+| 7 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
 
 ---
 
