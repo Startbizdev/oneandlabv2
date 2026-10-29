@@ -267,19 +267,3 @@ Les fonctionnalités existantes et les évolutions prévues sont détaillées da
 2. **Séparer dès le début** la base de données et le serveur applicatif.
 3. **Choisir d'emblée un fournisseur d'IA hébergé en Europe sur une infrastructure HDS.**
 4. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
-
----
-
-## Plan d'action recommandé
-
-| Priorité | Action | Délai indicatif |
-|---|---|---|
-| 1 | Signer l'attestation de cession des droits | 2 semaines |
-| 2 | Valider et signer le registre des traitements et l'analyse d'impact | 2 semaines |
-| 3 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
-| 4 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
-| 5 | Optionnel : test d'intrusion par un prestataire indépendant | À la demande d'un grand compte ou d'un investisseur |
-
----
-
-*Sources : [AWS – Hébergeur de données de santé](https://aws.amazon.com/fr/compliance/hds/) · [Le Monde Informatique – « AWS certifié HDS, oui mais »](https://www.lemondeinformatique.fr/actualites/lire-aws-certifie-hebergeur-de-donnees-de-sante-oui-mais-74667.html) · [CNIL – recommandation sur la journalisation](https://cnil.fr/la-cnil-publie-une-recommandation-relative-aux-mesures-de-journalisation) · [ANS – conservation des traces des dossiers patients](https://esante.gouv.fr/faq/quelles-est-la-duree-de-conservation-des-traces-techniques-et-applicatives-des-dossiers-patient)*
