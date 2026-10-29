@@ -24,7 +24,7 @@
 | Maintenance du serveur | ✅ Nettoyage et archivage automatiques. Disque utilisé à 37 %. |
 | Hébergement HDS | ⚠️ Infrastructure AWS Paris certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
 | Services hors UE recevant des données | ⚠️ SMS (Twilio), notifications (Expo), assistant IA (xAI). Voir § 3. |
-| Montée en charge | ⚠️ Un seul serveur (2 processeurs, 2 Go de mémoire) pour le site, l'API et la base. |
+| Montée en charge | ✅ Serveur volontairement dimensionné au juste besoin pour maîtriser les coûts. Sur AWS, il peut passer à une taille supérieure à tout moment, en quelques minutes, sans changer le code. |
 
 ---
 
@@ -238,12 +238,14 @@ Oui, en partie :
 ### La plateforme tiendrait-elle avec 10 fois plus d'utilisateurs ?
 Aujourd'hui, environ **2 100 comptes** : 1 580 patients, 412 infirmiers, 70 professionnels, 17 laboratoires, 9 préleveurs.
 
-**Le code tiendrait. Le serveur devra évoluer.** Points d'attention, dans l'ordre :
-1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble. → Serveur plus puissant et base séparée (AWS RDS).
-2. **Une seule machine, donc aucune redondance.** Si elle tombe, tout est coupé. → Deux serveurs derrière un répartiteur de charge.
-3. **Le stockage est déjà prêt.** ✅ Les documents sont sur S3, sans limite de taille. Le disque du serveur est utilisé à 37 %, avec un nettoyage et un archivage automatiques.
+**Oui. Le code tiendrait, et l'infrastructure suit la croissance.**
 
-Aucune réécriture n'est nécessaire : c'est un changement d'infrastructure, qui peut se faire en même temps que la mise en conformité HDS.
+Le serveur actuel (2 processeurs, 2 Go de mémoire) est **volontairement dimensionné au juste besoin**, pour ne pas payer de capacité inutilisée. C'est l'avantage d'AWS : on paie ce qu'on utilise, et on adapte au fur et à mesure.
+1. **Puissance du serveur.** ✅ Sur AWS, on passe à un serveur plus puissant **à tout moment, en quelques minutes**, sans modifier le code. Il suffit de changer le type d'instance, par exemple 4 ou 8 Go de mémoire.
+2. **Stockage.** ✅ Déjà prêt : les documents sont sur S3, sans limite de taille. Le disque du serveur est utilisé à 37 %, avec un nettoyage et un archivage automatiques.
+3. **Étape suivante, quand le volume le justifiera :** séparer la base de données (AWS RDS), puis ajouter un second serveur derrière un répartiteur de charge, pour qu'une panne ou une mise à jour ne coupe jamais le service.
+
+Aucune réécriture n'est nécessaire : ce sont des évolutions d'infrastructure, qui peuvent se faire en même temps que la mise en conformité HDS.
 
 ### Combien coûtent l'hébergement et les services par mois ?
 **Environ 50 USD par mois, soit environ 45 € par mois**, hébergement et services compris :
@@ -293,7 +295,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 | 4 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
 | 5 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
 | 6 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
-| 7 | Base de données séparée du serveur (RDS) ; second serveur pour la redondance | Avec le point 6 |
+| 7 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 8 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
 | 9 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
 
