@@ -3,7 +3,8 @@
     "require": {
         "php": ">=7.4",
         "stripe/stripe-php": "^10.0",
-        "dompdf/dompdf": "^2.0"
+        "dompdf/dompdf": "^2.0",
+        "aws/aws-sdk-php": "^3.300"
     },
     "autoload": {
         "classmap": []
@@ -19,5 +20,10 @@
         "test:mobile": "phpunit --testsuite Mobile",
         "test:pharmacy": "phpunit --testsuite Pharmacy",
         "test:docker": "cd .. && docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from php-test"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.35"
+        }
     }
 }

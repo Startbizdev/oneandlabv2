@@ -7,6 +7,7 @@ require_once __DIR__ . '/MedicalDocumentSubject.php';
 require_once __DIR__ . '/BookingFileJournal.php';
 require_once __DIR__ . '/Crypto.php';
 require_once __DIR__ . '/HttpStatusException.php';
+require_once __DIR__ . '/storage/MedicalFileStore.php';
 require_once __DIR__ . '/../config/upload-limits.php';
 
 /**
@@ -24,8 +25,46 @@ final class MedicalDocumentsInternal
     }
 
     /**
-     * Contrôle un fichier reçu en multipart (présence, taille, type), le chiffre et l'écrit dans uploads/medical/{id}/.
-     * Le fichier est sur disque au retour : l'appelant le supprime (deleteStoredFile) si l'enregistrement en base échoue.
+     * Chiffre un contenu et l'enregistre sous un nouvel identifiant de document.
+     *
+     * @return array{id: string, file_path: string, file_dek: string}
+     */
+    public static function storeEncrypted(string $content, string $fileName, Crypto $crypto, ?BookingFileJournal $fileJournal = null): array
+    {
+        $encryptedData = $crypto->encryptFile($content);
+        $encryptedBytes = base64_decode((string) $encryptedData['encrypted'], true);
+        if ($encryptedBytes === false) {
+            throw new RuntimeException('Erreur lors du décodage base64 du fichier');
+        }
+        $id = bin2hex(random_bytes(16));
+        $path = self::storeBytes($id, $fileName, $encryptedBytes, $fileJournal);
+
+        return ['id' => $id, 'file_path' => $path, 'file_dek' => (string) $encryptedData['dek']];
+    }
+
+    /** Enregistre des octets déjà chiffrés pour le document $id ; renvoie le chemin à stocker en base. */
+    public static function storeBytes(string $id, string $fileName, string $encryptedBytes, ?BookingFileJournal $fileJournal = null): string
+    {
+        $path = MedicalFileStore::pathFor($id, $fileName . '.encrypted');
+        $fileJournal?->trackNewFile($path);
+        MedicalFileStore::put($path, $encryptedBytes);
+
+        return $path;
+    }
+
+    /** Octets chiffrés d'un document (chemin medical_documents.file_path), null si le fichier est absent. */
+    public static function readStoredFile(string $filePathFromDb): ?string
+    {
+        try {
+            return MedicalFileStore::get($filePathFromDb);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    /**
+     * Contrôle un fichier reçu en multipart (présence, taille, type), le chiffre et l'enregistre.
+     * Le fichier est stocké au retour : l'appelant le supprime (deleteStoredFile) si l'enregistrement en base échoue.
      *
      * @param array<string, mixed>|null $file entrée de $_FILES
      * @return array{id: string, file_name: string, file_path: string, file_size: int, mime_type: string, file_dek: string}
@@ -47,29 +86,16 @@ final class MedicalDocumentsInternal
             throw new HttpStatusException('Erreur lors de la lecture du fichier', 500, 'FILE_READ_FAILED');
         }
 
-        $encryptedData = $crypto->encryptFile($fileContent);
-        $id = bin2hex(random_bytes(16));
         $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
-        $documentDir = self::backendRoot() . '/uploads/medical/' . $id . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-        $encryptedBytes = base64_decode($encryptedData['encrypted']);
-        if ($encryptedBytes === false) {
-            throw new RuntimeException('Erreur lors du décodage base64 du fichier');
-        }
-        $filePath = $documentDir . $fileName . '.encrypted';
-        if (file_put_contents($filePath, $encryptedBytes) === false || !file_exists($filePath)) {
-            throw new RuntimeException('Erreur lors de l\'écriture du fichier sur le serveur. Vérifiez les permissions du dossier uploads/medical/');
-        }
+        $stored = self::storeEncrypted($fileContent, $fileName, $crypto);
 
         return [
-            'id' => $id,
+            'id' => $stored['id'],
             'file_name' => $fileName,
-            'file_path' => '/uploads/medical/' . $id . '/' . $fileName . '.encrypted',
+            'file_path' => $stored['file_path'],
             'file_size' => (int) $file['size'],
             'mime_type' => $mimeType,
-            'file_dek' => (string) $encryptedData['dek'],
+            'file_dek' => $stored['file_dek'],
         ];
     }
 
@@ -90,31 +116,22 @@ final class MedicalDocumentsInternal
     }
 
     /**
-     * Supprime le fichier chiffré d'un document (chemin medical_documents.file_path) et son dossier
-     * s'il est vide. Refuse tout chemin hors de uploads/medical/.
+     * Supprime le fichier chiffré d'un document (chemin medical_documents.file_path).
+     * Refuse tout chemin hors de uploads/medical/.
      *
      * @return bool true si le fichier n'existe plus
      */
     public static function deleteStoredFile(string $filePathFromDb): bool
     {
-        $uploadRoot = realpath(self::backendRoot() . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'medical');
-        $relative = str_replace('/', DIRECTORY_SEPARATOR, ltrim($filePathFromDb, '/\\'));
-        $directory = realpath(dirname(self::backendRoot() . DIRECTORY_SEPARATOR . $relative));
-        if ($uploadRoot === false || $directory === false) {
-            return true;
-        }
-        if (!str_starts_with($directory . DIRECTORY_SEPARATOR, $uploadRoot . DIRECTORY_SEPARATOR)) {
+        try {
+            return MedicalFileStore::delete($filePathFromDb);
+        } catch (InvalidArgumentException) {
             return false;
-        }
-        $path = $directory . DIRECTORY_SEPARATOR . basename($relative);
-        if (is_file($path) && !unlink($path)) {
-            return false;
-        }
-        if ($directory !== $uploadRoot && count(scandir($directory) ?: []) === 2) {
-            rmdir($directory);
-        }
+        } catch (Throwable $e) {
+            error_log('MedicalDocumentsInternal::deleteStoredFile: ' . $e->getMessage());
 
-        return true;
+            return false;
+        }
     }
 
     /**
@@ -181,30 +198,9 @@ final class MedicalDocumentsInternal
             throw new RuntimeException('Document proche incompatible avec ce rendez-vous');
         }
 
-        $backendDir = self::backendRoot();
-        $filePathFromDb = ltrim((string) ($sourceDoc['file_path'] ?? ''), DIRECTORY_SEPARATOR . '/');
-        $sourceFilePath = $backendDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $filePathFromDb);
-        $resolvedSrc = realpath(dirname($sourceFilePath));
-        if ($resolvedSrc !== false) {
-            $baseName = basename($sourceFilePath);
-            $candidate = $resolvedSrc . DIRECTORY_SEPARATOR . $baseName;
-            if (is_file($candidate)) {
-                $sourceFilePath = $candidate;
-            }
-        }
-
-        if (!is_file($sourceFilePath)) {
-            throw new RuntimeException('Fichier source absent sur disque');
-        }
-
-        $fileContent = file_get_contents($sourceFilePath);
-        if ($fileContent === false) {
-            throw new RuntimeException('Lecture fichier source impossible');
-        }
-
-        $uploadDir = $backendDir . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $fileContent = self::readStoredFile((string) ($sourceDoc['file_path'] ?? ''));
+        if ($fileContent === null) {
+            throw new RuntimeException('Fichier source absent du stockage');
         }
 
         $newId = bin2hex(random_bytes(16));
@@ -212,16 +208,7 @@ final class MedicalDocumentsInternal
             (string) $sourceDoc['file_name'],
             (string) $sourceDoc['mime_type']
         );
-        $documentDir = $uploadDir . $newId . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-        $newFilePath = $documentDir . $fileName . '.encrypted';
-        $fileJournal?->trackNewFile($newFilePath);
-        if (file_put_contents($newFilePath, $fileContent) === false) {
-            throw new RuntimeException('Écriture fichier copie impossible');
-        }
-        $relativePath = '/uploads/medical/' . $newId . '/' . $fileName . '.encrypted';
+        $relativePath = self::storeBytes($newId, $fileName, $fileContent, $fileJournal);
         $docTypeFinal = $documentType ?: ($sourceDoc['document_type'] ?: 'other');
 
         $ins = $db->prepare(
@@ -299,29 +286,11 @@ final class MedicalDocumentsInternal
             throw new RuntimeException('Lecture fichier impossible');
         }
 
-        $encryptedData = $crypto->encryptFile($fileContent);
-        $backendDir = self::backendRoot();
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $id = bin2hex(random_bytes(16));
         $fileName = UploadMimeTypes::safeFilename($originalFilename, (string) $mimeType);
-        $documentDir = $uploadDir . $id . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-        $filePath = $documentDir . $fileName . '.encrypted';
-        $fileJournal?->trackNewFile($filePath);
-        $decryptedContent = base64_decode($encryptedData['encrypted'], true);
-        if ($decryptedContent === false) {
-            throw new RuntimeException('Décodage chiffrement fichier');
-        }
-        if (file_put_contents($filePath, $decryptedContent) === false) {
-            throw new RuntimeException('Écriture fichier chiffré impossible');
-        }
-        $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
+        $stored = self::storeEncrypted($fileContent, $fileName, $crypto, $fileJournal);
+        $id = $stored['id'];
+        $relativePath = $stored['file_path'];
+        $encryptedData = ['dek' => $stored['file_dek']];
 
         $stmt = $db->prepare(
             'INSERT INTO medical_documents (

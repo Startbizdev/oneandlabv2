@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
@@ -116,16 +117,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             exit;
         }
         
-        // Supprimer le fichier physique
-        $filePath = __DIR__ . '/../../' . ltrim($document['file_path'], '/');
-        if (file_exists($filePath)) {
-            unlink($filePath);
-            
-            // Supprimer le dossier s'il est vide
-            $dir = dirname($filePath);
-            if (is_dir($dir) && count(scandir($dir)) === 2) {
-                rmdir($dir);
-            }
+        // Supprimer le fichier chiffré
+        if (!MedicalDocumentsInternal::deleteStoredFile((string) $document['file_path'])) {
+            error_log('[medical-documents/delete] fichier non supprimé ' . $document['file_path']);
         }
         
         // Supprimer l'enregistrement en base

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../../lib/MedicalDocumentsInternal.php';
 
 // CORS
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
@@ -76,98 +77,16 @@ try {
         exit;
     }
     
-    // Lire le fichier chiffré
-    // Le chemin dans la base est /uploads/medical/... (relatif depuis la racine du projet)
-    // Les fichiers sont stockés dans uploads/medical/ à la racine du projet
-    // Le fichier est dans backend/api/medical-documents/[id]/download.php
-    // On remonte jusqu'à la racine du projet puis on ajoute le chemin relatif
-    // backend/api/medical-documents/[id] -> backend/api/medical-documents -> backend/api -> backend -> racine
-    // Utiliser dirname() plusieurs fois pour éviter le problème avec [id] dans realpath()
-    $currentDir = dirname(__FILE__); // backend/api/medical-documents/[id]
-    $medicalDocsDir = dirname($currentDir); // backend/api/medical-documents
-    $apiDir = dirname($medicalDocsDir); // backend/api
-    $backendDir = dirname($apiDir); // backend
-    $projectRoot = dirname($backendDir); // racine du projet
-
-    // Le chemin dans la base peut être /uploads/medical/... ou uploads/medical/...
-    $filePathFromDb = ltrim($document['file_path'], '/');
-    $filePath = $projectRoot . '/' . $filePathFromDb;
-    
-    // Normaliser le chemin (résoudre les .. et .)
-    $filePath = realpath($filePath);
-
-    if ($filePath === false || !file_exists($filePath)) {
-        // Extraire le nom du fichier et le chemin relatif depuis file_path
-        $pathParts = explode('/', trim($document['file_path'], '/'));
-        $fileName = end($pathParts);
-        
-        // Essayer avec backend/uploads/medical/...
-        $altPath1 = $backendDir . '/uploads/medical/' . $fileName;
-        $altPath1 = realpath($altPath1);
-        
-        // Essayer avec uploads/ à la racine (structure complète)
-        $altPath2 = $projectRoot . '/' . $filePathFromDb;
-        $altPath2 = realpath($altPath2);
-        
-        // Essayer avec uploads/medical/ à la racine (juste le nom du fichier)
-        $altPath3 = $projectRoot . '/uploads/medical/' . $fileName;
-        $altPath3 = realpath($altPath3);
-        
-        // Essayer avec le chemin complet depuis backend
-        $altPath4 = $backendDir . '/' . $filePathFromDb;
-        $altPath4 = realpath($altPath4);
-
-        // Utiliser le premier chemin alternatif qui existe
-        if ($altPath1 !== false && file_exists($altPath1)) {
-            $filePath = $altPath1;
-        } elseif ($altPath2 !== false && file_exists($altPath2)) {
-            $filePath = $altPath2;
-        } elseif ($altPath3 !== false && file_exists($altPath3)) {
-            $filePath = $altPath3;
-        } elseif ($altPath4 !== false && file_exists($altPath4)) {
-            $filePath = $altPath4;
-        }
-    }
-
-    $allowedRoots = array_values(array_filter([
-        realpath($backendDir . '/uploads/medical'),
-        realpath($projectRoot . '/uploads/medical'),
-    ]));
-    $isInsideMedicalStorage = false;
-    if ($filePath !== false) {
-        $normalizedFilePath = rtrim($filePath, DIRECTORY_SEPARATOR);
-        foreach ($allowedRoots as $allowedRoot) {
-            $prefix = rtrim((string) $allowedRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-            if (strncmp($normalizedFilePath, $prefix, strlen($prefix)) === 0) {
-                $isInsideMedicalStorage = true;
-                break;
-            }
-        }
-    }
-
-    if ($filePath === false || !is_file($filePath) || !$isInsideMedicalStorage) {
+    // Fichier chiffré (disque ou S3 selon MEDICAL_FILES_DRIVER)
+    $encryptedContent = MedicalDocumentsInternal::readStoredFile((string) $document['file_path']);
+    if ($encryptedContent === null) {
         http_response_code(404);
         header('Content-Type: application/json');
         echo json_encode([
-            'success' => false, 
+            'success' => false,
             'error' => 'Fichier introuvable sur le serveur. Le document peut avoir été supprimé ou le chemin est incorrect.',
             'code' => 'FILE_NOT_FOUND'
         ]);
-        exit;
-    }
-
-    if (!file_exists($filePath)) {
-        http_response_code(404);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Fichier introuvable sur le serveur']);
-        exit;
-    }
-
-    $encryptedContent = file_get_contents($filePath);
-    if ($encryptedContent === false) {
-        http_response_code(500);
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Erreur lors de la lecture du fichier']);
         exit;
     }
 

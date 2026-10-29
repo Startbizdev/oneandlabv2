@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/CarePhotoGallery.php';
+require_once __DIR__ . '/../../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../models/User.php';
 require_once __DIR__ . '/../../../lib/UploadMimeTypes.php';
@@ -203,33 +204,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $encryptedData = $crypto->encryptFile($fileContent);
-
-        $backendDir = realpath(__DIR__ . '/../../../');
-        if ($backendDir === false) {
-            $backendDir = __DIR__ . '/../../../';
-        }
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $encryptedBytes = base64_decode($encryptedData['encrypted'], true);
+        if ($encryptedBytes === false) {
+            throw new Exception('Décodage base64');
         }
 
         $id = CarePhotoGallery::newUuid();
         $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
-        $documentDir = $uploadDir . $id . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-
-        $filePath = $documentDir . $fileName . '.encrypted';
-        $decryptedContent = base64_decode($encryptedData['encrypted'], true);
-        if ($decryptedContent === false) {
-            throw new Exception('Décodage base64');
-        }
-        if (file_put_contents($filePath, $decryptedContent) === false) {
-            throw new Exception('Écriture fichier');
-        }
-
-        $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
+        $relativePath = MedicalDocumentsInternal::storeBytes($id, $fileName, $encryptedBytes);
 
         $ins = $db->prepare('
             INSERT INTO medical_documents (

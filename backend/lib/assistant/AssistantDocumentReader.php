@@ -46,12 +46,10 @@ final class AssistantDocumentReader
 
     private static function decryptedContent(array $document): string
     {
-        $root = realpath(MedicalDocumentsInternal::backendRoot() . '/uploads/medical');
-        $path = realpath(MedicalDocumentsInternal::backendRoot() . '/' . ltrim((string) $document['file_path'], '/'));
-        if ($root === false || $path === false || !str_starts_with($path, $root . DIRECTORY_SEPARATOR) || !is_file($path)) {
+        $raw = MedicalDocumentsInternal::readStoredFile((string) $document['file_path']);
+        if ($raw === null) {
             throw new AssistantError('Fichier du document introuvable', 404, 'NOT_FOUND');
         }
-        $raw = (string) file_get_contents($path);
         if (empty($document['file_dek']) || !($document['encrypted'] ?? true)) {
             return $raw;
         }

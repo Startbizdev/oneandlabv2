@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/Crypto.php';
-require_once __DIR__ . '/Crypto.php';
+require_once __DIR__ . '/storage/MedicalFileStore.php';
 
 /**
  * Galerie photos de soins : RDV nursing créés par un professionnel de santé (pro).
@@ -40,30 +40,14 @@ final class CarePhotoGallery
         }
 
         $encryptedData = $crypto->encryptFile('');
-        $backendDir = realpath(__DIR__ . '/..');
-        if ($backendDir === false) {
-            $backendDir = dirname(__DIR__);
-        }
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
         $id = self::newUuid();
-        $documentDir = $uploadDir . $id . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
         $fileName = 'Fil de discussion';
-        $filePath = $documentDir . 'thread.encrypted';
-        $decryptedContent = base64_decode($encryptedData['encrypted'], true);
-        if ($decryptedContent === false) {
+        $encryptedBytes = base64_decode($encryptedData['encrypted'], true);
+        if ($encryptedBytes === false) {
             throw new RuntimeException('Décodage fil de discussion');
         }
-        if (file_put_contents($filePath, $decryptedContent) === false) {
-            throw new RuntimeException('Écriture fil de discussion');
-        }
-        $relativePath = '/uploads/medical/' . $id . '/thread.encrypted';
+        $relativePath = MedicalFileStore::pathFor($id, 'thread.encrypted');
+        MedicalFileStore::put($relativePath, $encryptedBytes);
 
         $ins = $db->prepare('
             INSERT INTO medical_documents (

@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../lib/Logger.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentSubject.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
@@ -191,66 +192,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Fichiers réels : backend/uploads/medical/… (identique à medical-documents/index.php)
-        $backendDir = realpath(__DIR__ . '/../../');
-        if ($backendDir === false) {
-            $backendDir = __DIR__ . '/../../';
-        }
-        $filePathFromDb = ltrim((string) ($sourceDoc['file_path'] ?? ''), '/');
-        $sourceFilePath = rtrim($backendDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filePathFromDb;
-        $resolvedSrc = realpath($sourceFilePath);
-        if ($resolvedSrc !== false) {
-            $sourceFilePath = $resolvedSrc;
-        }
-
-        if (!is_file($sourceFilePath)) {
+        $fileContent = MedicalDocumentsInternal::readStoredFile((string) ($sourceDoc['file_path'] ?? ''));
+        if ($fileContent === null) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'Fichier source introuvable']);
             exit;
         }
-        
-        $fileContent = file_get_contents($sourceFilePath);
-        if ($fileContent === false) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Erreur lors de la lecture du fichier source']);
-            exit;
-        }
-        
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
 
-        // Générer un ID unique pour le nouveau document
+        // Copie du fichier chiffré (même clé de document : file_dek recopiée en base)
         $newId = bin2hex(random_bytes(16));
         $fileName = UploadMimeTypes::safeFilename(
             (string) $sourceDoc['file_name'],
             (string) $sourceDoc['mime_type']
         );
-        
-        // Créer le dossier pour ce document
-        $documentDir = $uploadDir . $newId . '/';
-        if (!is_dir($documentDir)) {
-            mkdir($documentDir, 0755, true);
-        }
-        
-        // Copier le fichier chiffré (on garde le même chiffrement)
-        $newFilePath = $documentDir . $fileName . '.encrypted';
-        $copyResult = file_put_contents($newFilePath, $fileContent);
-
-        if ($copyResult === false) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Erreur lors de la copie du fichier']);
-            exit;
-        }
-        
-        // Stocker les métadonnées en base avec le nouvel appointment_id
-        // Le chemin relatif doit correspondre à celui utilisé dans index.php
-        // Dans index.php: '/uploads/medical/' . $id . '/' . $fileName . '.encrypted'
-        // Mais le fichier réel est dans backend/uploads/medical/...
-        // Donc le chemin relatif depuis la racine du projet devrait être backend/uploads/medical/...
-        // Mais dans la base, on stocke /uploads/medical/... donc download.php doit résoudre depuis backend/
-        $relativePath = '/uploads/medical/' . $newId . '/' . $fileName . '.encrypted';
+        $relativePath = MedicalDocumentsInternal::storeBytes($newId, $fileName, $fileContent);
 
         $stmt = $db->prepare('
             INSERT INTO medical_documents (

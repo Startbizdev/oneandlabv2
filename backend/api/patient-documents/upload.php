@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 require_once __DIR__ . '/../../lib/RelativeProfile.php';
 require_once __DIR__ . '/../../models/User.php';
 require_once __DIR__ . '/../../lib/UploadMimeTypes.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../lib/ApiServerError.php';
 
 // CORS
@@ -205,23 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Chiffrer le fichier
         $encryptedData = $crypto->encryptFile($fileContent);
 
-        // Créer le dossier d'upload s'il n'existe pas (même chemin que medical-documents : backend/uploads/medical/)
-        $backendDir = realpath(__DIR__ . '/../../');
-        if ($backendDir === false) {
-            $backendDir = __DIR__ . '/../../';
-        }
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            if (!@mkdir($uploadDir, 0755, true)) {
-                throw new Exception('Impossible de créer le dossier d\'upload: ' . $uploadDir);
-            }
-        }
-        
-        // Vérifier que le dossier est accessible en écriture
-        if (!is_writable($uploadDir)) {
-            throw new Exception('Le dossier d\'upload n\'est pas accessible en écriture: ' . $uploadDir . ' (vérifiez les permissions sur backend/uploads/medical/)');
-        }
-
         // Générer un UUID v4 pour le fichier (même format que le reste du système)
         $data = random_bytes(16);
         $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // Version 4
@@ -229,33 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
         $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
 
-        // Créer le dossier pour ce document
-        $documentDir = $uploadDir . $id . '/';
-        if (!is_dir($documentDir)) {
-            if (!mkdir($documentDir, 0755, true)) {
-                throw new Exception('Impossible de créer le dossier du document: ' . $documentDir);
-            }
-        }
-
-        // Sauvegarder le fichier chiffré
-        $filePath = $documentDir . $fileName . '.encrypted';
         $encryptedBinary = base64_decode($encryptedData['encrypted'], true);
         if ($encryptedBinary === false) {
             throw new Exception('Erreur lors du décodage base64 du fichier chiffré');
         }
-        
-        $bytesWritten = file_put_contents($filePath, $encryptedBinary);
-        if ($bytesWritten === false) {
-            throw new Exception('Impossible d\'écrire le fichier: ' . $filePath . ' - Vérifiez les permissions');
-        }
-        
-        // Vérifier que le fichier a bien été écrit
-        if (!file_exists($filePath) || filesize($filePath) === 0) {
-            throw new Exception('Le fichier n\'a pas été correctement sauvegardé: ' . $filePath);
-        }
 
         // Documents de profil (Carte Vitale, etc.) : pas de rendez-vous associé (appointment_id NULL)
-        $relativePath = '/uploads/medical/' . $id . '/' . $fileName . '.encrypted';
+        $relativePath = MedicalDocumentsInternal::storeBytes($id, $fileName, $encryptedBinary);
 
         $stmt = $db->prepare('
             INSERT INTO medical_documents (
@@ -380,18 +344,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'file_size' => $file['size'],
                 'mime_type' => $mimeType,
                 'file_path' => $relativePath,
-                'file_exists' => file_exists($filePath),
-                'file_size_on_disk' => file_exists($filePath) ? filesize($filePath) : 0,
             ]
         );
 
-        $logMsg = "SUCCESS: Document saved - ID: $id, File: $filePath\n";
+        $logMsg = "SUCCESS: Document saved - ID: $id, File: $relativePath\n";
         $logMsg .= "=== UPLOAD END ===\n";
         if ($uploadVerbose && $logFile !== null) {
             file_put_contents($logFile, $logMsg, FILE_APPEND);
         }
 
-        error_log("SUCCESS: Document saved - ID: $id, File: $filePath");
+        error_log("SUCCESS: Document saved - ID: $id, File: $relativePath");
         error_log("=== UPLOAD END ===");
 
         $isProd = !$uploadVerbose;
@@ -405,9 +367,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         if (!$isProd) {
             $payloadData['debug'] = [
-                'file_exists' => file_exists($filePath),
-                'file_size_on_disk' => file_exists($filePath) ? filesize($filePath) : 0,
-                'upload_dir' => $uploadDir,
                 'patient_id' => $targetPatientId,
                 'relative_id' => $relativeId,
             ];

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../config/upload-limits.php';
 require_once __DIR__ . '/../../../config/cors.php';
 require_once __DIR__ . '/../../../lib/AppointmentConversation.php';
 require_once __DIR__ . '/../../../lib/Crypto.php';
+require_once __DIR__ . '/../../../lib/MedicalDocumentsInternal.php';
 require_once __DIR__ . '/../../../lib/Logger.php';
 require_once __DIR__ . '/../../../lib/NotificationService.php';
 require_once __DIR__ . '/../../../lib/BusinessNotificationPolicy.php';
@@ -180,19 +181,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         $encryptedData = $crypto->encryptFile($fileContent);
-        $backendDir = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
-        $uploadDir = rtrim($backendDir, DIRECTORY_SEPARATOR) . '/uploads/medical/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $encryptedBytes = base64_decode($encryptedData['encrypted'], true);
+        if ($encryptedBytes === false) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Chiffrement du fichier impossible']);
+            exit;
         }
         $docId = AppointmentConversation::newUuid();
         $fileName = UploadMimeTypes::safeFilename((string) $file['name'], $mimeType);
-        $documentDir = $uploadDir . $docId . '/';
-        mkdir($documentDir, 0755, true);
-        $filePath = $documentDir . $fileName . '.encrypted';
-        $decryptedContent = base64_decode($encryptedData['encrypted'], true);
-        file_put_contents($filePath, $decryptedContent);
-        $relativePath = '/uploads/medical/' . $docId . '/' . $fileName . '.encrypted';
+        $relativePath = MedicalDocumentsInternal::storeBytes($docId, $fileName, $encryptedBytes);
         $insDoc = $db->prepare('
             INSERT INTO medical_documents (
                 id, appointment_id, uploaded_by, file_name, file_path,
