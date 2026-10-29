@@ -23,7 +23,7 @@
 | Sécurité | ✅ Test d'intrusion interne réalisé, aucune faille critique, durcissements appliqués. Un test indépendant reste conseillé. |
 | Maintenance du serveur | ✅ Nettoyage et archivage automatiques. Disque utilisé à 37 %. |
 | Hébergement HDS | ⚠️ Infrastructure AWS Paris certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
-| Services hors UE recevant des données | ⚠️ SMS (Twilio), notifications (Expo), assistant IA (xAI). Voir § 3. |
+| Messages (SMS, e-mails, notifications) | ✅ Simple transmission de messages courts, pas d'hébergement de données de santé : hors champ HDS. Voir § 3. |
 | Montée en charge | ✅ Serveur volontairement dimensionné au juste besoin pour maîtriser les coûts. Sur AWS, il peut passer à une taille supérieure à tout moment, en quelques minutes, sans changer le code. |
 
 ---
@@ -81,7 +81,7 @@ Aucun outil no-code. Services externes utilisés :
 |---|---|---|
 | AWS (EC2 et S3) | Serveur, stockage des documents, sauvegardes | Paris (eu-west-3) |
 | Brevo | E-mails : codes de connexion, notifications | France / UE |
-| Twilio | SMS (confirmations de RDV, invitations) | ⚠️ États-Unis |
+| Brevo SMS | SMS (confirmations de RDV, invitations) ; Twilio en secours | France / UE |
 | Expo Push | Notifications sur les téléphones | ⚠️ États-Unis |
 | Google Maps (Places / Geocoding) | Recherche d'adresses | ⚠️ États-Unis |
 | xAI (modèle Grok) | Assistant IA intégré | ⚠️ États-Unis |
@@ -140,16 +140,20 @@ Aucun outil no-code. Services externes utilisés :
 - Tout est sur le compte AWS de ZENFACT SAS, en région Paris.
 
 ### Des données patients passent-elles par des outils non HDS ?
-Oui, en partie :
+**Aucune donnée de santé n'est hébergée hors de l'infrastructure HDS.** Le dossier patient, les documents, les sauvegardes et le journal d'accès sont tous stockés chez AWS, en région Paris.
 
-| Canal | Ce qui y passe | Risque |
+La certification HDS vise l'**hébergement**, c'est-à-dire le stockage de données de santé pour le compte d'un professionnel ou d'un patient (article L.1111-8 du Code de la santé publique). Le fait de se voir confier des données pour une courte période ne constitue pas une activité d'hébergement (article R.1111-8-8). Les SMS, e-mails et notifications ne font que **transmettre des messages courts** : ils n'entrent pas dans le champ de la certification HDS.
+
+| Canal | Ce qui y passe | Analyse |
 |---|---|---|
-| SMS (Twilio, États-Unis) | Confirmation de RDV avec le type de soin, invitations avec le nom du patient | ⚠️ Donnée de santé indirecte hors UE. Passer sur Brevo SMS (UE) et réduire le contenu au minimum (« Votre RDV est confirmé, voir l'appli »). |
-| Notifications push (Expo, États-Unis) | Titre et texte de la notification | ⚠️ Vérifier qu'aucun nom ni soin n'apparaît dans le texte. |
-| E-mail (Brevo, France) | Codes de connexion, notifications | Hébergeur UE, mais pas HDS : garder des contenus sans donnée de santé. |
+| SMS (Brevo, France ; Twilio en secours) | Confirmation de RDV, invitations des soignants | ✅ Transmission d'un message court, pas d'hébergement. |
+| Notifications push (Expo) | Titre et texte de la notification | ✅ Transmission d'un message court, pas d'hébergement. |
+| E-mail (Brevo, France) | Codes de connexion, notifications | ✅ Transmission, pas d'hébergement. |
 | Assistant IA (xAI, États-Unis) | Questions et documents soumis à l'assistant | ✅ Une **barrière de confidentialité** remplace les noms par des alias (« Patient A ») et masque téléphone, e-mail, n° de sécurité sociale, IBAN, adresse et GPS ; la date de naissance devient un âge. ⚠️ Le contenu médical part vers un fournisseur américain : prévoir un fournisseur hébergé en UE (Mistral, Azure OpenAI UE…). Le code le permet déjà. |
 | Google Maps | Adresses saisies | Adresse seule, sans lien médical. Risque faible. |
 | Outils d'analyse d'audience | — | ✅ Aucun outil d'analyse (Google Analytics, etc.) n'est intégré. |
+
+Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces prestataires doivent couvrir les données personnelles qu'ils transmettent.
 
 ### Sait-on qui a consulté quel dossier, et quand ?
 ✅ **Oui.** Chaque accès à une donnée de santé est enregistré dans un **journal d'accès** : qui, avec quel rôle, quelle donnée, et quand.
@@ -276,7 +280,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 1. **Démarrer directement sur un hébergeur HDS infogéré**, plutôt qu'un serveur à administrer soi-même.
 2. **Mettre en place la supervision dès le premier jour.**
 3. **Séparer dès le début** la base de données et le serveur applicatif.
-4. **Choisir d'emblée des fournisseurs européens** pour les SMS, les notifications et l'IA.
+4. **Choisir d'emblée un fournisseur d'IA hébergé en Europe.**
 5. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
 
 ---
@@ -288,7 +292,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 | 1 | Signer l'attestation de cession (annexe A) | 2 semaines |
 | 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
 | 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
-| 4 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
+| 4 | Assistant IA : passer à un fournisseur hébergé en UE (le code le permet déjà) | 1 mois |
 | 5 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
 | 6 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 7 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
