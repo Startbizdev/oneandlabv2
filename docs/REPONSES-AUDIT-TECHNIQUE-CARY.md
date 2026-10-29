@@ -152,7 +152,11 @@ Oui, en partie :
 | Outils d'analyse d'audience | — | ✅ Aucun outil d'analyse (Google Analytics, etc.) n'est intégré. |
 
 ### Sait-on qui a consulté quel dossier, et quand ?
-✅ Oui. Chaque déchiffrement d'une donnée de santé est enregistré dans un **journal d'accès** (qui, quel rôle, quelle donnée, quand). Ce journal est conservé **12 mois**, puis purgé automatiquement chaque mois. La durée est réglable, avec un minimum de 6 mois.
+✅ Oui. Chaque déchiffrement d'une donnée de santé est enregistré dans un **journal d'accès** (qui, quel rôle, quelle donnée, quand).
+- **Il n'est jamais supprimé.** L'ANS recommande de conserver les traces d'accès aux dossiers patients jusqu'à 20 ans, comme les dossiers médicaux.
+- Les **3 derniers mois** restent dans la base, pour une consultation rapide.
+- Le 2 de chaque mois, les mois plus anciens sont **exportés, compressés et chiffrés sur S3 Paris**, sans expiration (`archives/access-logs/`). Chaque export est vérifié ligne par ligne avant d'être retiré de la base.
+- ⚠️ Le journal grossit vite : environ 5 millions de lignes par mois, une par nom de patient affiché. Une journalisation par consultation, plutôt que par nom affiché, est à étudier avec le juriste HDS.
 
 ---
 
@@ -234,7 +238,7 @@ La configuration Nginx durcie est versionnée dans `docs/nginx-cary.conf`.
 ### Le RGPD est-il traité ?
 - ✅ **Consentement :** un consentement est recueilli quand un professionnel crée ou suit un patient (module « consentement patient »).
 - ✅ **Droit à l'effacement :** un patient peut supprimer lui-même son compte depuis l'appli : profil, documents, avis… Une sécurité empêche la suppression si un RDV ou une commande est en cours. Un professionnel fait une demande de suppression, traitée par l'administrateur.
-- ✅ **Durée de conservation :** les journaux d'accès sont purgés à 12 mois.
+- ✅ **Durée de conservation :** journal d'accès conservé (3 mois en base, le reste archivé sur S3). Journaux techniques : 1 an. Rotation et nettoyage automatiques chaque semaine (`scripts/maintenance/`).
 - ⚠️ Il n'y a **pas de règle de conservation automatique** pour les dossiers médicaux, les RDV anciens et les comptes inactifs. Il faut la définir avec un juriste (la durée légale dépend de la nature du document), puis l'automatiser.
 - ❓ Le registre des traitements, l'analyse d'impact (AIPD, obligatoire pour des données de santé à grande échelle), le DPO et les contrats de sous-traitance avec chaque service externe relèvent de la société.
 
@@ -254,7 +258,7 @@ Aujourd'hui, environ **2 100 comptes** : 1 580 patients, 412 infirmiers, 70 prof
 
 Le code tiendrait. **Le serveur, non, en l'état.** Ce qui casserait, dans l'ordre :
 1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble, dont la moitié est déjà utilisée. → Machine plus grosse et base séparée (AWS RDS).
-2. **Le disque.** ✅ Réglé pour les documents : depuis le 29 octobre 2026, ils sont sur S3, sans limite de taille. Le disque est passé de 70 % à **58 %** (21 Go libres). Les 1 876 fichiers orphelins (3,1 Go) n'étaient référencés par aucun document en base. Ils ont été archivés avant suppression dans `s3://cary-backups-519428392323/archives/orphelins-medical-20261029.tar`, vérifié fichier par fichier, avec leur liste et une empreinte SHA-256. Pour les restaurer, il suffit d'extraire l'archive dans `uploads/medical/`.
+2. **Le disque.** ✅ Réglé : les documents sont sur S3 depuis le 29 octobre 2026, et un nettoyage automatique tourne chaque semaine (anciennes versions, copies de déploiement, journaux, binlogs MySQL ramenés à 7 jours). Le journal d'accès est archivé chaque mois. Le disque est passé de 70 % à **37 %** (31 Go libres). Tout ce qui contenait des données a d'abord été archivé sur S3 (`archives/`). Les 1 876 fichiers orphelins (3,1 Go) n'étaient référencés par aucun document en base. Ils ont été archivés avant suppression dans `s3://cary-backups-519428392323/archives/orphelins-medical-20261029.tar`, vérifié fichier par fichier, avec leur liste et une empreinte SHA-256. Pour les restaurer, il suffit d'extraire l'archive dans `uploads/medical/`.
 3. **Une seule machine = aucune redondance.** Si elle tombe, tout est coupé, pendant les mises à jour aussi. → Deux serveurs derrière un répartiteur de charge.
 4. Le volume de la base (6,8 Go) est à surveiller : certaines tables de journaux grossissent vite.
 
