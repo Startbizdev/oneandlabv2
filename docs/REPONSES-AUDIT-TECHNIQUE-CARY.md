@@ -82,9 +82,9 @@ Aucun outil no-code. Services externes utilisés :
 | AWS (EC2 et S3) | Serveur, stockage des documents, sauvegardes | Paris (eu-west-3) |
 | Brevo | E-mails : codes de connexion, notifications | France / UE |
 | Brevo SMS | SMS (confirmations de RDV, invitations) ; Twilio en secours | France / UE |
-| Expo Push | Notifications sur les téléphones | ⚠️ États-Unis |
-| Google Maps (Places / Geocoding) | Recherche d'adresses | ⚠️ États-Unis |
-| xAI (modèle Grok) | Assistant IA intégré | ⚠️ États-Unis |
+| Expo Push | Notifications sur les téléphones | États-Unis |
+| Google Maps (Places / Geocoding) | Recherche d'adresses | États-Unis (certifié Data Privacy Framework UE–US) |
+| xAI (modèle Grok) | Assistant IA intégré | États-Unis, rétention zéro activée |
 | Stripe | Abonnements sur le web | UE / États-Unis |
 | Apple / Google | Achats intégrés et distribution des applis | États-Unis |
 | Let's Encrypt | Certificats HTTPS | — |
@@ -149,8 +149,8 @@ La certification HDS vise l'**hébergement**, c'est-à-dire le stockage de donn�
 | SMS (Brevo, France ; Twilio en secours) | Confirmation de RDV, invitations des soignants | ✅ Transmission d'un message court, pas d'hébergement. |
 | Notifications push (Expo) | Titre et texte de la notification | ✅ Transmission d'un message court, pas d'hébergement. |
 | E-mail (Brevo, France) | Codes de connexion, notifications | ✅ Transmission, pas d'hébergement. |
-| Assistant IA (xAI, États-Unis) | Questions et documents soumis à l'assistant | ✅ Une **barrière de confidentialité** remplace les noms par des alias (« Patient A ») et masque téléphone, e-mail, n° de sécurité sociale, IBAN, adresse et GPS ; la date de naissance devient un âge. ⚠️ Le contenu médical part vers un fournisseur américain : prévoir un fournisseur hébergé en UE (Mistral, Azure OpenAI UE…). Le code le permet déjà. |
-| Google Maps | Adresses saisies | Adresse seule, sans lien médical. Risque faible. |
+| Assistant IA (xAI) | Questions et documents soumis à l'assistant | ✅ **Rétention zéro activée** : xAI ne conserve ni les questions ni les réponses, il s'agit d'une simple transmission. ✅ Une **barrière de confidentialité** remplace les noms par des alias (« Patient A ») et masque téléphone, e-mail, n° de sécurité sociale, IBAN, adresse et GPS ; la date de naissance devient un âge. |
+| Google Maps | Adresses saisies | ✅ Adresse seule, sans lien médical. |
 | Outils d'analyse d'audience | — | ✅ Aucun outil d'analyse (Google Analytics, etc.) n'est intégré. |
 
 Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces prestataires doivent couvrir les données personnelles qu'ils transmettent.
@@ -280,7 +280,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 1. **Démarrer directement sur un hébergeur HDS infogéré**, plutôt qu'un serveur à administrer soi-même.
 2. **Mettre en place la supervision dès le premier jour.**
 3. **Séparer dès le début** la base de données et le serveur applicatif.
-4. **Choisir d'emblée un fournisseur d'IA hébergé en Europe.**
+4. **Choisir d'emblée un fournisseur d'IA hébergé en Europe sur une infrastructure HDS.**
 5. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
 
 ---
@@ -292,7 +292,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 | 1 | Signer l'attestation de cession (annexe A) | 2 semaines |
 | 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
 | 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
-| 4 | Assistant IA : passer à un fournisseur hébergé en UE (le code le permet déjà) | 1 mois |
+| 4 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
 | 5 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
 | 6 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 7 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
