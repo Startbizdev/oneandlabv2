@@ -21,7 +21,7 @@
 | Sauvegardes | ✅ Quotidiennes, chiffrées, vérifiées, copiées sur AWS S3 Paris et testées chaque mois. |
 | Sécurité | ✅ Test d'intrusion interne réalisé, aucune faille critique, durcissements appliqués. Un test indépendant reste conseillé. |
 | Maintenance du serveur | ✅ Nettoyage et archivage automatiques. Disque utilisé à 37 %. |
-| Hébergement HDS | ✅ Données hébergées chez AWS Paris, certifié HDS. ZENFACT SAS administre sa propre plateforme en tant que responsable de traitement. Voir § 3. |
+| Hébergement HDS | ✅ Toutes les données de santé chez AWS Paris, certifié HDS pour l'infrastructure. ⏳ Étape suivante : confier l'administration du serveur et les sauvegardes à une plateforme certifiée HDS. Voir § 3. |
 | Messages (SMS, e-mails, notifications) | ✅ Simple transmission de messages courts, pas d'hébergement de données de santé : hors champ HDS. Voir § 3. |
 | Montée en charge | ✅ Serveur volontairement dimensionné au juste besoin pour maîtriser les coûts. Sur AWS, il peut passer à une taille supérieure à tout moment, en quelques minutes, sans changer le code. |
 
@@ -104,8 +104,8 @@ Voir le document séparé **Schéma de l'architecture** (`ARCHITECTURE-CARY.md`)
 ### Où est hébergée la plateforme ? L'hébergeur est-il certifié HDS ?
 - ✅ Chez **Amazon Web Services, région Paris (eu-west-3)** : un serveur EC2 sous Ubuntu 24.04 et un stockage S3.
 - ✅ AWS est certifié HDS pour cette région, pour la partie infrastructure : datacenters, matériel, réseau, virtualisation, stockage.
-- ✅ **ZENFACT SAS administre sa propre plateforme en tant que responsable de traitement.** La certification HDS vise les prestataires qui hébergent des données de santé **pour le compte de tiers** (article L.1111-8 du Code de la santé publique). Un responsable de traitement qui héberge ses propres données chez un hébergeur certifié n'est pas lui-même soumis à la certification : c'est le cas de ZENFACT SAS avec AWS.
-- ✅ **Rôle confirmé dans les documents publics de Cary** : la politique de confidentialité désigne ZENFACT SAS comme responsable du traitement, et les conditions générales de vente présentent Cary comme la plateforme de mise en relation et de gestion des rendez-vous. Les professionnels de santé sont des clients abonnés qui utilisent la plateforme : ils n'en confient pas l'hébergement à ZENFACT.
+- ⏳ **Ce que le certificat d'AWS ne couvre pas** : l'administration du serveur, de la base de données et des sauvegardes, assurée aujourd'hui en interne. La loi range aussi ces tâches dans l'hébergement de données de santé (article R.1111-9 du Code de la santé publique, activités 5 et 6). Le statut de responsable de traitement ne suffit pas à en dispenser, selon l'Agence du numérique en santé.
+- ⏳ **Étape suivante** : confier cette exploitation à une plateforme certifiée HDS sur les 6 activités, comme Clever Cloud ou Scalingo, après un avis juridique écrit. Coût de l'ordre de quelques centaines d'euros par mois, sur devis, réalisable en quelques semaines, sans aucune fonctionnalité retirée. Le détail est dans le document **CARY HDS**.
 - ✅ **Certificat HDS d'AWS** : délivré par Bureau Veritas Certification France, norme HDS V2, les 6 activités d'hébergement, région **Europe (Paris, France)** incluse, valable jusqu'au **12 janvier 2028**. ZENFACT SAS l'a obtenu depuis son compte AWS (AWS Artifact). C'est un document confidentiel d'AWS : il peut être communiqué en entier, sur demande, sous accord de confidentialité.
 - ✅ **AWS figure sur la liste officielle des hébergeurs certifiés HDS** publiée par l'ANS. La certification s'applique à tous les clients des régions couvertes, dont Paris : il n'y a pas d'avenant particulier à signer.
 
