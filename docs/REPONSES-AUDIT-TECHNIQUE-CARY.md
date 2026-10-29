@@ -22,7 +22,7 @@
 | Sauvegardes | ✅ Quotidiennes, chiffrées, vérifiées, copiées sur AWS S3 Paris et testées chaque mois. |
 | Sécurité | ✅ Test d'intrusion interne réalisé, aucune faille critique, durcissements appliqués. Un test indépendant reste conseillé. |
 | Maintenance du serveur | ✅ Nettoyage et archivage automatiques. Disque utilisé à 37 %. |
-| Hébergement HDS | ⚠️ Infrastructure AWS Paris certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
+| Hébergement HDS | ✅ Données hébergées chez AWS Paris, certifié HDS. ZENFACT SAS administre sa propre plateforme en tant que responsable de traitement. Voir § 3. |
 | Messages (SMS, e-mails, notifications) | ✅ Simple transmission de messages courts, pas d'hébergement de données de santé : hors champ HDS. Voir § 3. |
 | Montée en charge | ✅ Serveur volontairement dimensionné au juste besoin pour maîtriser les coûts. Sur AWS, il peut passer à une taille supérieure à tout moment, en quelques minutes, sans changer le code. |
 
@@ -126,12 +126,9 @@ Aucun outil no-code. Services externes utilisés :
 ### Où est hébergée la plateforme ? L'hébergeur est-il certifié HDS ?
 - ✅ Chez **Amazon Web Services, région Paris (eu-west-3)** : un serveur EC2 sous Ubuntu 24.04 et un stockage S3.
 - ✅ AWS est certifié HDS pour cette région, pour la partie infrastructure : datacenters, matériel, réseau, virtualisation, stockage.
-- ⚠️ **Point à traiter : l'administration du serveur.** Avec un serveur EC2, l'administration du système, de la base et des sauvegardes est assurée par l'équipe, pas par AWS. Or l'activité « administration et exploitation du système d'information contenant des données de santé » relève aussi de la certification HDS. Deux solutions :
-  1. confier l'exploitation à un **infogérant certifié HDS** sur AWS ;
-  2. migrer vers une offre HDS **« clé en main »** (OVHcloud, Scaleway, Clever Cloud…).
+- ✅ **ZENFACT SAS administre sa propre plateforme en tant que responsable de traitement.** La certification HDS vise les prestataires qui hébergent des données de santé **pour le compte de tiers** (article L.1111-8 du Code de la santé publique). Un responsable de traitement qui héberge ses propres données chez un hébergeur certifié n'est pas lui-même soumis à la certification : c'est le cas de ZENFACT SAS avec AWS.
+- ❓ À confirmer dans les conditions générales et les contrats avec les professionnels de santé : ZENFACT SAS y est désignée comme responsable de traitement.
 - ❓ Vérifier que le compte AWS de la société a accepté les conditions HDS d'AWS (avenant disponible dans « AWS Artifact »).
-
-**À faire valider par un juriste ou un consultant HDS avant d'affirmer que la plateforme est « conforme HDS ».**
 
 ### Toutes les données de santé (base, fichiers, sauvegardes) sont-elles chez l'hébergeur HDS ?
 - ✅ **Base de données** : sur le serveur AWS Paris.
@@ -247,7 +244,7 @@ Le serveur actuel (2 processeurs, 2 Go de mémoire) est **volontairement dimensi
 2. **Stockage.** ✅ Déjà prêt : les documents sont sur S3, sans limite de taille. Le disque du serveur est utilisé à 37 %, avec un nettoyage et un archivage automatiques.
 3. **Étape suivante, quand le volume le justifiera :** séparer la base de données (AWS RDS), puis ajouter un second serveur derrière un répartiteur de charge, pour qu'une panne ou une mise à jour ne coupe jamais le service.
 
-Aucune réécriture n'est nécessaire : ce sont des évolutions d'infrastructure, qui peuvent se faire en même temps que la mise en conformité HDS.
+Aucune réécriture n'est nécessaire : ce sont des évolutions d'infrastructure, faites au fil de la croissance.
 
 ### Combien coûtent l'hébergement et les services par mois ?
 **Environ 50 USD par mois, soit environ 45 € par mois**, hébergement et services compris :
@@ -259,7 +256,6 @@ Non compris, car payés à part ou prélevés sur les ventes :
 - Google Play : 25 $ payés une fois ;
 - commissions Stripe, Apple et Google sur les ventes.
 
-À prévoir avec la mise en conformité HDS (hébergement infogéré) : **150 à 400 € par mois** selon le prestataire. C'est une estimation de marché, pas un devis.
 
 ### Qu'est-ce qui reste à développer pour bien servir les laboratoires ?
 Ce qui existe déjà :
@@ -277,11 +273,10 @@ Pistes à valider avec les laboratoires clients (❓) :
 - **signature électronique et transmission sécurisée des comptes rendus** (messagerie MSSanté).
 
 ### Que referait-on différemment en repartant de zéro ?
-1. **Démarrer directement sur un hébergeur HDS infogéré**, plutôt qu'un serveur à administrer soi-même.
-2. **Mettre en place la supervision dès le premier jour.**
-3. **Séparer dès le début** la base de données et le serveur applicatif.
-4. **Choisir d'emblée un fournisseur d'IA hébergé en Europe sur une infrastructure HDS.**
-5. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
+1. **Mettre en place la supervision dès le premier jour.**
+2. **Séparer dès le début** la base de données et le serveur applicatif.
+3. **Choisir d'emblée un fournisseur d'IA hébergé en Europe sur une infrastructure HDS.**
+4. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
 
 ---
 
@@ -293,7 +288,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 | 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
 | 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
 | 4 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
-| 5 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
+| 5 | Conditions générales : ZENFACT SAS désignée responsable de traitement ; avenant HDS AWS accepté | 1 mois |
 | 6 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 7 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
 | 8 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
