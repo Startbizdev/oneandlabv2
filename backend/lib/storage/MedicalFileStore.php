@@ -95,7 +95,10 @@ final class MedicalFileStore
     private static function env(string $key): ?string
     {
         if (!isset($_ENV['DB_HOST'])) {
-            require_once __DIR__ . '/../../config/database.php';
+            // Portée isolée : config/database.php définit ses propres $key / $value en lisant .env.
+            (static function (): void {
+                require_once __DIR__ . '/../../config/database.php';
+            })();
         }
         $value = $_ENV[$key] ?? getenv($key);
 
