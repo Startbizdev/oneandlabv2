@@ -22,7 +22,7 @@
 | Traçabilité des accès aux dossiers | ✅ Journal d'accès conservé 12 mois. |
 | Hébergement | ⚠️ AWS région Paris : infrastructure certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
 | Sauvegardes | ✅ Depuis le 29 octobre 2026 : sauvegarde quotidienne chiffrée et vérifiée de la base et de tous les fichiers, copiée sur AWS S3 Paris et conservée 30 jours. |
-| Test d'intrusion | ✅ Test interne du 29 octobre 2026 : aucune faille critique, 7 durcissements recommandés. Un test indépendant reste conseillé. |
+| Test d'intrusion | ✅ Test interne du 29 octobre 2026 : aucune faille critique. 5 durcissements sur 7 appliqués le jour même. Un test indépendant reste conseillé. |
 | Services hors UE recevant des données | ⚠️ SMS (Twilio), notifications (Expo), assistant IA (xAI). Voir § 3. |
 | Montée en charge | ⚠️ Un seul petit serveur (2 processeurs, 2 Go de mémoire) fait tout tourner. |
 
@@ -184,7 +184,8 @@ Oui, en partie :
 
 **À terminer :**
 - ⏳ **Clés hors du serveur** : la clé des sauvegardes et la clé maîtresse de chiffrement doivent être copiées dans le coffre-fort de mots de passe de ZENFACT SAS. Sans elles, aucune sauvegarde n'est restaurable.
-- ⏳ **Test de restauration complet** sur une machine séparée, une fois S3 en place. À refaire chaque trimestre.
+- ✅ **Test de restauration automatique** (`scripts/backup/cary-restore-test.sh`), programmé la nuit du 30 octobre 2026 puis chaque 1er du mois à 04:30. Il déchiffre la dernière sauvegarde, la restaure dans une base temporaire et compare les tables clés avec la production : profils, RDV, documents, commandes pharmacie, proches. Il supprime ensuite la base temporaire. Le résultat est écrit dans `/var/log/cary-restore-test.log`.
+- ⏳ Faire une fois un test de restauration des **fichiers** depuis S3, depuis la console AWS : le serveur ne peut pas relire S3, c'est voulu.
 
 ### Un test d'intrusion a-t-il été fait ?
 ✅ **Un test d'intrusion interne a été réalisé le 29 octobre 2026** sur la production (cary.bio). Les tests étaient non destructifs, menés depuis Internet comme un attaquant extérieur, et complétés par une revue de la configuration du serveur. Un audit interne du code avait déjà été mené en septembre 2026 (dossier `docs/AUDIT-360-*`).
@@ -209,17 +210,19 @@ Oui, en partie :
 | Mises à jour | ✅ PHP 8.2.35 et MySQL 8.0.46 à jour, aucune mise à jour de sécurité en attente sur le serveur. |
 | Contrôle des droits entre rôles | ✅ Couvert par environ 1 000 tests automatisés, rejoués avant chaque déploiement. |
 
-**Ce qui est à corriger** (aucune faille critique trouvée) :
+**Constats et corrections** (aucune faille critique trouvée). Les corrections ont été appliquées en production le 29 octobre 2026, puis vérifiées : site, API, connexion SSH et sauvegardes toujours fonctionnels.
 
-| Gravité | Constat | Correction |
+| Gravité | Constat | État |
 |---|---|---|
-| Moyenne | **En-têtes de sécurité absents** : HSTS, Content-Security-Policy, X-Frame-Options (protection contre l'affichage du site dans une fausse page), X-Content-Type-Options, Referrer-Policy. | Les ajouter dans la configuration Nginx. |
-| Moyenne | **SSH ouvert à tout Internet** (port 22), même s'il n'accepte que des clés. | Restreindre le port 22 aux adresses IP de l'équipe, dans le groupe de sécurité AWS. |
-| Faible | Version du serveur affichée (`nginx/1.24.0 (Ubuntu)`) et en-tête `x-powered-by: Nuxt`. | `server_tokens off;` et masquer `x-powered-by`. |
-| Faible | Fichier `.DS_Store` public. Il ne révèle que deux noms de dossiers d'images, mais il ne devrait pas être là. | Supprimer le fichier et bloquer tous les fichiers commençant par un point dans Nginx. |
-| Faible | Pare-feu du serveur (ufw) inactif ; le site Nuxt écoute sur toutes les interfaces (port 3000). Le groupe de sécurité AWS le bloque bien, mais il n'y a pas de seconde barrière. | Activer ufw (22/80/443) et n'écouter que sur `127.0.0.1`. |
-| Faible | Connexion root par clé autorisée ; pas de fail2ban. | `PermitRootLogin no` et installer fail2ban. |
-| Faible | Session valable 7 jours. | Raccourcir pour les comptes professionnels, ou ajouter un rafraîchissement de session. |
+| Moyenne | **En-têtes de sécurité absents.** | ✅ **Corrigé** : ajout de HSTS (1 an), X-Frame-Options, X-Content-Type-Options et Referrer-Policy sur le site et l'API. ⏳ La Content-Security-Policy reste à définir : il faut d'abord lister les domaines utilisés par le site (Stripe, Google Maps…) pour ne rien casser. |
+| Moyenne | **SSH ouvert à tout Internet** (port 22), même s'il n'accepte que des clés. | ✅ Atténué : fail2ban bannit 1 heure après 5 échecs. ⏳ Restreindre le port 22 aux adresses IP de l'équipe, dans le groupe de sécurité AWS (à faire dans la console AWS). |
+| Faible | Version du serveur affichée et en-tête `x-powered-by: Nuxt`. | ✅ **Corrigé** : la version n'est plus affichée et l'en-tête est masqué. |
+| Faible | Fichier `.DS_Store` public. | ✅ **Corrigé** : fichiers supprimés, et tout fichier caché (`.env`, `.git`, `.DS_Store`…) est désormais refusé par Nginx. |
+| Faible | Pare-feu du serveur (ufw) inactif ; site Nuxt joignable sur le port 3000 sans seconde barrière. | ✅ **Corrigé** : pare-feu actif (seuls 22, 80 et 443 sont ouverts). Le port 3000 n'est plus joignable depuis Internet. |
+| Faible | Connexion root par clé autorisée ; pas de fail2ban. | ✅ **Corrigé** : `PermitRootLogin no`, fail2ban installé et actif. |
+| Faible | Session valable 7 jours. | ⏳ À arbitrer : choix produit, avec un impact sur la reconnexion des utilisateurs. |
+
+La configuration Nginx durcie est versionnée dans `docs/nginx-cary.conf`.
 
 **Non couvert par ce test :**
 - les tests authentifiés sur la production avec des comptes de chaque rôle (aujourd'hui couverts par les tests automatisés) ;
@@ -300,8 +303,8 @@ Pistes à valider avec les laboratoires clients (❓ besoin à confirmer) :
 
 | Priorité | Action | Délai indicatif |
 |---|---|---|
-| 1 | Sauvegardes : ✅ quotidiennes, chiffrées et copiées sur S3 depuis le 29/10. Reste : clés dans le coffre-fort, test de restauration | Cette semaine |
-| 1 bis | Durcissements du test d'intrusion : en-têtes de sécurité, SSH restreint, pare-feu, `.DS_Store` | Cette semaine |
+| 1 | Sauvegardes : ✅ quotidiennes, chiffrées, copiées sur S3 et testées chaque mois depuis le 29/10. Reste : copier les clés dans le coffre-fort | Cette semaine |
+| 1 bis | Durcissements : ✅ en-têtes, pare-feu, fail2ban, root SSH, `.DS_Store`. Reste : SSH limité aux IP de l'équipe (AWS), Content-Security-Policy | 2 semaines |
 | 2 | Signer l'attestation de cession (annexe A) ; transférer le dépôt vers le compte GitHub Cary et le projet Expo vers un compte ZENFACT SAS | 2 semaines |
 | 3 | Conformité HDS : infogérant HDS sur AWS, ou migration vers un hébergeur HDS clé en main | 1 à 3 mois |
 | 4 | SMS via un fournisseur UE avec contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |

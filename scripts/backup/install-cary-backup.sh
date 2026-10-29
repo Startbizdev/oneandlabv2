@@ -10,6 +10,7 @@ CONFIG_FILE=/etc/cary-backup.env
 LOG_FILE=/var/log/cary-backup.log
 
 install -m 750 -o root -g root "$SRC_DIR/cary-backup.sh" /usr/local/sbin/cary-backup
+install -m 750 -o root -g root "$SRC_DIR/cary-restore-test.sh" /usr/local/sbin/cary-restore-test
 
 if [[ ! -s "$KEY_FILE" ]]; then
   umask 077
@@ -36,4 +37,13 @@ TZ=Europe/Paris
 EOF
 chmod 644 /etc/cron.d/cary-backup
 touch "$LOG_FILE"; chmod 640 "$LOG_FILE"
+
+# Test de restauration : le 1er de chaque mois à 04:30, après la sauvegarde de 03:30
+cat > /etc/cron.d/cary-restore-test <<EOF
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/snap/bin
+TZ=Europe/Paris
+30 4 1 * * root /usr/local/sbin/cary-restore-test >> /var/log/cary-restore-test.log 2>&1
+EOF
+chmod 644 /etc/cron.d/cary-restore-test
 echo "Sauvegarde installée : tous les jours à 03:30 (Paris), journal $LOG_FILE"
