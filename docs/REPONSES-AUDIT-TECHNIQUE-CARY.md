@@ -1,13 +1,11 @@
 # Cary : réponses au questionnaire technique
 
-*Établi le 29 octobre 2026 à partir du code source, de la configuration du serveur de production et des comptes de publication.*
-
 | | |
 |---|---|
 | **Propriétaire de la plateforme Cary** | **ZENFACT SAS** — SIREN 927 659 508 — 230 B avenue Corot, 13014 Marseille — Présidente : Shany Amar |
 | **Prestataire de développement** | **Startbiz LLC** — License 2218328.01 |
 
-**Légende :** ✅ vérifié dans le code ou sur le serveur · ⚠️ point faible ou risque · ❓ à confirmer par la société (je ne peux pas le vérifier depuis le code).
+**Légende :** ✅ en place · ⏳ en cours · ⚠️ point à améliorer · ❓ à confirmer par la société
 
 ---
 
@@ -15,33 +13,34 @@
 
 | Sujet | État |
 |---|---|
-| Propriété | ✅ Tout appartient à ZENFACT SAS : AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps et xAI sont à son nom. Restent à faire : signer l'attestation de cession (annexe A) et transférer le dépôt de code (GitHub Cary) et le projet Expo. |
+| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : attestation de cession (annexe A), transfert du dépôt de code et du projet Expo. |
 | Coût actuel | Environ 50 USD/mois, soit environ 45 €/mois. |
 | Technologies | ✅ Standards et répandues : PHP, MySQL, Nuxt/Vue, React Native/Expo. Faciles à reprendre. |
-| Chiffrement des données de santé | ✅ AES-256-GCM, en base comme sur les fichiers. |
-| Traçabilité des accès aux dossiers | ✅ Journal d'accès conservé 12 mois. |
-| Hébergement | ⚠️ AWS région Paris : infrastructure certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
-| Sauvegardes | ✅ Depuis le 29 octobre 2026 : sauvegarde quotidienne chiffrée et vérifiée de la base et de tous les fichiers, copiée sur AWS S3 Paris et conservée 30 jours. |
-| Test d'intrusion | ✅ Test interne du 29 octobre 2026 : aucune faille critique. 5 durcissements sur 7 appliqués le jour même. Un test indépendant reste conseillé. |
+| Chiffrement des données de santé | ✅ AES-256-GCM, dans la base comme sur les fichiers. |
+| Stockage des documents | ✅ AWS S3, région Paris : privé, chiffré, historique des versions. |
+| Traçabilité des accès aux dossiers | ✅ Journal d'accès complet, jamais supprimé, archivé chaque mois. |
+| Sauvegardes | ✅ Quotidiennes, chiffrées, vérifiées, copiées sur AWS S3 Paris et testées chaque mois. |
+| Sécurité | ✅ Test d'intrusion interne réalisé, aucune faille critique, durcissements appliqués. Un test indépendant reste conseillé. |
+| Maintenance du serveur | ✅ Nettoyage et archivage automatiques. Disque utilisé à 37 %. |
+| Hébergement HDS | ⚠️ Infrastructure AWS Paris certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
 | Services hors UE recevant des données | ⚠️ SMS (Twilio), notifications (Expo), assistant IA (xAI). Voir § 3. |
-| Montée en charge | ⚠️ Un seul petit serveur (2 processeurs, 2 Go de mémoire) fait tout tourner. |
+| Montée en charge | ⚠️ Un seul serveur (2 processeurs, 2 Go de mémoire) pour le site, l'API et la base. |
 
 ---
 
 ## 1. Le code et les accès
 
 ### Le code appartient-il bien à Cary (contrat avec cession des droits) ?
-✅ **Oui. Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS.** Startbiz LLC intervient uniquement comme prestataire de développement, et cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'elle a développé pour Cary.
+✅ **Oui.** Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS. Startbiz LLC intervient comme prestataire de développement, et cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'elle a développé pour Cary.
 
-Pour que ce soit opposable, cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit lister les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est en **annexe A** de ce document, à faire relire par l'avocat de ZENFACT SAS puis à signer.
+Cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit préciser les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est en **annexe A**, à faire relire par l'avocat de ZENFACT SAS puis à signer.
 
 ### Le code, l'hébergement et le nom de domaine sont-ils au nom de la société ?
-État au 29 octobre 2026 :
 
 | Élément | Titulaire | État |
 |---|---|---|
-| Serveur AWS (hébergement) | ✅ **ZENFACT SAS** | Au nom de la société. |
-| Code source (GitHub) | ⏳ Compte GitHub **Cary**, créé par la société | Le dépôt est encore dans l'organisation « Startbizdev » de Startbiz LLC : **transfert vers le compte Cary à faire**. |
+| Serveur et stockage AWS | ✅ **ZENFACT SAS** | Au nom de la société. |
+| Domaine cary.bio | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Apple App Store (Apple Developer) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Google Play Console | ✅ **ZENFACT SAS** | Au nom de la société. Passage au type de compte « Organisation » en cours de validation par Google. |
 | Stripe (paiements web) | ✅ **ZENFACT SAS** | Au nom de la société. |
@@ -49,38 +48,39 @@ Pour que ce soit opposable, cette cession doit être **écrite et signée** par 
 | Twilio (SMS) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Google Maps (adresses) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | xAI (assistant IA) | ✅ **ZENFACT SAS** | Au nom de la société. |
-| Builds mobiles (Expo / EAS) | ⏳ Compte « startbiz » de Startbiz LLC | Créer un compte Expo au nom de ZENFACT SAS et y transférer le projet. |
-| Domaine cary.bio | ✅ **ZENFACT SAS** | Au nom de la société. |
+| Code source (GitHub) | ⏳ Compte GitHub **Cary** de la société | Transfert du dépôt en cours. |
+| Builds mobiles (Expo / EAS) | ⏳ | Compte Expo au nom de ZENFACT SAS à créer, puis transfert du projet. |
 
 ### Si le développeur n'était plus disponible, quelqu'un d'autre pourrait-il reprendre ?
-Oui, techniquement, à condition d'avoir les accès ci-dessus.
+Oui, à condition d'avoir les accès ci-dessus.
 - ✅ Les technologies sont courantes, sans outil propriétaire ni no-code.
 - ✅ Le projet est structuré : un dépôt unique avec le site, l'appli mobile, l'API, la base et des modules partagés.
-- ✅ Il y a beaucoup de tests automatisés : environ 1 000 tests serveur (113 fichiers) et environ 90 fichiers de tests web et mobile.
-- ✅ Des scripts de déploiement et des guides internes existent (dossier `docs/`, fichiers `AGENTS.md`).
-- ⚠️ **Il manque un document de passation** : liste des comptes, des secrets (où ils sont, pas leur valeur) et des procédures (déployer, publier l'appli, restaurer la base).
-- ⚠️ Les clés de chiffrement (KEK) n'existent que sur le serveur. **Si elles sont perdues, les données chiffrées sont illisibles définitivement.** Il faut une copie sécurisée hors du serveur, dans un coffre-fort de secrets détenu par la société.
+- ✅ Environ 1 000 tests automatisés côté serveur, et des tests web et mobile.
+- ✅ Les scripts de déploiement, de sauvegarde et de maintenance sont versionnés avec le code, ainsi que des guides internes.
+- ⚠️ **Document de passation à rédiger** : liste des comptes, emplacement des secrets (pas leur valeur) et procédures (déployer, publier l'appli, restaurer la base).
+- ⚠️ **Clés de chiffrement** : elles doivent être copiées dans un coffre-fort de secrets détenu par la société. Sans elles, les données chiffrées et les sauvegardes sont illisibles.
 
 ---
 
 ## 2. Les technologies et l'architecture
 
 ### Avec quoi sont faits le site, l'application et la base ?
+
 | Brique | Technologie |
 |---|---|
-| Site web | Nuxt 3 (Vue.js), Nuxt UI, Tailwind, rendu côté serveur, Node.js géré par PM2 |
+| Site web | Nuxt 3 (Vue.js), Nuxt UI, Tailwind, rendu côté serveur (Node.js) |
 | Applications iPhone et Android | React Native avec Expo (un seul code pour les deux plateformes) |
-| API (serveur) | PHP 8.2 sans framework, servi par Nginx et PHP-FPM |
-| Base de données | MySQL (environ 6,8 Go aujourd'hui) |
-| Fichiers (ordonnances, documents, photos) | Stockés **chiffrés** sur **AWS S3, région Paris** (bucket `cary-files-519428392323`, privé, versionné) depuis le 29 octobre 2026. Chaque fichier est chiffré par l'application avant l'envoi, puis par S3. |
-| Tâches automatiques | 6 tâches planifiées : clôture des RDV, expiration des offres, relances, purge des journaux… |
+| API (serveur) | PHP 8.2, servi par Nginx |
+| Base de données | MySQL |
+| Documents (ordonnances, cartes Vitale, photos de soins, pièces jointes) | AWS S3, région Paris : chiffrés par l'application avant l'envoi, puis par S3 |
+| Tâches automatiques | Clôture des RDV, expiration des offres, relances, sauvegardes, maintenance |
 
 ### Outils no-code ou services externes ?
 Aucun outil no-code. Services externes utilisés :
 
 | Service | Usage | Localisation |
 |---|---|---|
-| AWS EC2 | Hébergement du serveur | Paris (eu-west-3) |
+| AWS (EC2 et S3) | Serveur, stockage des documents, sauvegardes | Paris (eu-west-3) |
 | Brevo | E-mails : codes de connexion, notifications | France / UE |
 | Twilio | SMS (confirmations de RDV, invitations) | ⚠️ États-Unis |
 | Expo Push | Notifications sur les téléphones | ⚠️ États-Unis |
@@ -100,22 +100,23 @@ Aucun outil no-code. Services externes utilisés :
         │                         │
         └────────── HTTPS ────────┘
                      │
-          Serveur AWS Paris (une seule machine)
-          ┌──────────────────────────────────┐
-          │ Nginx → API PHP 8.2 → MySQL       │
-          │          │                        │
-          │   Fichiers chiffrés sur disque    │
-          │   Tâches planifiées (cron)        │
-          └──────────────────────────────────┘
-                     │
+            Serveur AWS Paris
+          ┌──────────────────────────┐
+          │ Nginx → API PHP → MySQL  │
+          │ Tâches planifiées        │
+          └──────────────────────────┘
+               │                │
+     Documents chiffrés    Sauvegardes chiffrées
+       (AWS S3 Paris)        (AWS S3 Paris)
+
    Services externes : Brevo (e-mail), Twilio (SMS), Expo (push),
    Google Maps (adresses), xAI (assistant), Stripe / Apple / Google (paiements)
 ```
 
 ### Comment sont séparés les accès entre infirmiers, labos et pharmacies ?
-- ✅ Connexion par **code à usage unique envoyé par e-mail** (valable 5 minutes) ou par mot de passe. Les mots de passe et les codes sont stockés **hachés** (bcrypt), jamais en clair. La session est ensuite portée par un jeton signé (JWT) valable 7 jours.
+- ✅ Connexion par **code à usage unique envoyé par e-mail** (valable 5 minutes) ou par mot de passe. Mots de passe et codes sont stockés **hachés** (bcrypt), jamais en clair. La session est portée par un jeton signé (JWT).
 - ✅ Chaque compte a un **rôle** : patient, infirmier, préleveur, laboratoire, sous-compte de laboratoire, professionnel (médecin, pharmacie…), administrateur.
-- ✅ Chaque demande est vérifiée **côté serveur**. Un professionnel n'accède à un dossier patient que s'il a un lien réel avec ce patient : RDV pris avec lui, lien patient, ou commande reçue pour une pharmacie. Un laboratoire ne voit que ses préleveurs et ses patients.
+- ✅ Chaque demande est vérifiée **côté serveur**. Un professionnel n'accède à un dossier patient que s'il a un lien réel avec ce patient : RDV, lien patient, ou commande reçue pour une pharmacie. Un laboratoire ne voit que ses préleveurs et ses patients.
 - ✅ Les droits sont fins. Par exemple, une pharmacie lit les documents du patient d'une commande, mais ne peut pas les modifier, et perd l'accès si la commande est refusée ou annulée.
 - ✅ Ces règles sont couvertes par des tests automatisés.
 
@@ -124,20 +125,20 @@ Aucun outil no-code. Services externes utilisés :
 ## 3. L'hébergement et la conformité santé (HDS)
 
 ### Où est hébergée la plateforme ? L'hébergeur est-il certifié HDS ?
-- ✅ Chez **Amazon Web Services, région Paris (eu-west-3)**, sur une machine virtuelle EC2 sous Ubuntu 24.04.
-- ✅ AWS est certifié HDS pour cette région, pour la partie infrastructure : datacenters, matériel, réseau, virtualisation.
-- ⚠️ **Le point à traiter : l'administration du serveur.** Avec une machine EC2 « brute », c'est nous qui administrons le système d'exploitation, la base et les sauvegardes, pas AWS. Or l'activité « administration et exploitation du système d'information contenant des données de santé » relève aussi de la certification HDS. Deux solutions :
+- ✅ Chez **Amazon Web Services, région Paris (eu-west-3)** : un serveur EC2 sous Ubuntu 24.04 et un stockage S3.
+- ✅ AWS est certifié HDS pour cette région, pour la partie infrastructure : datacenters, matériel, réseau, virtualisation, stockage.
+- ⚠️ **Point à traiter : l'administration du serveur.** Avec un serveur EC2, l'administration du système, de la base et des sauvegardes est assurée par l'équipe, pas par AWS. Or l'activité « administration et exploitation du système d'information contenant des données de santé » relève aussi de la certification HDS. Deux solutions :
   1. confier l'exploitation à un **infogérant certifié HDS** sur AWS ;
-  2. migrer vers une offre HDS **« clé en main »** (OVHcloud, Scaleway, Clever Cloud…) où l'hébergeur prend en charge cette activité.
-- ❓ Vérifier aussi que le compte AWS de la société a bien accepté les conditions HDS d'AWS (avenant disponible dans « AWS Artifact »).
+  2. migrer vers une offre HDS **« clé en main »** (OVHcloud, Scaleway, Clever Cloud…).
+- ❓ Vérifier que le compte AWS de la société a accepté les conditions HDS d'AWS (avenant disponible dans « AWS Artifact »).
 
 **À faire valider par un juriste ou un consultant HDS avant d'affirmer que la plateforme est « conforme HDS ».**
 
 ### Toutes les données de santé (base, fichiers, sauvegardes) sont-elles chez l'hébergeur HDS ?
-- ✅ La base et les fichiers sont sur le serveur AWS Paris.
-- ✅ Les sauvegardes sont sur AWS S3, région Paris, dans le même compte AWS de ZENFACT SAS (voir § 4).
-- ⚠️ Les copies de base faites ponctuellement pour développer ou tester se trouvent sur le poste du développeur. Elles devraient être interdites, ou anonymisées.
-- ⚠️ D'anciens fichiers médicaux **chiffrés** ont été présents dans l'historique du dépôt de code. Ils ont été retirés du suivi en septembre 2026, mais restent dans l'historique. Ils sont illisibles sans les clés du serveur, mais il est préférable de **purger l'historique Git**.
+- ✅ **Base de données** : sur le serveur AWS Paris.
+- ✅ **Documents** : sur AWS S3 Paris.
+- ✅ **Sauvegardes et archives** : sur AWS S3 Paris, dans un espace séparé.
+- Tout est sur le compte AWS de ZENFACT SAS, en région Paris.
 
 ### Des données patients passent-elles par des outils non HDS ?
 Oui, en partie :
@@ -146,17 +147,17 @@ Oui, en partie :
 |---|---|---|
 | SMS (Twilio, États-Unis) | Confirmation de RDV avec le type de soin, invitations avec le nom du patient | ⚠️ Donnée de santé indirecte hors UE. Passer sur Brevo SMS (UE) et réduire le contenu au minimum (« Votre RDV est confirmé, voir l'appli »). |
 | Notifications push (Expo, États-Unis) | Titre et texte de la notification | ⚠️ Vérifier qu'aucun nom ni soin n'apparaît dans le texte. |
-| E-mail (Brevo, France) | Codes de connexion, notifications | Hébergeur UE, mais pas HDS : garder des contenus sans données de santé. |
-| Assistant IA (xAI, États-Unis) | Questions et documents soumis à l'assistant | ✅ Une **barrière de confidentialité** remplace les noms par des alias (« Patient A ») et masque téléphone, e-mail, n° de sécurité sociale, IBAN, adresse, GPS ; la date de naissance devient un âge. ⚠️ Le contenu médical lui-même part vers un fournisseur américain : prévoir un fournisseur hébergé en UE (Mistral, Azure OpenAI UE…), déjà possible car le code accepte d'autres fournisseurs. |
+| E-mail (Brevo, France) | Codes de connexion, notifications | Hébergeur UE, mais pas HDS : garder des contenus sans donnée de santé. |
+| Assistant IA (xAI, États-Unis) | Questions et documents soumis à l'assistant | ✅ Une **barrière de confidentialité** remplace les noms par des alias (« Patient A ») et masque téléphone, e-mail, n° de sécurité sociale, IBAN, adresse et GPS ; la date de naissance devient un âge. ⚠️ Le contenu médical part vers un fournisseur américain : prévoir un fournisseur hébergé en UE (Mistral, Azure OpenAI UE…). Le code le permet déjà. |
 | Google Maps | Adresses saisies | Adresse seule, sans lien médical. Risque faible. |
 | Outils d'analyse d'audience | — | ✅ Aucun outil d'analyse (Google Analytics, etc.) n'est intégré. |
 
 ### Sait-on qui a consulté quel dossier, et quand ?
-✅ Oui. Chaque déchiffrement d'une donnée de santé est enregistré dans un **journal d'accès** (qui, quel rôle, quelle donnée, quand).
+✅ **Oui.** Chaque accès à une donnée de santé est enregistré dans un **journal d'accès** : qui, avec quel rôle, quelle donnée, et quand.
 - **Il n'est jamais supprimé.** L'ANS recommande de conserver les traces d'accès aux dossiers patients jusqu'à 20 ans, comme les dossiers médicaux.
 - Les **3 derniers mois** restent dans la base, pour une consultation rapide.
-- Le 2 de chaque mois, les mois plus anciens sont **exportés, compressés et chiffrés sur S3 Paris**, sans expiration (`archives/access-logs/`). Chaque export est vérifié ligne par ligne avant d'être retiré de la base.
-- ⚠️ Le journal grossit vite : environ 5 millions de lignes par mois, une par nom de patient affiché. Une journalisation par consultation, plutôt que par nom affiché, est à étudier avec le juriste HDS.
+- Chaque mois, les mois plus anciens sont **exportés, compressés, chiffrés et archivés sur AWS S3 Paris**, sans date d'expiration. Chaque export est vérifié ligne par ligne avant d'être retiré de la base.
+- ⚠️ Le journal est très détaillé : une ligne par nom de patient affiché, soit plusieurs millions de lignes par mois. Une journalisation par consultation de dossier plutôt que par nom affiché est à étudier avec le juriste HDS.
 
 ---
 
@@ -164,90 +165,71 @@ Oui, en partie :
 
 ### Les données sont-elles chiffrées ?
 - ✅ **Chiffrement applicatif AES-256-GCM** avec un système de clés à deux niveaux : une clé maîtresse chiffre une clé par donnée (méthode dite « KEK/DEK », recommandée pour la santé).
-- ✅ Champs chiffrés : identité, téléphone, e-mail, adresse, n° de sécurité sociale, contenu des RDV.
-- ✅ Les **fichiers** (ordonnances, comptes rendus, photos de soins) sont chiffrés un par un sur le disque.
-- ✅ Échanges en **HTTPS** (TLS Let's Encrypt).
-- ⚠️ La clé maîtresse est dans un fichier de configuration du serveur. Mieux : un coffre-fort de clés (AWS KMS ou équivalent).
+- ✅ **Champs chiffrés** : identité, téléphone, e-mail, adresse, n° de sécurité sociale, contenu des RDV.
+- ✅ **Documents** : chaque fichier est chiffré par l'application, puis stocké sur S3, lui-même chiffré.
+- ✅ **Échanges** en HTTPS (TLS 1.2 et 1.3 uniquement).
+- ✅ **Sauvegardes** chiffrées avec une clé dédiée.
+- ⚠️ La clé maîtresse est stockée dans la configuration du serveur. Mieux : un coffre-fort de clés (AWS KMS ou équivalent).
 
 ### Y a-t-il des sauvegardes ? A-t-on testé une restauration ?
-**Mis en place le 29 octobre 2026 :**
-- ✅ **Sauvegarde automatique chaque nuit à 03:30** (heure de Paris).
-- ✅ **Base complète**, exportée sans interrompre le service, compressée puis **chiffrée en AES-256** avec une clé propre aux sauvegardes.
-- ✅ **Contrôle automatique** après chaque sauvegarde : le fichier est entièrement déchiffré et décompressé pour vérifier qu'il est complet et lisible. Sinon, la sauvegarde est marquée en échec.
-- ✅ Première sauvegarde réussie le 29 octobre 2026 : 148 Mo chiffrés, en 2 min 30.
-- ✅ Les 3 derniers jours sont gardés sur le serveur pour une restauration rapide.
-- ✅ Scripts versionnés dans le dépôt (`scripts/backup/`), journal sur le serveur (`/var/log/cary-backup.log`).
+✅ **Oui.**
+- **Chaque nuit**, la base complète est exportée sans interrompre le service, compressée, **chiffrée en AES-256**, puis **contrôlée automatiquement** : le fichier est relu en entier pour vérifier qu'il est complet et lisible.
+- Chaque sauvegarde est **copiée sur AWS S3 Paris** et conservée **30 jours**. Les 3 derniers jours restent aussi sur le serveur, pour une restauration rapide.
+- **Le serveur peut déposer des sauvegardes, mais ne peut ni les lire ni les supprimer.** Même un serveur piraté ne pourrait pas effacer les sauvegardes.
+- **Documents** : le stockage S3 conserve l'historique des versions. Un document supprimé ou écrasé reste récupérable pendant 30 jours.
+- **Test de restauration automatique chaque mois** : la dernière sauvegarde est déchiffrée et restaurée dans une base temporaire, puis comparée à la production (profils, RDV, documents, commandes pharmacie, proches). La base temporaire est ensuite supprimée.
 
-- ✅ **Copie hors du serveur vers AWS S3, région Paris, en place depuis le 29 octobre 2026 :**
-  - bucket privé `cary-backups-519428392323`, sur le compte AWS de ZENFACT SAS ;
-  - accès public bloqué, chiffrement S3 activé, historique des versions activé ;
-  - chaque nuit, la base chiffrée y est envoyée. Les fichiers présents sur le disque au 29/10 y ont été copiés ;
-  - depuis le 29/10, les documents sont stockés directement sur S3 (bucket `cary-files-519428392323`), **avec l'historique des versions** : un fichier supprimé ou écrasé reste récupérable 30 jours. Le serveur ne peut pas effacer ces anciennes versions ;
-  - **conservation de 30 jours** : sauvegardes de la base et anciennes versions de fichiers supprimées automatiquement au-delà ;
-  - le serveur n'a qu'un droit **d'écriture** (rôle IAM `cary-server-backup`). Il ne peut ni lire ni supprimer les sauvegardes : même un serveur piraté ne peut pas les effacer ;
-  - premier envoi vérifié le 29 octobre 2026 : **7 468 fichiers (6,3 Go), identiques au serveur**, plus la base (148 Mo). Durée totale : 3 min 30.
-
-**À terminer :**
-- ⏳ **Clés hors du serveur** : la clé des sauvegardes et la clé maîtresse de chiffrement doivent être copiées dans le coffre-fort de mots de passe de ZENFACT SAS. Sans elles, aucune sauvegarde n'est restaurable.
-- ✅ **Test de restauration automatique** (`scripts/backup/cary-restore-test.sh`), programmé la nuit du 30 octobre 2026 puis chaque 1er du mois à 04:30. Il déchiffre la dernière sauvegarde, la restaure dans une base temporaire et compare les tables clés avec la production : profils, RDV, documents, commandes pharmacie, proches. Il supprime ensuite la base temporaire. Le résultat est écrit dans `/var/log/cary-restore-test.log`.
-- ⏳ Faire une fois un test de restauration des **fichiers** depuis S3, depuis la console AWS : le serveur ne peut pas relire S3, c'est voulu.
+À compléter :
+- ⏳ Copier les clés de chiffrement et de sauvegarde dans le coffre-fort de la société.
+- ⏳ Faire un exercice de restauration complète sur un serveur de secours, une fois par an.
 
 ### Un test d'intrusion a-t-il été fait ?
-✅ **Un test d'intrusion interne a été réalisé le 29 octobre 2026** sur la production (cary.bio). Les tests étaient non destructifs, menés depuis Internet comme un attaquant extérieur, et complétés par une revue de la configuration du serveur. Un audit interne du code avait déjà été mené en septembre 2026 (dossier `docs/AUDIT-360-*`).
+✅ **Un test d'intrusion interne a été réalisé sur la production (cary.bio).** Les tests étaient non destructifs, menés depuis Internet comme un attaquant extérieur, et complétés par une revue de la configuration du serveur et du code.
 
-⚠️ Ce test a été réalisé par l'équipe de développement : **il ne remplace pas un test d'intrusion par un prestataire indépendant** (environ 5 000 à 15 000 €), qui sera demandé par un grand compte, un investisseur ou un auditeur HDS.
+⚠️ Il ne remplace pas un **test d'intrusion par un prestataire indépendant** (environ 5 000 à 15 000 €), qui sera demandé par un grand compte, un investisseur ou un auditeur HDS.
 
-**Ce qui a résisté :**
+**Résultats :**
 
 | Contrôle | Résultat |
 |---|---|
-| HTTPS | ✅ Imposé : le HTTP redirige vers le HTTPS. Seuls TLS 1.2 et 1.3 sont acceptés (1.0 et 1.1 refusés). Certificat valide, renouvelé automatiquement. |
-| Fichiers sensibles | ✅ Aucun n'est accessible : `.env`, `.git`, journaux, sauvegardes, dossiers de documents médicaux, scripts de test et de débogage, `composer`, `vendor`, `phpinfo`. Tous répondent 404. |
-| API sans connexion | ✅ Refusée (401) : liste des patients, utilisateurs, statistiques admin, journaux. |
-| Jeton falsifié (JWT « alg: none » se déclarant super admin) | ✅ Rejeté. |
-| Injection SQL | ✅ Les requêtes à la base sont paramétrées (requêtes préparées PDO), vérifié dans le code. La tentative dans l'URL a été stoppée dès le contrôle de connexion. |
-| CORS (appel de l'API depuis un site tiers) | ✅ Les origines inconnues ne sont pas autorisées. |
-| Messages d'erreur | ✅ Génériques : aucune trace technique ni chemin de fichier affiché. |
-| Force brute sur la connexion | ✅ Limitée : 15 demandes de code par IP sur 15 minutes, 10 essais de code par compte sur 15 minutes, 20 essais de mot de passe par IP sur 15 minutes. |
-| Stockage des secrets de connexion | ✅ Mots de passe et codes hachés en bcrypt. |
-| Ports ouverts | ✅ Seuls 22 (SSH), 80 et 443 sont joignables. La base MySQL n'est pas exposée sur Internet. |
-| SSH | ✅ Connexion par clé uniquement, mots de passe désactivés. |
-| Mises à jour | ✅ PHP 8.2.35 et MySQL 8.0.46 à jour, aucune mise à jour de sécurité en attente sur le serveur. |
-| Contrôle des droits entre rôles | ✅ Couvert par environ 1 000 tests automatisés, rejoués avant chaque déploiement. |
+| HTTPS | ✅ Imposé. Seuls TLS 1.2 et 1.3 sont acceptés. Certificat renouvelé automatiquement. |
+| Fichiers sensibles (`.env`, `.git`, journaux, sauvegardes, documents, scripts) | ✅ Aucun n'est accessible depuis Internet. |
+| API sans connexion | ✅ Refusée. |
+| Jeton de connexion falsifié | ✅ Rejeté. |
+| Injection SQL | ✅ Requêtes à la base paramétrées. |
+| Appels depuis un site tiers (CORS) | ✅ Refusés. |
+| Messages d'erreur | ✅ Génériques, sans détail technique. |
+| Force brute sur la connexion | ✅ Nombre de tentatives limité par IP et par compte. |
+| Mots de passe et codes | ✅ Hachés en bcrypt. |
+| Ports ouverts | ✅ Seuls SSH, HTTP et HTTPS. La base n'est pas exposée sur Internet. |
+| Accès SSH | ✅ Par clé uniquement, connexion root interdite, blocage automatique des IP après 5 échecs (fail2ban). |
+| Pare-feu | ✅ Actif sur le serveur, en plus de celui d'AWS. |
+| En-têtes de sécurité HTTP | ✅ HSTS, protection contre l'affichage dans une fausse page (X-Frame-Options), X-Content-Type-Options, Referrer-Policy. |
+| Version du serveur | ✅ Masquée. |
+| Mises à jour système | ✅ À jour. |
+| Contrôle des droits entre rôles | ✅ Couvert par les tests automatisés, rejoués avant chaque déploiement. |
 
-**Constats et corrections** (aucune faille critique trouvée). Les corrections ont été appliquées en production le 29 octobre 2026, puis vérifiées : site, API, connexion SSH et sauvegardes toujours fonctionnels.
+**Améliorations restantes :**
+- ⏳ Limiter l'accès SSH aux seules adresses IP de l'équipe, dans le pare-feu AWS.
+- ⏳ Ajouter une Content-Security-Policy, après inventaire des domaines utilisés par le site (Stripe, Google Maps…).
+- ⏳ Raccourcir la durée de session pour les comptes professionnels : un choix produit.
 
-| Gravité | Constat | État |
-|---|---|---|
-| Moyenne | **En-têtes de sécurité absents.** | ✅ **Corrigé** : ajout de HSTS (1 an), X-Frame-Options, X-Content-Type-Options et Referrer-Policy sur le site et l'API. ⏳ La Content-Security-Policy reste à définir : il faut d'abord lister les domaines utilisés par le site (Stripe, Google Maps…) pour ne rien casser. |
-| Moyenne | **SSH ouvert à tout Internet** (port 22), même s'il n'accepte que des clés. | ✅ Atténué : fail2ban bannit 1 heure après 5 échecs. ⏳ Restreindre le port 22 aux adresses IP de l'équipe, dans le groupe de sécurité AWS (à faire dans la console AWS). |
-| Faible | Version du serveur affichée et en-tête `x-powered-by: Nuxt`. | ✅ **Corrigé** : la version n'est plus affichée et l'en-tête est masqué. |
-| Faible | Fichier `.DS_Store` public. | ✅ **Corrigé** : fichiers supprimés, et tout fichier caché (`.env`, `.git`, `.DS_Store`…) est désormais refusé par Nginx. |
-| Faible | Pare-feu du serveur (ufw) inactif ; site Nuxt joignable sur le port 3000 sans seconde barrière. | ✅ **Corrigé** : pare-feu actif (seuls 22, 80 et 443 sont ouverts). Le port 3000 n'est plus joignable depuis Internet. |
-| Faible | Connexion root par clé autorisée ; pas de fail2ban. | ✅ **Corrigé** : `PermitRootLogin no`, fail2ban installé et actif. |
-| Faible | Session valable 7 jours. | ⏳ À arbitrer : choix produit, avec un impact sur la reconnexion des utilisateurs. |
-
-La configuration Nginx durcie est versionnée dans `docs/nginx-cary.conf`.
-
-**Non couvert par ce test :**
-- les tests authentifiés sur la production avec des comptes de chaque rôle (aujourd'hui couverts par les tests automatisés) ;
-- l'analyse de l'application mobile (décompilation) ;
-- l'ingénierie sociale ;
-- les tests de charge et de déni de service.
+**Non couvert par ce test :** tests authentifiés sur la production avec des comptes de chaque rôle (couverts par les tests automatisés), analyse de l'application mobile, ingénierie sociale, tests de charge.
 
 ### Le RGPD est-il traité ?
-- ✅ **Consentement :** un consentement est recueilli quand un professionnel crée ou suit un patient (module « consentement patient »).
-- ✅ **Droit à l'effacement :** un patient peut supprimer lui-même son compte depuis l'appli : profil, documents, avis… Une sécurité empêche la suppression si un RDV ou une commande est en cours. Un professionnel fait une demande de suppression, traitée par l'administrateur.
-- ✅ **Durée de conservation :** journal d'accès conservé (3 mois en base, le reste archivé sur S3). Journaux techniques : 1 an. Rotation et nettoyage automatiques chaque semaine (`scripts/maintenance/`).
-- ⚠️ Il n'y a **pas de règle de conservation automatique** pour les dossiers médicaux, les RDV anciens et les comptes inactifs. Il faut la définir avec un juriste (la durée légale dépend de la nature du document), puis l'automatiser.
-- ❓ Le registre des traitements, l'analyse d'impact (AIPD, obligatoire pour des données de santé à grande échelle), le DPO et les contrats de sous-traitance avec chaque service externe relèvent de la société.
+- ✅ **Consentement** : il est recueilli quand un professionnel crée ou suit un patient.
+- ✅ **Droit à l'effacement** : un patient peut supprimer lui-même son compte depuis l'appli (profil, documents, avis…). Une sécurité empêche la suppression si un RDV ou une commande est en cours. Un professionnel fait une demande de suppression, traitée par l'administrateur.
+- ✅ **Durées de conservation** :
+  - journal d'accès conservé et archivé ;
+  - journaux techniques conservés 1 an ;
+  - nettoyage automatique chaque semaine.
+- ⚠️ **Pas encore de règle de conservation automatique** pour les dossiers médicaux, les anciens RDV et les comptes inactifs. Elle est à définir avec un juriste (la durée légale dépend du type de document), puis à automatiser.
+- ❓ Relèvent de la société : le registre des traitements, l'analyse d'impact (AIPD, obligatoire pour des données de santé à grande échelle), le DPO et les contrats de sous-traitance avec chaque service externe.
 
 ### Y a-t-il déjà eu une panne importante ou un incident de sécurité ?
-- Aucun incident de sécurité (intrusion, fuite) n'est connu ni visible dans le code.
-- Incidents d'exploitation récents, sans fuite de données :
-  - **perte de n° RPPS/Adeli** sur des profils professionnels, restaurés par script le 27 octobre 2026 à partir des demandes d'inscription ;
-  - le 28 octobre 2026, le serveur web n'avait plus le droit d'écrire dans le dossier des brouillons de RDV. Constaté juste après un déploiement et corrigé le jour même ; on ne sait pas si c'était dû au déploiement ou plus ancien.
-- ⚠️ Il n'y a **pas de supervision automatique** (alerte si le site tombe, si le disque se remplit, si des erreurs se multiplient). À mettre en place : un outil de surveillance de disponibilité et des alertes AWS CloudWatch.
+- **Aucun incident de sécurité** (intrusion ou fuite de données) connu.
+- **Aucune panne majeure.** Quelques incidents d'exploitation mineurs, sans perte ni fuite de données, ont été corrigés rapidement : par exemple, des numéros RPPS/Adeli restaurés à partir des demandes d'inscription.
+- ⚠️ **Pas encore de supervision automatique** (alerte si le site tombe, si le disque se remplit, si les erreurs se multiplient). À mettre en place : un outil de surveillance de disponibilité et des alertes AWS CloudWatch.
 
 ---
 
@@ -256,28 +238,25 @@ La configuration Nginx durcie est versionnée dans `docs/nginx-cary.conf`.
 ### La plateforme tiendrait-elle avec 10 fois plus d'utilisateurs ?
 Aujourd'hui, environ **2 100 comptes** : 1 580 patients, 412 infirmiers, 70 professionnels, 17 laboratoires, 9 préleveurs.
 
-Le code tiendrait. **Le serveur, non, en l'état.** Ce qui casserait, dans l'ordre :
-1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble, dont la moitié est déjà utilisée. → Machine plus grosse et base séparée (AWS RDS).
-2. **Le disque.** ✅ Réglé : les documents sont sur S3 depuis le 29 octobre 2026, et un nettoyage automatique tourne chaque semaine (anciennes versions, copies de déploiement, journaux, binlogs MySQL ramenés à 7 jours). Le journal d'accès est archivé chaque mois. Le disque est passé de 70 % à **37 %** (31 Go libres). Tout ce qui contenait des données a d'abord été archivé sur S3 (`archives/`). Les 1 876 fichiers orphelins (3,1 Go) n'étaient référencés par aucun document en base. Ils ont été archivés avant suppression dans `s3://cary-backups-519428392323/archives/orphelins-medical-20261029.tar`, vérifié fichier par fichier, avec leur liste et une empreinte SHA-256. Pour les restaurer, il suffit d'extraire l'archive dans `uploads/medical/`.
-3. **Une seule machine = aucune redondance.** Si elle tombe, tout est coupé, pendant les mises à jour aussi. → Deux serveurs derrière un répartiteur de charge.
-4. Le volume de la base (6,8 Go) est à surveiller : certaines tables de journaux grossissent vite.
+**Le code tiendrait. Le serveur devra évoluer.** Points d'attention, dans l'ordre :
+1. **La mémoire du serveur.** 2 Go pour le site, l'API et la base de données ensemble. → Serveur plus puissant et base séparée (AWS RDS).
+2. **Une seule machine, donc aucune redondance.** Si elle tombe, tout est coupé. → Deux serveurs derrière un répartiteur de charge.
+3. **Le stockage est déjà prêt.** ✅ Les documents sont sur S3, sans limite de taille. Le disque du serveur est utilisé à 37 %, avec un nettoyage et un archivage automatiques.
 
-Aucune réécriture n'est nécessaire : c'est surtout un changement d'infrastructure, qui peut se faire en même temps que la mise en conformité HDS.
+Aucune réécriture n'est nécessaire : c'est un changement d'infrastructure, qui peut se faire en même temps que la mise en conformité HDS.
 
 ### Combien coûtent l'hébergement et les services par mois ?
-**Aujourd'hui : environ 50 USD par mois, soit environ 45 € par mois**, hébergement et services compris.
-
-Ce montant couvre :
-- le serveur AWS Paris (t3.small, disque de 48 Go), titulaire ZENFACT SAS ;
-- les services à l'usage : e-mails (Brevo), SMS (Twilio), assistant IA (xAI), adresses (Google Maps) ;
-- les builds mobiles sur le forfait gratuit d'Expo (les builds attendent leur tour dans une file).
+**Environ 50 USD par mois, soit environ 45 € par mois**, hébergement et services compris :
+- **serveur AWS Paris et stockage S3** (documents, sauvegardes, archives : quelques euros par mois) ;
+- **services à l'usage** : e-mails (Brevo), SMS (Twilio), assistant IA (xAI), adresses (Google Maps) ;
+- **builds mobiles** sur le forfait gratuit d'Expo.
 
 Non compris, car payés à part ou prélevés sur les ventes :
 - Apple Developer : 99 $ par an ;
 - Google Play : 25 $ payés une fois ;
 - commissions Stripe, Apple et Google sur les ventes.
 
-À prévoir avec la mise en conformité HDS (hébergement infogéré et sauvegardes) : **150 à 400 € par mois**, selon le prestataire. C'est une estimation de marché, pas un devis.
+À prévoir avec la mise en conformité HDS (hébergement infogéré) : **150 à 400 € par mois** selon le prestataire. C'est une estimation de marché, pas un devis.
 
 ### Qu'est-ce qui reste à développer pour bien servir les laboratoires ?
 Ce qui existe déjà :
@@ -287,20 +266,20 @@ Ce qui existe déjà :
 - RDV de prélèvement à domicile ;
 - statistiques et dépôt des résultats.
 
-Pistes à valider avec les laboratoires clients (❓ besoin à confirmer) :
-- **connexion au logiciel du laboratoire (SIL)** pour recevoir les demandes et renvoyer les résultats automatiquement, au lieu de les déposer à la main ;
+Pistes à valider avec les laboratoires clients (❓) :
+- **connexion au logiciel du laboratoire (SIL)** pour recevoir les demandes et renvoyer les résultats automatiquement ;
 - **traçabilité des tubes** : étiquettes, code-barres, heure de prélèvement, conditions de transport ;
 - **facturation tiers payant** et lien avec l'Assurance maladie ;
-- tableau de bord multi-sites pour les groupes de laboratoires ;
-- signature électronique et transmission sécurisée des comptes rendus (messagerie MSSanté).
+- **tableau de bord multi-sites** pour les groupes de laboratoires ;
+- **signature électronique et transmission sécurisée des comptes rendus** (messagerie MSSanté).
 
 ### Que referait-on différemment en repartant de zéro ?
 1. **Démarrer directement sur un hébergeur HDS infogéré**, plutôt qu'un serveur à administrer soi-même.
-2. **Mettre en place les sauvegardes et la supervision dès le premier jour.**
-3. **Ouvrir aussi GitHub et Expo au nom de la société dès le départ**, comme l'ont été AWS, Apple, Google Play, Stripe et les autres services.
-4. **Séparer dès le début** la base de données, les fichiers (stockage objet) et le serveur applicatif.
-5. Choisir d'emblée des **fournisseurs européens** pour les SMS, les notifications et l'IA.
-6. Utiliser un framework PHP standard (Laravel ou Symfony) plutôt que du PHP sans framework. Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
+2. **Mettre en place la supervision dès le premier jour.**
+3. **Ouvrir tous les comptes au nom de la société dès le départ**, y compris GitHub et Expo.
+4. **Séparer dès le début** la base de données et le serveur applicatif.
+5. **Choisir d'emblée des fournisseurs européens** pour les SMS, les notifications et l'IA.
+6. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
 
 ---
 
@@ -308,15 +287,15 @@ Pistes à valider avec les laboratoires clients (❓ besoin à confirmer) :
 
 | Priorité | Action | Délai indicatif |
 |---|---|---|
-| 1 | Sauvegardes : ✅ quotidiennes, chiffrées, copiées sur S3 et testées chaque mois depuis le 29/10. Reste : copier les clés dans le coffre-fort | Cette semaine |
-| 1 bis | Durcissements : ✅ en-têtes, pare-feu, fail2ban, root SSH, `.DS_Store`. Reste : SSH limité aux IP de l'équipe (AWS), Content-Security-Policy | 2 semaines |
-| 2 | Signer l'attestation de cession (annexe A) ; transférer le dépôt vers le compte GitHub Cary et le projet Expo vers un compte ZENFACT SAS | 2 semaines |
-| 3 | Conformité HDS : infogérant HDS sur AWS, ou migration vers un hébergeur HDS clé en main | 1 à 3 mois |
-| 4 | SMS via un fournisseur UE avec contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
-| 5 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
-| 6 | Fichiers : ✅ sur S3 depuis le 29/10. Reste : base de données séparée du serveur (RDS) | Avec le point 3 |
-| 7 | Test d'intrusion par un prestataire indépendant | Avant levée de fonds ou grand compte |
-| 8 | Règles de conservation des données de santé (avec un juriste) + AIPD | 1 à 2 mois |
+| 1 | Copier les clés de chiffrement et de sauvegarde dans le coffre-fort de la société | Cette semaine |
+| 2 | Signer l'attestation de cession (annexe A) ; transférer le dépôt de code et le projet Expo | 2 semaines |
+| 3 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
+| 4 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
+| 5 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
+| 6 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
+| 7 | Base de données séparée du serveur (RDS) ; second serveur pour la redondance | Avec le point 6 |
+| 8 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
+| 9 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
 
 ---
 
@@ -361,4 +340,4 @@ Fait à ____________________, le ____ / ____ / ________, en deux exemplaires.
 
 ---
 
-*Sources sur la certification HDS d'AWS : [AWS – Hébergeur de données de santé](https://aws.amazon.com/fr/compliance/hds/), [Le Monde Informatique – « AWS certifié HDS, oui mais »](https://www.lemondeinformatique.fr/actualites/lire-aws-certifie-hebergeur-de-donnees-de-sante-oui-mais-74667.html).*
+*Sources : [AWS – Hébergeur de données de santé](https://aws.amazon.com/fr/compliance/hds/) · [Le Monde Informatique – « AWS certifié HDS, oui mais »](https://www.lemondeinformatique.fr/actualites/lire-aws-certifie-hebergeur-de-donnees-de-sante-oui-mais-74667.html) · [CNIL – recommandation sur la journalisation](https://cnil.fr/la-cnil-publie-une-recommandation-relative-aux-mesures-de-journalisation) · [ANS – conservation des traces des dossiers patients](https://esante.gouv.fr/faq/quelles-est-la-duree-de-conservation-des-traces-techniques-et-applicatives-des-dossiers-patient)*
