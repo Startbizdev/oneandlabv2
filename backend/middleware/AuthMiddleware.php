@@ -84,6 +84,12 @@ class AuthMiddleware
             exit;
         }
 
+        try {
+            $this->user->touchLastActive($userId);
+        } catch (Throwable $e) {
+            error_log('touchLastActive user=' . $userId . ' : ' . $e->getMessage());
+        }
+
         return [
             'user_id' => $userId,
             'role' => $role,

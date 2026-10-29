@@ -65,11 +65,29 @@ final class AccountDeletionService
                 'CONFIRMATION_REQUIRED'
             );
         }
+
+        return $this->deletePatientAccount($userId, 'self_service');
+    }
+
+    /**
+     * Suppression d'un compte patient inactif (durée de conservation atteinte), mêmes garde-fous que
+     * la suppression par le patient : refusée tant qu'un RDV, un abonnement ou une commande est en cours.
+     *
+     * @return array{deleted_documents: int, deleted_reviews: int, files_not_deleted: int}
+     */
+    public function deleteInactivePatientAccount(string $userId): array
+    {
+        return $this->deletePatientAccount($userId, 'inactivity');
+    }
+
+    /** @return array{deleted_documents: int, deleted_reviews: int, files_not_deleted: int} */
+    private function deletePatientAccount(string $userId, string $scope): array
+    {
         if ($this->db->inTransaction()) {
             throw new LogicException('La suppression de compte doit posséder sa transaction : les fichiers sont supprimés après le commit.');
         }
 
-        $result = DatabaseTransaction::run($this->db, fn (): array => $this->deletePatientRows($userId));
+        $result = DatabaseTransaction::run($this->db, fn (): array => $this->deletePatientRows($userId, $scope));
 
         $filesNotDeleted = 0;
         foreach ($result['file_paths'] as $filePath) {
@@ -141,7 +159,7 @@ final class AccountDeletionService
     /**
      * @return array{file_paths: list<string>, deleted_reviews: int}
      */
-    private function deletePatientRows(string $userId): array
+    private function deletePatientRows(string $userId, string $scope): array
     {
         $stmt = $this->db->prepare('SELECT role FROM profiles WHERE id = ? FOR UPDATE');
         $stmt->execute([$userId]);
@@ -179,7 +197,7 @@ final class AccountDeletionService
         }
 
         $this->logger->log($userId, 'patient', 'delete', 'profile', $userId, [
-            'scope' => 'self_service',
+            'scope' => $scope,
             'reassigned_to' => $systemAccountId,
             'deleted_reviews' => $deletedReviews,
             'deleted_documents' => count($documents),

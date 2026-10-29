@@ -2,6 +2,7 @@
 # Installe la maintenance automatique du serveur Cary (sudo). Idempotent.
 #   - nettoyage chaque dimanche 04:00 (anciennes versions, copies de déploiement, journaux techniques, paquets)
 #   - archivage du journal d'accès HDS sur S3 le 2 de chaque mois 04:00 (3 derniers mois gardés en base)
+#   - durées de conservation RGPD le 3 de chaque mois 05:00 (assistant 1 an, patients inactifs 3 ans)
 #   - binlogs MySQL : 7 jours (les sauvegardes quotidiennes sur S3 prennent le relais)
 #   - journal d'accès : jamais supprimé, seulement archivé (ACCESS_LOG_RETENTION_MONTHS=240)
 set -euo pipefail
@@ -18,10 +19,12 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/snap/bin
 TZ=Europe/Paris
 0 4 * * 0 root /usr/local/sbin/cary-housekeeping >> /var/log/cary-housekeeping.log 2>&1
 0 4 2 * * root /usr/local/sbin/cary-archive-access-logs >> /var/log/cary-archive-access-logs.log 2>&1
+0 5 3 * * www-data /usr/bin/php /var/www/oneandlab/backend/cron/data-retention.php --apply >> /var/log/cary-data-retention.log 2>&1
 EOF
 chmod 644 /etc/cron.d/cary-maintenance
-touch /var/log/cary-housekeeping.log /var/log/cary-archive-access-logs.log
+touch /var/log/cary-housekeeping.log /var/log/cary-archive-access-logs.log /var/log/cary-data-retention.log
 chmod 640 /var/log/cary-housekeeping.log /var/log/cary-archive-access-logs.log
+chown www-data:adm /var/log/cary-data-retention.log; chmod 640 /var/log/cary-data-retention.log
 
 # Binlogs MySQL : 7 jours (persistant au redémarrage).
 mysql -e "SET PERSIST binlog_expire_logs_seconds = 604800"

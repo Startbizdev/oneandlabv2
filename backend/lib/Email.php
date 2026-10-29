@@ -1182,6 +1182,23 @@ class Email
         return $this->send($to, $subject, $body, true);
     }
 
+    /** Prévient un patient inactif que son compte sera supprimé s'il ne se reconnecte pas (RGPD). */
+    public function sendInactivityDeletionWarning(string $to, string $deletionDate): bool
+    {
+        $baseUrl = rtrim($_ENV['FRONTEND_URL'] ?? 'https://cary.bio', '/');
+        $content = '<p style="margin:0 0 14px 0;">Bonjour,</p>'
+            . '<p style="margin:0 0 14px 0;">Vous ne vous êtes pas connecté à votre compte Cary depuis près de 3 ans. Pour protéger vos données, votre compte et vos documents seront supprimés le <strong>' . $this->escapeHtml($deletionDate) . '</strong>.</p>'
+            . '<p style="margin:0;">Pour conserver votre compte, il suffit de vous connecter avant cette date.</p>';
+        $body = $this->baseLayout($content, [
+            'title' => 'Votre compte Cary va être supprimé',
+            'preheader' => 'Connectez-vous avant le ' . $deletionDate . ' pour conserver votre compte.',
+            'ctaUrl' => $baseUrl . '/login',
+            'ctaLabel' => 'Me connecter',
+        ]);
+
+        return $this->send($to, 'Votre compte Cary sera supprimé le ' . $deletionDate, $body, true);
+    }
+
     public function sendBanEmail(string $to, string $reason): bool
     {
         $subject = 'Bannissement de votre compte Cary';

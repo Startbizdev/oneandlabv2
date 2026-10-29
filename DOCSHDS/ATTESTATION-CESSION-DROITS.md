@@ -6,7 +6,7 @@
 
 Entre :
 
-**Startbiz LLC**, License n° 2218328.01, représentée par ____________________, ci-après « le Cédant » ;
+**Startbiz LLC**, License n° 2218328.01, représentée par M. Alessandro TURCO, ci-après « le Cédant » ;
 
 et :
 
@@ -36,5 +36,5 @@ Fait à ____________________, le ____ / ____ / ________, en deux exemplaires.
 
 | Pour Startbiz LLC | Pour ZENFACT SAS |
 |---|---|
-| Nom : | Shany Amar, Présidente |
+| Alessandro TURCO | Shany Amar, Présidente |
 | Signature : | Signature : |

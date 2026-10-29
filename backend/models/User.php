@@ -751,6 +751,21 @@ class User
     }
 
     /**
+     * Dernière activité du compte (durées de conservation) : au plus une écriture par jour.
+     * Une reconnexion annule l'avertissement de suppression pour inactivité.
+     */
+    public function touchLastActive(string $id): void
+    {
+        if (!DbSchemaCache::tableHasColumn($this->db, 'profiles', 'last_active_at')) {
+            return;
+        }
+        $this->db->prepare('
+            UPDATE profiles SET last_active_at = NOW(), retention_warned_at = NULL
+            WHERE id = ? AND (last_active_at IS NULL OR last_active_at < CURRENT_DATE)
+        ')->execute([$id]);
+    }
+
+    /**
      * Incrémente le compteur d'incidents
      */
     public function addIncident(string $id, string $actorId, string $actorRole): void
