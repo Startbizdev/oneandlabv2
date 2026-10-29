@@ -12,7 +12,7 @@
 
 | Sujet | État |
 |---|---|
-| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : code source (GitHub), AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : signature de l'attestation de cession des droits. |
+| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : code source (GitHub), AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ✅ Attestation de cession des droits signée. |
 | Coût actuel | Environ 50 USD/mois, soit environ 45 €/mois. |
 | Technologies | ✅ Standards et répandues : PHP, MySQL, Nuxt/Vue, React Native/Expo. Faciles à reprendre. |
 | Chiffrement des données de santé | ✅ AES-256-GCM, dans la base comme sur les fichiers. |
@@ -32,7 +32,7 @@
 ### Le code appartient-il bien à Cary (contrat avec cession des droits) ?
 ✅ **Oui.** Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS. Le prestataire de développement cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'il a développé pour Cary.
 
-Cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit préciser les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est dans le document **Attestation de cession des droits**, à faire relire par l'avocat de ZENFACT SAS puis à signer.
+✅ Cette cession est **écrite et signée** par les deux sociétés, dans l'**Attestation de cession des droits**. Comme l'exige le droit français, elle précise les droits cédés, leur étendue, leur destination, le territoire et la durée.
 
 ### Le code, l'hébergement et le nom de domaine sont-ils au nom de la société ?
 
