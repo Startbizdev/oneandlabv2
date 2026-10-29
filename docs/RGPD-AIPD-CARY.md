@@ -16,7 +16,7 @@ Le traitement porte sur des **données de santé** (catégorie particulière, ar
 - **Finalités :** prise de rendez-vous à domicile ; attribution à un professionnel ; dossier de santé et documents du patient ; commandes en pharmacie ; coordination entre soignants.
 - **Personnes concernées :** patients et leurs proches, professionnels de santé, personnel des laboratoires.
 - **Données :** identité et coordonnées ; n° de sécurité sociale ; rendez-vous et types de soins ; ordonnances, résultats d'analyses, cartes Vitale et mutuelle ; carnet de santé, constantes, transmissions ; données de santé connectées avec l'accord du patient.
-- **Durées :** voir le registre des traitements (`RGPD-REGISTRE-TRAITEMENTS.md`).
+- **Durées :** voir le registre des traitements.
 - **Hébergement :** AWS, région Paris, infrastructure certifiée HDS. Documents sur AWS S3 Paris.
 - **Sous-traitants :** AWS, Brevo, Twilio, Expo, Google Maps, xAI, Stripe, Apple, Google.
 

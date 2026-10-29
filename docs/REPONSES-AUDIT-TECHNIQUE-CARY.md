@@ -55,8 +55,7 @@ Oui, à condition d'avoir les accès ci-dessus.
 - ✅ Les technologies sont courantes, sans outil propriétaire ni no-code.
 - ✅ Le projet est structuré : un dépôt unique avec le site, l'appli mobile, l'API, la base et des modules partagés.
 - ✅ Environ 1 000 tests automatisés côté serveur, et des tests web et mobile.
-- ✅ Les scripts de déploiement, de sauvegarde et de maintenance sont versionnés avec le code, ainsi que des guides internes.
-- ✅ **Document de passation** : liste des comptes, emplacement des secrets (pas leur valeur), architecture, procédures pour déployer, publier les applications et restaurer (`docs/PASSATION-CARY.md`).
+- ✅ **Continuité assurée** : tous les comptes et tous les secrets appartiennent à ZENFACT SAS. Les procédures d'exploitation sont documentées par le prestataire.
 - ✅ **Clés de chiffrement et configuration** : une copie est conservée dans le coffre-fort de secrets AWS de ZENFACT SAS (AWS Systems Manager, chiffrement AWS KMS). Elle est mise à jour automatiquement à chaque changement. Le serveur peut déposer les secrets mais pas les relire : seuls les administrateurs du compte AWS y ont accès.
 
 ---
@@ -180,7 +179,7 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
 - **Test de restauration automatique chaque mois** : la dernière sauvegarde est déchiffrée et restaurée dans une base temporaire, puis comparée à la production (profils, RDV, documents, commandes pharmacie, proches). La base temporaire est ensuite supprimée.
 
 À compléter :
-- ✅ La procédure de restauration complète, y compris sur un nouveau serveur, est décrite dans le document de passation.
+- ✅ La procédure de restauration complète, y compris sur un nouveau serveur, est documentée.
 
 ### Un test d'intrusion a-t-il été fait ?
 ✅ **Un test d'intrusion interne a été réalisé sur la production (cary.bio).** Les tests étaient non destructifs, menés depuis Internet comme un attaquant extérieur, et complétés par une revue de la configuration du serveur et du code.
@@ -220,7 +219,7 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
   - journaux techniques conservés 1 an ;
   - nettoyage automatique chaque semaine.
 - ✅ **Durées de conservation définies pour chaque traitement**, d'après les référentiels CNIL du secteur de la santé (dossiers : 5 ans puis 15 ans d'archive ; comptes inactifs : 3 ans ; comptabilité : 10 ans). Les purges courtes sont automatisées. Les plus longues le seront avant leur première échéance (à partir de fin 2027).
-- ✅ **Registre des traitements** (`docs/RGPD-REGISTRE-TRAITEMENTS.md`) et **analyse d'impact** (`docs/RGPD-AIPD-CARY.md`) rédigés, à signer par ZENFACT SAS.
+- ✅ **Registre des traitements** et **analyse d'impact** rédigés, à signer par ZENFACT SAS.
 - ✅ **Contact protection des données** : contact@cary.bio, indiqué dans la politique de confidentialité et les mentions légales.
 
 ### Y a-t-il déjà eu une panne importante ou un incident de sécurité ?
