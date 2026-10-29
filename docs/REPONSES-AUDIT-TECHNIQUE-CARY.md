@@ -13,7 +13,7 @@
 
 | Sujet | État |
 |---|---|
-| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : attestation de cession (annexe A), transfert du dépôt de code et du projet Expo. |
+| Propriété | ✅ Tous les comptes sont au nom de ZENFACT SAS : code source (GitHub), AWS, domaine cary.bio, Apple, Google Play, Stripe, Brevo, Twilio, Google Maps, xAI. ⏳ À finaliser : signature de l'attestation de cession (annexe A). |
 | Coût actuel | Environ 50 USD/mois, soit environ 45 €/mois. |
 | Technologies | ✅ Standards et répandues : PHP, MySQL, Nuxt/Vue, React Native/Expo. Faciles à reprendre. |
 | Chiffrement des données de santé | ✅ AES-256-GCM, dans la base comme sur les fichiers. |
@@ -48,8 +48,7 @@ Cette cession doit être **écrite et signée** par les deux sociétés : en dro
 | Twilio (SMS) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | Google Maps (adresses) | ✅ **ZENFACT SAS** | Au nom de la société. |
 | xAI (assistant IA) | ✅ **ZENFACT SAS** | Au nom de la société. |
-| Code source (GitHub) | ⏳ Compte GitHub **Cary** de la société | Transfert du dépôt en cours. |
-| Builds mobiles (Expo / EAS) | ⏳ | Compte Expo au nom de ZENFACT SAS à créer, puis transfert du projet. |
+| Code source (GitHub) | ✅ **ZENFACT SAS** | Compte GitHub Cary de la société. |
 
 ### Si le développeur n'était plus disponible, quelqu'un d'autre pourrait-il reprendre ?
 Oui, à condition d'avoir les accès ci-dessus.
@@ -250,8 +249,7 @@ Aucune réécriture n'est nécessaire : ce sont des évolutions d'infrastructure
 ### Combien coûtent l'hébergement et les services par mois ?
 **Environ 50 USD par mois, soit environ 45 € par mois**, hébergement et services compris :
 - **serveur AWS Paris et stockage S3** (documents, sauvegardes, archives : quelques euros par mois) ;
-- **services à l'usage** : e-mails (Brevo), SMS (Twilio), assistant IA (xAI), adresses (Google Maps) ;
-- **builds mobiles** sur le forfait gratuit d'Expo.
+- **services à l'usage** : e-mails (Brevo), SMS (Twilio), assistant IA (xAI), adresses (Google Maps).
 
 Non compris, car payés à part ou prélevés sur les ventes :
 - Apple Developer : 99 $ par an ;
@@ -278,10 +276,9 @@ Pistes à valider avec les laboratoires clients (❓) :
 ### Que referait-on différemment en repartant de zéro ?
 1. **Démarrer directement sur un hébergeur HDS infogéré**, plutôt qu'un serveur à administrer soi-même.
 2. **Mettre en place la supervision dès le premier jour.**
-3. **Ouvrir tous les comptes au nom de la société dès le départ**, y compris GitHub et Expo.
-4. **Séparer dès le début** la base de données et le serveur applicatif.
-5. **Choisir d'emblée des fournisseurs européens** pour les SMS, les notifications et l'IA.
-6. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
+3. **Séparer dès le début** la base de données et le serveur applicatif.
+4. **Choisir d'emblée des fournisseurs européens** pour les SMS, les notifications et l'IA.
+5. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
 
 ---
 
@@ -290,7 +287,7 @@ Pistes à valider avec les laboratoires clients (❓) :
 | Priorité | Action | Délai indicatif |
 |---|---|---|
 | 1 | Copier les clés de chiffrement et de sauvegarde dans le coffre-fort de la société | Cette semaine |
-| 2 | Signer l'attestation de cession (annexe A) ; transférer le dépôt de code et le projet Expo | 2 semaines |
+| 2 | Signer l'attestation de cession (annexe A) | 2 semaines |
 | 3 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
 | 4 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
 | 5 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
