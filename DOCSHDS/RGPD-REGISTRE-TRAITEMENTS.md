@@ -17,7 +17,7 @@
 | Données | Identité, e-mail, téléphone, adresse, date de naissance, sexe, photo de profil ; pour les professionnels : RPPS ou Adeli, SIRET, zone d'intervention ; codes de connexion et mots de passe (hachés). |
 | Destinataires | Équipe habilitée de ZENFACT SAS ; professionnels liés au patient pour les données nécessaires au rendez-vous. |
 | Sous-traitants | AWS (hébergement, Paris), Brevo (e-mails et SMS, France). |
-| Durée | Pendant la vie du compte, puis **3 ans après la dernière activité** ; suppression immédiate sur demande de la personne (bouton dans l'application). |
+| Durée | Pendant la vie du compte. Un compte **sans aucun soin** (ni rendez-vous ni document) est supprimé **3 ans après la dernière activité** ; un compte avec des soins suit la durée du dossier de santé (traitement 3) ; suppression immédiate sur demande de la personne (bouton dans l'application). |
 
 ## Traitement 2 — Prise et gestion des rendez-vous de soins à domicile
 
@@ -102,8 +102,8 @@
 | Sauvegardes (30 jours) | ✅ Automatique (règle de cycle de vie S3). |
 | Suppression d'un compte à la demande | ✅ Disponible dans l'application. |
 | Conversations de l'assistant (1 an) | ✅ Suppression automatique chaque mois. |
-| Comptes inactifs (3 ans) | ✅ Automatique chaque mois : e-mail d'avertissement 30 jours avant, puis suppression si le patient ne s'est pas reconnecté. Jamais de suppression tant qu'un rendez-vous, un abonnement ou une commande est en cours. |
-| Dossiers et documents de santé (5 ans + 15 ans d'archive) | Archivage à mettre en place avant la première échéance (2031) ; suppression avec le compte du patient en cas d'inactivité. |
+| Comptes sans aucun soin (3 ans d'inactivité) | ✅ Automatique chaque mois : e-mail d'avertissement 30 jours avant, puis suppression si la personne ne s'est pas reconnectée. Jamais de suppression tant qu'un rendez-vous, un abonnement ou une commande est en cours. |
+| Dossiers et documents de santé (5 ans + 15 ans d'archive) | ✅ Automatique chaque mois : après 5 ans sans activité (connexion, rendez-vous, document), le dossier est archivé et n'est plus visible des professionnels, le patient y gardant accès ; il redevient actif dès une nouvelle activité ; suppression définitive 15 ans après l'archivage. |
 
 ## Mesures de sécurité communes
 
