@@ -13,10 +13,12 @@ et :
 **ZENFACT SAS**, immatriculée sous le n° SIREN 927 659 508, dont le siège est situé 230 B avenue Corot, 13014 Marseille, représentée par Mme Shany Amar, Présidente, ci-après « le Cessionnaire ».
 
 **Article 1 — Objet.** Le Cédant cède au Cessionnaire, à titre exclusif, l'ensemble des droits patrimoniaux d'auteur sur les créations qu'il a réalisées pour la plateforme **Cary** (ci-après « les Créations ») :
-- le code source et le code objet du site web, des applications mobiles iOS et Android, de l'API et des scripts ;
+- le code source et le code objet du site web, des applications mobiles iOS et Android et de l'API ;
 - les schémas et migrations de base de données ;
 - la documentation, les maquettes, les éléments graphiques et les textes ;
 - toutes les versions passées, présentes et futures réalisées dans le cadre de la prestation.
+
+Sont **exclus** de la cession les outils, scripts, méthodes et documentations d'exploitation propres au Cédant (déploiement, sauvegarde, supervision, maintenance), qui restent sa propriété.
 
 **Article 2 — Droits cédés.** Les droits de reproduction, de représentation, d'adaptation, de modification, de traduction, d'arrangement, de correction, d'intégration dans d'autres logiciels, de commercialisation, de distribution (y compris sur l'App Store et Google Play), de mise à disposition du public et de sous-licence, sur tout support et par tout moyen, connu ou inconnu à ce jour.
 
@@ -24,7 +26,7 @@ et :
 
 **Article 4 — Prix.** La cession est comprise dans le prix de la prestation de développement déjà facturée et réglée. Elle ne donne lieu à aucune rémunération supplémentaire.
 
-**Article 5 — Comptes et accès.** Le Cédant s'engage à transférer au Cessionnaire, ou à remettre sur simple demande, les dépôts de code, les comptes de service, les clés et les accès techniques liés à Cary. Il s'engage aussi à n'en conserver aucune copie au-delà de ce qui est nécessaire à la poursuite de sa mission.
+**Article 5 — Comptes et réversibilité.** Les comptes de service liés à Cary (hébergement, domaine, magasins d'applications, paiement, messagerie) et le dépôt du code source sont ouverts au nom du Cessionnaire, qui en conserve la maîtrise. Toute prestation d'accompagnement d'un nouveau prestataire (documentation d'exploitation, transfert de compétences, transfert de l'exploitation, assistance) constitue une prestation de réversibilité distincte, **facturée sur devis** au tarif du Cédant en vigueur au moment de la demande.
 
 **Article 6 — Composants tiers.** Les bibliothèques open source utilisées restent soumises à leurs licences respectives. Le Cédant garantit qu'elles permettent l'usage commercial de Cary.
 
