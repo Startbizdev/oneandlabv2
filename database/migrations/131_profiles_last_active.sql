@@ -35,6 +35,7 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
+-- updated_at = updated_at : ne pas déclencher le ON UPDATE CURRENT_TIMESTAMP de profiles.updated_at.
 UPDATE profiles
-SET last_active_at = GREATEST(created_at, COALESCE(updated_at, created_at))
+SET last_active_at = GREATEST(created_at, COALESCE(updated_at, created_at)), updated_at = updated_at
 WHERE last_active_at IS NULL;

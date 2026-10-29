@@ -760,7 +760,7 @@ class User
             return;
         }
         $this->db->prepare('
-            UPDATE profiles SET last_active_at = NOW(), retention_warned_at = NULL
+            UPDATE profiles SET last_active_at = NOW(), retention_warned_at = NULL, updated_at = updated_at
             WHERE id = ? AND (last_active_at IS NULL OR last_active_at < CURRENT_DATE)
         ')->execute([$id]);
     }

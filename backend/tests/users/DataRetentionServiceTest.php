@@ -111,6 +111,20 @@ final class DataRetentionServiceTest extends TestCase
         $this->assertNull($this->warnedAt($patient), 'Compte redevenu actif : plus d\'avertissement');
     }
 
+    public function testDailyActivityDoesNotChangeTheProfileModificationDate(): void
+    {
+        $patient = $this->patient('-10 days');
+        $this->db->prepare('UPDATE profiles SET updated_at = ? WHERE id = ?')->execute(['2026-01-02 03:04:05', $patient]);
+
+        (new User($this->db))->touchLastActive($patient);
+
+        $stmt = $this->db->prepare('SELECT updated_at, last_active_at >= CURRENT_DATE FROM profiles WHERE id = ?');
+        $stmt->execute([$patient]);
+        [$updatedAt, $touchedToday] = $stmt->fetch(PDO::FETCH_NUM);
+        $this->assertSame('2026-01-02 03:04:05', (string) $updatedAt);
+        $this->assertSame(1, (int) $touchedToday);
+    }
+
     public function testSimulationChangesNothing(): void
     {
         $toWarn = $this->patient('-3 years +10 days');
