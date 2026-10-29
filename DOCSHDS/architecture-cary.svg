@@ -29,7 +29,6 @@
   <!-- AWS -->
   <rect x="30" y="250" width="700" height="420" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
   <text x="710" y="278" text-anchor="end" font-size="16" font-weight="700" fill="#9a3412">AWS, région Paris : certifiée HDS</text>
-  <text x="710" y="298" text-anchor="end" font-size="12.5" fill="#9a3412">compte ZENFACT SAS</text>
 
   <line x1="305" y1="208" x2="185" y2="312" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
   <line x1="595" y1="208" x2="255" y2="312" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>

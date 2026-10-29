@@ -1,10 +1,5 @@
 # Cary : schéma de l'architecture
 
-| | |
-|---|---|
-| **Propriétaire de la plateforme Cary** | **ZENFACT SAS** |
-| **Prestataire de développement** | **Startbiz LLC** — License 2218328.01 |
-
 Ce document présente l'architecture générale de la plateforme Cary : les grandes briques et la circulation des données.
 
 ---
@@ -39,7 +34,7 @@ Ce document présente l'architecture générale de la plateforme Cary : les gran
 4. **Chaque accès** à une donnée de santé est inscrit dans le **journal d'accès**.
 5. Chaque nuit, la base est **sauvegardée**, chiffrée, dans un espace séparé. Le journal d'accès est **archivé** chaque mois.
 
-Les données de santé sont **stockées uniquement chez AWS, région Paris**, sur le compte de ZENFACT SAS. Les services externes ne stockent pas le dossier patient : ils transmettent des messages courts (e-mail, SMS, notification) ou reçoivent des données masquées (assistant IA).
+Les données de santé sont **stockées uniquement chez AWS, région Paris**. Les services externes ne stockent pas le dossier patient : ils transmettent des messages courts (e-mail, SMS, notification) ou reçoivent des données masquées (assistant IA).
 
 ---
 
@@ -64,4 +59,3 @@ Rôles : patient, infirmier, préleveur, laboratoire, sous-compte de laboratoire
 - **Sauvegardes** quotidiennes, chiffrées, vérifiées et copiées sur S3 ; restauration testée automatiquement chaque mois.
 - **Documents** sur S3, sans limite de taille, avec historique des versions.
 - **Serveur dimensionné au juste besoin** pour maîtriser les coûts. Sur AWS, il peut passer à une taille supérieure en quelques minutes, sans changer le code.
-- **Tous les comptes** (AWS, domaine, magasins d'applications, services externes, code source) sont au nom de ZENFACT SAS.
