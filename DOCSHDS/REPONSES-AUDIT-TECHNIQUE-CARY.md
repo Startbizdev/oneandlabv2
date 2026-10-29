@@ -218,7 +218,7 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
   - journal d'accès conservé et archivé ;
   - journaux techniques conservés 1 an ;
   - nettoyage automatique chaque semaine.
-- ✅ **Durées de conservation définies pour chaque traitement**, d'après les référentiels CNIL du secteur de la santé (dossiers : 5 ans puis 15 ans d'archive ; comptes inactifs : 3 ans ; comptabilité : 10 ans). Les purges courtes sont automatisées. Les plus longues le seront avant leur première échéance (à partir de fin 2027).
+- ✅ **Durées de conservation définies pour chaque traitement**, d'après les référentiels CNIL du secteur de la santé (dossiers : 5 ans puis 15 ans d'archive ; comptes inactifs : 3 ans ; comptabilité : 10 ans). Elles sont appliquées automatiquement chaque mois : conversations de l'assistant après 1 an, comptes patients inactifs depuis 3 ans (prévenus par e-mail 30 jours avant, jamais supprimés tant qu'un rendez-vous ou une commande est en cours).
 - ✅ **Registre des traitements** et **analyse d'impact** rédigés, à signer par ZENFACT SAS.
 - ✅ **Contact protection des données** : contact@cary.bio, indiqué dans la politique de confidentialité et les mentions légales.
 
@@ -272,7 +272,7 @@ Les fonctionnalités existantes et les évolutions prévues sont détaillées da
 | 1 | Signer l'attestation de cession des droits | 2 semaines |
 | 2 | Valider et signer le registre des traitements et l'analyse d'impact | 2 semaines |
 | 3 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
-| 4 | Automatiser les durées de conservation longues (assistant, comptes inactifs, archives des dossiers) | Avant fin 2027 |
+| 4 | Archivage intermédiaire des dossiers de santé au-delà de 5 ans | Avant 2031 |
 | 5 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
 | 6 | Optionnel : test d'intrusion par un prestataire indépendant | À la demande d'un grand compte ou d'un investisseur |
 

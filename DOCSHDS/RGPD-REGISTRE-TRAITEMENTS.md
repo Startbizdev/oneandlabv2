@@ -101,9 +101,9 @@
 | Journaux techniques (1 an) | ✅ Automatique chaque semaine. |
 | Sauvegardes (30 jours) | ✅ Automatique (règle de cycle de vie S3). |
 | Suppression d'un compte à la demande | ✅ Disponible dans l'application. |
-| Conversations de l'assistant (1 an) | Suppression automatique à mettre en place avant la première échéance (fin 2027). |
-| Comptes inactifs (3 ans) | Suppression automatique à mettre en place avant la première échéance (2029). |
-| Dossiers et documents de santé (5 ans + 15 ans d'archive) | Archivage à mettre en place avant la première échéance (2031). |
+| Conversations de l'assistant (1 an) | ✅ Suppression automatique chaque mois. |
+| Comptes inactifs (3 ans) | ✅ Automatique chaque mois : e-mail d'avertissement 30 jours avant, puis suppression si le patient ne s'est pas reconnecté. Jamais de suppression tant qu'un rendez-vous, un abonnement ou une commande est en cours. |
+| Dossiers et documents de santé (5 ans + 15 ans d'archive) | Archivage à mettre en place avant la première échéance (2031) ; suppression avec le compte du patient en cas d'inactivité. |
 
 ## Mesures de sécurité communes
 

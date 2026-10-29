@@ -49,7 +49,8 @@ Le traitement porte sur des **données de santé** (catégorie particulière, ar
 | Supervision et alertes | ✅ En place |
 | Durcissement du serveur (pare-feu, SSH, en-têtes) | ✅ En place |
 | Assistant IA en rétention zéro, avec pseudonymisation | ✅ En place |
-| Automatisation des durées de conservation longues (comptes inactifs, archives des dossiers) | À faire avant les premières échéances (2027 à 2031) |
+| Durées de conservation automatisées (assistant, comptes inactifs avec avertissement) | ✅ En place |
+| Archivage intermédiaire des dossiers de santé (au-delà de 5 ans) | À faire avant la première échéance (2031) |
 | Contrats de sous-traitance (DPA) signés avec chaque prestataire | À vérifier par la société |
 | Test d'intrusion par un prestataire indépendant | Optionnel, avant un grand compte ou une levée de fonds |
 
