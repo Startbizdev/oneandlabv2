@@ -21,7 +21,7 @@
 | Chiffrement des données de santé | ✅ AES-256-GCM, en base comme sur les fichiers. |
 | Traçabilité des accès aux dossiers | ✅ Journal d'accès conservé 12 mois. |
 | Hébergement | ⚠️ AWS région Paris : infrastructure certifiée HDS, mais l'administration du serveur ne l'est pas. Voir § 3. |
-| Sauvegardes | ✅ Sauvegarde quotidienne chiffrée et vérifiée depuis le 29 octobre 2026. ⏳ L'envoi vers S3 attend la création du bucket dans AWS. |
+| Sauvegardes | ✅ Depuis le 29 octobre 2026 : sauvegarde quotidienne chiffrée et vérifiée de la base et de tous les fichiers, copiée sur AWS S3 Paris et conservée 30 jours. |
 | Test d'intrusion | ✅ Test interne du 29 octobre 2026 : aucune faille critique, 7 durcissements recommandés. Un test indépendant reste conseillé. |
 | Services hors UE recevant des données | ⚠️ SMS (Twilio), notifications (Expo), assistant IA (xAI). Voir § 3. |
 | Montée en charge | ⚠️ Un seul petit serveur (2 processeurs, 2 Go de mémoire) fait tout tourner. |
@@ -72,7 +72,7 @@ Oui, techniquement, à condition d'avoir les accès ci-dessus.
 | Applications iPhone et Android | React Native avec Expo (un seul code pour les deux plateformes) |
 | API (serveur) | PHP 8.2 sans framework, servi par Nginx et PHP-FPM |
 | Base de données | MySQL (environ 6,8 Go aujourd'hui) |
-| Fichiers (ordonnances, documents, photos) | Stockés **chiffrés** sur le disque du serveur (environ 6 Go) |
+| Fichiers (ordonnances, documents, photos) | Stockés **chiffrés** sur le disque du serveur (environ 6 Go), copiés chaque nuit sur AWS S3 Paris |
 | Tâches automatiques | 6 tâches planifiées : clôture des RDV, expiration des offres, relances, purge des journaux… |
 
 ### Outils no-code ou services externes ?
@@ -135,7 +135,7 @@ Aucun outil no-code. Services externes utilisés :
 
 ### Toutes les données de santé (base, fichiers, sauvegardes) sont-elles chez l'hébergeur HDS ?
 - ✅ La base et les fichiers sont sur le serveur AWS Paris.
-- ⚠️ Il n'y a pas de sauvegarde automatique (voir § 4), donc pas de sauvegarde hébergée ailleurs non plus.
+- ✅ Les sauvegardes sont sur AWS S3, région Paris, dans le même compte AWS de ZENFACT SAS (voir § 4).
 - ⚠️ Les copies de base faites ponctuellement pour développer ou tester se trouvent sur le poste du développeur. Elles devraient être interdites, ou anonymisées.
 - ⚠️ D'anciens fichiers médicaux **chiffrés** ont été présents dans l'historique du dépôt de code. Ils ont été retirés du suivi en septembre 2026, mais restent dans l'historique. Ils sont illisibles sans les clés du serveur, mais il est préférable de **purger l'historique Git**.
 
@@ -174,13 +174,15 @@ Oui, en partie :
 - ✅ Les 3 derniers jours sont gardés sur le serveur pour une restauration rapide.
 - ✅ Scripts versionnés dans le dépôt (`scripts/backup/`), journal sur le serveur (`/var/log/cary-backup.log`).
 
-**À terminer :**
-- ⏳ **Copie hors du serveur vers AWS S3 (région Paris)** : le script est prêt et envoie déjà, s'il est configuré, la base **et** tous les fichiers (ordonnances, PDF, photos, documents, déjà chiffrés par l'application). Il manque, dans la console AWS de ZENFACT SAS :
-  1. créer un bucket S3 privé en région Paris (`eu-west-3`) ;
-  2. activer le versioning et une règle de conservation de 30 jours ;
-  3. donner au serveur un rôle IAM qui ne peut **qu'écrire** dans ce bucket.
+- ✅ **Copie hors du serveur vers AWS S3, région Paris, en place depuis le 29 octobre 2026 :**
+  - bucket privé `cary-backups-519428392323`, sur le compte AWS de ZENFACT SAS ;
+  - accès public bloqué, chiffrement S3 activé, historique des versions activé ;
+  - chaque nuit, la base chiffrée y est envoyée, et **tous les fichiers** (ordonnances, PDF, photos, documents, déjà chiffrés par l'application) y sont synchronisés ;
+  - **conservation de 30 jours** : sauvegardes de la base et anciennes versions de fichiers supprimées automatiquement au-delà ;
+  - le serveur n'a qu'un droit **d'écriture** (rôle IAM `cary-server-backup`). Il ne peut ni lire ni supprimer les sauvegardes : même un serveur piraté ne peut pas les effacer ;
+  - premier envoi vérifié le 29 octobre 2026 : **7 468 fichiers (6,3 Go), identiques au serveur**, plus la base (148 Mo). Durée totale : 3 min 30.
 
-  Ensuite, une seule commande active l'envoi. Tant que ce n'est pas fait, **les sauvegardes restent sur le même disque que la production**.
+**À terminer :**
 - ⏳ **Clés hors du serveur** : la clé des sauvegardes et la clé maîtresse de chiffrement doivent être copiées dans le coffre-fort de mots de passe de ZENFACT SAS. Sans elles, aucune sauvegarde n'est restaurable.
 - ⏳ **Test de restauration complet** sur une machine séparée, une fois S3 en place. À refaire chaque trimestre.
 
@@ -298,7 +300,7 @@ Pistes à valider avec les laboratoires clients (❓ besoin à confirmer) :
 
 | Priorité | Action | Délai indicatif |
 |---|---|---|
-| 1 | Sauvegardes : ✅ quotidiennes et chiffrées depuis le 29/10. Reste : bucket S3, clés dans le coffre-fort, test de restauration | Cette semaine |
+| 1 | Sauvegardes : ✅ quotidiennes, chiffrées et copiées sur S3 depuis le 29/10. Reste : clés dans le coffre-fort, test de restauration | Cette semaine |
 | 1 bis | Durcissements du test d'intrusion : en-têtes de sécurité, SSH restreint, pare-feu, `.DS_Store` | Cette semaine |
 | 2 | Signer l'attestation de cession (annexe A) ; transférer le dépôt vers le compte GitHub Cary et le projet Expo vers un compte ZENFACT SAS | 2 semaines |
 | 3 | Conformité HDS : infogérant HDS sur AWS, ou migration vers un hébergeur HDS clé en main | 1 à 3 mois |
