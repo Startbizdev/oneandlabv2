@@ -263,7 +263,9 @@ Non compris, car payés à part ou prélevés sur les ventes :
 Les fonctionnalités existantes et les évolutions prévues sont détaillées dans le document **Pistes d'évolution**.
 
 ### Que referait-on différemment en repartant de zéro ?
-1. **Mettre en place la supervision dès le premier jour.**
-2. **Séparer dès le début** la base de données et le serveur applicatif.
-3. **Choisir d'emblée un fournisseur d'IA hébergé en Europe sur une infrastructure HDS.**
-4. **Utiliser un framework PHP standard** (Laravel ou Symfony). Le code actuel est propre et testé, mais un framework facilite le recrutement et la reprise.
+**Rien de fondamental.** Les choix techniques de Cary ont été faits volontairement, et ils restent adaptés :
+
+1. **Une API PHP sur mesure, sans framework.** Elle est légère et rapide. Le code est entièrement maîtrisé, sans dépendre des évolutions d'un framework tiers. Elle est propre, structurée et couverte par environ 1 000 tests automatisés.
+2. **Un seul serveur dimensionné au juste besoin.** Les coûts restent bas tant que le volume ne justifie pas plus. AWS permet de monter en puissance en quelques minutes, sans toucher au code. Les documents sont déjà sur S3, sans limite de taille.
+3. **L'assistant IA Grok (xAI).** Il est performant et la rétention zéro est activée. Une barrière de confidentialité pseudonymise les données avant chaque envoi. Le code permet de changer de fournisseur par simple configuration, si besoin.
+4. **Une exploitation automatisée.** Sauvegardes, tests de restauration, supervision avec alertes, maintenance et durées de conservation tournent sans intervention manuelle.
