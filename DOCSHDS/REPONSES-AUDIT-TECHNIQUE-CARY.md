@@ -88,28 +88,8 @@ Aucun outil no-code. Services externes utilisés :
 | Apple / Google | Achats intégrés et distribution des applis | États-Unis |
 | Let's Encrypt | Certificats HTTPS | — |
 
-### Schéma simple
-
-```
- Patients / infirmiers / labos / pharmacies / pros
-        │                         │
-   Appli iPhone/Android        Site web cary.bio
-   (Expo, React Native)        (Nuxt, Node.js)
-        │                         │
-        └────────── HTTPS ────────┘
-                     │
-            Serveur AWS Paris
-          ┌──────────────────────────┐
-          │ Nginx → API PHP → MySQL  │
-          │ Tâches planifiées        │
-          └──────────────────────────┘
-               │                │
-     Documents chiffrés    Sauvegardes chiffrées
-       (AWS S3 Paris)        (AWS S3 Paris)
-
-   Services externes : Brevo (e-mail), Twilio (SMS), Expo (push),
-   Google Maps (adresses), xAI (assistant), Stripe / Apple / Google (paiements)
-```
+### Schéma de l'architecture
+Voir le document séparé **Schéma de l'architecture** (`ARCHITECTURE-CARY.md`).
 
 ### Comment sont séparés les accès entre infirmiers, labos et pharmacies ?
 - ✅ Connexion par **code à usage unique envoyé par e-mail** (valable 5 minutes) ou par mot de passe. Mots de passe et codes sont stockés **hachés** (bcrypt), jamais en clair. La session est portée par un jeton signé (JWT).
