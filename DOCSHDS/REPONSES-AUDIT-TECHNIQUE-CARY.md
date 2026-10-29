@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | **Propriétaire de la plateforme Cary** | **ZENFACT SAS** — SIREN 927 659 508 — 230 B avenue Corot, 13014 Marseille — Présidente : Shany Amar |
-| **Prestataire de développement** | **Startbiz LLC** — License 2218328.01 |
 
 **Légende :** ✅ en place · ⏳ en cours
 
@@ -31,7 +30,7 @@
 ## 1. Le code et les accès
 
 ### Le code appartient-il bien à Cary (contrat avec cession des droits) ?
-✅ **Oui.** Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS. Startbiz LLC intervient comme prestataire de développement, et cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'elle a développé pour Cary.
+✅ **Oui.** Le code, les applications, la base de données, les contenus et les comptes appartiennent à ZENFACT SAS. Le prestataire de développement cède à ZENFACT SAS l'intégralité des droits patrimoniaux sur ce qu'il a développé pour Cary.
 
 Cette cession doit être **écrite et signée** par les deux sociétés : en droit français, une cession de droits d'auteur doit préciser les droits cédés, leur étendue, leur destination, le territoire et la durée. Le modèle d'attestation est dans le document **Attestation de cession des droits**, à faire relire par l'avocat de ZENFACT SAS puis à signer.
 
