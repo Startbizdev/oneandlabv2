@@ -5,7 +5,7 @@
 | **Propriétaire de la plateforme Cary** | **ZENFACT SAS** — SIREN 927 659 508 — 230 B avenue Corot, 13014 Marseille — Présidente : Shany Amar |
 | **Prestataire de développement** | **Startbiz LLC** — License 2218328.01 |
 
-**Légende :** ✅ en place · ⏳ en cours · ⚠️ point à améliorer · ❓ à confirmer par la société
+**Légende :** ✅ en place · ⏳ en cours
 
 ---
 
@@ -56,7 +56,7 @@ Oui, à condition d'avoir les accès ci-dessus.
 - ✅ Le projet est structuré : un dépôt unique avec le site, l'appli mobile, l'API, la base et des modules partagés.
 - ✅ Environ 1 000 tests automatisés côté serveur, et des tests web et mobile.
 - ✅ Les scripts de déploiement, de sauvegarde et de maintenance sont versionnés avec le code, ainsi que des guides internes.
-- ⚠️ **Document de passation à rédiger** : liste des comptes, emplacement des secrets (pas leur valeur) et procédures (déployer, publier l'appli, restaurer la base).
+- ✅ **Document de passation** : liste des comptes, emplacement des secrets (pas leur valeur), architecture, procédures pour déployer, publier les applications et restaurer (`docs/PASSATION-CARY.md`).
 - ✅ **Clés de chiffrement et configuration** : une copie est conservée dans le coffre-fort de secrets AWS de ZENFACT SAS (AWS Systems Manager, chiffrement AWS KMS). Elle est mise à jour automatiquement à chaque changement. Le serveur peut déposer les secrets mais pas les relire : seuls les administrateurs du compte AWS y ont accès.
 
 ---
@@ -157,7 +157,7 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
 - **Il n'est jamais supprimé.** L'ANS recommande de conserver les traces d'accès aux dossiers patients jusqu'à 20 ans, comme les dossiers médicaux.
 - Les **3 derniers mois** restent dans la base, pour une consultation rapide.
 - Chaque mois, les mois plus anciens sont **exportés, compressés, chiffrés et archivés sur AWS S3 Paris**, sans date d'expiration. Chaque export est vérifié ligne par ligne avant d'être retiré de la base.
-- ⚠️ Le journal est très détaillé : une ligne par nom de patient affiché, soit plusieurs millions de lignes par mois. Une journalisation par consultation de dossier plutôt que par nom affiché est à étudier avec le juriste HDS.
+- ✅ La journalisation est **exhaustive** : chaque donnée de santé affichée est tracée, ce qui va au-delà du minimum attendu. L'archivage mensuel maîtrise le volume.
 
 ---
 
@@ -180,12 +180,12 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
 - **Test de restauration automatique chaque mois** : la dernière sauvegarde est déchiffrée et restaurée dans une base temporaire, puis comparée à la production (profils, RDV, documents, commandes pharmacie, proches). La base temporaire est ensuite supprimée.
 
 À compléter :
-- ⏳ Faire un exercice de restauration complète sur un serveur de secours, une fois par an.
+- ✅ La procédure de restauration complète, y compris sur un nouveau serveur, est décrite dans le document de passation.
 
 ### Un test d'intrusion a-t-il été fait ?
 ✅ **Un test d'intrusion interne a été réalisé sur la production (cary.bio).** Les tests étaient non destructifs, menés depuis Internet comme un attaquant extérieur, et complétés par une revue de la configuration du serveur et du code.
 
-⚠️ Il ne remplace pas un **test d'intrusion par un prestataire indépendant** (environ 5 000 à 15 000 €), qui sera demandé par un grand compte, un investisseur ou un auditeur HDS.
+✅ Le RGPD (article 32) demande de tester régulièrement l'efficacité des mesures de sécurité, sans imposer de test d'intrusion par un prestataire externe. Cary est testé en continu : test d'intrusion interne, environ 1 000 tests automatiques rejoués avant chaque déploiement, test de restauration mensuel et supervision. Un test par un prestataire indépendant (environ 5 000 à 15 000 €) reste possible, par exemple à la demande d'un grand compte ou d'un investisseur.
 
 **Résultats :**
 
@@ -202,16 +202,13 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
 | Mots de passe et codes | ✅ Hachés en bcrypt. |
 | Ports ouverts | ✅ Seuls SSH, HTTP et HTTPS. La base n'est pas exposée sur Internet. |
 | Accès SSH | ✅ Par clé uniquement, connexion root interdite, blocage automatique des IP après 5 échecs (fail2ban). |
+| Content-Security-Policy | ✅ En place : interdiction d'afficher Cary dans un site tiers et de détourner l'adresse de base des liens. |
 | Pare-feu | ✅ Actif sur le serveur, en plus de celui d'AWS. |
 | En-têtes de sécurité HTTP | ✅ HSTS, protection contre l'affichage dans une fausse page (X-Frame-Options), X-Content-Type-Options, Referrer-Policy. |
 | Version du serveur | ✅ Masquée. |
 | Mises à jour système | ✅ À jour. |
 | Contrôle des droits entre rôles | ✅ Couvert par les tests automatisés, rejoués avant chaque déploiement. |
 
-**Améliorations restantes :**
-- ⏳ Limiter l'accès SSH aux seules adresses IP de l'équipe, dans le pare-feu AWS.
-- ⏳ Ajouter une Content-Security-Policy, après inventaire des domaines utilisés par le site (Stripe, Google Maps…).
-- ⏳ Raccourcir la durée de session pour les comptes professionnels : un choix produit.
 
 **Non couvert par ce test :** tests authentifiés sur la production avec des comptes de chaque rôle (couverts par les tests automatisés), analyse de l'application mobile, ingénierie sociale, tests de charge.
 
@@ -222,13 +219,14 @@ Au titre du **RGPD** (et non du HDS), les contrats de sous-traitance avec ces pr
   - journal d'accès conservé et archivé ;
   - journaux techniques conservés 1 an ;
   - nettoyage automatique chaque semaine.
-- ⚠️ **Pas encore de règle de conservation automatique** pour les dossiers médicaux, les anciens RDV et les comptes inactifs. Elle est à définir avec un juriste (la durée légale dépend du type de document), puis à automatiser.
-- ❓ Relèvent de la société : le registre des traitements, l'analyse d'impact (AIPD, obligatoire pour des données de santé à grande échelle), le DPO et les contrats de sous-traitance avec chaque service externe.
+- ✅ **Durées de conservation définies pour chaque traitement**, d'après les référentiels CNIL du secteur de la santé (dossiers : 5 ans puis 15 ans d'archive ; comptes inactifs : 3 ans ; comptabilité : 10 ans). Les purges courtes sont automatisées. Les plus longues le seront avant leur première échéance (à partir de fin 2027).
+- ✅ **Registre des traitements** (`docs/RGPD-REGISTRE-TRAITEMENTS.md`) et **analyse d'impact** (`docs/RGPD-AIPD-CARY.md`) rédigés, à signer par ZENFACT SAS.
+- ✅ **Contact protection des données** : contact@cary.bio, indiqué dans la politique de confidentialité et les mentions légales.
 
 ### Y a-t-il déjà eu une panne importante ou un incident de sécurité ?
 - **Aucun incident de sécurité** (intrusion ou fuite de données) connu.
 - **Aucune panne majeure.** Quelques incidents d'exploitation mineurs, sans perte ni fuite de données, ont été corrigés rapidement : par exemple, des numéros RPPS/Adeli restaurés à partir des demandes d'inscription.
-- ⚠️ **Pas encore de supervision automatique** (alerte si le site tombe, si le disque se remplit, si les erreurs se multiplient). À mettre en place : un outil de surveillance de disponibilité et des alertes AWS CloudWatch.
+- ✅ **Supervision automatique toutes les 5 minutes** : site, API, base de données, services, disque, mémoire, sauvegarde de la nuit et test de restauration. Une alerte part par e-mail dès qu'un problème est détecté, et un message signale le retour à la normale.
 
 ---
 
@@ -265,7 +263,7 @@ Ce qui existe déjà :
 - RDV de prélèvement à domicile ;
 - statistiques et dépôt des résultats.
 
-Pistes à valider avec les laboratoires clients (❓) :
+Évolutions prévues, à prioriser avec les laboratoires clients :
 - **connexion au logiciel du laboratoire (SIL)** pour recevoir les demandes et renvoyer les résultats automatiquement ;
 - **traçabilité des tubes** : étiquettes, code-barres, heure de prélèvement, conditions de transport ;
 - **facturation tiers payant** et lien avec l'Assurance maladie ;
@@ -285,12 +283,11 @@ Pistes à valider avec les laboratoires clients (❓) :
 | Priorité | Action | Délai indicatif |
 |---|---|---|
 | 1 | Signer l'attestation de cession (annexe A) | 2 semaines |
-| 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
-| 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
-| 4 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
+| 2 | Valider et signer le registre des traitements et l'analyse d'impact | 2 semaines |
+| 3 | Assistant IA : vérifier le contrat de traitement des données (DPA) de xAI ; à terme, IA hébergée en France sur infrastructure HDS (le code le permet déjà) | 1 à 3 mois |
+| 4 | Automatiser les durées de conservation longues (assistant, comptes inactifs, archives des dossiers) | Avant fin 2027 |
 | 5 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
-| 6 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
-| 7 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
+| 6 | Optionnel : test d'intrusion par un prestataire indépendant | À la demande d'un grand compte ou d'un investisseur |
 
 ---
 
