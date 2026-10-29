@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../DbSchemaCache.php';
+require_once __DIR__ . '/PatientArchive.php';
 require_once __DIR__ . '/../RelativeProfile.php';
 
 /** Liens patient ↔ professionnel (PPA) et règles d’accès staff aux dossiers patients. */
@@ -93,6 +94,8 @@ final class PatientProfessionalAccessService
         if (!in_array($source, self::LINK_SOURCES, true)) {
             $source = 'created';
         }
+        // Nouveau lien de soin : le dossier archivé redevient actif.
+        PatientArchive::restore($this->db, $patientId);
         $linkId = $this->generateUUID();
         try {
             $ins = $this->db->prepare('
@@ -214,7 +217,7 @@ final class PatientProfessionalAccessService
 
     public function hasProfessionalAccessToPatient(string $requesterId, string $patientId): bool
     {
-        if (!$this->hasPatientProfessionalAccessTable()) {
+        if (!$this->hasPatientProfessionalAccessTable() || PatientArchive::isArchived($this->db, $patientId)) {
             return false;
         }
         $stmt = $this->db->prepare('
@@ -279,6 +282,9 @@ final class PatientProfessionalAccessService
         if ($requesterRole === 'super_admin') {
             return $this->getRoleById($patientId) === 'patient';
         }
+        if (PatientArchive::isArchived($this->db, $patientId)) {
+            return false;
+        }
         if ($this->isPatientVisibleInStaffList($requesterId, $requesterRole, $patientId)) {
             return true;
         }
@@ -339,6 +345,10 @@ final class PatientProfessionalAccessService
     {
         if (!$this->hasCreatedByColumn()) {
             return;
+        }
+        // Dossiers archivés (5 ans sans activité) : hors des listes et recherches des professionnels.
+        if ((!empty($filters['for_lab_owner_id']) || !empty($filters['created_by'])) && PatientArchive::isAvailable($this->db)) {
+            $sql .= ' AND profiles.archived_at IS NULL';
         }
         $usePpa = $this->hasPatientProfessionalAccessTable();
         if (!empty($filters['for_lab_owner_id']) && $this->hasLabIdColumn()) {

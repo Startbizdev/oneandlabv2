@@ -8,6 +8,8 @@ require_once __DIR__ . '/../fixtures/SkipsWithoutPdo.php';
 require_once __DIR__ . '/../TestDatabase.php';
 require_once __DIR__ . '/../fixtures/TestFixtures.php';
 require_once __DIR__ . '/../../lib/users/DataRetentionService.php';
+require_once __DIR__ . '/../../lib/users/PatientProfessionalAccessService.php';
+require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
 
 final class RetentionRecordingEmail extends Email
 {
@@ -53,6 +55,7 @@ final class DataRetentionServiceTest extends TestCase
             new AccountDeletionService($this->db, $users, new Logger($this->db), $this->email, 'support@test.invalid'),
         );
         $this->now = new DateTimeImmutable('now');
+        PatientArchive::forget();
     }
 
     protected function tearDown(): void
@@ -62,6 +65,7 @@ final class DataRetentionServiceTest extends TestCase
                 $this->db->prepare('DELETE FROM appointments WHERE id = ?')->execute([$id]);
             }
             foreach ($this->profiles as $id) {
+                $this->db->prepare('DELETE FROM patient_professional_access WHERE patient_id = ? OR professional_id = ?')->execute([$id, $id]);
                 $this->db->prepare('DELETE FROM assistant_conversations WHERE user_id = ?')->execute([$id]);
                 $this->db->prepare('DELETE FROM profiles WHERE id = ?')->execute([$id]);
             }
@@ -88,15 +92,69 @@ final class DataRetentionServiceTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $result['deleted_accounts']);
     }
 
-    public function testAccountWithOngoingAppointmentIsKeptAndRetriedLater(): void
+    public function testPatientWithCareHistoryIsNeverDeletedForInactivityButArchivedAfterFiveYears(): void
     {
-        $patient = $this->patient('-3 years -5 days', '-31 days');
-        $this->appointment($patient, 'confirmed');
+        $patient = $this->patient('-6 years', '-40 days');
+        $this->appointment($patient, 'completed', '-6 years');
+        $nurse = $this->staff('nurse');
+        $access = new PatientProfessionalAccessService($this->db);
+        $access->linkPatientProfessional($patient, $nurse, null, 'manual_link');
+        $this->assertTrue($access->hasProfessionalAccessToPatient($nurse, $patient));
 
         $result = $this->service->run($this->now, true);
 
-        $this->assertTrue($this->exists($patient));
-        $this->assertGreaterThanOrEqual(1, $result['deletion_skipped']);
+        $this->assertTrue($this->exists($patient), 'Un dossier de soins ne suit pas la règle des 3 ans');
+        $this->assertNotNull($this->archivedAt($patient));
+        $this->assertGreaterThanOrEqual(1, $result['archived']);
+        $this->assertFalse($access->hasProfessionalAccessToPatient($nurse, $patient), 'Archivé : plus visible du soignant');
+        $this->assertFalse($access->isPatientVisibleInStaffList($nurse, 'nurse', $patient), 'Archivé : hors de « Mes patients »');
+        $this->assertFalse(MedicalDocumentAccess::userHasProfileDocumentAccess($this->db, ['user_id' => $nurse, 'role' => 'nurse'], $patient));
+        $this->assertTrue(
+            MedicalDocumentAccess::userHasProfileDocumentAccess($this->db, ['user_id' => $patient, 'role' => 'patient'], $patient),
+            'Le patient garde accès à son dossier'
+        );
+    }
+
+    public function testRecentCareKeepsTheDossierActive(): void
+    {
+        $patient = $this->patient('-6 years');
+        $this->appointment($patient, 'completed', '-2 months');
+
+        $this->service->run($this->now, true);
+
+        $this->assertNull($this->archivedAt($patient));
+    }
+
+    public function testArchivedDossierComesBackWhenThePatientReconnectsOrHasNewCare(): void
+    {
+        $loginPatient = $this->patient('-6 years');
+        $this->appointment($loginPatient, 'completed', '-6 years');
+        $carePatient = $this->patient('-6 years');
+        $this->appointment($carePatient, 'completed', '-6 years');
+        $this->service->run($this->now, true);
+        $this->assertNotNull($this->archivedAt($loginPatient));
+        $this->assertNotNull($this->archivedAt($carePatient));
+
+        (new User($this->db))->touchLastActive($loginPatient);
+        $this->appointment($carePatient, 'pending', '+3 days');
+        $result = $this->service->run($this->now, true);
+
+        $this->assertNull($this->archivedAt($loginPatient), 'Reconnexion : dossier réactivé');
+        $this->assertNull($this->archivedAt($carePatient), 'Nouveau RDV : dossier réactivé');
+        $this->assertGreaterThanOrEqual(1, $result['restored']);
+    }
+
+    public function testDossierIsDeletedFifteenYearsAfterArchiving(): void
+    {
+        $patient = $this->patient('-21 years');
+        $this->appointment($patient, 'completed', '-21 years');
+        $this->db->prepare('UPDATE profiles SET archived_at = ? WHERE id = ?')
+            ->execute([$this->now->modify('-16 years')->format('Y-m-d H:i:s'), $patient]);
+
+        $result = $this->service->run($this->now, true);
+
+        $this->assertFalse($this->exists($patient));
+        $this->assertGreaterThanOrEqual(1, $result['purged_dossiers']);
     }
 
     public function testReconnectingCancelsTheWarning(): void
@@ -167,15 +225,33 @@ final class DataRetentionServiceTest extends TestCase
         return $id;
     }
 
-    private function appointment(string $patient, string $status): void
+    private function appointment(string $patient, string $status, string $when = 'now'): void
     {
         $id = self::uuid();
+        $at = $this->now->modify($when)->format('Y-m-d H:i:s');
         $this->db->prepare(
             'INSERT INTO appointments (id, type, status, created_by, created_by_role, form_type,
-                location_lat, location_lng, address_encrypted, address_dek, scheduled_at, patient_id)
-             VALUES (?, \'blood_test\', ?, ?, \'patient\', \'blood_test\', 48.86, 2.35, \'fixture-addr\', \'fixture-dek\', NOW(), ?)'
-        )->execute([$id, $status, $patient, $patient]);
+                location_lat, location_lng, address_encrypted, address_dek, scheduled_at, patient_id, created_at)
+             VALUES (?, \'blood_test\', ?, ?, \'patient\', \'blood_test\', 48.86, 2.35, \'fixture-addr\', \'fixture-dek\', ?, ?, ?)'
+        )->execute([$id, $status, $patient, $at, $patient, $at]);
         $this->appointments[] = $id;
+    }
+
+    private function staff(string $role): string
+    {
+        $id = TestFixtures::insertProfile($this->db, $role);
+        $this->profiles[] = $id;
+
+        return $id;
+    }
+
+    private function archivedAt(string $id): ?string
+    {
+        $stmt = $this->db->prepare('SELECT archived_at FROM profiles WHERE id = ?');
+        $stmt->execute([$id]);
+        $value = $stmt->fetchColumn();
+
+        return $value === false || $value === null ? null : (string) $value;
     }
 
     private function conversation(string $userId, string $updated): string

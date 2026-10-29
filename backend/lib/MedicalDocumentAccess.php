@@ -281,6 +281,12 @@ class MedicalDocumentAccess
         $role = (string) ($user['role'] ?? '');
         $userId = (string) ($user['user_id'] ?? '');
 
+        // Dossier archivé (5 ans sans activité) : plus accessible aux professionnels.
+        require_once __DIR__ . '/users/PatientArchive.php';
+        if ($role !== 'super_admin' && PatientArchive::isArchived($db, $docPatientId)) {
+            return false;
+        }
+
         if (in_array($role, ['pro', 'subaccount', 'nurse', 'preleveur'], true)) {
             if (self::userHasProfessionalPatientAccess($db, $user, $docPatientId)) {
                 return true;

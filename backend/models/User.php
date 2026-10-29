@@ -759,10 +759,16 @@ class User
         if (!DbSchemaCache::tableHasColumn($this->db, 'profiles', 'last_active_at')) {
             return;
         }
-        $this->db->prepare('
+        $touch = $this->db->prepare('
             UPDATE profiles SET last_active_at = NOW(), retention_warned_at = NULL, updated_at = updated_at
             WHERE id = ? AND (last_active_at IS NULL OR last_active_at < CURRENT_DATE)
-        ')->execute([$id]);
+        ');
+        $touch->execute([$id]);
+        if ($touch->rowCount() > 0) {
+            // Retour du patient : son dossier archivé redevient visible de ses soignants.
+            require_once __DIR__ . '/../lib/users/PatientArchive.php';
+            PatientArchive::restore($this->db, $id);
+        }
     }
 
     /**

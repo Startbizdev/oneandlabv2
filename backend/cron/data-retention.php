@@ -2,7 +2,8 @@
 
 /**
  * Durées de conservation RGPD (registre des traitements) : conversations de l'assistant après 1 an,
- * comptes patients inactifs depuis 3 ans (avertis 30 jours avant).
+ * comptes sans soin inactifs depuis 3 ans (avertis 30 jours avant), dossiers de soins archivés après 5 ans
+ * sans activité puis supprimés après 20 ans.
  *
  * Usage : php data-retention.php            → simulation, affiche ce qui serait fait
  *         php data-retention.php --apply    → applique
@@ -31,12 +32,15 @@ $service = new DataRetentionService(
 $result = $service->run(new DateTimeImmutable('now', new DateTimeZone('Europe/Paris')), $apply);
 
 printf(
-    "[data-retention] %s %s — conversations assistant : %d ; comptes avertis : %d (échecs d'envoi : %d) ; comptes supprimés : %d (reportés : %d)\n",
+    "[data-retention] %s %s — conversations assistant : %d ; comptes sans soin avertis : %d (échecs d'envoi : %d), supprimés : %d ; dossiers archivés : %d, réactivés : %d, supprimés après 20 ans : %d ; suppressions reportées : %d\n",
     date('c'),
     $apply ? 'APPLIQUÉ' : 'SIMULATION',
     $result['assistant_conversations'],
     $result['warned'],
     $result['warn_failed'],
     $result['deleted_accounts'],
+    $result['archived'],
+    $result['restored'],
+    $result['purged_dossiers'],
     $result['deletion_skipped']
 );
