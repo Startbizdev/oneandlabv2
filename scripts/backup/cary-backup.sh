@@ -66,4 +66,8 @@ aws s3 cp "$dump" "s3://$BACKUP_S3_BUCKET/db/$(basename "$dump")" --region "$AWS
 log "Synchro des fichiers → s3://$BACKUP_S3_BUCKET/uploads/"
 nice -n 10 aws s3 sync "$UPLOADS_DIR/" "s3://$BACKUP_S3_BUCKET/uploads/" --region "$AWS_REGION" --only-show-errors
 
+if [[ -x /usr/local/sbin/cary-vault-sync ]]; then
+  /usr/local/sbin/cary-vault-sync || log "ATTENTION : copie des secrets dans le coffre-fort en échec"
+fi
+
 log "Sauvegarde terminée"

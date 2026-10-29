@@ -11,6 +11,7 @@ LOG_FILE=/var/log/cary-backup.log
 
 install -m 750 -o root -g root "$SRC_DIR/cary-backup.sh" /usr/local/sbin/cary-backup
 install -m 750 -o root -g root "$SRC_DIR/cary-restore-test.sh" /usr/local/sbin/cary-restore-test
+install -m 750 -o root -g root "$SRC_DIR/cary-vault-sync.sh" /usr/local/sbin/cary-vault-sync
 
 if [[ ! -s "$KEY_FILE" ]]; then
   umask 077

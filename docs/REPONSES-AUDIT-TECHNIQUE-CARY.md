@@ -57,7 +57,7 @@ Oui, à condition d'avoir les accès ci-dessus.
 - ✅ Environ 1 000 tests automatisés côté serveur, et des tests web et mobile.
 - ✅ Les scripts de déploiement, de sauvegarde et de maintenance sont versionnés avec le code, ainsi que des guides internes.
 - ⚠️ **Document de passation à rédiger** : liste des comptes, emplacement des secrets (pas leur valeur) et procédures (déployer, publier l'appli, restaurer la base).
-- ⚠️ **Clés de chiffrement** : elles doivent être copiées dans un coffre-fort de secrets détenu par la société. Sans elles, les données chiffrées et les sauvegardes sont illisibles.
+- ✅ **Clés de chiffrement et configuration** : une copie est conservée dans le coffre-fort de secrets AWS de ZENFACT SAS (AWS Systems Manager, chiffrement AWS KMS). Elle est mise à jour automatiquement à chaque changement. Le serveur peut déposer les secrets mais pas les relire : seuls les administrateurs du compte AWS y ont accès.
 
 ---
 
@@ -168,7 +168,7 @@ Oui, en partie :
 - ✅ **Documents** : chaque fichier est chiffré par l'application, puis stocké sur S3, lui-même chiffré.
 - ✅ **Échanges** en HTTPS (TLS 1.2 et 1.3 uniquement).
 - ✅ **Sauvegardes** chiffrées avec une clé dédiée.
-- ⚠️ La clé maîtresse est stockée dans la configuration du serveur. Mieux : un coffre-fort de clés (AWS KMS ou équivalent).
+- ✅ **Clés sous coffre-fort** : la clé maîtresse, la clé des sauvegardes et la configuration du serveur ont une copie chiffrée dans le coffre-fort AWS de la société (AWS Systems Manager, chiffrement AWS KMS), mise à jour automatiquement.
 
 ### Y a-t-il des sauvegardes ? A-t-on testé une restauration ?
 ✅ **Oui.**
@@ -179,7 +179,6 @@ Oui, en partie :
 - **Test de restauration automatique chaque mois** : la dernière sauvegarde est déchiffrée et restaurée dans une base temporaire, puis comparée à la production (profils, RDV, documents, commandes pharmacie, proches). La base temporaire est ensuite supprimée.
 
 À compléter :
-- ⏳ Copier les clés de chiffrement et de sauvegarde dans le coffre-fort de la société.
 - ⏳ Faire un exercice de restauration complète sur un serveur de secours, une fois par an.
 
 ### Un test d'intrusion a-t-il été fait ?
@@ -286,15 +285,14 @@ Pistes à valider avec les laboratoires clients (❓) :
 
 | Priorité | Action | Délai indicatif |
 |---|---|---|
-| 1 | Copier les clés de chiffrement et de sauvegarde dans le coffre-fort de la société | Cette semaine |
-| 2 | Signer l'attestation de cession (annexe A) | 2 semaines |
-| 3 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
-| 4 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
-| 5 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
-| 6 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
-| 7 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
-| 8 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
-| 9 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
+| 1 | Signer l'attestation de cession (annexe A) | 2 semaines |
+| 2 | Supervision et alertes (disponibilité, disque, erreurs) | 2 semaines |
+| 3 | Limiter l'accès SSH aux IP de l'équipe ; Content-Security-Policy | 2 semaines |
+| 4 | SMS via un fournisseur UE avec un contenu minimal ; IA via un fournisseur UE ; vérifier le texte des notifications | 1 mois |
+| 5 | Conformité HDS : infogérant HDS sur AWS, ou hébergeur HDS clé en main | 1 à 3 mois |
+| 6 | Selon la croissance : serveur plus puissant (quelques minutes), puis base séparée (RDS) et second serveur | Au fil de la croissance |
+| 7 | Règles de conservation des données de santé et AIPD, avec un juriste | 1 à 2 mois |
+| 8 | Test d'intrusion par un prestataire indépendant | Avant une levée de fonds ou un grand compte |
 
 ---
 
