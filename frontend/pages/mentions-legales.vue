@@ -140,9 +140,9 @@
             <p>Horaires : Lun–Ven 9h–18h, Sam 9h–12h</p>
             <p>Adresse : 230 B avenue Corot, 13014 Marseille</p>
             <p>Téléphone : 04 91 23 45 67</p>
-            <p>Email : <a href="mailto:contact@oneandlab.fr" class="text-primary-600 hover:underline">contact@oneandlab.fr</a></p>
+            <p>Email : <a href="mailto:contact@cary.bio" class="text-primary-600 hover:underline">contact@cary.bio</a></p>
             <p class="pt-3 border-t border-gray-100 mt-3"><strong class="text-gray-700">Délégué à la Protection des Données (DPO)</strong></p>
-            <p>Email : <a href="mailto:dpo@oneandlab.fr" class="text-primary-600 hover:underline">dpo@oneandlab.fr</a></p>
+            <p>Email : <a href="mailto:contact@cary.bio" class="text-primary-600 hover:underline">contact@cary.bio</a></p>
             <p class="text-sm text-gray-500">Réclamations RGPD : délai de réponse 30 jours. Juridiction : tribunaux de Marseille.</p>
           </div>
         </section>

@@ -25,7 +25,7 @@
             1. Responsable du traitement
           </h2>
           <p>
-            Le responsable du traitement des données personnelles est <strong class="text-gray-700">ZENFACT</strong> (SAS), exploitant la plateforme Cary, dont le siège est situé au 230 B avenue Corot, 13014 Marseille. Pour toute question relative à la protection des données : <a href="mailto:dpo@oneandlab.fr" class="text-primary-600 hover:underline">dpo@oneandlab.fr</a>.
+            Le responsable du traitement des données personnelles est <strong class="text-gray-700">ZENFACT</strong> (SAS), exploitant la plateforme Cary, dont le siège est situé au 230 B avenue Corot, 13014 Marseille. Pour toute question relative à la protection des données : <a href="mailto:contact@cary.bio" class="text-primary-600 hover:underline">contact@cary.bio</a>.
           </p>
         </section>
 
@@ -102,7 +102,7 @@
             <li><strong class="text-gray-700">Droit de retirer votre consentement</strong> lorsque le traitement est fondé sur le consentement.</li>
           </ul>
           <p class="mt-4">
-            Pour exercer ces droits : <a href="mailto:dpo@oneandlab.fr" class="text-primary-600 hover:underline">dpo@oneandlab.fr</a>. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr). Nous nous engageons à répondre dans un délai de 30 jours.
+            Pour exercer ces droits : <a href="mailto:contact@cary.bio" class="text-primary-600 hover:underline">contact@cary.bio</a>. Vous pouvez également introduire une réclamation auprès de la CNIL (cnil.fr). Nous nous engageons à répondre dans un délai de 30 jours.
           </p>
         </section>
 

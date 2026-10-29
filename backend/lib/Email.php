@@ -1209,7 +1209,7 @@ class Email
             'preheader' => 'Un incident a été signalé sur votre compte Cary. Consultez les détails.',
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Contacter le support',
-            'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
+            'ctaSecondaryUrl' => 'mailto:contact@cary.bio',
             'ctaSecondaryLabel' => 'Écrire à notre équipe',
         ]);
     }
@@ -1232,7 +1232,7 @@ class Email
             'preheader' => 'Votre compte Cary est suspendu. Durée, motif et contact support.',
             'ctaUrl' => $baseUrl . '/contact',
             'ctaLabel' => 'Nous contacter',
-            'ctaSecondaryUrl' => 'mailto:contact@oneandlab.fr',
+            'ctaSecondaryUrl' => 'mailto:contact@cary.bio',
             'ctaSecondaryLabel' => 'Écrire à notre équipe',
         ]);
     }
@@ -1253,7 +1253,7 @@ class Email
         return $this->baseLayout($content, [
             'title' => 'Compte définitivement fermé',
             'preheader' => 'Information importante concernant votre compte Cary.',
-            'ctaUrl' => 'mailto:contact@oneandlab.fr',
+            'ctaUrl' => 'mailto:contact@cary.bio',
             'ctaLabel' => 'Écrire au support',
             'ctaSecondaryUrl' => $baseUrl . '/contact',
             'ctaSecondaryLabel' => 'Formulaire de contact',

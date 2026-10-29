@@ -137,7 +137,7 @@
             11. Contact
           </h2>
           <p>
-            Pour toute question relative aux abonnements ou aux présentes CGV : <a href="mailto:contact@oneandlab.fr" class="text-primary-600 hover:underline">contact@oneandlab.fr</a>, ou par courrier à ZENFACT, 230 B avenue Corot, 13014 Marseille. Pour la gestion du paiement et de l’abonnement (facturation, changement de carte, annulation), vous pouvez également utiliser le lien « Gérer mon abonnement » dans votre espace ou le portail client Stripe fourni lors de la souscription.
+            Pour toute question relative aux abonnements ou aux présentes CGV : <a href="mailto:contact@cary.bio" class="text-primary-600 hover:underline">contact@cary.bio</a>, ou par courrier à ZENFACT, 230 B avenue Corot, 13014 Marseille. Pour la gestion du paiement et de l’abonnement (facturation, changement de carte, annulation), vous pouvez également utiliser le lien « Gérer mon abonnement » dans votre espace ou le portail client Stripe fourni lors de la souscription.
           </p>
         </section>
       </div>
