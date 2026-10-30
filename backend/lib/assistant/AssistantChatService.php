@@ -201,12 +201,15 @@ final class AssistantChatService
                 $turn['patient_id'] = $named[0]['id'];
                 $this->repo->setPatient($turn['conversation_id'], $turn['patient_id']);
             } elseif (count($named) > 1) {
+                // Question posée par le serveur, sans le modèle : tous les homonymes sont toujours cités.
                 $choices = [];
                 foreach (array_slice($named, 0, 5) as $candidate) {
+                    $gateway->alias($candidate['name'], 'Patient');
                     $age = PrivacyGateway::ageFromBirthDate($candidate['birth_date']);
-                    $choices[] = $gateway->alias($candidate['name'], 'Patient') . ($age !== null ? ' (' . $age . ' ans)' : '');
+                    $choices[] = '**' . $candidate['name'] . '**' . ($age !== null ? ' (' . $age . ' ans)' : '');
                 }
-                $patientNote = 'Plusieurs patients suivis correspondent : ' . implode(', ', $choices) . '. Demande lequel en les citant, sans consulter de dossier.';
+                $last = array_pop($choices);
+                $patientNote = 'Vous suivez plusieurs patients à ce nom : ' . implode(', ', $choices) . ' et ' . $last . '. Duquel s\'agit-il ?';
             }
         }
         $this->turnPatientId = $turn['patient_id'];
@@ -220,9 +223,6 @@ final class AssistantChatService
         }
 
         $system = AssistantPrompt::system((string) $user['role'], $patientAlias, $turn['patient_id'], $turn['context']);
-        if ($patientNote !== null) {
-            $system .= "\n" . $patientNote;
-        }
         $transmissionTurn = $user['role'] !== 'patient' && $turn['patient_id'] !== null && AssistantIntent::wantsTransmission($question);
         if ($transmissionTurn) {
             $system .= "\nDemande de transmission : appelle d'abord propose_action create_transmission (patient_id, body = le texte mis en forme), puis montre ce texte en une ou deux phrases.";
@@ -261,9 +261,14 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
                 $send('status', ['text' => AssistantTools::STATUS[$name] ?? 'Je consulte vos informations…']);
             }
         };
-        // Patient ambigu : aucune consultation possible ce tour-ci, la seule réponse utile est de demander lequel.
-        $definitions = $patientNote === null ? AssistantTools::definitions((string) $user['role']) : [];
-        for ($round = 1; $round <= self::MAX_ROUNDS; $round++) {
+        $definitions = AssistantTools::definitions((string) $user['role']);
+        if ($patientNote !== null) {
+            // Patient ambigu : la seule réponse utile est de demander lequel, sans appel au modèle.
+            $answer = $patientNote;
+            $send('delta', ['text' => $answer]);
+            $usage['model'] = 'patient_disambiguation';
+        }
+        for ($round = 1; $patientNote === null && $round <= self::MAX_ROUNDS; $round++) {
             $result = $this->provider->stream($messages, $round < self::MAX_ROUNDS ? $definitions : [], $onDelta, $onToolCall);
             $usage['model'] = $result['model'];
             foreach (['input_tokens', 'output_tokens'] as $key) {
