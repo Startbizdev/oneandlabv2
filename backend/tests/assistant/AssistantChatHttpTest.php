@@ -132,7 +132,7 @@ final class AssistantChatHttpTest extends TestCase
 
         $inputs = HttpHarness::mockInputs();
         $this->assertCount(3, $inputs, 'get_my_appointments, propose_action puis réponse');
-        $this->assertSame([], $inputs[2]['tools'], 'Dernier tour sans outils');
+        $this->assertContains('propose_action', $inputs[2]['tools'], 'Plafond à 4 tours : le 3e garde ses outils (ordonnance → NGAP → calcul → carte)');
         $this->assertNotContains('get_tour', $inputs[0]['tools']);
         $this->assertNotContains('get_patient_summary', $inputs[0]['tools']);
         $all = self::providerInput();

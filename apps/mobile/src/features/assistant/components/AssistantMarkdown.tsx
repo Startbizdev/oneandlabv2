@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { View, type TextStyle } from 'react-native';
 import { AppText, font, lh, spacing, useStyles, type Theme } from '@/theme';
 import { parseInline, parseMarkdown } from '../utils/markdown';
+import { MarkdownTable } from './MarkdownTable';
 
 type Styles = ReturnType<typeof buildStyles>;
 
@@ -21,7 +22,7 @@ function Inline({ text, style, styles }: { text: string; style: TextStyle; style
   );
 }
 
-/** Texte de Cary sans bulle : paragraphes, titres courts, listes, gras. Analyse refaite seulement si le texte change. */
+/** Texte de Cary sans bulle : paragraphes, titres courts, listes, tableaux, gras. Analyse refaite seulement si le texte change. */
 export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { text: string }) {
   const styles = useStyles(buildStyles);
   const blocks = useMemo(() => parseMarkdown(text), [text]);
@@ -30,6 +31,7 @@ export const AssistantMarkdown = memo(function AssistantMarkdown({ text }: { tex
       {blocks.map((block, index) => {
         if (block.type === 'heading') return <Inline key={index} text={block.text} style={styles.heading} styles={styles} />;
         if (block.type === 'paragraph') return <Inline key={index} text={block.text} style={styles.text} styles={styles} />;
+        if (block.type === 'table') return <MarkdownTable key={index} header={block.header} rows={block.rows} />;
         return (
           <View key={index} style={styles.list}>
             {block.items.map((item, itemIndex) => (

@@ -6,6 +6,7 @@ require_once __DIR__ . '/PrivacyGateway.php';
 require_once __DIR__ . '/AssistantDocumentReader.php';
 require_once __DIR__ . '/AssistantResultsConsent.php';
 require_once __DIR__ . '/NgapReference.php';
+require_once __DIR__ . '/BillingEstimate.php';
 require_once __DIR__ . '/../Crypto.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
@@ -38,6 +39,7 @@ final class AssistantTools
         'get_tour' => 'Je consulte la tournée…',
         'list_care_categories' => 'Je consulte les soins proposés…',
         'search_ngap' => 'Je consulte la NGAP…',
+        'estimate_billing' => 'Je calcule l\'estimation…',
     ];
 
     private const TERMINAL = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
@@ -83,6 +85,26 @@ final class AssistantTools
             $tools[] = self::define('list_care_categories', 'Soins réservables dans Cary (id, nom, type) : pour retrouver le category_id du soin demandé.', []);
         }
         if (in_array($role, ['nurse', 'pro'], true) && NgapReference::available()) {
+            if (BillingEstimate::available()) {
+                $tools[] = self::define('estimate_billing', 'Calcule en euros, avec la grille officielle des tarifs infirmiers (ameli.fr), les montants d\'une ordonnance : par passage, par jour, le dimanche, par semaine et sur la durée. Tu fournis les cotations (d\'après la NGAP), le serveur fait les calculs.', [
+                    'passages' => ['type' => 'array', 'description' => 'Passages d\'une journée type.', 'items' => ['type' => 'object', 'properties' => [
+                        'label' => ['type' => 'string', 'description' => 'Ex. « 7 h », « Matin »'],
+                        'actes' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
+                            'libelle' => ['type' => 'string', 'description' => 'Acte en clair, ex. « prise de sang », « injection sous-cutanée d\'insuline »'],
+                            'code' => ['type' => 'string', 'description' => 'Lettre clé : AMI, AMX, AIS, BSA, BSB, BSC, DI, TMI'],
+                            'coefficient' => ['type' => 'number'],
+                            'cumul_taux_plein' => ['type' => 'boolean', 'description' => 'true seulement si la NGAP déclare cet acte cumulable à taux plein (ex. prélèvement par ponction veineuse directe)'],
+                        ], 'required' => ['libelle', 'code', 'coefficient']]],
+                        'majorations' => ['type' => 'array', 'description' => 'Seulement MCI, MIE ou nuit si l\'ordonnance le justifie ; IFD, MAU et le cumul sont appliqués par le serveur.', 'items' => ['type' => 'string', 'enum' => ['IFI', 'MCI', 'MIE', 'NUIT_20_23_5_8', 'NUIT_23_5']]],
+                    ], 'required' => ['label', 'actes']]],
+                    'domicile' => ['type' => 'boolean', 'description' => 'Soins à domicile (IFD à chaque passage), vrai par défaut'],
+                    'dimanche_ferie' => ['type' => 'boolean', 'description' => 'Soins assurés aussi le dimanche et les jours fériés'],
+                    'jours_par_semaine' => ['type' => 'integer'],
+                    'duree_jours' => ['type' => 'integer', 'description' => 'Durée du traitement en jours, si l\'ordonnance la précise'],
+                    'date_debut' => ['type' => 'string', 'description' => 'AAAA-MM-JJ'],
+                    'zone' => ['type' => 'string', 'enum' => ['metropole', 'outre_mer']],
+                ], ['passages']);
+            }
             $tools[] = self::define('search_ngap', 'Recherche dans la NGAP officielle (Assurance Maladie) : passages à citer pour toute question de cotation. query : actes, lettres clés, majorations, situation.', ['query' => ['type' => 'string']], ['query']);
         }
         $tools[] = self::define('propose_action', 'Affiche un bouton sous ta réponse (libellé court, sans nom). N\'en parle pas dans ton texte : l\'app l\'affiche d\'elle-même.', [
@@ -126,6 +148,7 @@ final class AssistantTools
                 'get_tour' => $this->tour((string) ($args['date'] ?? '')),
                 'list_care_categories' => $this->careCategories(),
                 'search_ngap' => $this->ngap((string) ($args['query'] ?? '')),
+                'estimate_billing' => in_array((string) $this->user['role'], ['nurse', 'pro'], true) ? BillingEstimate::estimate($args) : ['error' => 'FORBIDDEN'],
                 'propose_action' => $this->proposeAction($args),
                 default => ['error' => 'UNKNOWN_TOOL'],
             };

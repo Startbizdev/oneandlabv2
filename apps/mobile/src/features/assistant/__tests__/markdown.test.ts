@@ -16,3 +16,20 @@ describe('parseMarkdown', () => {
     ]);
   });
 });
+
+describe('tableaux', () => {
+  it('en-tête, lignes, séparateur ignoré ; une ligne vide referme le tableau', () => {
+    const blocks = parseMarkdown('| Passage | Cotation | Montant |\n|---|---|---:|\n| 7 h | AMI 1 + IFD | 5,90 € |\n| 12 h | AMI 1 + IFD + MAU | 7,25 € |\n\nTotal : 13,15 €');
+    expect(blocks).toEqual([
+      {
+        type: 'table',
+        header: ['Passage', 'Cotation', 'Montant'],
+        rows: [
+          ['7 h', 'AMI 1 + IFD', '5,90 €'],
+          ['12 h', 'AMI 1 + IFD + MAU', '7,25 €'],
+        ],
+      },
+      { type: 'paragraph', text: 'Total : 13,15 €' },
+    ]);
+  });
+});

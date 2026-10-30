@@ -1,13 +1,25 @@
 export type MarkdownBlock =
   | { type: 'heading'; text: string }
   | { type: 'paragraph'; text: string }
-  | { type: 'list'; items: string[] };
+  | { type: 'list'; items: string[] }
+  | { type: 'table'; header: string[]; rows: string[][] };
 
 const LIST_ITEM = /^\s*(?:[-•*]|\d{1,2}[.)])\s+/;
 const HEADING = /^\s*#{1,6}\s+/;
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+
+function tableCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
 
 /**
- * Markdown réduit de Cary : titres `#`, listes `-` / `1.`, paragraphes, gras `**…**`.
+ * Markdown réduit de Cary : titres `#`, listes `-` / `1.`, tableaux `| … |`, paragraphes, gras `**…**`.
  * Comme en Markdown standard, un simple retour à la ligne reste dans le paragraphe ; une ligne vide en ouvre un autre.
  */
 export function parseMarkdown(raw: string): MarkdownBlock[] {
@@ -17,8 +29,18 @@ export function parseMarkdown(raw: string): MarkdownBlock[] {
     if (paragraph.length > 0) blocks.push({ type: 'paragraph', text: paragraph.join(' ') });
     paragraph = [];
   };
+  /** Tableau en cours : une ligne qui n'en fait pas partie le referme. */
+  let table: Extract<MarkdownBlock, { type: 'table' }> | null = null;
   for (const line of raw.replace(/\r\n/g, '\n').split('\n')) {
     const trimmed = line.trim();
+    if (TABLE_ROW.test(trimmed)) {
+      flushParagraph();
+      if (TABLE_SEPARATOR.test(trimmed)) continue;
+      if (table) table.rows.push(tableCells(trimmed));
+      else blocks.push((table = { type: 'table', header: tableCells(trimmed), rows: [] }));
+      continue;
+    }
+    table = null;
     if (!trimmed) {
       flushParagraph();
     } else if (HEADING.test(trimmed)) {

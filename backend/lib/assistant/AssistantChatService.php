@@ -28,7 +28,7 @@ final class AssistantChatService
     public const CONTEXT_TYPES = ['appointment', 'lab_result', 'patient', 'health', 'general'];
     private const MAX_MESSAGE = 4000;
     private const HISTORY = 10;
-    private const MAX_ROUNDS = 3;
+    private const MAX_ROUNDS = 4;
     private const RATE_LIMIT = 60;
     private const FALLBACK = 'Je n\'ai pas pu formuler de réponse. Pouvez-vous reformuler votre question ?';
 

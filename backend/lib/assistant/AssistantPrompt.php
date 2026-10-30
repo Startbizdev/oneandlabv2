@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/AssistantTools.php';
 require_once __DIR__ . '/NgapReference.php';
+require_once __DIR__ . '/BillingEstimate.php';
 
 /** Prompt système court par rôle, complété des consignes propres au rôle (résultats, réservation, NGAP). */
 final class AssistantPrompt
@@ -31,6 +32,8 @@ final class AssistantPrompt
     ];
 
     private const NGAP = 'Cotation : appelez search_ngap et répondez uniquement d\'après les passages renvoyés, en citant le titre ou l\'article ; si la NGAP ne couvre pas le cas, dites-le sans deviner. Terminez par « Cotation indicative selon la NGAP de l\'Assurance Maladie (ameli.fr, version du …), à vérifier avant facturation. »';
+
+    private const BILLING = 'Ordonnance, question de cotation ou de prix : donne toujours le montant en euros. Lis chaque acte prescrit ou demandé, regroupe-les par passage (heure), cherche la cotation de chaque acte avec search_ngap (un acte par geste : contrôle de glycémie, injection, pansement…), puis appelle estimate_billing avec tous les actes de chaque passage ; le serveur applique lui-même le cumul (article 11B), l\'IFD et la MAU. Réponds comme un expert : une phrase sur l\'ordonnance, puis un tableau Markdown « | Passage | Cotation | Montant | » repris tel quel du calcul, puis les totaux (jour, dimanche, semaine, durée) en liste courte. N\'invente aucun montant : seuls ceux du calcul comptent. Termine par « Estimation indicative : cotations selon la NGAP, tarifs conventionnels de l\'Assurance Maladie (ameli.fr), hors indemnités kilométriques ; à vérifier avant facturation. »';
 
     private const TRANSMISSION = 'Transmission : quand l\'utilisateur dicte ou décrit ce qu\'il a fait ou constaté chez un patient, mets-le en forme (phrases courtes, vocabulaire soignant, sans rien ajouter ni diagnostiquer), montre le texte, puis propose_action create_transmission avec patient_id et body ; il relira avant d\'enregistrer.';
 
@@ -59,6 +62,9 @@ final class AssistantPrompt
         $lines[] = in_array($role, ['nurse', 'pro'], true) && NgapReference::available() ? self::NGAP : self::NO_NGAP;
         if (in_array($role, ['nurse', 'pro'], true)) {
             $lines[] = self::TRANSMISSION;
+            if (BillingEstimate::available()) {
+                $lines[] = self::BILLING;
+            }
         }
         if ($patientId !== null) {
             $lines[] = 'Dossier sélectionné : ' . ($patientAlias ?? 'patient') . ' (patient_id ' . $patientId . ').';

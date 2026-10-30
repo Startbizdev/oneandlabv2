@@ -10,7 +10,7 @@ require_once __DIR__ . '/AssistantProvider.php';
  */
 final class OpenAiCompatibleProvider implements AssistantProvider
 {
-    private const MAX_TOKENS = 800;
+    private const MAX_TOKENS = 1400;
     private const TEMPERATURE = 0.3;
     private const CONNECT_TIMEOUT = 5;
     private const TIMEOUT = 45;
