@@ -12,8 +12,14 @@ const easArgs =
     ? passthrough
     : ['build', '--platform', 'ios', '--profile', 'production', '--auto-submit'];
 
+// Apple refuse tout build dont la version marketing est déjà approuvée (« train closed ») : on monte donc
+// la version à chaque build production. SKIP_IOS_VERSION_BUMP est ignoré (il causait ces refus) ;
+// KEEP_IOS_VERSION=1 garde la version, seulement si on sait qu'elle n'a jamais été approuvée.
 function shouldBumpIosStoreVersion(args) {
-  if (process.env.SKIP_IOS_VERSION_BUMP === '1') return false;
+  if (process.env.KEEP_IOS_VERSION === '1') return false;
+  if (process.env.SKIP_IOS_VERSION_BUMP === '1') {
+    console.warn('⚠️  SKIP_IOS_VERSION_BUMP est ignoré : la version est montée pour éviter un refus Apple (KEEP_IOS_VERSION=1 pour forcer).');
+  }
   if (!args.includes('build')) return false;
 
   const profileIdx = args.indexOf('--profile');
