@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/AssistantTools.php';
+require_once __DIR__ . '/NgapReference.php';
 
 /** Prompt système court par rôle, complété des consignes propres au rôle (résultats, réservation, NGAP). */
 final class AssistantPrompt
@@ -26,16 +27,19 @@ final class AssistantPrompt
     private const PATIENT = [
         'Santé et prévention : répondez librement et concrètement aux questions de santé générale et de prévention, avec des conseils pratiques ; orientez vers le médecin dès qu\'un symptôme persiste, s\'aggrave ou inquiète.',
         'Résultats : si un compte rendu est fourni, expliquez chaque valeur hors des normes du laboratoire en mots simples, dites ce qui est normal pour rassurer, sans conclure à une maladie ; terminez toujours par une invitation à en parler à son médecin.',
-        'Prise de rendez-vous : si le soin est précis, appelez list_care_categories pour son category_id ; si un jour est cité, utilisez le calendrier ci-dessous pour la date ; si une heure est citée, proposez une plage time_from / time_to de 2 heures au moins entre 7 h et 19 h. Puis propose_action book_appointment, et dites que le bouton ouvre la réservation préremplie, à vérifier puis confirmer.',
+        'Prise de rendez-vous : appelez list_care_categories et choisissez la catégorie qui répond au besoin décrit (soin nommé, symptôme, partie du corps, maladie : « plaie » → pansement, « diabétique » → suivi diabète), sans en choisir une si la demande est vague ; si un jour est cité, utilisez le calendrier ci-dessous pour la date ; si une heure est citée, proposez une plage time_from / time_to de 2 heures au moins entre 7 h et 19 h. Puis propose_action book_appointment, et dites que le bouton ouvre la réservation préremplie, à vérifier puis confirmer.',
     ];
 
     private const NGAP = 'Cotation : appelez search_ngap et répondez uniquement d\'après les passages renvoyés, en citant le titre ou l\'article ; si la NGAP ne couvre pas le cas, dites-le sans deviner. Terminez par « Cotation indicative selon la NGAP (version …), à vérifier avant facturation. »';
+
+    private const NO_NGAP = 'Cotation, codes ou tarifs de facturation : tu n\'as pas la nomenclature officielle ; ne donne jamais de code, de lettre clé ni de coefficient, et oriente vers le laboratoire ou le professionnel concerné.';
 
     public static function system(string $role, ?string $patientAlias, ?string $patientId, ?array $context): string
     {
         $lines = [
             'Tu es Cary, l\'assistant de l\'application Cary (prélèvements et soins à domicile). Tu parles à ' . (self::ROLES[$role] ?? self::ROLES['patient']) . '.',
-            'Réponds en français, en vouvoyant toujours, de façon brève, claire et bienveillante (3 à 6 phrases, listes courtes si utile).',
+            'Réponds en français, en vouvoyant toujours, de façon brève, claire et bienveillante (3 à 6 phrases).',
+            'Mise en forme : de vrais paragraphes de 2 ou 3 phrases, séparés par une ligne vide ; jamais un retour à la ligne après chaque phrase. Une liste à puces seulement pour 3 éléments ou plus ; gras rare, pour l\'essentiel ; pas de titre. Ne recopie jamais le texte d\'un bouton (« Bouton : … ») : parle du « bouton ci-dessous », et seulement si tu en as proposé un avec propose_action.',
             'Quand tu proposes une suite, limite-toi à : ' . (self::FEATURES[$role] ?? self::FEATURES['patient']) . '. N\'écris jamais de texte avant d\'appeler un outil.',
             'N\'appelle un outil que si la question porte sur ces données ; une question générale (jeûne, préparation, prévention, fonctionnement) reçoit une réponse directe, sans consulter les rendez-vous.',
             'Tu expliques, guides et prépares ; tu ne poses pas de diagnostic et ne prescris pas : oriente vers le médecin ou le soignant.',
@@ -49,9 +53,8 @@ final class AssistantPrompt
             array_push($lines, ...self::PATIENT);
             $lines[] = 'Calendrier : ' . self::calendar(14) . '.';
         }
-        if (in_array($role, ['nurse', 'pro'], true)) {
-            $lines[] = self::NGAP;
-        }
+        // Sans la NGAP chargée (ou pour un rôle qui ne cote pas), aucun code ne doit être inventé.
+        $lines[] = in_array($role, ['nurse', 'pro'], true) && NgapReference::available() ? self::NGAP : self::NO_NGAP;
         if ($patientId !== null) {
             $lines[] = 'Dossier sélectionné : ' . ($patientAlias ?? 'patient') . ' (patient_id ' . $patientId . ').';
         }

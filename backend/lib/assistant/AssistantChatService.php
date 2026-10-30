@@ -11,6 +11,7 @@ require_once __DIR__ . '/AssistantPrompt.php';
 require_once __DIR__ . '/AssistantIntent.php';
 require_once __DIR__ . '/AssistantDocumentReader.php';
 require_once __DIR__ . '/PrivacyGateway.php';
+require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../RateLimit.php';
 require_once __DIR__ . '/../Validation.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
@@ -150,9 +151,34 @@ final class AssistantChatService
         $careType = AssistantIntent::careType($question);
         // Le patient qui demande un rendez-vous obtient toujours la carte, avec le soin présélectionné.
         $bookingTurn = $user['role'] === 'patient' && $turn['document'] === null && AssistantIntent::wantsBooking($question);
-        $emit = static function (array $action) use ($gateway, $send, $careType, &$actions, &$stored): void {
-            if ($action['type'] === 'book_appointment' && !isset($action['params']['care_type']) && $careType !== null) {
-                $action['params']['care_type'] = $careType;
+        // Jour et plage horaire calculés par règles fixes : la carte les porte même si le modèle les oublie.
+        $slot = $bookingTurn ? AssistantIntent::slot($question, AppTimezone::now()) : [];
+        $db = $this->db;
+        $emit = static function (array $action) use ($db, $gateway, $send, $careType, $slot, $question, &$actions, &$stored): void {
+            if ($action['type'] === 'book_appointment') {
+                // Soin présélectionné seulement s'il répond au besoin décrit (« plaie » → pansement), jamais au hasard.
+                if (isset($action['params']['category_id']) && !self::careMatchesQuestion($db, (string) $action['params']['category_id'], $question)) {
+                    unset($action['params']['category_id']);
+                }
+                $action['params']['category_id'] ??= self::onlyMatchingCare($db, $question);
+                if ($action['params']['category_id'] === null) {
+                    unset($action['params']['category_id']);
+                }
+                if (!isset($action['params']['care_type']) && $careType !== null) {
+                    $action['params']['care_type'] = $careType;
+                }
+                // Le créneau calculé prime ; une heure écrite « 08:00 » par le modèle devient « 8 », comme l'attend l'app.
+                $action['params'] = $slot + $action['params'];
+                foreach (['time_from', 'time_to'] as $key) {
+                    if (isset($action['params'][$key])) {
+                        $hour = preg_match('/^\s*(\d{1,2})/', $action['params'][$key], $m) === 1 ? (int) $m[1] : -1;
+                        if ($hour >= 0 && $hour <= 24) {
+                            $action['params'][$key] = (string) $hour;
+                        } else {
+                            unset($action['params'][$key]);
+                        }
+                    }
+                }
             }
             $stored[] = ['type' => $action['type'], 'label' => $action['label'], 'params' => array_diff_key($action['params'], ['body' => true])];
             $live = ['type' => $action['type'], 'label' => $gateway->rehydrate($action['label']), 'params' => array_map([$gateway, 'rehydrate'], $action['params'])];
@@ -170,10 +196,16 @@ final class AssistantChatService
 
         $system = AssistantPrompt::system((string) $user['role'], $patientAlias, $turn['patient_id'], $turn['context']);
         if ($bookingTurn) {
+            $understood = array_filter([
+                isset($slot['date']) ? AssistantTools::dayLabel($slot['date']) : null,
+                isset($slot['time_from']) ? 'entre ' . $slot['time_from'] . ' h et ' . $slot['time_to'] . ' h' : null,
+            ]);
             $system .= "
 Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !== null ? ' (params.care_type = ' . $careType . ')' : '')
-                . ' sans consulter les rendez-vous (list_care_categories seulement si le soin est précis), en reprenant le jour et l\'heure cités'
-                . ', puis dis en une phrase que le bouton ci-dessous ouvre la réservation préremplie, à vérifier puis confirmer.';
+                . ' sans consulter les rendez-vous (list_care_categories pour choisir la catégorie qui répond au besoin décrit, aucune si la demande est vague)'
+                . ($understood !== [] ? ', avec le créneau compris : ' . implode(', ', $understood) : '')
+                . '. Puis dis en une ou deux phrases que le bouton ci-dessous ouvre la réservation préremplie, à vérifier puis confirmer'
+                . ($understood !== [] ? ', en reprenant ce créneau tel quel' : '') . '. N\'écris jamais de code technique (blood_test, nursing, identifiant).';
         }
         $messages = [['role' => 'system', 'content' => $system]];
         foreach ($history as $past) {
@@ -259,6 +291,30 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
                 => ['type' => 'open_tour', 'label' => 'Voir ma tournée', 'params' => isset($output['date']) ? ['date' => (string) $output['date']] : []],
             default => null,
         };
+    }
+
+    /** Seule catégorie réservable qui répond au besoin décrit ; null si aucune ou plusieurs (le patient choisit). */
+    private static function onlyMatchingCare(PDO $db, string $question): ?string
+    {
+        $found = [];
+        foreach ($db->query('SELECT id, name, description FROM care_categories WHERE is_active = 1')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (preg_match('/certificat\s+(de\s+)?d[ée]c[èe]s/iu', (string) $row['name']) !== 1
+                && AssistantIntent::careMatches((string) $row['name'], (string) ($row['description'] ?? ''), $question)) {
+                $found[] = (string) $row['id'];
+            }
+        }
+
+        return count($found) === 1 ? $found[0] : null;
+    }
+
+    /** Le soin choisi par le modèle correspond-il au besoin décrit (nom ou description de la catégorie) ? */
+    private static function careMatchesQuestion(PDO $db, string $categoryId, string $question): bool
+    {
+        $stmt = $db->prepare('SELECT name, description FROM care_categories WHERE id = ? LIMIT 1');
+        $stmt->execute([$categoryId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) && AssistantIntent::careMatches((string) $row['name'], (string) ($row['description'] ?? ''), $question);
     }
 
     private function userContent(PrivacyGateway $gateway, string $message, ?array $document): string|array

@@ -277,8 +277,11 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
           onDismissed={sheets.onDismissed}
           onPick={(id) => {
             const thenAttach = sheet?.kind === 'picker' && sheet.thenAttach;
-            sheets.closeThen(thenAttach ? () => void attachment.attach(id) : null);
-            router.setParams({ ...CLEARED_SCOPE, patient_id: id });
+            // Paramètres posés une fois la sheet fermée : sinon ils visent la sheet native encore au premier plan.
+            sheets.closeThen(() => {
+              router.setParams({ ...CLEARED_SCOPE, patient_id: id });
+              if (thenAttach) void attachment.attach(id);
+            });
           }}
         />
       ) : null}

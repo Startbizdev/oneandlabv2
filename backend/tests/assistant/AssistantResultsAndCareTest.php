@@ -129,6 +129,23 @@ final class AssistantResultsAndCareTest extends TestCase
         $this->assertSame([], $actions->getArrayCopy());
     }
 
+    public function testPatientSummaryReadsEncryptedProfileForTheFollowingNurse(): void
+    {
+        $nurseId = $this->fixtures->profile('nurse');
+        $patientId = $this->fixtures->profile('patient', 'Odile', 'Bernard', '1950-03-02');
+        $gender = (new Crypto())->encryptField('female');
+        $this->db->prepare('UPDATE profiles SET gender_encrypted = ?, gender_dek = ? WHERE id = ?')->execute([$gender['encrypted'], $gender['dek'], $patientId]);
+        $this->fixtures->appointment($patientId, $nurseId);
+        [$tools] = $this->tools($nurseId, 'nurse');
+
+        $out = $tools->execute('get_patient_summary', ['patient_id' => $patientId]);
+
+        $this->assertArrayNotHasKey('error', $out);
+        $this->assertSame('female', $out['sexe']);
+        $this->assertGreaterThanOrEqual(75, $out['age']);
+        $this->assertCount(1, $out['prochains_rdv']);
+    }
+
     public function testConsentSettingIsPatientOnlyAndRevocable(): void
     {
         $patientId = $this->fixtures->profile('patient');

@@ -255,7 +255,7 @@ final class AssistantTools
             return ['error' => 'FORBIDDEN'];
         }
         $subject = $this->subject($patientId);
-        $profile = $this->db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, gender FROM profiles WHERE id = ?');
+        $profile = $this->db->prepare('SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, birth_date_encrypted, birth_date_dek, gender_encrypted, gender_dek FROM profiles WHERE id = ?');
         $profile->execute([$subject]);
         $row = $profile->fetch(PDO::FETCH_ASSOC) ?: [];
         $birth = !empty($row['birth_date_encrypted']) ? $this->crypto->decryptField((string) $row['birth_date_encrypted'], (string) $row['birth_date_dek']) : null;
@@ -267,7 +267,7 @@ final class AssistantTools
             'patient_id' => $subject,
             'patient' => $this->gateway->alias($this->name($row), 'Patient'),
             'age' => PrivacyGateway::ageFromBirthDate($birth),
-            'sexe' => $row['gender'] ?? null,
+            'sexe' => $this->decrypt($row, 'gender'),
             'soins_en_cours' => array_values(array_unique(array_filter(array_column($upcoming, 'category_name')))),
             'prochains_rdv' => array_map([$this, 'mapAppointment'], $upcoming),
             'derniers_rdv' => array_map([$this, 'mapAppointment'], $recent),
@@ -384,6 +384,19 @@ final class AssistantTools
         }
 
         return $item;
+    }
+
+    /** Champ chiffré du profil (`<champ>_encrypted` + `<champ>_dek`), null si absent ou illisible. */
+    private function decrypt(array $row, string $field): ?string
+    {
+        if (empty($row[$field . '_encrypted']) || empty($row[$field . '_dek'])) {
+            return null;
+        }
+        try {
+            return trim($this->crypto->decryptField((string) $row[$field . '_encrypted'], (string) $row[$field . '_dek'])) ?: null;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function profileName(string $profileId): string

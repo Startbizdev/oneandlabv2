@@ -6,12 +6,15 @@ export type MarkdownBlock =
 const LIST_ITEM = /^\s*(?:[-•*]|\d{1,2}[.)])\s+/;
 const HEADING = /^\s*#{1,6}\s+/;
 
-/** Markdown réduit de Cary : titres `#`, listes `-` / `1.`, paragraphes, gras `**…**`. */
+/**
+ * Markdown réduit de Cary : titres `#`, listes `-` / `1.`, paragraphes, gras `**…**`.
+ * Comme en Markdown standard, un simple retour à la ligne reste dans le paragraphe ; une ligne vide en ouvre un autre.
+ */
 export function parseMarkdown(raw: string): MarkdownBlock[] {
   const blocks: MarkdownBlock[] = [];
   let paragraph: string[] = [];
   const flushParagraph = () => {
-    if (paragraph.length > 0) blocks.push({ type: 'paragraph', text: paragraph.join('\n') });
+    if (paragraph.length > 0) blocks.push({ type: 'paragraph', text: paragraph.join(' ') });
     paragraph = [];
   };
   for (const line of raw.replace(/\r\n/g, '\n').split('\n')) {
