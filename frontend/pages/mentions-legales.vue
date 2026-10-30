@@ -15,7 +15,7 @@
           Mentions légales
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-          Dernière mise à jour : juillet 2026
+          Dernière mise à jour : octobre 2026
         </p>
       </header>
 
@@ -117,20 +117,42 @@
           </ul>
         </section>
 
-        <!-- 8. Cookies -->
+        <!-- 8. Assistant Cary -->
         <section class="border-b border-gray-200 pb-10">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            8. Cookies et outils de suivi
+            8. Assistant Cary (intelligence artificielle)
+          </h2>
+          <p class="mb-3">
+            L’application mobile propose un assistant conversationnel fondé sur l’intelligence artificielle. Il aide à comprendre et à s’organiser : rendez-vous, préparation d’un prélèvement, explication d’un compte rendu d’analyses, conseils généraux de santé et de prévention, et, pour les professionnels, synthèses de dossier et aide à la cotation.
+          </p>
+          <ul class="list-disc pl-5 space-y-2">
+            <li><strong class="text-gray-700">Pas un avis médical.</strong> L’assistant n’établit aucun diagnostic, ne prescrit aucun traitement et ne remplace pas une consultation. Pour toute décision concernant votre santé, contactez votre médecin ou le professionnel qui vous suit.</li>
+            <li><strong class="text-gray-700">Urgence.</strong> En cas d’urgence, appelez le 15 (SAMU) ou le 112. En cas de pensées suicidaires, appelez le 3114. L’assistant n’est pas un service d’urgence.</li>
+            <li><strong class="text-gray-700">Résultats d’analyses.</strong> Les explications fournies sont générales et ne tiennent pas compte de l’ensemble de votre situation clinique : seul votre médecin peut les interpréter pour vous.</li>
+            <li><strong class="text-gray-700">Cotation des actes.</strong> Les indications de cotation données aux professionnels sont établies à partir de la nomenclature officielle de l’Assurance Maladie (NGAP). Elles sont indicatives : le professionnel reste seul responsable de la cotation et de la facturation de ses actes.</li>
+            <li><strong class="text-gray-700">Validation par l’utilisateur.</strong> L’assistant ne réserve, ne modifie et n’enregistre rien seul : chaque action est vérifiée et confirmée par l’utilisateur dans l’application.</li>
+            <li><strong class="text-gray-700">Limites.</strong> Comme tout système d’intelligence artificielle, l’assistant peut se tromper. Ses réponses doivent être vérifiées.</li>
+          </ul>
+          <p class="mt-4">
+            Le traitement des données par l’assistant est décrit dans notre
+            <NuxtLink to="/politique-confidentialite" class="text-primary-600 hover:underline font-medium">politique de confidentialité</NuxtLink>.
+          </p>
+        </section>
+
+        <!-- 9. Cookies -->
+        <section class="border-b border-gray-200 pb-10">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">
+            9. Cookies et outils de suivi
           </h2>
           <p>
             Le Site utilise des cookies et outils similaires pour améliorer l'expérience utilisateur, analyser le trafic et proposer des contenus adaptés. Vous pouvez gérer vos préférences dans les paramètres de votre navigateur.
           </p>
         </section>
 
-        <!-- 9. Contact -->
+        <!-- 10. Contact -->
         <section>
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            9. Contact
+            10. Contact
           </h2>
           <p class="mb-4">
             Pour toute question, demande ou réclamation :

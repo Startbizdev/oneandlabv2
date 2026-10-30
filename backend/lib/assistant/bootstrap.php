@@ -8,7 +8,8 @@ require_once __DIR__ . '/AssistantError.php';
 
 /** Rôles disposant de l'assistant ; labo, sous-compte et admin n'en ont pas. */
 const ASSISTANT_ROLES = ['patient', 'nurse', 'pro', 'preleveur'];
-const ASSISTANT_STAFF_ROLES = ['nurse', 'pro', 'preleveur'];
+/** Rôles qui écrivent des transmissions : seuls à disposer de la dictée. */
+const ASSISTANT_TRANSMISSION_ROLES = ['nurse', 'pro'];
 
 function assistant_db(): PDO
 {

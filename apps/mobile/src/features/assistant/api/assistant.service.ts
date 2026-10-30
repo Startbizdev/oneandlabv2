@@ -5,6 +5,7 @@ import type {
   AssistantConversationSummary,
   AssistantDictationRequest,
   AssistantDictationResponse,
+  AssistantSettings,
 } from '@oneandlab/shared-types';
 import { apiRequest, apiStreamRequest } from '@/api/client';
 import { AssistantStreamError } from '../utils/assistant-errors';
@@ -63,4 +64,17 @@ export async function dictate(body: AssistantDictationRequest): Promise<string> 
   });
   if (!res.success || !res.data) throw new Error(res.error ?? 'Mise en forme impossible');
   return res.data.text;
+}
+
+/** Patient : lecture automatique de ses résultats par Cary (accord révocable). */
+export async function getAssistantSettings(): Promise<AssistantSettings> {
+  const res = await apiRequest<AssistantSettings>('/assistant/settings');
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Réglages indisponibles');
+  return res.data;
+}
+
+export async function setResultsReading(enabled: boolean): Promise<AssistantSettings> {
+  const res = await apiRequest<AssistantSettings>('/assistant/settings', { method: 'PUT', body: { results_reading: enabled } });
+  if (!res.success || !res.data) throw new Error(res.error ?? 'Réglage impossible');
+  return res.data;
 }

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/PrivacyGateway.php';
+require_once __DIR__ . '/AssistantDocumentReader.php';
+require_once __DIR__ . '/AssistantResultsConsent.php';
+require_once __DIR__ . '/NgapReference.php';
 require_once __DIR__ . '/../Crypto.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../PatientDossierAccess.php';
@@ -17,13 +20,14 @@ require_once __DIR__ . '/../../models/User.php';
 final class AssistantTools
 {
     public const ACTION_PARAMS = [
-        'book_appointment' => ['care_type', 'category_id', 'date', 'patient_id'],
+        'book_appointment' => ['care_type', 'category_id', 'date', 'time_from', 'time_to', 'patient_id'],
         'open_appointment' => ['id'],
         'open_lab_results' => [],
         'open_health_record' => [],
         'open_tour' => ['date'],
         'create_transmission' => ['patient_id', 'appointment_id', 'body'],
         'call_emergency' => ['number'],
+        'enable_results_reading' => [],
     ];
 
     public const STATUS = [
@@ -32,6 +36,8 @@ final class AssistantTools
         'get_lab_results' => 'Je consulte les résultats…',
         'get_patient_summary' => 'Je consulte le dossier du patient…',
         'get_tour' => 'Je consulte la tournée…',
+        'list_care_categories' => 'Je consulte les soins proposés…',
+        'search_ngap' => 'Je consulte la NGAP…',
     ];
 
     private const TERMINAL = ['completed', 'canceled', 'cancelled', 'refused', 'expired'];
@@ -73,10 +79,16 @@ final class AssistantTools
         if (in_array($role, self::TOUR_ROLES, true)) {
             $tools[] = self::define('get_tour', 'Arrêts de la tournée d\'un jour (AAAA-MM-JJ, défaut aujourd\'hui).', ['date' => ['type' => 'string']]);
         }
+        if ($role === 'patient') {
+            $tools[] = self::define('list_care_categories', 'Soins réservables dans Cary (id, nom, type) : pour retrouver le category_id du soin demandé.', []);
+        }
+        if (in_array($role, ['nurse', 'pro'], true) && NgapReference::available()) {
+            $tools[] = self::define('search_ngap', 'Recherche dans la NGAP officielle (Assurance Maladie) : passages à citer pour toute question de cotation. query : actes, lettres clés, majorations, situation.', ['query' => ['type' => 'string']], ['query']);
+        }
         $tools[] = self::define('propose_action', 'Affiche un bouton sous ta réponse (libellé court, sans nom). Dans ton texte, parle du « bouton ci-dessous », jamais de carte ni de validation.', [
             'type' => ['type' => 'string', 'enum' => array_keys(self::ACTION_PARAMS)],
             'label' => ['type' => 'string'],
-            'params' => ['type' => 'object', 'description' => 'book_appointment : care_type (blood_test = prise de sang, nursing = soin infirmier), date AAAA-MM-JJ ; open_appointment : id ; open_tour : date ; create_transmission : patient_id, body.'],
+            'params' => ['type' => 'object', 'description' => 'book_appointment : category_id (list_care_categories), care_type (blood_test = prise de sang, nursing = soin infirmier), date AAAA-MM-JJ, time_from et time_to (heures entières, plage de 2 h au moins) ; open_appointment : id ; open_tour : date ; create_transmission : patient_id, body.'],
         ], ['type', 'label']);
 
         return $tools;
@@ -112,6 +124,8 @@ final class AssistantTools
                 'get_lab_results' => $this->labResults((string) ($args['patient_id'] ?? ''), (int) ($args['limit'] ?? 5)),
                 'get_patient_summary' => $this->patientSummary((string) ($args['patient_id'] ?? '')),
                 'get_tour' => $this->tour((string) ($args['date'] ?? '')),
+                'list_care_categories' => $this->careCategories(),
+                'search_ngap' => $this->ngap((string) ($args['query'] ?? '')),
                 'propose_action' => $this->proposeAction($args),
                 default => ['error' => 'UNKNOWN_TOOL'],
             };
@@ -173,15 +187,65 @@ final class AssistantTools
             ORDER BY md.created_at DESC LIMIT " . max(1, min(10, $limit)));
         $stmt->execute($params);
 
+        $items = array_map(static fn (array $r): array => [
+            'id' => (string) $r['id'],
+            'date' => substr((string) $r['created_at'], 0, 10),
+            'jour' => self::dayLabel($r['created_at']),
+            'analyse' => $r['category_name'] ?? 'Bilan sanguin',
+            'appointment_id' => (string) $r['appointment_id'],
+        ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+        $result = ['items' => $items, 'note' => 'Les valeurs détaillées ne sont lisibles que si l\'utilisateur joint le document à la conversation.'];
+        $userId = (string) $this->user['user_id'];
+        if ((string) $this->user['role'] !== 'patient' || $subject !== $userId || $items === []) {
+            return $result;
+        }
+        if (!AssistantResultsConsent::has($this->db, $userId)) {
+            // Lecture automatique non autorisée : le patient peut l'activer d'un geste (bouton sous la réponse).
+            ($this->onAction)(['type' => 'enable_results_reading', 'label' => 'Autoriser la lecture de mes résultats', 'params' => []]);
+            $result['note'] = 'Lecture automatique non autorisée : dites en une phrase que le bouton ci-dessous permet de l\'autoriser, ou que le patient peut joindre le document.';
+
+            return $result;
+        }
+        try {
+            $document = AssistantDocumentReader::read($this->db, $this->user, $items[0]['id']);
+        } catch (AssistantError) {
+            $result['note'] = 'Le dernier compte rendu n\'a pas pu être lu : le patient peut le joindre à la conversation.';
+
+            return $result;
+        }
+        if ($document['kind'] === 'text' && trim($document['text']) !== '') {
+            $result['dernier_compte_rendu'] = $document['text'];
+            $result['note'] = 'Compte rendu le plus récent, lu avec l\'accord du patient.';
+        } else {
+            $result['note'] = 'Le dernier compte rendu est une image : le patient doit la joindre à la conversation pour qu\'elle soit lue.';
+        }
+
+        return $result;
+    }
+
+    /** Soins réservables par un patient (le certificat de décès reste réservé aux soignants). */
+    private function careCategories(): array
+    {
+        $rows = $this->db->query('SELECT id, name, type FROM care_categories WHERE is_active = 1 ORDER BY type, name')->fetchAll(PDO::FETCH_ASSOC);
+        $items = [];
+        foreach ($rows as $row) {
+            if (preg_match('/certificat\s+(de\s+)?d[ée]c[èe]s/iu', (string) $row['name']) !== 1) {
+                $items[] = ['category_id' => (string) $row['id'], 'soin' => (string) $row['name'], 'type' => (string) $row['type']];
+            }
+        }
+
+        return ['items' => $items];
+    }
+
+    private function ngap(string $query): array
+    {
+        $passages = NgapReference::search($query);
+
         return [
-            'items' => array_map(static fn (array $r): array => [
-                'id' => (string) $r['id'],
-                'date' => substr((string) $r['created_at'], 0, 10),
-                'jour' => self::dayLabel($r['created_at']),
-                'analyse' => $r['category_name'] ?? 'Bilan sanguin',
-                'appointment_id' => (string) $r['appointment_id'],
-            ], $stmt->fetchAll(PDO::FETCH_ASSOC)),
-            'note' => 'Les valeurs détaillées ne sont lisibles que si l\'utilisateur joint le document à la conversation.',
+            'source' => 'NGAP, Assurance Maladie',
+            'version' => NgapReference::version(),
+            'passages' => $passages,
+            'note' => $passages === [] ? 'Aucun passage trouvé : dites que la NGAP chargée ne couvre pas ce cas.' : 'Répondez uniquement d\'après ces passages et citez-les.',
         ];
     }
 

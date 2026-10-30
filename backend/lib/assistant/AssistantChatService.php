@@ -172,7 +172,8 @@ final class AssistantChatService
         if ($bookingTurn) {
             $system .= "
 Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !== null ? ' (params.care_type = ' . $careType . ')' : '')
-                . ' sans consulter les rendez-vous, puis dis en une phrase que le bouton ci-dessous permet de choisir la date et le créneau.';
+                . ' sans consulter les rendez-vous (list_care_categories seulement si le soin est précis), en reprenant le jour et l\'heure cités'
+                . ', puis dis en une phrase que le bouton ci-dessous ouvre la réservation préremplie, à vérifier puis confirmer.';
         }
         $messages = [['role' => 'system', 'content' => $system]];
         foreach ($history as $past) {

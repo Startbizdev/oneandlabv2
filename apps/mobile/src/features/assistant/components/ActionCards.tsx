@@ -10,6 +10,7 @@ import {
   FlaskConical,
   HeartPulse,
   Route,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react-native';
 import { AppText, ICON_STROKE_WIDTH, MIN_TOUCH_TARGET, font, iconSize, radius, spacing, useStyles, type Theme } from '@/theme';
@@ -23,6 +24,7 @@ const ICONS: Record<string, LucideIcon> = {
   open_health_record: HeartPulse,
   open_tour: Route,
   create_transmission: FileText,
+  enable_results_reading: ShieldCheck,
 };
 
 const FALLBACK_LABELS: Record<string, string> = {
@@ -32,6 +34,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   open_health_record: 'Ouvrir le carnet de santé',
   open_tour: 'Voir la tournée',
   create_transmission: 'Créer la transmission',
+  enable_results_reading: 'Autoriser la lecture de mes résultats',
 };
 
 type Props = {

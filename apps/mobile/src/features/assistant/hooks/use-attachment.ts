@@ -7,7 +7,10 @@ import { uploadMedicalDocument } from '@/lib/uploads/upload-file';
 import type { ComposerAttachment } from '../components/AssistantComposer';
 import { attachmentUploadMeta } from '../utils/attachment-target';
 
-/** Photo ou PDF déposé dans le dossier médical, puis joint (`document_id`) au message suivant. */
+/**
+ * Photo ou PDF déposé dans le dossier médical, puis joint (`document_id`) au message suivant.
+ * `patientId` : patient choisi à l'instant, avant que l'écran n'ait reçu le nouveau périmètre.
+ */
 export function useAttachment(role: MobileRole, scope: { appointmentId?: string; patientId?: string }) {
   const { show: toast } = useToast();
   const userId = useAuthStore((s) => s.user?.id ?? '');
@@ -15,12 +18,12 @@ export function useAttachment(role: MobileRole, scope: { appointmentId?: string;
   /** Une pièce retirée pendant l'envoi ne doit pas réapparaître. */
   const tokenRef = useRef(0);
 
-  const attach = useCallback(async () => {
+  const attach = useCallback(async (patientId?: string) => {
     const token = ++tokenRef.current;
     try {
       const picked = await pickCarePhoto('Joindre un document');
       if (!picked || token !== tokenRef.current) return;
-      const meta = attachmentUploadMeta(role, { userId, ...scope }, picked.fileName);
+      const meta = attachmentUploadMeta(role, { userId, ...scope, ...(patientId ? { patientId } : {}) }, picked.fileName);
       if (typeof meta === 'string') {
         toast(meta, { type: 'info' });
         return;

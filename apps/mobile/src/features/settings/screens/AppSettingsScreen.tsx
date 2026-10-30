@@ -6,6 +6,7 @@ import * as Device from 'expo-device';
 import { Bell, Eye, Info, Settings } from 'lucide-react-native';
 import { SettingsSection } from '@/components/ui/SettingsSection';
 import { ToggleSwitch } from '@/components/ui/ToggleSwitch';
+import { AssistantSettingsSection } from '@/features/assistant/components/AssistantSettingsSection';
 import { ProfileSubScreenLayout } from '@/features/profile/screens/ProfileSubScreenLayout';
 import { getAppMeta } from '@/features/help/utils/app-meta';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@/features/notifications/services/push-token.service';
 import { useToast } from '@/providers/ToastProvider';
 import { useAppPreferencesStore } from '@/store/app-preferences-store';
+import { useAuthStore } from '@/store/auth-store';
 import { COLORBLIND_TYPE_OPTIONS, type ActiveColorblindType } from '@/theme/colorblind-types';
 import { TEXT_SCALE_OPTIONS, type TextScale } from '@/theme/text-scale';
 import { radius, spacing, AppText, useStyles, font, type Theme } from '@/theme';
@@ -44,6 +46,7 @@ export function AppSettingsScreen() {
   const setExpoPushToken = useAppPreferencesStore((s) => s.setExpoPushToken);
   const setTextScale = useAppPreferencesStore((s) => s.setTextScale);
   const textScale = useAppPreferencesStore((s) => s.textScale);
+  const isPatient = useAuthStore((s) => s.user?.role) === 'patient';
 
   const { status: osPermission, refresh: refreshPermission } = usePushPermissionStatus();
   const [pushBusy, setPushBusy] = useState(false);
@@ -214,6 +217,8 @@ export function AppSettingsScreen() {
           </View>
         </>
       ) : null}
+
+      {isPatient ? <AssistantSettingsSection /> : null}
 
       <SettingsSection
         title="À propos"

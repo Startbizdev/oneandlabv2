@@ -8,7 +8,9 @@ import { roleRoutePrefix } from '@/navigation/role-route-prefix';
 export type AssistantActionTarget =
   | { kind: 'navigate'; href: Href }
   | { kind: 'transmission'; patientId: string; prefill: TransmissionPrefill }
-  | { kind: 'call'; url: string };
+  | { kind: 'call'; url: string }
+  /** Patient : accord à confirmer pour la lecture automatique de ses résultats. */
+  | { kind: 'consent' };
 
 const LAB_RESULTS: Partial<Record<MobileRole, Href>> = {
   // Écran empilé (pas l'onglet) : le retour ramène à la conversation.
@@ -26,6 +28,23 @@ const EMERGENCY_NUMBERS = ['15', '112', '3114'];
 export function emergencyTelUrl(number: string | undefined): string {
   const digits = (number ?? '').replace(/\D/g, '');
   return `tel:${EMERGENCY_NUMBERS.includes(digits) ? digits : '15'}`;
+}
+
+/**
+ * Réservation préremplie par Cary : soin, jour et plage horaire, repris seulement s'ils sont bien formés
+ * (le formulaire reste à vérifier et confirmer par l'utilisateur).
+ */
+export function bookingPrefillParams(p: AssistantAction['params']): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (p.category_id && /^[A-Za-z0-9-]{1,64}$/.test(p.category_id)) out.category_id = p.category_id;
+  if (p.date && /^\d{4}-\d{2}-\d{2}$/.test(p.date)) out.date = p.date;
+  const from = Number(p.time_from);
+  const to = Number(p.time_to);
+  if (Number.isInteger(from) && Number.isInteger(to) && from >= 0 && to <= 24 && to > from) {
+    out.time_from = String(from);
+    out.time_to = String(to);
+  }
+  return out;
 }
 
 /** Transmission préremplie (dictée ou carte d'action), bornée à la longueur acceptée par le serveur. */
@@ -57,6 +76,7 @@ export function resolveAssistantAction(
         href: bookingNewHref(prefix, {
           ...(patientId ? { patient_id: patientId } : {}),
           ...(careType ? { care_type: careType } : {}),
+          ...bookingPrefillParams(p),
         }),
       };
     }
@@ -85,6 +105,8 @@ export function resolveAssistantAction(
     }
     case 'call_emergency':
       return { kind: 'call', url: emergencyTelUrl(p.number) };
+    case 'enable_results_reading':
+      return role === 'patient' ? { kind: 'consent' } : null;
     default:
       return null;
   }

@@ -74,3 +74,4 @@ apps/mobile/dist-verification/
 
 # Certificat HDS AWS : document confidentiel AWS, ne pas publier
 DOCSHDS/CERTIFICAT-HDS-AWS.pdf
+backend/resources/ngap/ngap.pdf

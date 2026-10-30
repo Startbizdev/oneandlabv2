@@ -7,7 +7,9 @@ export type AssistantActionType =
   | 'open_health_record'
   | 'open_tour'
   | 'create_transmission'
-  | 'call_emergency';
+  | 'call_emergency'
+  /** Patient : accord pour que Cary lise lui-même son dernier compte rendu d'analyses. */
+  | 'enable_results_reading';
 
 /** Carte d'action proposée par Cary ; l'app ouvre l'écran existant, l'utilisateur valide. Type inconnu ignoré. */
 export interface AssistantAction {
@@ -80,6 +82,12 @@ export interface AssistantConversation {
   id: string;
   title: string;
   messages: AssistantMessage[];
+}
+
+/** `GET|PUT /assistant/settings` (patient) : lecture automatique des résultats, accord révocable. */
+export interface AssistantSettings {
+  results_reading: boolean;
+  results_reading_since: string | null;
 }
 
 export interface AssistantDictationRequest {

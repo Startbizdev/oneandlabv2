@@ -17,6 +17,7 @@ export const queryKeys = {
   },
   assistant: {
     conversations: ['assistant', 'conversations'] as const,
+    settings: ['assistant', 'settings'] as const,
     conversation: (id: string) => ['assistant', 'conversation', id] as const,
   },
   notifications: {

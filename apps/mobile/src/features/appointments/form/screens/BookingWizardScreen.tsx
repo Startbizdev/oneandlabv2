@@ -35,6 +35,7 @@ import {
 import { BookingDraftResumeSheet } from '../components/BookingDraftResumeSheet';
 import { DirectedProviderBanner } from '../components/DirectedProviderBanner';
 import { useDirectedProviderName } from '../hooks/use-directed-provider-name';
+import { useAssistantBookingPrefill } from '../hooks/use-assistant-booking-prefill';
 import type { BookingDraftData } from '../utils/booking-draft';
 import type { RoleRoutePrefix } from '@/navigation/role-route-prefix';
 import { PATIENT_VIP_FEE_LABEL } from '@oneandlab/shared-constants';
@@ -62,17 +63,19 @@ export function BookingWizardScreen(props: Props) {
     relative_id: relativeIdParam,
     provider_id: providerIdParam,
     care_type: careTypeParam,
+    category_id: categoryIdParam,
   } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
     provider_id?: string;
     care_type?: string;
+    category_id?: string;
   }>();
   const focused = useIsFocused();
   // Lien avec une intention (patient, proche, soignant, type de soin) : pas de proposition de reprise de brouillon.
   const draftResume = useBookingDraftResume(
     useBookingDraftOwnerKey(),
-    focused && !patientIdParam && !relativeIdParam && !providerIdParam && !careTypeParam,
+    focused && !patientIdParam && !relativeIdParam && !providerIdParam && !careTypeParam && !categoryIdParam,
   );
   const restart = useCallback(() => {
     setInitialDraft(null);
@@ -114,6 +117,10 @@ function BookingWizardFlow({
     provider_id: providerIdParam,
     provider_role: providerRoleParam,
     care_type: careTypeParam,
+    category_id: categoryIdParam,
+    date: dateParam,
+    time_from: timeFromParam,
+    time_to: timeToParam,
   } = useLocalSearchParams<{
     patient_id?: string;
     relative_id?: string;
@@ -121,6 +128,11 @@ function BookingWizardFlow({
     provider_role?: string;
     /** `blood_test` | `nursing` : filtre initial de l'étape soins. */
     care_type?: string;
+    /** Réservation préremplie par l'assistant : soin, jour (AAAA-MM-JJ) et plage horaire (heures). */
+    category_id?: string;
+    date?: string;
+    time_from?: string;
+    time_to?: string;
   }>();
   const [directedProvider, setDirectedProvider] = useState<DirectedProvider | null>(() =>
     mode === 'patient'
@@ -150,6 +162,7 @@ function BookingWizardFlow({
     directedProvider,
   });
   useBookingDraftAutosave(bw, draftSession);
+  useAssistantBookingPrefill(bw.wizard, categoryIdParam, { date: dateParam, timeFrom: timeFromParam, timeTo: timeToParam });
   const providerName = useDirectedProviderName(bw.directedProvider);
   const w = bw.wizard;
   const { phases } = bw.progress;
@@ -253,6 +266,7 @@ function BookingWizardFlow({
               loading={w.saving}
               phases={phases}
               initialFilterTab={careFilterTabForCareType(careTypeParam)}
+              autoAddCategoryId={categoryIdParam}
               contextBanner={
                 bw.directedProvider && providerName ? (
                   <DirectedProviderBanner

@@ -15,7 +15,7 @@
           Conditions générales de vente
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-          Abonnements professionnels Cary — Dernière mise à jour : février 2025
+          Abonnements professionnels Cary — Dernière mise à jour : octobre 2026
         </p>
       </header>
 
@@ -107,6 +107,10 @@
           </h2>
           <p>
             Le professionnel s’engage à fournir des informations exactes, à respecter la réglementation de sa profession et les règles d’utilisation du Site. Il est seul responsable des actes réalisés dans le cadre de son activité (prélèvements, soins) ; Cary agit comme intermédiaire de mise en relation et de gestion des rendez-vous, sans se substituer au professionnel de santé dans l’exercice de son art.
+          </p>
+          <p class="mt-4">
+            L’assistant Cary (intelligence artificielle) peut aider le professionnel à préparer ses passages, résumer un dossier, mettre en forme une transmission ou retrouver une règle de cotation dans la nomenclature officielle de l’Assurance Maladie (NGAP). Ces réponses sont indicatives : le professionnel les vérifie et reste seul responsable de ses décisions de soin, de la cotation et de la facturation de ses actes. Les conditions d’utilisation de l’assistant figurent dans les
+            <NuxtLink to="/mentions-legales" class="text-primary-600 hover:underline font-medium">mentions légales</NuxtLink>.
           </p>
         </section>
 

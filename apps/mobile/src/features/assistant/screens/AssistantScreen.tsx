@@ -23,21 +23,25 @@ import { DictationSheet } from '../components/DictationSheet';
 import { HistorySheet } from '../components/HistorySheet';
 import { MessageList } from '../components/MessageList';
 import { PatientPickerSheet } from '../components/PatientPickerSheet';
+import { ResultsConsentSheet } from '../components/ResultsConsentSheet';
 import { ScopeBar } from '../components/ScopeBar';
 import { Suggestions } from '../components/Suggestions';
 import { useAssistantChat } from '../hooks/use-assistant-chat';
 import { useAttachment } from '../hooks/use-attachment';
 import { useSheetSequence } from '../hooks/use-sheet-sequence';
 import { useVoiceMode } from '../hooks/use-voice-mode';
-import type { AssistantActionTarget } from '../utils/assistant-actions';
+import { resolveAssistantAction, type AssistantActionTarget } from '../utils/assistant-actions';
 import { parseContextType, type AssistantLinkParams } from '../utils/assistant-link';
 import { starterSuggestions } from '../utils/assistant-suggestions';
+import { voiceBookingConfirmation } from '../utils/voice-confirm';
 
 type Sheet =
   | { kind: 'history' }
-  | { kind: 'picker' }
+  /** `thenAttach` : le soignant voulait joindre un document sans patient choisi. */
+  | { kind: 'picker'; thenAttach?: boolean }
   | { kind: 'dictation'; patientId: string }
   | { kind: 'delete'; conversation: AssistantConversationSummary }
+  | { kind: 'consent' }
   | { kind: 'transmission'; patientId: string; prefill: TransmissionPrefill };
 
 const ATTACHMENT_ONLY_MESSAGE = 'Voici un document. Explique-moi ce qui est important.';
@@ -69,7 +73,17 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
   const firstName = useAuthStore((s) => s.user?.first_name);
   const streaming = chat.phase === 'streaming';
 
+  // Lu par la voix au moment où la phrase arrive (la liste change entre deux rendus).
+  const messagesRef = useRef(chat.messages);
+  messagesRef.current = chat.messages;
   const voice = useVoiceMode((text, controller) => {
+    const booking = voiceBookingConfirmation(text, messagesRef.current);
+    const target = booking ? resolveAssistantAction(role, booking, patientId) : null;
+    if (target?.kind === 'navigate') {
+      controller.interrupt();
+      router.push(target.href);
+      return;
+    }
     if (!send(text, controller.speakStream())) controller.interrupt();
   });
   const { controller } = voice;
@@ -127,10 +141,17 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
       controller.interrupt();
       if (target.kind === 'navigate') router.push(target.href);
       else if (target.kind === 'transmission') openSheet(target);
+      else if (target.kind === 'consent') openSheet({ kind: 'consent' });
       else Linking.openURL(target.url).catch((e: unknown) => console.warn('[assistant] appel impossible', e));
     },
     [controller, openSheet, router],
   );
+
+  // Soignant sans patient ni rendez-vous : le document doit être rangé dans un dossier, on choisit d'abord le patient.
+  const attach = useCallback(() => {
+    if (staff && role !== 'preleveur' && !appointmentId && !patientId) openSheet({ kind: 'picker', thenAttach: true });
+    else void attachment.attach();
+  }, [appointmentId, attachment, openSheet, patientId, role, staff]);
 
   const pickSuggestion = useCallback((message: string) => void send(message), [send]);
 
@@ -163,6 +184,12 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
         console.warn('[assistant] suppression impossible', e);
         toast('Suppression impossible. Réessayez.', { type: 'error' });
       });
+  };
+
+  // Accord donné : la question sur les résultats est reposée, cette fois avec le compte rendu.
+  const resendLastQuestion = () => {
+    const question = [...chat.messages].reverse().find((m) => m.role === 'user')?.text;
+    if (question) send(question);
   };
 
   const sheet = sheets.sheet;
@@ -198,7 +225,7 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
         onClearContext={() => router.setParams({ context_type: undefined, context_id: undefined })}
         onPickPatient={() => openSheet({ kind: 'picker' })}
         onClearPatient={() => router.setParams(CLEARED_SCOPE)}
-        onDictation={patientId ? () => openSheet({ kind: 'dictation', patientId }) : undefined}
+        onDictation={patientId && role !== 'preleveur' ? () => openSheet({ kind: 'dictation', patientId }) : undefined}
       />
       <View style={styles.thread}>{body}</View>
       <AssistantComposer
@@ -208,7 +235,7 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
         voice={voice.state}
         onMicPress={pressMic}
         onExitVoice={controller.interrupt}
-        onAttach={attachment.attach}
+        onAttach={attach}
         attachment={attachment.attachment}
         onClearAttachment={attachment.clear}
       />
@@ -235,13 +262,22 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
         onClose={() => sheets.closeThen(null)}
         onDismissed={sheets.onDismissed}
       />
+      {role === 'patient' ? (
+        <ResultsConsentSheet
+          visible={sheets.isOpen && sheet?.kind === 'consent'}
+          onClose={() => sheets.closeThen(null)}
+          onDismissed={sheets.onDismissed}
+          onGranted={resendLastQuestion}
+        />
+      ) : null}
       {staff ? (
         <PatientPickerSheet
           visible={sheets.isOpen && sheet?.kind === 'picker'}
           onClose={() => sheets.closeThen(null)}
           onDismissed={sheets.onDismissed}
           onPick={(id) => {
-            sheets.closeThen(null);
+            const thenAttach = sheet?.kind === 'picker' && sheet.thenAttach;
+            sheets.closeThen(thenAttach ? () => void attachment.attach(id) : null);
             router.setParams({ ...CLEARED_SCOPE, patient_id: id });
           }}
         />

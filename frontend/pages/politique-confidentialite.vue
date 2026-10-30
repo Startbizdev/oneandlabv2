@@ -15,7 +15,7 @@
           Politique de confidentialité
         </h1>
         <p class="mt-2 text-sm text-gray-500">
-          Dernière mise à jour : février 2025
+          Dernière mise à jour : octobre 2026
         </p>
       </header>
 
@@ -59,6 +59,7 @@
             <li>la prise de rendez-vous, la coordination des interventions et le suivi des soins (exécution du contrat) ;</li>
             <li>la facturation et la gestion des abonnements professionnels (exécution du contrat, obligation légale) ;</li>
             <li>l’envoi de rappels et notifications utiles au service (intérêt légitime) ;</li>
+            <li>l’assistant Cary, à votre demande (exécution du contrat ; consentement pour la lecture automatique de vos résultats) ;</li>
             <li>l’amélioration du Site et des services (intérêt légitime, sous réserve de vos choix) ;</li>
             <li>le respect des obligations légales et réglementaires (obligation légale).</li>
           </ul>
@@ -69,7 +70,7 @@
             4. Destinataires et conservation
           </h2>
           <p class="mb-3">
-            Les données sont accessibles aux équipes habilitées de Cary et, dans le cadre strict des prestations, aux professionnels de santé concernés (laboratoire, infirmier assigné). Les sous-traitants (hébergement, paiement, envoi d’emails) sont choisis pour leur conformité (HDS, RGPD) et liés par des engagements de confidentialité et de sécurité.
+            Les données sont accessibles aux équipes habilitées de Cary et, dans le cadre strict des prestations, aux professionnels de santé concernés (laboratoire, infirmier assigné). Les sous-traitants (hébergement, paiement, envoi d’e-mails et de SMS, assistant d’intelligence artificielle) sont choisis pour leur conformité (HDS, RGPD) et liés par des engagements de confidentialité et de sécurité.
           </p>
           <p>
             La durée de conservation est limitée au temps nécessaire aux finalités précitées et aux obligations légales (comptabilité, contentieux, santé). Les données de santé et les éléments nécessaires à la continuité des soins peuvent être conservés selon les durées prévues par la réglementation en vigueur.
@@ -78,7 +79,27 @@
 
         <section class="border-b border-gray-200 pb-10">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            5. Sécurité
+            5. Assistant Cary (intelligence artificielle)
+          </h2>
+          <p class="mb-3">
+            L’assistant de l’application mobile repose sur un modèle d’intelligence artificielle fourni par <strong class="text-gray-700">xAI</strong> (États-Unis). Il n’est utilisé qu’à votre demande, quand vous lui posez une question.
+          </p>
+          <ul class="list-disc pl-5 space-y-2">
+            <li><strong class="text-gray-700">Données transmises :</strong> votre question et les seules informations utiles à la réponse (rendez-vous, tournée, synthèse d’un dossier pour un professionnel habilité), les documents que vous joignez vous-même à la conversation et, si vous l’avez autorisé, votre dernier compte rendu d’analyses.</li>
+            <li><strong class="text-gray-700">Pseudonymisation :</strong> avant chaque envoi, les noms sont remplacés par des alias ; téléphone, e-mail, adresse, position, numéro de sécurité sociale, IBAN et numéros de dossier sont masqués ; la date de naissance est remplacée par l’âge.</li>
+            <li><strong class="text-gray-700">Aucune conservation chez le fournisseur :</strong> xAI ne conserve ni les questions ni les réponses.</li>
+            <li><strong class="text-gray-700">Lecture automatique de vos résultats :</strong> uniquement avec votre accord exprès, demandé dans l’application et retirable à tout moment dans Réglages, rubrique « Assistant Cary ». Sans cet accord, l’assistant ne voit que la date et le type de vos analyses.</li>
+            <li><strong class="text-gray-700">Conservation chez Cary :</strong> les conversations sont chiffrées, supprimables à tout moment depuis l’historique, et supprimées automatiquement un an après le dernier message.</li>
+            <li><strong class="text-gray-700">Aucune décision automatisée :</strong> l’assistant ne prend aucune décision vous concernant ; les situations d’urgence sont détectées par des règles fixes, sans intelligence artificielle, et renvoient vers le 15, le 112 ou le 3114.</li>
+          </ul>
+          <p class="mt-4">
+            Bases légales : exécution du service que vous demandez ; votre consentement pour la lecture automatique de vos résultats et pour les documents que vous choisissez de joindre.
+          </p>
+        </section>
+
+        <section class="border-b border-gray-200 pb-10">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">
+            6. Sécurité
           </h2>
           <p>
             Nous mettons en œuvre des mesures techniques et organisationnelles appropriées (accès restreint, chiffrement, hébergement certifié HDS, audits) pour protéger vos données contre l’accès non autorisé, la perte ou l’altération. Les traitements sont réalisés sur des infrastructures conformes à l’hébergement des données de santé.
@@ -87,7 +108,7 @@
 
         <section class="border-b border-gray-200 pb-10">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            6. Vos droits (RGPD)
+            7. Vos droits (RGPD)
           </h2>
           <p class="mb-3">
             Vous disposez des droits suivants :
@@ -108,7 +129,7 @@
 
         <section class="border-b border-gray-200 pb-10">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            7. Cookies
+            8. Cookies
           </h2>
           <p>
             Le Site utilise des cookies et technologies similaires pour le fonctionnement du service, la sécurité, l’analyse d’audience et l’amélioration de l’expérience utilisateur. Vous pouvez configurer vos préférences dans les paramètres de votre navigateur. Le refus de certains cookies peut limiter certaines fonctionnalités.
@@ -117,7 +138,7 @@
 
         <section>
           <h2 class="text-lg font-semibold text-gray-900 mb-4">
-            8. Modifications
+            9. Modifications
           </h2>
           <p>
             Cette politique peut être mise à jour pour refléter des changements de services ou de réglementation. La date de dernière mise à jour est indiquée en tête de document. Nous vous invitons à la consulter régulièrement.

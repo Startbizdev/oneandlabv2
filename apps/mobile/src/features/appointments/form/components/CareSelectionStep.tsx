@@ -50,6 +50,8 @@ interface Props {
   contextBanner?: ReactNode;
   /** Filtre affiché à l'ouverture (ex. « Prélèvements » depuis l'assistant) ; l'utilisateur peut en changer. */
   initialFilterTab?: string;
+  /** Soin choisi par l'assistant : ajouté une fois à l'ouverture, comme un toucher sur sa tuile. */
+  autoAddCategoryId?: string;
 }
 
 function CareListTile({
@@ -116,6 +118,7 @@ export function CareSelectionStep({
   phases,
   contextBanner,
   initialFilterTab = 'all',
+  autoAddCategoryId,
 }: Props) {
   const styles = useStyles(buildStyles);
   const { show: toast } = useToast();
@@ -235,6 +238,15 @@ export function CareSelectionStep({
       toast,
     ],
   );
+
+  const autoAddedRef = useRef(false);
+  useEffect(() => {
+    if (autoAddedRef.current || !autoAddCategoryId) return;
+    const cat = fullList.find((item) => item.id === autoAddCategoryId);
+    if (!cat) return;
+    autoAddedRef.current = true;
+    if (!isSelected(cat.id)) void attemptAdd(cat);
+  }, [attemptAdd, autoAddCategoryId, fullList, isSelected]);
 
   const listHeader = useMemo(
     () => (
