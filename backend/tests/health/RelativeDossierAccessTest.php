@@ -16,6 +16,7 @@ require_once __DIR__ . '/../../lib/RelativeProfile.php';
 require_once __DIR__ . '/../../lib/RelativeProfileBackfill.php';
 require_once __DIR__ . '/../../lib/PatientDossierAccess.php';
 require_once __DIR__ . '/../../lib/MedicalDocumentAccess.php';
+require_once __DIR__ . '/../../lib/StaffPatientHubSearch.php';
 require_once __DIR__ . '/../../models/PatientRelative.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 
@@ -97,6 +98,27 @@ final class RelativeDossierAccessTest extends TestCase
         }
         unset($this->db);
         parent::tearDown();
+    }
+
+    /**
+     * Scénario terrain : le fils ajoute son père, l'admin attribue le RDV du père à l'infirmier (sans acceptation par
+     * l'infirmier, donc sans lien patient_professional_access). Le père doit quand même apparaître dans « Mes patients ».
+     */
+    public function testRelativeWithActiveAppointmentAssignedByAdminAppearsInTheNurseList(): void
+    {
+        $listed = fn (): array => array_column(
+            (new StaffPatientHubSearch($this->db))->search($this->nurse(), '', 80)['items'],
+            'patient_id',
+        );
+        $this->assertNotContains($this->relativeProfileId, $listed(), 'Aucun soin : rien dans la liste');
+
+        $pending = $this->appointment('pending', $this->nurseId, $this->relativeId);
+        $this->assertNotContains($this->relativeProfileId, $listed(), 'Demande non acceptée : pas encore son patient');
+
+        $this->db->prepare('UPDATE appointments SET status = ? WHERE id = ?')->execute(['confirmed', $pending]);
+        $this->assertFalse($this->hasLink($this->relativeProfileId, $this->nurseId), 'Attribution sans lien PPA');
+        $this->assertContains($this->relativeProfileId, $listed(), 'Soin confirmé attribué : le proche apparaît');
+        $this->assertNotContains($this->ownerId, $listed(), 'Jamais le titulaire (le fils) à la place du proche');
     }
 
     public function testCreatingARelativeCreatesOneLoginlessPatientDossier(): void
