@@ -17,7 +17,7 @@ final class AssistantDocumentReader
     private const MAX_TEXT = 12000;
     private const MAX_IMAGE_BYTES = 5_000_000;
 
-    /** @return array{kind: 'text', text: string}|array{kind: 'image', data_url: string} */
+    /** @return array{kind: 'text', text: string, name: string}|array{kind: 'image', data_url: string, name: string} */
     public static function read(PDO $db, array $user, string $documentId): array
     {
         $document = preg_match('/^[0-9a-f-]{32,36}$/i', $documentId) === 1 ? MedicalDocumentAccess::loadForAccess($db, $documentId) : null;
@@ -35,13 +35,21 @@ final class AssistantDocumentReader
                 throw AssistantError::validation('Image trop volumineuse pour l\'assistant');
             }
 
-            return ['kind' => 'image', 'data_url' => 'data:' . $mime . ';base64,' . base64_encode($bytes)];
+            return ['kind' => 'image', 'data_url' => 'data:' . $mime . ';base64,' . base64_encode($bytes), 'name' => self::name($document)];
         }
         if ($mime !== 'application/pdf') {
             throw AssistantError::validation('Seuls les PDF et les images peuvent être lus par l\'assistant');
         }
 
-        return ['kind' => 'text', 'text' => mb_substr(self::pdfText($bytes), 0, self::MAX_TEXT)];
+        return ['kind' => 'text', 'text' => mb_substr(self::pdfText($bytes), 0, self::MAX_TEXT), 'name' => self::name($document)];
+    }
+
+    /** Nom du fichier affiché sous le message (« Ordonnance.pdf »). */
+    private static function name(array $document): string
+    {
+        $name = trim((string) ($document['file_name'] ?? ''));
+
+        return $name !== '' ? mb_substr($name, 0, 120) : 'Document';
     }
 
     private static function decryptedContent(array $document): string

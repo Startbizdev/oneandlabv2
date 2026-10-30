@@ -10,7 +10,7 @@ export type AssistantStreamHandlers = {
 
 export type AssistantStreamOutcome =
   | { kind: 'pending' }
-  | { kind: 'done'; messageId: string; conversationId: string; text: string; actions: AssistantAction[] }
+  | { kind: 'done'; messageId: string; conversationId: string; text: string; actions: AssistantAction[]; patientId?: string }
   | { kind: 'error'; code?: string; message: string; retryAfter?: number };
 
 type Json = Record<string, unknown>;
@@ -95,6 +95,7 @@ export function createAssistantSseReader(handlers: AssistantStreamHandlers) {
           conversationId: str(data, 'conversation_id'),
           text: str(data, 'text'),
           actions: parseActions(data.actions),
+          patientId: str(data, 'patient_id') || undefined,
         };
         break;
       case 'error': {

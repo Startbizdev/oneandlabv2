@@ -58,16 +58,22 @@ export const ActionCards = memo(function ActionCards({ actions, role, patientId,
       {cards.map(({ action, target }, index) => {
         const Icon = ICONS[action.type] ?? ArrowUpRight;
         const label = action.label || FALLBACK_LABELS[action.type] || 'Ouvrir';
+        // La première action est la suite principale (pleine) ; les autres restent neutres et lisibles.
+        const main = index === 0;
         return (
           <Pressable
             key={`${action.type}-${index}`}
             onPress={() => onAction(target)}
-            style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.chip,
+              main ? styles.main : styles.secondary,
+              pressed && (main ? styles.mainPressed : styles.secondaryPressed),
+            ]}
             accessibilityRole="button"
             accessibilityLabel={label}
           >
-            <Icon size={iconSize.sm} color={c.primary} strokeWidth={ICON_STROKE_WIDTH} />
-            <AppText variant="secondary" style={styles.label}>
+            <Icon size={iconSize.sm} color={main ? c.onPrimary : c.textPrimary} strokeWidth={ICON_STROKE_WIDTH} />
+            <AppText variant="secondary" style={[styles.label, { color: main ? c.onPrimary : c.textPrimary }]}>
               {label}
             </AppText>
           </Pressable>
@@ -89,10 +95,11 @@ function buildStyles({ colors: c }: Theme) {
       paddingHorizontal: spacing[4],
       borderRadius: radius.full,
       borderWidth: 1,
-      borderColor: c.primaryMid,
-      backgroundColor: c.background,
     },
-    label: { ...font.medium, color: c.primaryDark, flexShrink: 1 },
-    pressed: { backgroundColor: c.primaryLight },
+    main: { backgroundColor: c.primary, borderColor: c.primary },
+    mainPressed: { opacity: 0.85 },
+    secondary: { backgroundColor: c.surface, borderColor: c.cardBorder },
+    secondaryPressed: { backgroundColor: c.surfaceAlt },
+    label: { ...font.semiBold, flexShrink: 1 },
   };
 }

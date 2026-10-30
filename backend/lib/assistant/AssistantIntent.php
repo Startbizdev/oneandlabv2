@@ -32,6 +32,30 @@ final class AssistantIntent
             && preg_match(self::NEED, $question) === 1;
     }
 
+    /** Soignant : demande de transmission ou de compte rendu à mettre en forme. */
+    public static function wantsTransmission(string $question): bool
+    {
+        return preg_match('/(?<!\p{L})(transmission|transmettre|compte[ -]rendu|note pour le dossier)(?!\p{L})/iu', $question) === 1;
+    }
+
+    /**
+     * Texte de la transmission repris de la réponse : sans l'introduction (« Voici… ») ni la question finale.
+     */
+    public static function transmissionBody(string $answer): string
+    {
+        $kept = [];
+        foreach (preg_split('/\n\s*\n/u', trim($answer)) ?: [] as $paragraph) {
+            $paragraph = trim((string) preg_replace('/\*\*/u', '', $paragraph));
+            if ($paragraph === '' || str_ends_with($paragraph, '?') || str_ends_with($paragraph, ':')
+                || preg_match('/^(voici|je vous propose|souhaitez|voulez|vous pouvez|n.h[ée]sitez)/iu', $paragraph) === 1) {
+                continue;
+            }
+            $kept[] = $paragraph;
+        }
+
+        return implode("\n", $kept);
+    }
+
     /** blood_test, nursing ou null si la demande ne précise pas le soin. */
     public static function careType(string $question): ?string
     {

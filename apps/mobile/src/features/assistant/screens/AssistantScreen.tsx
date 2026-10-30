@@ -19,12 +19,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { AppText, useStyles, type Theme } from '@/theme';
 import { deleteConversation } from '../api/assistant.service';
 import { AssistantComposer } from '../components/AssistantComposer';
-import { DictationSheet } from '../components/DictationSheet';
 import { HistorySheet } from '../components/HistorySheet';
 import { MessageList } from '../components/MessageList';
 import { PatientPickerSheet } from '../components/PatientPickerSheet';
 import { ResultsConsentSheet } from '../components/ResultsConsentSheet';
-import { ScopeBar } from '../components/ScopeBar';
 import { Suggestions } from '../components/Suggestions';
 import { useAssistantChat } from '../hooks/use-assistant-chat';
 import { useAttachment } from '../hooks/use-attachment';
@@ -39,7 +37,6 @@ type Sheet =
   | { kind: 'history' }
   /** `thenAttach` : le soignant voulait joindre un document sans patient choisi. */
   | { kind: 'picker'; thenAttach?: boolean }
-  | { kind: 'dictation'; patientId: string }
   | { kind: 'delete'; conversation: AssistantConversationSummary }
   | { kind: 'consent' }
   | { kind: 'transmission'; patientId: string; prefill: TransmissionPrefill };
@@ -57,15 +54,17 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
   const staff = role !== 'patient';
   const contextType = parseContextType(params.context_type);
   const contextId = params.context_id || undefined;
-  const patientId = staff ? params.patient_id || (contextType === 'patient' ? contextId : undefined) : undefined;
+  /** Patient imposé par le lien (fiche patient, rendez-vous) ; sinon Cary le comprend dans la question. */
+  const linkedPatientId = staff ? params.patient_id || (contextType === 'patient' ? contextId : undefined) : undefined;
   const appointmentId = contextType === 'appointment' ? contextId : undefined;
 
   const scope = useMemo(
-    () => ({ context: contextType ? { type: contextType, id: contextId } : undefined, patientId }),
-    [contextId, contextType, patientId],
+    () => ({ context: contextType ? { type: contextType, id: contextId } : undefined, patientId: linkedPatientId }),
+    [contextId, contextType, linkedPatientId],
   );
   const chat = useAssistantChat(scope);
   const { send, stop, retry, openConversation } = chat;
+  const patientId = linkedPatientId ?? (staff ? chat.patientId : undefined);
   const attachmentScope = useMemo(() => ({ appointmentId, patientId }), [appointmentId, patientId]);
   const attachment = useAttachment(role, attachmentScope);
   const sheets = useSheetSequence<Sheet>();
@@ -89,7 +88,7 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
   const { controller } = voice;
 
   // Nouveau sujet (lien profond, patient choisi) : nouvelle conversation.
-  const scopeKey = `${contextType ?? ''}:${contextId ?? ''}:${patientId ?? ''}`;
+  const scopeKey = `${contextType ?? ''}:${contextId ?? ''}:${linkedPatientId ?? ''}`;
   const scopeKeyRef = useRef(scopeKey);
   useEffect(() => {
     if (scopeKeyRef.current === scopeKey) return;
@@ -120,6 +119,7 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
       controller.interrupt();
       const sent = send(text.trim() || (pending?.documentId ? ATTACHMENT_ONLY_MESSAGE : ''), {
         documentId: pending?.documentId,
+        documentName: pending?.fileName,
       });
       if (sent && pending) attachment.clear();
       return sent;
@@ -217,16 +217,6 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
 
   const content = (
     <View style={styles.screen}>
-      <ScopeBar
-        role={role}
-        contextType={contextType}
-        appointmentId={appointmentId}
-        patientId={patientId}
-        onClearContext={() => router.setParams({ context_type: undefined, context_id: undefined })}
-        onPickPatient={() => openSheet({ kind: 'picker' })}
-        onClearPatient={() => router.setParams(CLEARED_SCOPE)}
-        onDictation={patientId && role !== 'preleveur' ? () => openSheet({ kind: 'dictation', patientId }) : undefined}
-      />
       <View style={styles.thread}>{body}</View>
       <AssistantComposer
         onSend={sendFromComposer}
@@ -283,16 +273,6 @@ export function AssistantScreen({ role, showBackButton = false }: { role: Mobile
               if (thenAttach) void attachment.attach(id);
             });
           }}
-        />
-      ) : null}
-      {sheet?.kind === 'dictation' ? (
-        <DictationSheet
-          visible={sheets.isOpen}
-          onClose={() => sheets.closeThen(null)}
-          onDismissed={sheets.onDismissed}
-          patientId={sheet.patientId}
-          appointmentId={appointmentId}
-          onCreateTransmission={(prefill) => sheets.closeThen({ kind: 'transmission', patientId: sheet.patientId, prefill })}
         />
       ) : null}
       {sheet?.kind === 'transmission' ? (

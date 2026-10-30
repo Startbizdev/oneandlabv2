@@ -85,7 +85,7 @@ final class AssistantTools
         if (in_array($role, ['nurse', 'pro'], true) && NgapReference::available()) {
             $tools[] = self::define('search_ngap', 'Recherche dans la NGAP officielle (Assurance Maladie) : passages à citer pour toute question de cotation. query : actes, lettres clés, majorations, situation.', ['query' => ['type' => 'string']], ['query']);
         }
-        $tools[] = self::define('propose_action', 'Affiche un bouton sous ta réponse (libellé court, sans nom). Dans ton texte, parle du « bouton ci-dessous », jamais de carte ni de validation.', [
+        $tools[] = self::define('propose_action', 'Affiche un bouton sous ta réponse (libellé court, sans nom). N\'en parle pas dans ton texte : l\'app l\'affiche d\'elle-même.', [
             'type' => ['type' => 'string', 'enum' => array_keys(self::ACTION_PARAMS)],
             'label' => ['type' => 'string'],
             'params' => ['type' => 'object', 'description' => 'book_appointment : category_id (list_care_categories), care_type (blood_test = prise de sang, nursing = soin infirmier), date AAAA-MM-JJ, time_from et time_to (heures entières, plage de 2 h au moins) ; open_appointment : id ; open_tour : date ; create_transmission : patient_id, body.'],
@@ -202,7 +202,7 @@ final class AssistantTools
         if (!AssistantResultsConsent::has($this->db, $userId)) {
             // Lecture automatique non autorisée : le patient peut l'activer d'un geste (bouton sous la réponse).
             ($this->onAction)(['type' => 'enable_results_reading', 'label' => 'Autoriser la lecture de mes résultats', 'params' => []]);
-            $result['note'] = 'Lecture automatique non autorisée : dites en une phrase que le bouton ci-dessous permet de l\'autoriser, ou que le patient peut joindre le document.';
+            $result['note'] = 'Lecture automatique non autorisée : dites en une phrase que le patient peut l\'autoriser juste en dessous, ou joindre le document.';
 
             return $result;
         }

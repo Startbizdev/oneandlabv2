@@ -21,7 +21,7 @@ try {
     }
     $before = trim((string) ($_GET['before'] ?? ''));
     $page = $repo->messagesPage($id, $before !== '' ? $before : null, max(1, min(100, (int) ($_GET['limit'] ?? 30))));
-    $data = ['id' => $id, 'title' => $repo->title($conversation), 'messages' => $page['messages'], 'has_more' => $page['has_more']];
+    $data = ['id' => $id, 'title' => $repo->title($conversation), 'patient_id' => $conversation['patient_id'] ?? null, 'messages' => $page['messages'], 'has_more' => $page['has_more']];
 } catch (Throwable $e) {
     assistant_respond_error($e, 'assistant/conversations/detail');
 }

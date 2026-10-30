@@ -8,6 +8,8 @@ export type LiveTurn = {
   clientMessageId: string;
   userText: string;
   documentId?: string;
+  /** Nom du fichier joint, affiché sous la question. */
+  documentName?: string;
   text: string;
   /** Outil en cours (« Je consulte vos rendez-vous… »), effacé au premier mot suivant. */
   status: string | null;
@@ -17,7 +19,7 @@ export type LiveTurn = {
 };
 
 export type LiveTurnEvent =
-  | { type: 'send'; clientMessageId: string; userText: string; documentId?: string }
+  | { type: 'send'; clientMessageId: string; userText: string; documentId?: string; documentName?: string }
   | { type: 'retry' }
   | { type: 'status'; text: string }
   | { type: 'delta'; text: string }
@@ -54,6 +56,7 @@ export function liveTurnReducer(state: LiveTurn, event: LiveTurnEvent): LiveTurn
         clientMessageId: event.clientMessageId,
         userText: event.userText,
         documentId: event.documentId,
+        documentName: event.documentName,
       };
     case 'retry':
       return state.phase === 'error' ? { ...state, ...EMPTY_REPLY, phase: 'streaming' } : state;

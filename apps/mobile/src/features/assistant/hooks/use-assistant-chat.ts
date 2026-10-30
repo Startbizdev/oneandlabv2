@@ -24,7 +24,13 @@ type Reply = Pick<AssistantMessage, 'id' | 'text' | 'actions'>;
 function settledMessages(turn: LiveTurn, userMessageId: string, reply?: Reply) {
   const now = new Date().toISOString();
   const messages: AssistantMessage[] = [
-    { id: userMessageId || `local-${turn.clientMessageId}`, role: 'user', text: turn.userText, actions: [], created_at: now },
+    {
+      id: userMessageId || `local-${turn.clientMessageId}`,
+      role: 'user',
+      text: turn.userText,
+      actions: turn.documentName ? [{ type: 'attachment', label: turn.documentName, params: {} }] : [],
+      created_at: now,
+    },
   ];
   if (reply && (reply.text || reply.actions.length > 0)) {
     messages.push({ id: reply.id, role: 'assistant', text: reply.text, actions: reply.actions, created_at: now });
@@ -55,12 +61,13 @@ export function useAssistantChat(scope: AssistantChatScope) {
 
   /** Range le tour terminé (ou interrompu) dans le cache de la conversation, puis libère le tour en direct. */
   const commit = useCallback(
-    (id: string, userMessageId: string, reply?: Reply) => {
+    (id: string, userMessageId: string, reply?: Reply, patientId?: string) => {
       const turn = live.store.getState();
       const added = settledMessages(turn, userMessageId, reply);
       qc.setQueryData<AssistantConversation>(queryKeys.assistant.conversation(id), (old) => ({
         id,
         title: old?.title ?? turn.userText.slice(0, 60),
+        patient_id: patientId ?? old?.patient_id ?? null,
         messages: [...(old?.messages ?? []).filter((m) => !added.some((a) => a.id === m.id)), ...added],
       }));
       setConversationId(id);
@@ -108,7 +115,7 @@ export function useAssistantChat(scope: AssistantChatScope) {
           id: reply.messageId,
           text: reply.text || current.text,
           actions: reply.actions.length > 0 ? reply.actions : current.actions,
-        });
+        }, reply.patientId);
         hooks?.onEnd?.(true);
       } catch (err) {
         hooks?.onEnd?.(false);
@@ -141,10 +148,16 @@ export function useAssistantChat(scope: AssistantChatScope) {
   );
 
   const send = useCallback(
-    (text: string, opts?: { documentId?: string } & SendHooks) => {
+    (text: string, opts?: { documentId?: string; documentName?: string } & SendHooks) => {
       const message = text.trim();
       if (!message || live.store.getState().phase === 'streaming') return false;
-      live.dispatch({ type: 'send', clientMessageId: randomUUID(), userText: message, documentId: opts?.documentId });
+      live.dispatch({
+        type: 'send',
+        clientMessageId: randomUUID(),
+        userText: message,
+        documentId: opts?.documentId,
+        documentName: opts?.documentId ? opts.documentName : undefined,
+      });
       void run(opts);
       return true;
     },
@@ -177,6 +190,8 @@ export function useAssistantChat(scope: AssistantChatScope) {
   return {
     conversationId,
     title: conversationId ? detail.data?.title : undefined,
+    /** Soignant : patient compris par Cary pour cette conversation. */
+    patientId: conversationId ? (detail.data?.patient_id ?? undefined) : undefined,
     messages: conversationId ? (detail.data?.messages ?? EMPTY) : EMPTY,
     detail,
     live,

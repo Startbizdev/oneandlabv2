@@ -3,15 +3,20 @@ import type {
   AssistantChatRequest,
   AssistantConversation,
   AssistantConversationSummary,
-  AssistantDictationRequest,
-  AssistantDictationResponse,
   AssistantSettings,
 } from '@oneandlab/shared-types';
 import { apiRequest, apiStreamRequest } from '@/api/client';
 import { AssistantStreamError } from '../utils/assistant-errors';
 import { createAssistantSseReader, parseActions, type AssistantStreamHandlers } from '../utils/assistant-sse';
 
-export type AssistantReply = { messageId: string; conversationId: string; text: string; actions: AssistantAction[] };
+export type AssistantReply = {
+  messageId: string;
+  conversationId: string;
+  text: string;
+  actions: AssistantAction[];
+  /** Soignant : patient compris par Cary dans la question. */
+  patientId?: string;
+};
 
 export const CONVERSATIONS_PAGE_SIZE = 20;
 
@@ -53,17 +58,6 @@ export async function getConversation(id: string): Promise<AssistantConversation
 export async function deleteConversation(id: string): Promise<void> {
   const res = await apiRequest(`/assistant/conversations/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.success) throw new Error(res.error ?? 'Suppression impossible');
-}
-
-/** Dictée soignant mise en forme en transmission (rien n'est stocké côté serveur). */
-export async function dictate(body: AssistantDictationRequest): Promise<string> {
-  const res = await apiRequest<AssistantDictationResponse>('/assistant/dictation', {
-    method: 'POST',
-    body,
-    timeout: 60_000,
-  });
-  if (!res.success || !res.data) throw new Error(res.error ?? 'Mise en forme impossible');
-  return res.data.text;
 }
 
 /** Patient : lecture automatique de ses résultats par Cary (accord révocable). */

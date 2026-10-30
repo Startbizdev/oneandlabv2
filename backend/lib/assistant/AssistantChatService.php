@@ -11,6 +11,7 @@ require_once __DIR__ . '/AssistantPrompt.php';
 require_once __DIR__ . '/AssistantIntent.php';
 require_once __DIR__ . '/AssistantDocumentReader.php';
 require_once __DIR__ . '/PrivacyGateway.php';
+require_once __DIR__ . '/PatientMentions.php';
 require_once __DIR__ . '/../AppTimezone.php';
 require_once __DIR__ . '/../RateLimit.php';
 require_once __DIR__ . '/../Validation.php';
@@ -32,6 +33,8 @@ final class AssistantChatService
     private const FALLBACK = 'Je n\'ai pas pu formuler de réponse. Pouvez-vous reformuler votre question ?';
 
     private AssistantConversationRepository $repo;
+    /** Patient du tour après lecture de la question (soignant) : renvoyé à l'app avec la réponse. */
+    private ?string $turnPatientId = null;
 
     public function __construct(private readonly PDO $db, private ?AssistantProvider $provider = null)
     {
@@ -84,7 +87,9 @@ final class AssistantChatService
         }
         $conversation ??= $this->repo->create($userId, $patientId, $context, mb_substr($message, 0, 60));
         try {
-            $userMessageId = $this->repo->addMessage((string) $conversation['id'], 'user', $message, [], $clientMessageId, 'pending');
+            // Pièce jointe gardée avec le message de l'utilisateur : l'app l'affiche sous sa question, comme une pièce de courriel.
+            $attachment = $document !== null ? [['type' => 'attachment', 'label' => $document['name'], 'params' => ['document_id' => $documentId]]] : null;
+            $userMessageId = $this->repo->addMessage((string) $conversation['id'], 'user', $message, [], $clientMessageId, 'pending', $attachment);
         } catch (PDOException $e) {
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
                 throw AssistantError::inProgress();
@@ -115,7 +120,10 @@ final class AssistantChatService
                     : $this->converse($turn, $send);
                 $messageId = $this->repo->addMessage($turn['conversation_id'], 'assistant', $text, $names, $turn['client_message_id'], 'done', $stored, $usage);
                 $this->repo->setStatus($turn['user_message_id'], 'done');
-                $send('done', ['message_id' => $messageId, 'conversation_id' => $turn['conversation_id'], 'text' => $text, 'actions' => $actions]);
+                $send('done', array_filter([
+                    'message_id' => $messageId, 'conversation_id' => $turn['conversation_id'], 'text' => $text, 'actions' => $actions,
+                    'patient_id' => $this->turnPatientId ?? $turn['patient_id'],
+                ], static fn ($v) => $v !== null));
             }
         } catch (Throwable $e) {
             $this->repo->setStatus($turn['user_message_id'], 'error');
@@ -185,6 +193,23 @@ final class AssistantChatService
             $actions[] = $live;
             $send('action', $live);
         };
+        // Soignant : le patient nommé dans la question devient le dossier de la conversation ; plusieurs = on demande lequel.
+        $patientNote = null;
+        if ($user['role'] !== 'patient') {
+            $named = PatientMentions::resolve(PatientMentions::followed($this->db, $user), $question);
+            if (count($named) === 1 && $named[0]['id'] !== $turn['patient_id']) {
+                $turn['patient_id'] = $named[0]['id'];
+                $this->repo->setPatient($turn['conversation_id'], $turn['patient_id']);
+            } elseif (count($named) > 1) {
+                $choices = [];
+                foreach (array_slice($named, 0, 5) as $candidate) {
+                    $age = PrivacyGateway::ageFromBirthDate($candidate['birth_date']);
+                    $choices[] = $gateway->alias($candidate['name'], 'Patient') . ($age !== null ? ' (' . $age . ' ans)' : '');
+                }
+                $patientNote = 'Plusieurs patients suivis correspondent : ' . implode(', ', $choices) . '. Demande lequel en les citant, sans consulter de dossier.';
+            }
+        }
+        $this->turnPatientId = $turn['patient_id'];
         $tools = new AssistantTools($this->db, $user, $turn['patient_id'], $gateway, $emit);
         $patientAlias = $tools->registerKnownNames();
         $history = $this->repo->recentMessages($turn['conversation_id'], self::HISTORY);
@@ -195,6 +220,13 @@ final class AssistantChatService
         }
 
         $system = AssistantPrompt::system((string) $user['role'], $patientAlias, $turn['patient_id'], $turn['context']);
+        if ($patientNote !== null) {
+            $system .= "\n" . $patientNote;
+        }
+        $transmissionTurn = $user['role'] !== 'patient' && $turn['patient_id'] !== null && AssistantIntent::wantsTransmission($question);
+        if ($transmissionTurn) {
+            $system .= "\nDemande de transmission : appelle d'abord propose_action create_transmission (patient_id, body = le texte mis en forme), puis montre ce texte en une ou deux phrases.";
+        }
         if ($bookingTurn) {
             $understood = array_filter([
                 isset($slot['date']) ? AssistantTools::dayLabel($slot['date']) : null,
@@ -204,7 +236,7 @@ final class AssistantChatService
 Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !== null ? ' (params.care_type = ' . $careType . ')' : '')
                 . ' sans consulter les rendez-vous (list_care_categories pour choisir la catégorie qui répond au besoin décrit, aucune si la demande est vague)'
                 . ($understood !== [] ? ', avec le créneau compris : ' . implode(', ', $understood) : '')
-                . '. Puis dis en une ou deux phrases que le bouton ci-dessous ouvre la réservation préremplie, à vérifier puis confirmer'
+                . '. Puis dis en une ou deux phrases que la réservation est préparée, à vérifier puis confirmer'
                 . ($understood !== [] ? ', en reprenant ce créneau tel quel' : '') . '. N\'écris jamais de code technique (blood_test, nursing, identifiant).';
         }
         $messages = [['role' => 'system', 'content' => $system]];
@@ -229,7 +261,8 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
                 $send('status', ['text' => AssistantTools::STATUS[$name] ?? 'Je consulte vos informations…']);
             }
         };
-        $definitions = AssistantTools::definitions((string) $user['role']);
+        // Patient ambigu : aucune consultation possible ce tour-ci, la seule réponse utile est de demander lequel.
+        $definitions = $patientNote === null ? AssistantTools::definitions((string) $user['role']) : [];
         for ($round = 1; $round <= self::MAX_ROUNDS; $round++) {
             $result = $this->provider->stream($messages, $round < self::MAX_ROUNDS ? $definitions : [], $onDelta, $onToolCall);
             $usage['model'] = $result['model'];
@@ -259,6 +292,13 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
             $emit(['type' => 'book_appointment', 'label' => 'Prendre rendez-vous', 'params' => []]);
         } elseif ($actions === [] && $fallback !== null) {
             $emit($fallback);
+        } elseif ($actions === [] && $turn['patient_id'] !== null && in_array($user['role'], ['nurse', 'pro'], true)) {
+            // Réponse sur un patient sans bouton proposé : les suites logiques (transmission demandée, dossier).
+            $body = $transmissionTurn ? AssistantIntent::transmissionBody($answer) : '';
+            if ($body !== '') {
+                $emit(['type' => 'create_transmission', 'label' => 'Créer la transmission', 'params' => ['patient_id' => (string) $turn['patient_id'], 'body' => $body]]);
+            }
+            $emit(['type' => 'open_health_record', 'label' => 'Ouvrir le dossier', 'params' => ['patient_id' => (string) $turn['patient_id']]]);
         }
         $tail = $gateway->flush();
         if ($tail !== '') {
@@ -268,6 +308,9 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
         if (trim($answer) === '') {
             $answer = self::FALLBACK;
             $send('delta', ['text' => $answer]);
+        }
+        if ($actions === []) {
+            $answer = self::withoutButtonMentions($answer);
         }
         $usage['latency_ms'] = (int) round((microtime(true) - $started) * 1000);
 
@@ -291,6 +334,18 @@ Demande de rendez-vous : appelle propose_action book_appointment" . ($careType !
                 => ['type' => 'open_tour', 'label' => 'Voir ma tournée', 'params' => isset($output['date']) ? ['date' => (string) $output['date']] : []],
             default => null,
         };
+    }
+
+    /**
+     * Retire les phrases qui annoncent un bouton quand aucun n'est affiché (« utilisez le bouton ci-dessous ») :
+     * la réponse finale, qui remplace le texte reçu en direct, ne promet jamais une action absente.
+     */
+    public static function withoutButtonMentions(string $answer): string
+    {
+        $clean = (string) preg_replace('/[^.!?\n]*\bboutons?\b[^.!?\n]*[.!?]?/iu', '', $answer);
+        $clean = trim((string) preg_replace(['/[ \t]+\n/', '/\n{3,}/', '/ {2,}/'], ["\n", "\n\n", ' '], $clean));
+
+        return $clean !== '' ? $clean : $answer;
     }
 
     /** Seule catégorie réservable qui répond au besoin décrit ; null si aucune ou plusieurs (le patient choisit). */

@@ -58,7 +58,7 @@ export type AssistantStreamEvent =
   | { event: 'emergency'; data: AssistantEmergency }
   | {
       event: 'done';
-      data: { message_id: string; conversation_id: string; text: string; actions: AssistantAction[] };
+      data: { message_id: string; conversation_id: string; text: string; actions: AssistantAction[]; patient_id?: string };
     }
   | { event: 'error'; data: { code: string; message: string; retry_after?: number } }
   | { event: 'end'; data: Record<string, never> };
@@ -81,6 +81,8 @@ export interface AssistantConversationSummary {
 export interface AssistantConversation {
   id: string;
   title: string;
+  /** Soignant : patient dont parle la conversation, compris par Cary à partir de la question. */
+  patient_id?: string | null;
   messages: AssistantMessage[];
 }
 

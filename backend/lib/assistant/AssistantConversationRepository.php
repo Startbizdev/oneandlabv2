@@ -106,6 +106,12 @@ final class AssistantConversationRepository
         return $id;
     }
 
+    /** Dossier patient de la conversation (soignant), déduit de la question. */
+    public function setPatient(string $conversationId, string $patientId): void
+    {
+        $this->db->prepare('UPDATE assistant_conversations SET patient_id = ? WHERE id = ?')->execute([$patientId, $conversationId]);
+    }
+
     public function setStatus(string $messageId, string $status): void
     {
         $this->db->prepare('UPDATE assistant_messages SET status = ? WHERE id = ?')->execute([$status, $messageId]);

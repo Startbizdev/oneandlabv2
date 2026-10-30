@@ -44,7 +44,7 @@ export const LiveTurnRow = memo(function LiveTurnRow({ live, role, patientId, on
 
   return (
     <View style={styles.root}>
-      <UserBubble text={turn.userText} />
+      <UserBubble text={turn.userText} attachment={turn.documentName} />
       {turn.emergency ? (
         <EmergencyCard
           message={turn.emergency.message}
