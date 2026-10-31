@@ -381,19 +381,22 @@ final class PatientProfessionalAccessService
             $cb = $filters['created_by'];
             // Soin en cours attribué au soignant, quel que soit l'auteur de l'attribution (lui, l'admin, un confrère) :
             // le patient (ou le proche concerné par le RDV) apparaît dans « Mes patients ».
-            $activeCare = ' OR EXISTS (
-                SELECT 1 FROM appointments act
-                LEFT JOIN patient_relatives actr ON actr.id = act.relative_id
-                WHERE (act.assigned_nurse_id = ? OR act.assigned_pro_id = ? OR act.assigned_to = ?)
-                AND act.status IN (\'confirmed\', \'planned\', \'inProgress\')
-                AND (CASE WHEN act.relative_id IS NULL THEN act.patient_id ELSE actr.profile_id END) = profiles.id
-            )';
+            // Ensemble calculé une seule fois (table dérivée) : une sous-requête corrélée par patient bloquait MySQL.
+            // Une branche par colonne d'attribution : chacune lit seulement son index couvrant (migration 134).
+            $branches = [];
+            foreach (['assigned_nurse_id', 'assigned_pro_id', 'assigned_to'] as $column) {
+                $branches[] = 'SELECT CASE WHEN act.relative_id IS NULL THEN act.patient_id ELSE actr.profile_id END AS pid FROM appointments act
+                    LEFT JOIN patient_relatives actr ON actr.id = act.relative_id
+                    WHERE act.' . $column . ' = ? AND act.status IN (\'confirmed\', \'planned\', \'inProgress\')';
+            }
+            $activeCare = ' OR profiles.id IN (SELECT active_care.pid FROM (' . implode(' UNION ', $branches) . ') active_care)';
+            $activeCareParams = [$cb, $cb, $cb];
             if ($usePpa) {
                 $sql .= ' AND (created_by = ? OR EXISTS (SELECT 1 FROM patient_professional_access ppa WHERE ppa.patient_id = profiles.id AND ppa.professional_id = ?)' . $activeCare . ')';
-                array_push($params, $cb, $cb, $cb, $cb, $cb);
+                array_push($params, $cb, $cb, ...$activeCareParams);
             } else {
                 $sql .= ' AND (created_by = ?' . $activeCare . ')';
-                array_push($params, $cb, $cb, $cb, $cb);
+                array_push($params, $cb, ...$activeCareParams);
             }
         }
     }
