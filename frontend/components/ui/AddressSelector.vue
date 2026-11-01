@@ -7,81 +7,84 @@
       :required="required"
       :error="error"
     >
-      <UPopover 
-        v-model:open="isPopoverOpen" 
-        :dismissible="true"
-        :popper="{ placement: 'bottom-start', strategy: 'fixed' }"
-      >
-        <div class="relative" ref="inputContainerRef">
-          <UInput
-            :model-value="displayValue"
-            :placeholder="placeholder"
-            :loading="isSearching"
-            :disabled="disabled || !!modelValue"
-            :readonly="!!modelValue"
-            @input="handleInput"
-            @focus="handleFocus"
-            size="xl"
-            class="w-full"
-          >
-            <!-- Icône à gauche -->
-            <template #leading>
-              <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-gray-400" />
-            </template>
-            
-            <!-- Icône de suppression à droite -->
-            <template v-if="modelValue && showRemoveButton" #trailing>
-              <button
-                type="button"
-                aria-label="Modifier l’adresse"
-                @click.stop="handleRemove"
-                class="min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
-              >
-                <UIcon name="i-heroicons-x-mark" class="w-5 h-5 text-gray-500 hover:text-gray-700" />
-              </button>
-            </template>
-          </UInput>
-        </div>
+      <!-- Liste sous le champ, sans popover : un popover reprenait le focus à l'ouverture et fermait
+           le clavier des téléphones après la première lettre. -->
+      <div class="relative">
+        <UInput
+          v-model="inputText"
+          :placeholder="placeholder"
+          :loading="isSearching"
+          :disabled="disabled || !!modelValue"
+          :readonly="!!modelValue"
+          autocomplete="off"
+          @focus="handleFocus"
+          @blur="handleBlur"
+          size="xl"
+          class="w-full"
+        >
+          <!-- Icône à gauche -->
+          <template #leading>
+            <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-gray-400" />
+          </template>
+          
+          <!-- Icône de suppression à droite -->
+          <template v-if="modelValue && showRemoveButton" #trailing>
+            <button
+              type="button"
+              aria-label="Modifier l’adresse"
+              @click.stop="handleRemove"
+              class="min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1"
+            >
+              <UIcon name="i-heroicons-x-mark" class="w-5 h-5 text-gray-500 hover:text-gray-700" />
+            </button>
+          </template>
+        </UInput>
 
-        <template #content>
-          <div :style="{ width: popoverWidth + 'px' }" class="max-w-[calc(100vw-2rem)]">
-            <!-- Liste des suggestions -->
-            <div v-if="addressOptions.length > 0" class="max-h-64 overflow-y-auto">
-              <button
-                type="button"
-                v-for="(option, index) in addressOptions"
-                :key="`${option.label}-${index}`"
-                @click="handleSelect(option)"
-                class="w-full text-left px-4 py-3 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-500 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-              >
-                <div class="flex items-start gap-3">
-                  <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <p class="font-medium text-gray-900 break-words">{{ option.label }}</p>
-                    <p v-if="option.postcode || option.city" class="text-sm text-gray-500 mt-0.5">
-                      {{ [option.postcode, option.city].filter(Boolean).join(' ') }}
-                    </p>
-                  </div>
+        <div
+          v-if="isPopoverOpen"
+          class="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg"
+        >
+          <!-- Liste des suggestions ; mousedown.prevent garde le focus (et le clavier) dans le champ -->
+          <div v-if="addressOptions.length > 0" class="max-h-64 overflow-y-auto">
+            <button
+              type="button"
+              v-for="(option, index) in addressOptions"
+              :key="`${option.label}-${index}`"
+              @mousedown.prevent
+              @click="handleSelect(option)"
+              class="w-full text-left px-4 py-3 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-500 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+            >
+              <div class="flex items-start gap-3">
+                <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-gray-900 break-words">{{ option.label }}</p>
+                  <p v-if="option.postcode || option.city" class="text-sm text-gray-500 mt-0.5">
+                    {{ [option.postcode, option.city].filter(Boolean).join(' ') }}
+                  </p>
                 </div>
-              </button>
-            </div>
-
-            <!-- Message : aucune adresse trouvée -->
-            <div v-else-if="searchQuery.length >= 3" class="p-4">
-              <p class="text-sm text-gray-500 text-center">
-                Aucune adresse trouvée pour "{{ searchQuery }}"
-              </p>
-            </div>
-
-            <!-- Message : minimum caractères -->
-            <div v-else-if="searchQuery.length > 0 && searchQuery.length < 3" class="p-4">
-              <p class="text-sm text-gray-500 text-center">
-                Tapez au moins 3 caractères pour rechercher
-              </p>
-            </div>
+              </div>
+            </button>
           </div>
-        </template>
-      </UPopover>
+
+          <div v-else-if="isSearching" class="p-4">
+            <p class="text-sm text-gray-500 text-center">Recherche…</p>
+          </div>
+
+          <!-- Message : aucune adresse trouvée -->
+          <div v-else-if="searchQuery.length >= 3" class="p-4">
+            <p class="text-sm text-gray-500 text-center">
+              Aucune adresse trouvée pour "{{ searchQuery }}"
+            </p>
+          </div>
+
+          <!-- Message : minimum caractères -->
+          <div v-else-if="searchQuery.length > 0 && searchQuery.length < 3" class="p-4">
+            <p class="text-sm text-gray-500 text-center">
+              Tapez au moins 3 caractères pour rechercher
+            </p>
+          </div>
+        </div>
+      </div>
     </UFormField>
 
     <!-- Complément d'adresse optionnel -->
@@ -104,7 +107,7 @@
 
 <script setup lang="ts">
 import { apiFetch } from '~/utils/api'
-import { nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeUnmount } from 'vue'
 
 interface Address {
   label: string
@@ -152,16 +155,19 @@ const isSearching = ref(false)
 const searchTimeout = ref<NodeJS.Timeout | null>(null)
 const searchQuery = ref('')
 const isPopoverOpen = ref(false)
-const inputContainerRef = ref<HTMLElement | null>(null)
-const popoverWidth = ref(0)
+// Numéro de la dernière recherche : une réponse plus ancienne arrivée en retard est ignorée.
+let searchSeq = 0
 
-// Valeur affichée dans l'input (objet {label} ou string pour données migrées)
-const displayValue = computed(() => {
-  if (props.modelValue) {
-    if (typeof props.modelValue === 'string') return props.modelValue
-    return props.modelValue.label ?? ''
-  }
-  return searchQuery.value
+// Texte du champ : l'adresse choisie (objet {label} ou string pour données migrées), sinon la saisie.
+const inputText = computed({
+  get: () => {
+    if (props.modelValue) {
+      if (typeof props.modelValue === 'string') return props.modelValue
+      return props.modelValue.label ?? ''
+    }
+    return searchQuery.value
+  },
+  set: (value: string | number) => handleInput(String(value ?? '')),
 })
 
 // Synchroniser avec le modelValue
@@ -173,62 +179,31 @@ watch(() => props.modelValue, (newValue) => {
   }
 }, { immediate: true })
 
-const handleInput = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const query = target.value
-  
+const handleInput = (query: string) => {
   // Si une adresse est déjà sélectionnée, ne pas rechercher
   if (props.modelValue) {
     return
   }
-  
+
   searchQuery.value = query
-  
-  // Ouvrir le popover seulement si on a du texte à afficher
-  if (query.length > 0) {
-    updatePopoverWidth()
-    isPopoverOpen.value = true
-  } else {
-    isPopoverOpen.value = false
-  }
-  
+  isPopoverOpen.value = query.length > 0
   performSearch(query)
 }
 
 const handleFocus = () => {
-  // Ouvrir le popover seulement si on a du texte à afficher
-  if (searchQuery.value.length > 0) {
-    updatePopoverWidth()
+  if (searchQuery.value.length > 0 && !props.modelValue) {
     isPopoverOpen.value = true
   }
 }
 
-const updatePopoverWidth = () => {
-  if (inputContainerRef.value) {
-    popoverWidth.value = inputContainerRef.value.offsetWidth
-  }
+const handleBlur = () => {
+  isPopoverOpen.value = false
 }
-
-// Mettre à jour la largeur quand le popover s'ouvre
-watch(isPopoverOpen, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => {
-      updatePopoverWidth()
-    })
-  }
-})
-
-// Mettre à jour la largeur lors du resize
-onMounted(() => {
-  window.addEventListener('resize', updatePopoverWidth)
-  updatePopoverWidth()
-})
 
 onBeforeUnmount(() => {
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value)
   }
-  window.removeEventListener('resize', updatePopoverWidth)
 })
 
 const performSearch = async (query: string) => {
@@ -239,6 +214,8 @@ const performSearch = async (query: string) => {
 
   // Attendre au moins 3 caractères
   if (query.length < 3) {
+    searchSeq++
+    isSearching.value = false
     addressOptions.value = []
     return
   }
@@ -253,12 +230,14 @@ const performSearch = async (query: string) => {
     }
     
     isSearching.value = true
-    
+    const seq = ++searchSeq
+
     try {
       const response = await apiFetch(`/ban/search?q=${encodeURIComponent(query.trim())}&limit=10`, {
         method: 'GET',
       })
-      
+      if (seq !== searchSeq) return
+
       if (response?.success && response.data?.length > 0) {
         addressOptions.value = response.data.map((addr: any) => ({
           label: addr.label,
@@ -279,9 +258,9 @@ const performSearch = async (query: string) => {
       if (!errorMessage.toLowerCase().includes('backend non accessible')) {
         console.error('Erreur lors de la recherche d\'adresse:', errorMessage)
       }
-      addressOptions.value = []
+      if (seq === searchSeq) addressOptions.value = []
     } finally {
-      isSearching.value = false
+      if (seq === searchSeq) isSearching.value = false
     }
   }, 300)
 }
