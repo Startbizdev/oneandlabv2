@@ -190,20 +190,28 @@ const handleInput = (query: string) => {
   performSearch(query)
 }
 
+// Fermeture différée : au toucher, le champ perd le focus avant que le tap n'atteigne la suggestion.
+let blurTimer: ReturnType<typeof setTimeout> | null = null
+
 const handleFocus = () => {
+  if (blurTimer) clearTimeout(blurTimer)
   if (searchQuery.value.length > 0 && !props.modelValue) {
     isPopoverOpen.value = true
   }
 }
 
 const handleBlur = () => {
-  isPopoverOpen.value = false
+  if (blurTimer) clearTimeout(blurTimer)
+  blurTimer = setTimeout(() => {
+    isPopoverOpen.value = false
+  }, 250)
 }
 
 onBeforeUnmount(() => {
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value)
   }
+  if (blurTimer) clearTimeout(blurTimer)
 })
 
 const performSearch = async (query: string) => {
