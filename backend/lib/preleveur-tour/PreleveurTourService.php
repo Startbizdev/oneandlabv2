@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/../nurse-tour/TourOrderEngine.php';
 require_once __DIR__ . '/../nurse-tour/TourProximity.php';
+require_once __DIR__ . '/../nurse-tour/TourStopAvatar.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
@@ -362,7 +363,7 @@ final class PreleveurTourService
                 'relative_id' => !empty($apt['relative_id']) ? (string) $apt['relative_id'] : null,
                 'relative_profile_id' => $apt['relative_profile_id'],
                 'patient_gender' => $apt['beneficiary_gender'] ?? null,
-                'profile_image_url' => $apt['beneficiary_profile_image_url'] ?? null,
+                'profile_image_url' => TourStopAvatar::url($apt['beneficiary_profile_image_url'] ?? null),
                 'type' => 'blood_test',
                 'category_name' => (string) ($apt['category_name'] ?? ''),
                 'category_icon' => $apt['category_icon'] ?? null,

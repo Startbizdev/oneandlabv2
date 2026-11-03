@@ -22,6 +22,7 @@ export function TourEmptyPanel({ date }: Props) {
       description="Ajoutez un passage avec le bouton +."
       actionLabel="Voir mes rendez-vous"
       onAction={() => router.push('/(nurse)/(tabs)/appointments')}
+      animated={false}
     />
   );
 }

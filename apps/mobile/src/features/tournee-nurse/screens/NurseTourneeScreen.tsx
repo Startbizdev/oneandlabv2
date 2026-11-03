@@ -58,9 +58,6 @@ import { TourSummaryCard } from '../components/TourSummaryCard';
 import type { NurseTourStop, TourSortMode } from '../api/nurse-tour.service';
 import { countTodayActiveStops } from '../utils/tour-calendar';
 
-/** Relecture GPS au focus au plus toutes les 5 min. */
-const ORIGIN_REFRESH_MS = 5 * 60_000;
-
 export function NurseTourneeScreen() {
   const styles = useStyles(buildStyles);
   const router = useRouter();
@@ -98,7 +95,6 @@ export function NurseTourneeScreen() {
   const absenceDossierId = appointmentDossierPatientId(absenceStop);
   const today = useTodayTourDate();
   const isToday = date === today;
-  const lastOriginAtRef = useRef(0);
   const prevTodayRef = useRef(today);
 
   /** Passé minuit, la tournée affichée sur « aujourd'hui » suit le nouveau jour. */
@@ -108,23 +104,18 @@ export function NurseTourneeScreen() {
     if (prev !== today) setDate((d) => (d === prev ? today : d));
   }, [today]);
 
-  /** Au focus : GPS limité dans le temps, refetch seulement si la tournée est périmée ou la position relue. */
+  /**
+   * Au focus : refetch seulement si la tournée est périmée. Le GPS n'est plus lu automatiquement
+   * (suspect des fermetures de l'app sur iPhone à l'ouverture de la tournée) : bouton « Localiser ».
+   */
   useFocusEffect(
     useCallback(() => {
       const key = nurseTourQueryKey(date);
-      const isStale = () =>
+      const isStale =
         Date.now() - (qc.getQueryState(key)?.dataUpdatedAt ?? 0) > NURSE_TOUR_STALE_MS &&
         qc.isFetching({ queryKey: key }) === 0;
-      const now = Date.now();
-      if (now - lastOriginAtRef.current < ORIGIN_REFRESH_MS) {
-        if (isStale()) void refetch();
-        return;
-      }
-      lastOriginAtRef.current = now;
-      void refreshOrigin().then((located) => {
-        if (located || isStale()) void refetch();
-      });
-    }, [date, qc, refreshOrigin, refetch]),
+      if (isStale) void refetch();
+    }, [date, qc, refetch]),
   );
 
   useEffect(() => {

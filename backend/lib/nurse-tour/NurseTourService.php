@@ -6,6 +6,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../HttpStatusException.php';
 require_once __DIR__ . '/TourOrderEngine.php';
 require_once __DIR__ . '/TourProximity.php';
+require_once __DIR__ . '/TourStopAvatar.php';
 require_once __DIR__ . '/PatientAbsenceService.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
@@ -425,7 +426,7 @@ final class NurseTourService
                 'is_patient_absent_today' => $patientAbsence !== null,
                 'patient_absence' => $patientAbsence,
                 'patient_gender' => $apt['beneficiary_gender'] ?? null,
-                'profile_image_url' => $apt['beneficiary_profile_image_url'] ?? null,
+                'profile_image_url' => TourStopAvatar::url($apt['beneficiary_profile_image_url'] ?? null),
                 'type' => (string) ($apt['type'] ?? 'nursing'),
                 'category_id' => $apt['category_id'] ?? null,
                 'category_name' => (string) ($apt['category_name'] ?? ''),

@@ -73,10 +73,11 @@ export function TourneeScreen() {
   } = usePreleveurTour(date);
   const isToday = date === todayTourDate();
 
+  /** Au focus : pas de lecture GPS automatique (fermetures de l'app sur iPhone), bouton « Localiser ». */
   useFocusEffect(
     useCallback(() => {
-      void refreshOrigin().then(() => refetch());
-    }, [refreshOrigin, refetch]),
+      void refetch();
+    }, [refetch]),
   );
 
   useEffect(() => {

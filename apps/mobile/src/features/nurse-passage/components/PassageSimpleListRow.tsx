@@ -1,6 +1,5 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Check, ChevronDown, ChevronUp, Car, Clock, MapPin, Route, Users, UserX } from 'lucide-react-native';
 import { addressLineWithDistrict, isTourStopAbsent, sharedAppointmentMention } from '@oneandlab/shared-utils';
 import { Cluster, Row } from '@/components/layout/primitives';
@@ -70,7 +69,8 @@ export function PassageSimpleListRow({
   const sharedLabel = sharedAppointmentMention(stop);
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 35).duration(280)} style={cardStyles.cardShell}>
+    // Sans animation d'entrée : suspect des fermetures de l'app sur iPhone dans la tournée.
+    <View style={cardStyles.cardShell}>
       <View
         style={[
           cardStyles.card,
@@ -241,7 +241,7 @@ export function PassageSimpleListRow({
           </Row>
         ) : null}
       </View>
-    </Animated.View>
+    </View>
   );
 }
 

@@ -31,6 +31,8 @@ interface EmptyStateProps {
   Icon?: LucideIcon;
   actionLabel?: string;
   onAction?: () => void;
+  /** `false` : pas d'animation d'entrée (écran tournée). */
+  animated?: boolean;
 }
 
 function EmptyStateComponent({
@@ -40,13 +42,14 @@ function EmptyStateComponent({
   Icon,
   actionLabel,
   onAction,
+  animated = true,
 }: EmptyStateProps) {
   const c = useAppColors();
   const layout = useLayoutMetrics();
   const styles = useStyles(buildStyles);
   const illustrationSize = responsiveValue(layout, { compact: 136, default: 160, wide: 184 });
 
-  const entering = emptyStateEntering();
+  const entering = animated ? emptyStateEntering() : undefined;
   const Shell = entering ? Animated.View : View;
 
   return (
