@@ -54,6 +54,9 @@ export type PharmacyOrder = {
   requester_email?: string | null;
   requester_emploi?: string | null;
   requester_public_slug?: string | null;
+  /** Coordonnées du titulaire du dossier (aussi pour une commande faite pour un proche). */
+  patient_phone?: string | null;
+  patient_email?: string | null;
   /** Détail uniquement : le lecteur peut joindre une ordonnance (`PharmacyOrderAccess::canAttachPrescriptions`). */
   can_attach_prescriptions?: boolean;
 };

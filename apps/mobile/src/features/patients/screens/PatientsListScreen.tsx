@@ -115,6 +115,13 @@ export function PatientsListScreen({
     [router, role],
   );
 
+  const addToTour = useCallback(
+    ({ patientId }: StaffPatientActionTarget) => {
+      router.push({ pathname: '/(nurse)/passage/new', params: { patient_id: patientId } });
+    },
+    [router],
+  );
+
   const onItemPress = useCallback(
     (item: StaffHubSearchItem) => {
       router.push(staffHubItemRoute(item, role));
@@ -219,6 +226,7 @@ export function PatientsListScreen({
         onClose={() => setMenuTarget(null)}
         onOpenProfile={openProfile}
         onCreateAppointment={createAppointment}
+        onAddToTour={role === 'nurse' ? addToTour : undefined}
         onDelete={({ patientId, name }) => setPendingDelete({ id: patientId, name })}
       />
 

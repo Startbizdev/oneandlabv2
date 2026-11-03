@@ -740,6 +740,10 @@ final class PharmacyOrderService
             $order['requester_email'] = $requesterContact['email'] ?? null;
             $order['requester_emploi'] = $requesterContact['emploi'] ?? null;
             $order['requester_public_slug'] = $requesterContact['public_slug'] ?? null;
+            // Coordonnées du titulaire du dossier (aussi pour une commande faite pour un proche).
+            $patientContact = $contacts[(string) $order['patient_id']] ?? null;
+            $order['patient_phone'] = $patientContact['phone'] ?? null;
+            $order['patient_email'] = $patientContact['email'] ?? null;
             if (!empty($order['relative_id'])) {
                 $order['relative_display_name'] = $relativeNames[(string) $order['relative_id']] ?? null;
             }

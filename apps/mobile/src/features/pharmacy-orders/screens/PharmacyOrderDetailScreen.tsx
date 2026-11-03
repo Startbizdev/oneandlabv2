@@ -213,6 +213,12 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       value: personDisplayName(patientQ.data?.first_name, patientQ.data?.last_name, '—'),
     });
   }
+  if (isReceiver) {
+    const patientPhone = order.patient_phone || patientQ.data?.phone || null;
+    const patientEmail = order.patient_email || null;
+    if (patientPhone) detailLines.push({ label: 'Téléphone du patient', value: patientPhone });
+    if (patientEmail) detailLines.push({ label: 'E-mail du patient', value: patientEmail });
+  }
   if (order.desired_fulfillment_date) {
     detailLines.push({ label: 'Date souhaitée', value: formatPharmacyDesiredDate(order.desired_fulfillment_date) });
   }

@@ -58,6 +58,17 @@
                   </button>
                 </dd>
               </div>
+              <div v-if="mode === 'receiver' && (order.patient_phone || order.patient_email)">
+                <dt class="text-muted">Contact du patient</dt>
+                <dd class="space-y-1">
+                  <p v-if="order.patient_phone">
+                    <a :href="`tel:${order.patient_phone}`" class="text-primary hover:underline">{{ order.patient_phone }}</a>
+                  </p>
+                  <p v-if="order.patient_email">
+                    <a :href="`mailto:${order.patient_email}`" class="text-primary hover:underline">{{ order.patient_email }}</a>
+                  </p>
+                </dd>
+              </div>
               <div v-if="order.desired_fulfillment_date">
                 <dt class="text-muted">Date souhaitée</dt>
                 <dd class="font-medium">{{ formatDesiredDate(order.desired_fulfillment_date) }}</dd>

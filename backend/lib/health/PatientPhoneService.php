@@ -36,7 +36,7 @@ final class PatientPhoneService
      */
     public function listForPatient(array $viewer, string $patientId): array
     {
-        $this->assertDossierAccess($viewer, $patientId);
+        $this->assertReadAccess($viewer, $patientId);
         $stmt = $this->db->prepare('
             SELECT id, patient_id, label, phone_encrypted, phone_dek, UNIX_TIMESTAMP(created_at) AS created_at_unix
             FROM patient_phones
@@ -133,6 +133,17 @@ final class PatientPhoneService
         if (!PatientDossierAccess::canAccess($this->db, new User($this->db), $viewer, $patientId)) {
             throw HttpStatusException::forbidden('Accès au dossier refusé');
         }
+    }
+
+    /** Lecture : dossier accessible, ou pharmacie qui a une commande de ce patient (même règle que GET /users/{id}). */
+    private function assertReadAccess(array $viewer, string $patientId): void
+    {
+        $role = (string) ($viewer['role'] ?? '');
+        if (in_array($role, ['pro', 'nurse', 'super_admin'], true)
+            && (new User($this->db))->pharmacyHasOrderWithUser((string) ($viewer['user_id'] ?? ''), $patientId)) {
+            return;
+        }
+        $this->assertDossierAccess($viewer, $patientId);
     }
 
     private function assertWriteAccess(array $viewer, string $patientId): void

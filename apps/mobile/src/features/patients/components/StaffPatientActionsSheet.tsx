@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarPlus, Trash2, UserRound } from 'lucide-react-native';
+import { CalendarPlus, Route, Trash2, UserRound } from 'lucide-react-native';
 import { SheetModal } from '@/components/ui/SheetModal';
 import { useAfterSheetDismiss } from '@/components/ui/sheet/use-after-sheet-dismiss';
 import {
@@ -18,6 +18,8 @@ type Props = {
   onClose: () => void;
   onOpenProfile: (target: StaffPatientActionTarget) => void;
   onCreateAppointment: (target: StaffPatientActionTarget) => void;
+  /** Infirmier : ajoute un passage à la tournée pour ce patient. */
+  onAddToTour?: (target: StaffPatientActionTarget) => void;
   onDelete: (target: StaffPatientActionTarget) => void;
 };
 
@@ -27,6 +29,7 @@ export function StaffPatientActionsSheet({
   onClose,
   onOpenProfile,
   onCreateAppointment,
+  onAddToTour,
   onDelete,
 }: Props) {
   /** Dernier patient ciblé : la sheet reste montée pendant sa fermeture pour lancer l'action ensuite. */
@@ -47,6 +50,18 @@ export function StaffPatientActionsSheet({
       showChevron: false,
       onPress: run(onOpenProfile),
     },
+    ...(onAddToTour
+      ? [
+          {
+            key: 'tour',
+            label: 'Ajouter à ma tournée',
+            icon: Route,
+            tone: 'neutral' as const,
+            showChevron: false,
+            onPress: run(onAddToTour),
+          },
+        ]
+      : []),
     {
       key: 'appointment',
       label: 'Créer un rendez-vous',

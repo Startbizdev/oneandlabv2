@@ -271,9 +271,17 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
         </Cluster>
 
         <View style={styles.actions}>
+          {user?.role === 'nurse' ? (
+            <Button
+              title="Ajouter à ma tournée"
+              fullWidth
+              onPress={() => router.push({ pathname: '/(nurse)/passage/new', params: { patient_id: patientId } })}
+            />
+          ) : null}
           <Button
             title="Créer un rendez-vous"
             fullWidth
+            variant={user?.role === 'nurse' ? 'secondary' : undefined}
             onPress={() => router.push(bookingNewHref(rolePrefix, { patient_id: patientId }))}
           />
           {contactActions.length > 0 ? (
@@ -297,7 +305,7 @@ function PatientDossier({ rolePrefix, patientId }: { rolePrefix: StaffRoutePrefi
 
         <PatientPhonesSection
           patientId={patientId}
-          canEdit={user?.role === 'nurse' || user?.role === 'pro' || user?.role === 'super_admin'}
+          canEdit={!isOwnPharmacy && (user?.role === 'nurse' || user?.role === 'pro' || user?.role === 'super_admin')}
           onCall={(phone) => openContact(`tel:${phone.replace(/\s/g, '')}`)}
         />
 
