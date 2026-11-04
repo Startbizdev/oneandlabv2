@@ -12,6 +12,9 @@ require_once __DIR__ . '/../models/User.php';
  */
 class MedicalDocumentAccess
 {
+    /** Pièces administratives qu'une pharmacie destinataire d'une commande peut lire, même jointes à un RDV. */
+    private const PHARMACY_READABLE_CARD_TYPES = ['carte_vitale', 'carte_mutuelle', 'autres_assurances', 'attestation_droits_ame'];
+
     /**
      * Une copie vers un RDV ne doit être possible que pour l'infirmier qui
      * l'a créé ou auquel il est effectivement assigné.
@@ -158,7 +161,16 @@ class MedicalDocumentAccess
             return true;
         }
         if (!empty($document['appointment_id'])) {
-            return false;
+            // Cartes envoyées avec un RDV (souvent aussi au dossier) : lisibles par la pharmacie comme au dossier.
+            // Jamais l'ordonnance ni les résultats du RDV.
+            return in_array((string) ($document['document_type'] ?? ''), self::PHARMACY_READABLE_CARD_TYPES, true)
+                && !empty($document['apt_patient_id'])
+                && PharmacyOrderAccess::profileDocumentsReadTarget(
+                    $db,
+                    $user,
+                    (string) $document['apt_patient_id'],
+                    !empty($document['apt_relative_id']) ? (string) $document['apt_relative_id'] : null,
+                ) !== null;
         }
         $owner = self::resolveProfileDocumentOwner($db, (string) ($document['id'] ?? ''));
 

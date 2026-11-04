@@ -284,6 +284,28 @@ final class PharmacyOrderAttachPrescriptionsTest extends TestCase
         $this->assertFalse(MedicalDocumentAccess::userCanAccess($this->db, $pharmacy, $document));
     }
 
+    public function testReceivingPharmacyReadsTheCardsSentWithAnAppointmentButNotItsPrescription(): void
+    {
+        $this->insertOrder('en_cours');
+        $pharmacy = ['user_id' => $this->pharmacyId, 'role' => 'pro'];
+        $appointmentDocument = static fn (string $type): array => [
+            'id' => 'phpunit-apt-doc-' . $type,
+            'appointment_id' => 'phpunit-apt',
+            'uploaded_by' => TestFixtures::NURSE,
+            'document_type' => $type,
+            'apt_patient_id' => TestFixtures::PATIENT_A,
+            'apt_relative_id' => null,
+        ];
+
+        $this->assertTrue(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $appointmentDocument('carte_mutuelle')));
+        $this->assertTrue(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $appointmentDocument('carte_vitale')));
+        $this->assertFalse(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $appointmentDocument('ordonnance')));
+        $this->assertFalse(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $appointmentDocument('resultats')));
+
+        $otherPatient = ['apt_patient_id' => TestFixtures::PATIENT_B] + $appointmentDocument('carte_mutuelle');
+        $this->assertFalse(MedicalDocumentAccess::userCanRead($this->db, $pharmacy, $otherPatient));
+    }
+
     public function testPharmacyLosesTheProfileDocumentsOnceTheOrderIsRefused(): void
     {
         $this->insertOrder('refusee');
