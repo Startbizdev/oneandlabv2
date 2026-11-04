@@ -10,7 +10,10 @@ import {
   medicalDocumentPickErrorMessage,
   pickMedicalDocumentFile,
 } from '@/lib/uploads/pick-medical-document';
-import type { AppointmentDocFieldDef } from '../constants/appointment-document-fields';
+import {
+  PROFILE_PREFILL_DOC_KEYS,
+  type AppointmentDocFieldDef,
+} from '../constants/appointment-document-fields';
 import {
   hasDocumentFile,
   isLocalFileRef,
@@ -97,7 +100,9 @@ export function WizardDocumentFields({
           const profileRow = profileDocs?.[f.key];
           const fromProfile = isProfileDocRef(entry) || Boolean(profileRow?.medical_document_id);
           const local = isLocalFileRef(entry);
-          const done = hasDocumentFile(files, f.key, profileDocs);
+          // Ordonnance du dossier : jointe seulement si on la choisit (sinon elle n'est pas envoyée au RDV).
+          const prefilled = PROFILE_PREFILL_DOC_KEYS.has(f.key);
+          const done = hasDocumentFile(files, f.key, prefilled ? profileDocs : undefined);
           const displayName =
             (local && entry.name) ||
             (isProfileDocRef(entry) && entry.file_name) ||
@@ -105,7 +110,9 @@ export function WizardDocumentFields({
             getDocumentTypeLabel(f.key);
           const detail = done
             ? `${fromProfile && !local ? 'Dans votre dossier · ' : ''}${displayName}`
-            : f.hint;
+            : profileRow
+              ? `Dans le dossier : ${displayName} · touchez pour la joindre`
+              : f.hint;
 
           const onRowPress = () => {
             if (profileRow && !local) {

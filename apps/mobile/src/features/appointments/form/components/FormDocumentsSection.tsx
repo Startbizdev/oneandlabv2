@@ -34,7 +34,7 @@ export function FormDocumentsSection({
 
   const missingRx =
     !skipPrescription &&
-    !hasDocumentFile(files, 'ordonnance', profileDocs);
+    !hasDocumentFile(files, 'ordonnance');
 
   const profilePersonalOnFile =
     showProfileSummary &&
