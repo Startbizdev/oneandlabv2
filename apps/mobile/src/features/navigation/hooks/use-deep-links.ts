@@ -30,7 +30,7 @@ export function useDeepLinks() {
         }
         if (role === 'nurse' && userId) {
           void useOfferQueueStore.getState().openIncomingOffer(openAppointment, 'nurse', userId);
-          router.replace('/(nurse)/(tabs)/demandes');
+          router.dismissTo('/(nurse)/(tabs)/demandes');
           return;
         }
         if (role === 'preleveur') {

@@ -89,7 +89,7 @@ export function SharedAppointmentLinkScreen({ token }: { token: string }) {
         const appointmentId = await resolveSharedAppointment(shareToken);
         const offers = useOfferQueueStore.getState();
         offers.setShareToken(shareToken);
-        router.replace('/(nurse)/(tabs)/demandes');
+        router.dismissTo('/(nurse)/(tabs)/demandes');
         const result = await offers.openIncomingOffer(appointmentId, 'nurse', userId);
         if (!result.ok && result.reason !== 'invalid') {
           toast(

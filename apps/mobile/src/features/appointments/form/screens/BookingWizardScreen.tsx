@@ -213,7 +213,14 @@ function BookingWizardFlow({
         router.replace(href);
       }
     };
-    const goToList = () => goTo('/(patient)/(tabs)/appointments');
+    const goToList = () => {
+      if (embeddedInTab) {
+        goTo('/(patient)/(tabs)/appointments');
+        return;
+      }
+      // Revenir à l'onglet existant plutôt qu'en empiler un second (retour incohérent).
+      router.dismissTo('/(patient)/(tabs)/appointments');
+    };
     return (
       <BookingWizardChrome {...chromeProps}>
         <View style={styles.screen}>

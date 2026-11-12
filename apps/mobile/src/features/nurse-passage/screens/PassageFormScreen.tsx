@@ -162,7 +162,8 @@ export function PassageFormScreen() {
       invalidateNursePassageQueries(qc);
       const ordonnanceMsg = prescriptionDraftRef.current ? (data.appointment_ids?.length ? ' Ordonnance ajoutée au passage.' : ' Ordonnance enregistrée dans les documents du patient.') : '';
       toast(`${data.created_appointments} passage(s) planifié(s).${ordonnanceMsg}`, { type: 'success' });
-      router.replace('/(nurse)/(tabs)/tournee');
+      // Retour à la tournée existante : un replace empilait une 2e barre d'onglets au-dessus du sélecteur de patient.
+      router.dismissTo('/(nurse)/(tabs)/tournee');
     },
     onError: (e) =>
       handleApiError(e, toast, 'passage-create', 'Enregistrement impossible', nursePassageCreateErrorMessage),

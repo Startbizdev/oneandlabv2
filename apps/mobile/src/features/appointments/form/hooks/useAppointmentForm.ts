@@ -495,7 +495,7 @@ export function useMultiAppointmentWizard(opts: {
           type: 'warning',
         });
         qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
-        router.replace(appointmentsListHref(opts.basePath));
+        router.dismissTo(appointmentsListHref(opts.basePath));
         return;
       }
       if (warning) {

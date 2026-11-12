@@ -89,7 +89,7 @@ export function AppointmentDetailScreen({ role }: Props) {
 
     void (async () => {
       await openIncomingOffer(id, role, user.id);
-      router.replace('/(nurse)/(tabs)/demandes');
+      router.dismissTo('/(nurse)/(tabs)/demandes');
     })();
   }, [id, openIncomingOffer, primary, role, router, s.detailFetching, user?.id]);
   const hasCareGallery = appointmentHasCareGallery(role, primary);
