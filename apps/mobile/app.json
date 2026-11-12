@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cary",
     "slug": "cary-mobile",
-    "version": "1.8.56",
+    "version": "1.8.57",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cary",
@@ -32,7 +32,7 @@
           "NSAllowsLocalNetworking": true
         }
       },
-      "buildNumber": "151"
+      "buildNumber": "153"
     },
     "android": {
       "adaptiveIcon": {
