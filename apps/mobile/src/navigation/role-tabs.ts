@@ -1,4 +1,5 @@
 import {
+  CalendarCheck,
   CalendarDays,
   CalendarPlus,
   CircleUserRound,
@@ -32,11 +33,13 @@ const AGENDA = { label: 'Agenda', icon: CalendarDays } as const;
 const PATIENTS = { label: 'Patients', icon: Users } as const;
 const TOURNEE = { label: 'Tournée', icon: Route } as const;
 const MORE = { label: 'Plus', icon: LayoutGrid } as const;
+/** Patient et pro : l'onglet d'entrée est la liste des rendez-vous, on le nomme ainsi. */
+const APPOINTMENTS = { label: 'Rendez-vous', icon: CalendarCheck } as const;
 
 /** Source unique des onglets par rôle (ordre = ordre d'affichage). */
 export const ROLE_TABS: Record<TabRole, readonly RoleTab[]> = {
   patient: [
-    { name: 'appointments', ...HOME },
+    { name: 'appointments', ...APPOINTMENTS },
     { name: 'results', label: 'Résultats', icon: FlaskConical },
     { name: 'book', label: 'Réserver', icon: CalendarPlus },
     { name: 'ai', label: 'Assistant', icon: Sparkles },
@@ -51,7 +54,7 @@ export const ROLE_TABS: Record<TabRole, readonly RoleTab[]> = {
     { name: 'more', ...MORE },
   ],
   pro: [
-    { name: 'appointments', ...HOME },
+    { name: 'appointments', ...APPOINTMENTS },
     { name: 'patients', ...PATIENTS },
     { name: 'calendar', ...AGENDA },
     // Juste avant « Plus » : son apparition selon les droits ne décale pas les autres onglets.
