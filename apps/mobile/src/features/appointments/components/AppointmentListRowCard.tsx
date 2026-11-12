@@ -14,6 +14,7 @@ import {
   navigateAppointmentForListRow,
 } from '@/utils/appointment-batch';
 import { appointmentStatusForDisplay } from '@/utils/effective-appointment-status';
+import { useAuthStore } from '@/store/auth-store';
 import { useAppColors } from '@/theme/use-app-colors';
 import { useAppointmentListCardStyles } from '@/utils/appointment-list-card-styles';
 import { listItemEntering, enteringShell } from '@/lib/platform/list-entering-animation';
@@ -43,10 +44,13 @@ function AppointmentListRowCardComponent({
   index = 0,
   onPress,
   role,
-  viewerId,
+  viewerId: viewerIdProp,
   footer,
 }: Props) {
   const styles = useStyles(buildStyles);
+  // Statut affiché selon qui regarde (ex. pro destinataire d'un QR) : l'utilisateur connecté par défaut.
+  const authUserId = useAuthStore((s) => s.user?.id);
+  const viewerId = viewerIdProp ?? authUserId;
 
   useAppColors();
   const cardStyles = useAppointmentListCardStyles();

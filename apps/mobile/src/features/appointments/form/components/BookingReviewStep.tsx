@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Info } from 'lucide-react-native';
-import type { SelectedServiceInput } from '@oneandlab/shared-utils';
+import type { DirectedProviderType, SelectedServiceInput } from '@oneandlab/shared-utils';
 import { Row } from '@/components/layout/primitives';
 import type { CareCategory } from '@/features/categories/api/categories.service';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -9,6 +9,7 @@ import { ICON_STROKE_WIDTH, AppText, font, iconSize, radius, spacing, useStyles,
 import { detailLinesForSelectedService } from '../utils/selected-service-detail-lines';
 import { bookingReviewSlots } from '../utils/booking-review-summary';
 import { vipStoreLabel } from '../utils/booking-wizard-titles';
+import { directedProviderScope } from './DirectedProviderBanner';
 
 interface Props {
   mode: 'patient' | 'dashboard';
@@ -20,6 +21,8 @@ interface Props {
   labSummary: string | null;
   /** Soignant présélectionné depuis « Mes donneurs de soins ». */
   providerName: string | null;
+  /** `pro` : le RDV est adressé par ce professionnel, un infirmier ou un labo se déplace. */
+  providerType?: DirectedProviderType | null;
   beneficiary: { name: string; detail: string };
   address: { label: string; complement: string } | null;
   /** Prix du store quand la demande déclenche un paiement « Prioritaire ». */
@@ -80,6 +83,7 @@ export function BookingReviewStep({
   slotRows,
   labSummary,
   providerName,
+  providerType,
   beneficiary,
   address,
   vipPriceLabel,
@@ -114,8 +118,15 @@ export function BookingReviewStep({
         </ReviewSection>
 
         {providerName ? (
-          <ReviewSection title="Avec" editLabel="Modifier le professionnel" onEdit={onEditServices}>
+          <ReviewSection
+            title={providerType === 'pro' ? 'Adressé par' : 'Avec'}
+            editLabel="Modifier le professionnel"
+            onEdit={onEditServices}
+          >
             <AppText style={styles.value}>{providerName}</AppText>
+            {providerType === 'pro' ? (
+              <AppText style={styles.meta}>{directedProviderScope('pro')}</AppText>
+            ) : null}
           </ReviewSection>
         ) : null}
 

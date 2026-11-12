@@ -35,7 +35,7 @@
                   class="text-sm font-medium text-primary-600 dark:text-primary-400"
                   :class="showGuestPersonalLoginHintUnderTitle ? 'mt-2' : 'mt-0 sm:mt-1'"
                 >
-                  Avec {{ providerName }}
+                  {{ providerType === 'pro' ? 'Adressé par' : 'Avec' }} {{ providerName }}
                 </p>
               </header>
               <header
@@ -419,6 +419,8 @@ const props = withDefaults(
       options?: Array<{ option_key: string; label: string; field_type?: string; options?: { value: string; label: string }[] }>;
     }>;
     providerName?: string | null;
+    /** `pro` : RDV adressé par ce professionnel (QR), un infirmier ou un labo se déplace. */
+    providerType?: string | null;
     isAuthenticated: boolean;
     relatives: any[];
     prefilledInfo: Record<string, any>;
@@ -442,6 +444,7 @@ const props = withDefaults(
   }>(),
   {
     providerName: null,
+    providerType: null,
     minLeadTimeHours: null,
     acceptSaturday: true,
     acceptSunday: true,

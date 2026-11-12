@@ -751,13 +751,14 @@ final class AppointmentDispatchService
             return;
         }
 
-        $typeLabel = $appointmentType === 'blood_test' ? 'prélèvement' : 'rendez-vous';
+        $typeLabel = $appointmentType === 'blood_test' ? 'une prise de sang' : 'un soin';
+        $takenBy = $appointmentType === 'blood_test' ? 'Un laboratoire' : 'Un infirmier';
         try {
             $this->notificationService->createNotification(
                 $proId,
                 'new_appointment_available',
-                'Demande de rendez-vous',
-                "Un patient a pris un {$typeLabel} via votre QR code Cary.",
+                'Patient adressé via votre QR code',
+                "Un patient a réservé {$typeLabel} via votre QR code Cary. {$takenBy} de son secteur va le prendre en charge.",
                 ['appointment_id' => $appointmentId]
             );
             EmailQueue::add('new_appointment_pro', null, [

@@ -2,18 +2,26 @@ import type { Appointment } from '@oneandlab/shared-types';
 import { isNursingAppointment } from '@oneandlab/shared-utils';
 
 /**
- * Statut affiché côté infirmier — aligné backend :
- * création nursing par l'infirmier → confirmé + assigné à lui.
- * Si l'API renvoie encore `pending` avec assignation à soi, on affiche « Confirmé ».
+ * Statut à afficher (liste, header, badges) — une seule règle partout, jamais pour décider des actions.
+ * Pro à qui le patient a adressé sa demande (QR) : un RDV en attente est « transmis aux soignants »,
+ * c'est l'infirmier ou le labo qui accepte et se déplace, pas lui.
  */
-/** Statut à afficher (liste, header, badges) — une seule règle partout. */
 export function appointmentStatusForDisplay(
   apt: Appointment | null | undefined,
   opts?: { role?: string; viewerId?: string | null },
 ): string {
-  return effectiveAppointmentStatus(apt, opts);
+  const status = effectiveAppointmentStatus(apt, opts);
+  if (!apt || opts?.role !== 'pro' || !opts.viewerId || status !== 'pending') return status;
+  const viewerId = String(opts.viewerId);
+  const addressedTo = String((apt as Appointment & { assigned_pro_id?: string | null }).assigned_pro_id ?? '');
+  return addressedTo === viewerId && String(apt.created_by ?? '') !== viewerId ? 'referred' : status;
 }
 
+/**
+ * Statut affiché côté infirmier — aligné backend :
+ * création nursing par l'infirmier → confirmé + assigné à lui.
+ * Si l'API renvoie encore `pending` avec assignation à soi, on affiche « Confirmé ».
+ */
 export function effectiveAppointmentStatus(
   apt: Appointment | null | undefined,
   opts?: { role?: string; viewerId?: string | null },

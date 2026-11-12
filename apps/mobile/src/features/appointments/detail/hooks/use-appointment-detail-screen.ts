@@ -22,7 +22,7 @@ import { filterListDocuments } from '../utils/document-labels';
 import { isAppointmentCanceled } from '@/utils/appointment-detail-display';
 import { RdvDetailNavTitle } from '../components/layout/RdvDetailNavTitle';
 import { appointmentPatientHeaderTitle } from '../utils/patient-appointment-display';
-import { effectiveAppointmentStatus } from '@/utils/effective-appointment-status';
+import { appointmentStatusForDisplay } from '@/utils/effective-appointment-status';
 
 const POLL_ACTIVE_MS = 6000;
 const POLL_QUIET_MS = 30_000;
@@ -173,7 +173,7 @@ export function useAppointmentDetailScreen(
   const headerTitleNode = useMemo(() => {
     if (!primary) return 'Rendez-vous';
     const title = appointmentPatientHeaderTitle(primary, batchSorted.length);
-    const displayStatus = effectiveAppointmentStatus(primary, { role, viewerId });
+    const displayStatus = appointmentStatusForDisplay(primary, { role, viewerId });
     const status = displayStatus ?? primary.status;
     return createElement(RdvDetailNavTitle, { title, status });
   }, [primary, batchSorted.length, role, viewerId]);

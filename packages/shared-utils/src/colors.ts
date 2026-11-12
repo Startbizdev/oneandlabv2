@@ -13,6 +13,7 @@ export const THEME_COLORS = {
 
 export const STATUS_BADGE_COLOR: Record<string, string> = {
   pending: 'warning',
+  referred: 'primary',
   confirmed: 'primary',
   planned: 'primary',
   inProgress: 'primary',
@@ -24,6 +25,8 @@ export const STATUS_BADGE_COLOR: Record<string, string> = {
 
 export const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
+  /** Affichage pro seulement : RDV adressé par le pro (QR), en attente d'un infirmier ou d'un labo. */
+  referred: 'Transmis',
   confirmed: 'Confirmé',
   planned: 'Planifié',
   inProgress: 'En cours',

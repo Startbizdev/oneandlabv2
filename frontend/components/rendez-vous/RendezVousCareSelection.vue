@@ -19,7 +19,8 @@
           v-if="providerName"
           class="mt-2 text-sm text-gray-500 dark:text-gray-400"
         >
-          Avec <span class="font-medium text-gray-700 dark:text-gray-300">{{ providerName }}</span>
+          {{ providerType === 'pro' ? 'Adressé par' : 'Avec' }} <span class="font-medium text-gray-700 dark:text-gray-300">{{ providerName }}</span>
+          <template v-if="providerType === 'pro'"> · un infirmier ou un laboratoire de votre secteur viendra chez vous</template>
         </p>
       </header>
 
@@ -255,6 +256,8 @@ const props = withDefaults(
     categories: CareCategoryRow[];
     loading?: boolean;
     providerName?: string | null;
+    /** `pro` : RDV adressé par ce professionnel (QR), un infirmier ou un labo se déplace. */
+    providerType?: string | null;
     restrictCategoryTypes?: ('blood_test' | 'nursing')[];
     /**
      * Une seule fois depuis l’URL (`?type=blood_test` | `?type=nursing`) : pré-filtre la liste par type métier
@@ -269,6 +272,7 @@ const props = withDefaults(
   {
     loading: false,
     providerName: null,
+    providerType: null,
     restrictCategoryTypes: undefined,
     initialCareFilterTab: undefined,
     selectionTitle: undefined,

@@ -32,10 +32,10 @@
         >
           <PatientUrgencyBadge :appointment="appointment" />
           <UBadge
-            :color="appointmentDetailBadgeStatusColor(appointment.status)"
+            :color="appointmentDetailBadgeStatusColor(appointmentDisplayStatus(appointment, user))"
             variant="subtle"
             size="sm"
-            :label="appointmentDetailBadgeStatusLabel(appointment.status)"
+            :label="appointmentDetailBadgeStatusLabel(appointmentDisplayStatus(appointment, user))"
           />
           <UBadge
             :color="appointment.type === 'blood_test' ? 'error' : 'info'"
@@ -166,10 +166,10 @@
                   <div class="flex min-w-0 flex-wrap items-center justify-start gap-1.5">
                     <PatientUrgencyBadge :appointment="appt" />
                     <UBadge
-                      :color="appointmentDetailBadgeStatusColor(appt.status)"
+                      :color="appointmentDetailBadgeStatusColor(appointmentDisplayStatus(appt, user))"
                       variant="subtle"
                       size="sm"
-                      :label="appointmentDetailBadgeStatusLabel(appt.status)"
+                      :label="appointmentDetailBadgeStatusLabel(appointmentDisplayStatus(appt, user))"
                     />
                     <UBadge
                       :color="appt.type === 'blood_test' ? 'error' : 'info'"
@@ -349,6 +349,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
+import { appointmentDisplayStatus } from '~/utils/appointment-display-status';
 import { parseAppointmentAccessResponse } from '~/utils/appointment-access-response';
 import { CANCELLATION_REASONS } from '~/config/cancellation-reasons';
 import { canViewCancellationPhoto } from '~/utils/appointment-cancellation';
@@ -410,6 +411,7 @@ function appointmentDetailBadgeStatusColor(
 ): 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral' {
   const map: Record<string, 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'> = {
     pending: 'warning',
+    referred: 'info',
     confirmed: 'info',
     planned: 'info',
     inProgress: 'primary',
@@ -425,6 +427,7 @@ function appointmentDetailBadgeStatusColor(
 function appointmentDetailBadgeStatusLabel(s: string) {
   const map: Record<string, string> = {
     pending: 'En attente',
+    referred: 'Transmis',
     confirmed: 'Confirmé',
     planned: 'Planifié',
     inProgress: 'En cours',
@@ -450,15 +453,13 @@ const showCreatorOrigin = computed(() =>
 );
 
 /** Plateforme patient : sans préfixe « Patient » ; marque Cary affichée en « Cary ». */
+/** Même texte que l'app : réservé par le patient, en direct ou via le QR d'un professionnel. */
 const patientPlatformOriginDisplay = computed(() => {
-  const l = appointment.value?.creator_origin?.label;
-  const s = String(l ?? '')
-    .trim()
-    .replace(/^patient\s+/i, '')
-    .trim();
-  const compact = s.replace(/\s+/g, '').toLowerCase();
-  if (!compact || compact === 'cary' || compact === 'oneandlab') return 'Cary';
-  return s;
+  const origin = appointment.value?.creator_origin as { via_qr?: boolean } | undefined;
+  if (!origin?.via_qr) return 'Réservé par le patient · en direct sur Cary';
+  return user.value?.role === 'pro'
+    ? 'Réservé par le patient · via votre QR code'
+    : 'Réservé par le patient · via le QR code d’un professionnel';
 });
 
 const creatorSheetOpen = ref(false);

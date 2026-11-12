@@ -54,11 +54,11 @@
                 <div class="flex shrink-0 flex-wrap items-start justify-end gap-1.5">
                   <PatientUrgencyBadge :appointment="apt" />
                   <UBadge
-                    :color="getStatusColor(apt.status)"
+                    :color="getStatusColor(displayStatus(apt))"
                     variant="subtle"
                     size="sm"
                     class="shrink-0 px-2 py-0.5 text-xs font-semibold leading-tight tracking-tight"
-                    :label="getStatusLabel(apt.status)"
+                    :label="getStatusLabel(displayStatus(apt))"
                   />
                 </div>
               </div>
@@ -160,11 +160,11 @@
             <div class="flex shrink-0 flex-wrap items-start justify-end gap-1.5">
               <PatientUrgencyBadge :appointment="singleDisplayAppointment" />
               <UBadge
-                :color="getStatusColor(singleDisplayAppointment.status)"
+                :color="getStatusColor(displayStatus(singleDisplayAppointment))"
                 variant="subtle"
                 size="sm"
                 class="shrink-0 px-2 py-0.5 text-xs font-semibold leading-tight tracking-tight"
-                :label="getStatusLabel(singleDisplayAppointment.status)"
+                :label="getStatusLabel(displayStatus(singleDisplayAppointment))"
               />
             </div>
           </div>
@@ -275,6 +275,7 @@
 import { computed, useSlots } from 'vue';
 import { RouterLink } from 'vue-router';
 import { formatAvailabilityDisplayFr } from '~/utils/appointment-datetime-fr';
+import { appointmentDisplayStatus } from '~/utils/appointment-display-status';
 import {
   type AppointmentListRow,
   isBloodTestOnlyBatchRow,
@@ -391,9 +392,12 @@ const batchCardClickAppointment = computed(() => {
   return list[0];
 });
 
+const { user: viewer } = useAuth();
+const displayStatus = (apt: Parameters<typeof appointmentDisplayStatus>[0]) => appointmentDisplayStatus(apt, viewer.value);
+
 function getStatusColor(status: string): any {
   const colors: Record<string, string> = {
-    pending: 'warning', confirmed: 'info', planned: 'info',
+    pending: 'warning', referred: 'info', confirmed: 'info', planned: 'info',
     inProgress: 'primary', completed: 'success', canceled: 'error',
     cancelled: 'error', refused: 'error', expired: 'neutral',
   };
@@ -402,7 +406,7 @@ function getStatusColor(status: string): any {
 
 function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    pending: 'Attente', confirmed: 'Confirmé', planned: 'Prévu',
+    pending: 'Attente', referred: 'Transmis', confirmed: 'Confirmé', planned: 'Prévu',
     inProgress: 'En cours', completed: 'Terminé', canceled: 'Annulé',
     cancelled: 'Annulé', refused: 'Refusé', expired: 'Expiré',
   };

@@ -453,6 +453,7 @@ function BookingWizardFlow({
                 slotRows={bw.slotRows}
                 labSummary={bw.labSummary}
                 providerName={providerName}
+                providerType={bw.directedProvider?.type ?? null}
                 beneficiary={{
                   name: beneficiaryName || (mode === 'patient' ? 'Vous' : 'Patient à renseigner'),
                   detail: beneficiaryDetail,

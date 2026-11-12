@@ -23,6 +23,8 @@ export type CreatorOrigin = {
   last_name?: string;
   phone?: string;
   email?: string | null;
+  /** `patient_platform` : réservé via le QR code d'un professionnel. */
+  via_qr?: boolean;
   profile_image_url?: string;
   public_slug?: string;
   emploi?: string;
@@ -47,7 +49,9 @@ export function creatorOriginTitle(origin: CreatorOrigin, viewerRole?: string): 
   }
   switch (origin.kind) {
     case 'patient_platform':
-      return 'Origine';
+      // Deux lignes : « Réservé par le patient » puis comment.
+      if (origin.via_qr) return viewerRole === 'pro' ? 'Via votre QR code' : 'Via le QR code d’un professionnel';
+      return 'En direct sur Cary';
     case 'nurse':
       return 'Rendez-vous pris par';
     case 'pro':
@@ -61,7 +65,7 @@ export function creatorOriginTitle(origin: CreatorOrigin, viewerRole?: string): 
 
 export function creatorOriginName(origin: CreatorOrigin): string {
   if (origin.kind === 'patient_platform') {
-    return platformOriginDisplayName(origin.label);
+    return 'Réservé par le patient';
   }
   const parts = [origin.first_name, origin.last_name].filter(Boolean).join(' ').trim();
   return parts || origin.display_name?.trim() || '—';
@@ -187,7 +191,7 @@ export function creatorOriginSubtitle(
   viewerRole?: string,
 ): string | undefined {
   if (origin.kind === 'patient_platform') {
-    return 'Ce rendez-vous a été pris en direct par le patient';
+    return undefined;
   }
   if (origin.kind === 'pro') {
     const emploi = origin.emploi?.trim();

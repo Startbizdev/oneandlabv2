@@ -8,8 +8,18 @@ import { useAppColors } from '@/theme/use-app-colors';
 const CARE_SCOPE: Record<DirectedProviderType, string> = {
   nurse: 'Soins infirmiers',
   lab: 'Prises de sang',
-  pro: 'Soins et prises de sang',
+  // Le pro (médecin, centre) adresse la demande : il ne se déplace pas.
+  pro: 'Une infirmière ou un laboratoire de votre secteur viendra chez vous',
 };
+
+/** Titre du bandeau et du récapitulatif : on réserve « avec » un soignant, on est « adressé par » un pro. */
+export function directedProviderTitle(name: string, type: DirectedProviderType): string {
+  return type === 'pro' ? `Adressé par ${name}` : `Avec ${name}`;
+}
+
+export function directedProviderScope(type: DirectedProviderType): string {
+  return CARE_SCOPE[type];
+}
 
 interface Props {
   name: string;
@@ -26,7 +36,7 @@ export function DirectedProviderBanner({ name, type, onRemove }: Props) {
     <ListRowShell
       style={styles.banner}
       leading={<UserRound size={iconSize.md} color={c.primaryDark} strokeWidth={ICON_STROKE_WIDTH} />}
-      title={`Avec ${name}`}
+      title={directedProviderTitle(name, type)}
       hint={CARE_SCOPE[type]}
       trailing={
         <IconActionButton label={`Retirer ${name}`} onPress={onRemove}>

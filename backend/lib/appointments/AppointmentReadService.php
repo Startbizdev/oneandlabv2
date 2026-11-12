@@ -232,6 +232,8 @@ final class AppointmentReadService
                     $appointment['creator_origin'] = [
                         'kind' => 'patient_platform',
                         'label' => 'cary',
+                        // Réservé via le QR d'un professionnel (RDV adressé par lui).
+                        'via_qr' => !empty($appointment['assigned_pro_id']),
                     ];
                 } elseif ($cbRole === 'nurse') {
                     $cp = $userModel->getById((string) $cb, 'system', 'system');

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { CACHE_STALE_APPOINTMENT_DETAIL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
+import { ApiRequestError } from '@/lib/errors/api-request-error';
 import { fetchAppointment } from '../api/appointments.service';
 import {
   APPOINTMENT_ACCESS_DENIED,
@@ -10,12 +11,30 @@ import {
   type AppointmentDetailData,
 } from './appointment-detail-result';
 
+/**
+ * RDV supprimé (404) ou plus accessible (403, ex. réassigné) : état définitif, sans relance.
+ * Le client lève sur ces statuts ; sans cette lecture, la requête était relancée en boucle (squelette sans fin).
+ */
+function detailOutcomeFromError(error: unknown): AppointmentDetailData | null {
+  if (!(error instanceof ApiRequestError)) return null;
+  if (error.status === 404) return APPOINTMENT_UNAVAILABLE;
+  if (error.status === 403 || isAppointmentAccessDeniedMessage(error.message)) return APPOINTMENT_ACCESS_DENIED;
+  return null;
+}
+
 export function useAppointmentDetail(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.appointments.detail(id ?? ''),
     queryFn: async (): Promise<AppointmentDetailData | null> => {
       if (!id) return null;
-      const res = await fetchAppointment(id, { includeBatch: true });
+      let res: Awaited<ReturnType<typeof fetchAppointment>>;
+      try {
+        res = await fetchAppointment(id, { includeBatch: true });
+      } catch (error) {
+        const outcome = detailOutcomeFromError(error);
+        if (outcome) return outcome;
+        throw error;
+      }
       if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
         return APPOINTMENT_ALREADY_ACCEPTED;
       }
