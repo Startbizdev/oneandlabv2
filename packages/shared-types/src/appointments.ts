@@ -93,6 +93,8 @@ export interface Appointment {
   /** `nurse_passage` : passage créé par un infirmier (série ou passage seul). */
   passage_source?: string | null;
   passage_series_id?: string | null;
+  /** Patient uniquement : proposer un avis sur ce RDV (règle serveur AppointmentReviewPrompt). */
+  review_prompt?: { eligible: boolean; reviewed_here: boolean };
   created_by?: string | null;
   batch_siblings?: Array<{
     id: string;

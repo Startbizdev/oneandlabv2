@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../nurse-collaboration/NurseCollaboration.php';
+require_once __DIR__ . '/AppointmentReviewPrompt.php';
 
 /** Enrichissement réponse GET /appointments/:id (lot batch + médias profil). */
 final class AppointmentDetailGetPayload
@@ -58,6 +59,15 @@ final class AppointmentDetailGetPayload
         $appointment = array_shift($withCollaboration);
         if ($batchAppointments !== []) {
             $appointment['batch_appointments'] = $withCollaboration;
+        }
+
+        if (($user['role'] ?? '') === 'patient') {
+            $appointment['review_prompt'] = AppointmentReviewPrompt::forPatient($db, $appointment, $viewerId);
+            if (!empty($appointment['batch_appointments']) && is_array($appointment['batch_appointments'])) {
+                foreach ($appointment['batch_appointments'] as $i => $batchApt) {
+                    $appointment['batch_appointments'][$i]['review_prompt'] = AppointmentReviewPrompt::forPatient($db, $batchApt, $viewerId);
+                }
+            }
         }
 
         return $appointment;

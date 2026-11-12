@@ -731,7 +731,10 @@ const activePreleveurAlerts = computed(() => {
 });
 
 const completedAppointmentsForAvis = computed(() =>
-  batchAppointmentsSorted.value.filter((a: any) => a.status === 'completed'),
+  batchAppointmentsSorted.value.filter(
+    // Soignant déjà noté ailleurs ou série avant le 3e passage : pas de section avis du tout.
+    (a: any) => a.status === 'completed' && !(a.review_prompt && !a.review_prompt.eligible && !a.review_prompt.reviewed_here),
+  ),
 );
 
 function reviewTargetNameFor(a: any): string {
@@ -757,6 +760,8 @@ function reviewTargetRoleLabelFor(a: any): string {
 
 function canLeaveReviewFor(a: any): boolean {
   if (!a || a.status !== 'completed') return false;
+  // Règle serveur (AppointmentReviewPrompt) : un avis par soignant, 3e passage pour une série.
+  if (a.review_prompt) return Boolean(a.review_prompt.eligible || a.review_prompt.reviewed_here);
   if (a.type === 'nursing') return !!a.assigned_nurse_id;
   if (a.type === 'blood_test') return !!a.assigned_lab_id || !!a.assigned_to;
   return false;

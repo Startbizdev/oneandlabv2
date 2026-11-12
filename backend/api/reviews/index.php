@@ -264,7 +264,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if ($stmtExists->fetch()) {
             throw new DomainException('Vous avez déjà laissé un avis pour ce rendez-vous');
         }
-        
+        // Un seul avis par soignant (ex. passages quotidiens d'une tournée).
+        $stmtSamePro = $db->prepare('SELECT id FROM reviews WHERE patient_id = ? AND reviewee_id = ? LIMIT 1');
+        $stmtSamePro->execute([$user['user_id'], $revieweeId]);
+        if ($stmtSamePro->fetch()) {
+            throw new DomainException('Vous avez déjà noté ce professionnel ; votre avis est dans « Mes avis ».');
+        }
+
         $id = $reviewModel->create($input, $user['user_id']);
         
         $revieweeId = $input['reviewee_id'];

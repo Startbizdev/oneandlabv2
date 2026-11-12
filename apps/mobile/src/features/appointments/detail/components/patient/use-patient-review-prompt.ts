@@ -49,7 +49,12 @@ export function usePatientReviewPrompt(batch: Appointment[], onRefresh: () => vo
   const reviewable = useMemo(() => batch.filter(canLeaveReview), [batch]);
 
   const reviewsQ = useQuery({
-    queryKey: ['reviews', 'patient-hero', reviewable.map((a) => a.id).join(',')] as const,
+    // reviewed_here dans la clé : un avis publié ailleurs (web, autre appareil) est relu au refresh.
+    queryKey: [
+      'reviews',
+      'patient-hero',
+      reviewable.map((a) => `${a.id}:${a.review_prompt?.reviewed_here ? 1 : 0}`).join(','),
+    ] as const,
     queryFn: async () => {
       const out: Record<string, ReviewRow> = {};
       for (const appt of reviewable) {

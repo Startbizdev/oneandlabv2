@@ -137,10 +137,6 @@ export function PatientAppointmentDetailScreen() {
 
             {terminal ? <DetailTerminalBanner terminal={terminal} /> : null}
 
-            {showReviewPrompt ? (
-              <PatientCompletedReviewPrompt batch={batchSorted} onRefresh={s.refreshAll} />
-            ) : null}
-
             <PatientPreleveurAlerts batch={batchSorted} />
 
             {!isMultiBatch && isAppointmentCanceled(primary.status) ? (
@@ -160,6 +156,9 @@ export function PatientAppointmentDetailScreen() {
               cancelCount={cancellableForPatient.length}
               onCancel={() => setCancelOpen(true)}
             />
+            {showReviewPrompt ? (
+              <PatientCompletedReviewPrompt batch={batchSorted} onRefresh={s.refreshAll} />
+            ) : null}
           </SceneScrollView>
         </ScreenActionLayout>
       </StackChromeScreen>

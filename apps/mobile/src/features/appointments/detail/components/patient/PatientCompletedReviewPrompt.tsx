@@ -1,13 +1,14 @@
-import { hexToRgba } from '@/theme/color-utils';
-import { useAppColors } from '@/theme/use-app-colors';
-import { Row } from '@/components/layout/primitives';
-import { Pressable, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Star } from 'lucide-react-native';
 import type { Appointment } from '@oneandlab/shared-types';
+import { Button } from '@/components/ui/Button';
 import { RdvPublishedReviewBanner } from '@/features/appointments/detail/components/RdvPublishedReviewBanner';
-import { elevation, radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
+import { useAppColors } from '@/theme/use-app-colors';
+import { radius, spacing, iconSize, AppText, useStyles, ICON_STROKE_WIDTH, type Theme } from '@/theme';
+import { revieweePayloadForCompletedAppt } from '@/utils/reviewee-payload';
 import { PatientReviewPromptSheet } from './PatientReviewPromptSheet';
 import {
   revieweeFirstName,
@@ -20,78 +21,69 @@ interface Props {
   onRefresh: () => void;
 }
 
-function PendingReviewCard({
+/** Soignants pour lesquels le patient a touché « Plus tard » : on ne redemande plus. */
+const DISMISSED_KEY = 'review-prompt-dismissed';
+
+function useDismissedReviewees() {
+  const [ids, setIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      let next = new Set<string>();
+      try {
+        const raw = await AsyncStorage.getItem(DISMISSED_KEY);
+        const parsed: unknown = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) next = new Set(parsed.map(String));
+      } catch {
+        /* stockage indisponible : on affiche l'invitation */
+      }
+      if (!cancelled) setIds(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dismiss = useCallback((revieweeId: string) => {
+    setIds((prev) => {
+      const next = new Set(prev ?? []);
+      next.add(revieweeId);
+      AsyncStorage.setItem(DISMISSED_KEY, JSON.stringify([...next])).catch(() => undefined);
+      return next;
+    });
+  }, []);
+
+  return { dismissed: ids, dismiss };
+}
+
+function PendingReviewRow({
   appt,
   proName,
   isMulti,
-  onPress,
+  onRate,
+  onLater,
 }: {
   appt: Appointment;
   proName: string;
   isMulti: boolean;
-  onPress: () => void;
+  onRate: () => void;
+  onLater: () => void;
 }) {
   const c = useAppColors();
-  const cardStyles = useStyles(buildCardStyles);
-  const headline = proName
-    ? `Comment s'est passé votre soin avec ${proName} ?`
-    : "Comment s'est passé votre soin ?";
+  const styles = useStyles(buildStyles);
+  const care = isMulti ? ` (${appt.category_name ?? 'soin'})` : '';
+  const label = proName ? `Votre avis sur ${proName}${care} ?` : `Votre avis sur ce soin${care} ?`;
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Laisser un avis sur votre soin"
-      style={({ pressed }) => [pressed && cardStyles.pressedOuter]}
-    >
-      <View style={[cardStyles.shell, elevation.md]}>
-        <LinearGradient
-          colors={[hexToRgba(c.primary, 0.18), hexToRgba(c.primary, 0.04), c.surface]}
-          locations={[0, 0.45, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={cardStyles.gradient}
-        >
-          <View style={cardStyles.content}>
-            <Row justify="between" align="center" gap={spacing[2]}>
-              <AppText style={[cardStyles.kicker, { color: c.primaryDark }]}>Votre avis compte</AppText>
-              <View style={[cardStyles.timePill, { backgroundColor: c.primary }]}>
-                <AppText style={[cardStyles.timePillText, { color: c.onPrimary }]}>2 min</AppText>
-              </View>
-            </Row>
-
-            <AppText style={cardStyles.headline}>{headline}</AppText>
-            <AppText style={cardStyles.subline}>
-              Aidez la communauté Cary à trouver les meilleurs professionnels.
-            </AppText>
-
-            {isMulti ? (
-              <View style={[cardStyles.soinTag, { backgroundColor: hexToRgba(c.primary, 0.1) }]}>
-                <AppText style={[cardStyles.soinTagText, { color: c.primaryDark }]}>
-                  {appt.category_name ?? 'Soin'}
-                </AppText>
-              </View>
-            ) : null}
-
-            <Row
-              gap={spacing[2]}
-              align="center"
-              justify="center"
-              style={[
-                cardStyles.cta,
-                {
-                  backgroundColor: c.warningLight,
-                  borderColor: hexToRgba(c.star, 0.35),
-                },
-              ]}
-            >
-              <Star size={iconSize.md} color={c.star} fill={c.starFill} strokeWidth={1.5} />
-              <AppText style={[cardStyles.ctaText, { color: c.warning }]}>Noter mon soin</AppText>
-            </Row>
-          </View>
-        </LinearGradient>
-      </View>
-    </Pressable>
+    <View style={styles.row}>
+      <Star size={iconSize.sm} color={c.star} fill={c.starFill} strokeWidth={ICON_STROKE_WIDTH} />
+      <AppText variant="secondary" style={styles.label} numberOfLines={2}>
+        {label}
+      </AppText>
+      <Button title="Plus tard" variant="ghost" size="sm" onPress={onLater} />
+      <Button title="Noter" variant="outline" size="sm" onPress={onRate} />
+    </View>
   );
 }
 
@@ -117,14 +109,16 @@ function PublishedReviewAlert({
   return <RdvPublishedReviewBanner message={message} onPress={onPress} />;
 }
 
-/** Encart avis post-RDV — carte visible & cliquable → bottom sheet. */
+/**
+ * Avis post-RDV, en bas du détail : une ligne discrète (le serveur décide quand la proposer,
+ * cf. AppointmentReviewPrompt). « Plus tard » la masque pour ce soignant.
+ */
 export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
-  const c = useAppColors();
-  const cardStyles = useStyles(buildCardStyles);
+  const styles = useStyles(buildStyles);
+  const { dismissed, dismiss } = useDismissedReviewees();
   const {
     reviewable,
     reviewsByAppt,
-    pendingCount,
     sheetAppt,
     sheetApptId,
     sheetExisting,
@@ -137,50 +131,52 @@ export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
   } = usePatientReviewPrompt(batch, onRefresh);
 
   const open = (apptId: string) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     openSheet(apptId);
   };
 
-  if (!reviewable.length) return null;
+  // Attendre la lecture du stockage : pas d'invitation qui apparaît puis disparaît.
+  if (!reviewable.length || !dismissed) return null;
 
   const isMulti = reviewable.length > 1;
+  const items = reviewable.filter((appt) => {
+    if (reviewsByAppt[appt.id]) return true;
+    const reviewee = revieweePayloadForCompletedAppt(appt)?.reviewee_id;
+    return !reviewee || !dismissed.has(reviewee);
+  });
+  if (!items.length && !sheetApptId) return null;
 
   return (
     <>
-      <View style={cardStyles.stack}>
-        {reviewable.map((appt) => {
-          const existing = reviewsByAppt[appt.id];
-          const proName = revieweeFirstName(appt);
-
-          if (existing) {
+      {items.length ? (
+        <View style={styles.stack}>
+          {items.map((appt) => {
+            const existing = reviewsByAppt[appt.id];
+            if (existing) {
+              return (
+                <PublishedReviewAlert
+                  key={appt.id}
+                  appt={appt}
+                  review={existing}
+                  isMulti={isMulti}
+                  onPress={() => open(appt.id)}
+                />
+              );
+            }
+            const reviewee = revieweePayloadForCompletedAppt(appt)?.reviewee_id;
             return (
-              <PublishedReviewAlert
+              <PendingReviewRow
                 key={appt.id}
                 appt={appt}
-                review={existing}
+                proName={revieweeFirstName(appt)}
                 isMulti={isMulti}
-                onPress={() => open(appt.id)}
+                onRate={() => open(appt.id)}
+                onLater={() => reviewee && dismiss(reviewee)}
               />
             );
-          }
-
-          return (
-            <PendingReviewCard
-              key={appt.id}
-              appt={appt}
-              proName={proName}
-              isMulti={isMulti}
-              onPress={() => open(appt.id)}
-            />
-          );
-        })}
-
-        {pendingCount > 0 && isMulti ? (
-          <AppText style={cardStyles.footerHint}>
-            {pendingCount} avis restant{pendingCount > 1 ? 's' : ''} sur ce lot
-          </AppText>
-        ) : null}
-      </View>
+          })}
+        </View>
+      ) : null}
 
       <PatientReviewPromptSheet
         visible={!!sheetApptId}
@@ -196,79 +192,21 @@ export function PatientCompletedReviewPrompt({ batch, onRefresh }: Props) {
   );
 }
 
-function buildCardStyles({ colors: c, fontSize }: Theme) {
+function buildStyles({ colors: c }: Theme) {
   return {
-    stack: { gap: spacing[3] },
-    pressedOuter: { opacity: 0.94, transform: [{ scale: 0.985 }] },
-    shell: {
-      borderRadius: radius['2xl'],
+    stack: { gap: spacing[2] },
+    row: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing[2],
+      paddingVertical: spacing[2],
+      paddingLeft: spacing[3],
+      paddingRight: spacing[1],
+      borderRadius: radius.lg,
       borderWidth: 1,
-      borderColor: hexToRgba(c.primary, 0.22),
-      overflow: 'hidden' as const,
+      borderColor: c.border,
+      backgroundColor: c.surface,
     },
-    gradient: {
-      width: '100%' as const,
-    },
-    content: {
-      minWidth: 0,
-      flex: 1,
-      padding: spacing[4],
-      gap: spacing[2.5],
-    },
-    kicker: {
-      ...font.bold,
-      fontSize: fontSize.xs,
-      letterSpacing: 0.8,
-      textTransform: 'uppercase' as const,
-    },
-    timePill: {
-      paddingHorizontal: spacing[2.5],
-      paddingVertical: spacing[1],
-      borderRadius: radius.full,
-    },
-    timePillText: {
-      ...font.bold,
-      fontSize: fontSize.xs,
-    },
-    headline: {
-      ...font.bold,
-      fontSize: fontSize.md,
-      color: c.textPrimary,
-      lineHeight: fontSize.md * 1.3,
-    },
-    subline: {
-      ...font.regular,
-      fontSize: fontSize.sm,
-      color: c.textSecondary,
-      lineHeight: fontSize.sm * 1.45,
-    },
-    soinTag: {
-      alignSelf: 'flex-start' as const,
-      paddingHorizontal: spacing[2.5],
-      paddingVertical: spacing[1],
-      borderRadius: radius.full,
-    },
-    soinTagText: {
-      ...font.semiBold,
-      fontSize: fontSize.xs,
-    },
-    cta: {
-      marginTop: spacing[1],
-      paddingVertical: spacing[3],
-      paddingHorizontal: spacing[4],
-      borderRadius: radius.xl,
-      borderWidth: 1,
-    },
-    ctaText: {
-      ...font.bold,
-      fontSize: fontSize.base,
-      textAlign: 'center' as const,
-    },
-    footerHint: {
-      textAlign: 'center' as const,
-      ...font.medium,
-      fontSize: fontSize.xs,
-      color: c.textTertiary,
-    },
-  };
+    label: { flex: 1, minWidth: 0 },
+  } as const;
 }
