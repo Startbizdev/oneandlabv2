@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CACHE_STALE_APPOINTMENT_DETAIL_MS } from '@oneandlab/shared-constants';
 import { queryKeys } from '@/lib/query-keys';
 import { ApiRequestError } from '@/lib/errors/api-request-error';
@@ -22,7 +22,11 @@ function detailOutcomeFromError(error: unknown): AppointmentDetailData | null {
   return null;
 }
 
+/** Listes et calendriers de RDV (pas le détail, qui relancerait cette requête). */
+const LIST_KINDS = new Set(['list', 'infinite', 'calendar', 'pending-offers']);
+
 export function useAppointmentDetail(id: string | undefined) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: queryKeys.appointments.detail(id ?? ''),
     queryFn: async (): Promise<AppointmentDetailData | null> => {
@@ -32,7 +36,14 @@ export function useAppointmentDetail(id: string | undefined) {
         res = await fetchAppointment(id, { includeBatch: true });
       } catch (error) {
         const outcome = detailOutcomeFromError(error);
-        if (outcome) return outcome;
+        if (outcome) {
+          // La carte de ce RDV ne doit plus apparaître au retour sur la liste.
+          void qc.invalidateQueries({
+            queryKey: queryKeys.appointments.all,
+            predicate: (query) => LIST_KINDS.has(String(query.queryKey[1])),
+          });
+          return outcome;
+        }
         throw error;
       }
       if (res.success && (res as { alreadyAccepted?: boolean }).alreadyAccepted) {
