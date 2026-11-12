@@ -29,7 +29,7 @@ export function PrescriptionRdvContextRow({ apt, lotLabel }: Props) {
       ) : null}
       {beneficiary ? (
         <AppText style={styles.beneficiary} numberOfLines={1}>
-          Pour {beneficiary}
+          {beneficiary}
         </AppText>
       ) : null}
       <RdvListCardCreneauRow label={schedule} status={status} />
