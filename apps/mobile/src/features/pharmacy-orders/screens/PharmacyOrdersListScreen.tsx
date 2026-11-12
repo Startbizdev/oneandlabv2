@@ -20,7 +20,7 @@ import { useManualRefresh } from '@/lib/hooks/use-manual-refresh';
 import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
 import { spacing, useStyles } from '@/theme';
 
-/** Le patient voit des « traitements » (onglet Mes traitements), les soignants des commandes. */
+/** Le patient voit ses commandes pharmacie (« Mes commandes pharmacie »), comme les soignants. */
 const LIST_COPY = {
   sent: {
     emptyActive: 'Aucune commande en cours',
@@ -29,9 +29,9 @@ const LIST_COPY = {
     newOrder: 'Nouvelle commande',
   },
   patient: {
-    emptyActive: 'Aucun traitement en cours',
-    emptyHistory: 'Aucun traitement passé',
-    error: 'Traitements indisponibles',
+    emptyActive: 'Aucune commande en cours',
+    emptyHistory: 'Aucune commande passée',
+    error: 'Commandes indisponibles',
     newOrder: 'Commander en pharmacie',
   },
 } as const;

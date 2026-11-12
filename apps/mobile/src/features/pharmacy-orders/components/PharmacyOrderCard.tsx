@@ -18,7 +18,7 @@ import { ICON_STROKE_WIDTH, radius, spacing, iconSize, AppText, useStyles, font,
 interface Props {
   order: PharmacyOrder;
   variant: 'sent' | 'received';
-  /** Vue du patient sur ses propres traitements : titre = pharmacie, demandeur affiché. */
+  /** Vue du patient sur ses propres commandes : titre = pharmacie, demandeur affiché. */
   patientView?: boolean;
   onPress: () => void;
 }
@@ -51,7 +51,7 @@ export function PharmacyOrderCard({ order, variant, patientView = false, onPress
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       accessibilityRole="button"
       accessibilityLabel={
-        patientView ? `Traitement ${pharmacyLabel}, ${statusLabel}` : `Commande pour ${patientLabel}, ${statusLabel}`
+        patientView ? `Commande ${pharmacyLabel}, ${statusLabel}` : `Commande pour ${patientLabel}, ${statusLabel}`
       }
     >
       <Row align="center" gap={spacing[3]}>

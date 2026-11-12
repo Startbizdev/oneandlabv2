@@ -299,7 +299,6 @@
                     :items="patientSelectItems"
                     value-key="value"
                     :loading="patientsLoading || patientProfileLoading"
-                    :disabled="patientsLoading"
                     placeholder="Sélectionner un patient…"
                     size="md"
                     class="w-full min-w-0"

@@ -139,7 +139,7 @@
           :ui="wizardUseServiceCard ? undefined : { label: 'sr-only' }"
         >
           <BookingDateCarousel
-            v-if="!wizardUseServiceCard || isBloodTestAppointment(svc.type)"
+            v-if="!isSuperAdminBooking && (!wizardUseServiceCard || isBloodTestAppointment(svc.type))"
             v-model="formDataByService[svc.id].scheduled_at"
             v-model:extra-dates="formDataByService[svc.id].extra_scheduled_dates"
             v-model:selection-mode="formDataByService[svc.id].date_selection_mode"
@@ -156,6 +156,7 @@
             :min-lead-time-hours="bookingLeadTimeForService(svc)"
             :accept-saturday="acceptSaturday !== false"
             :accept-sunday="acceptSunday !== false"
+            :allow-past="isSuperAdminBooking"
           />
         </UFormField>
         <div
@@ -919,6 +920,8 @@ const emit = defineEmits<{
 }>();
 
 const { user } = useAuth();
+/** Admin : calendrier avec jours passés (saisie a posteriori, autorisée par le serveur pour super_admin). */
+const isSuperAdminBooking = computed(() => user.value?.role === 'super_admin');
 
 /** Délai minimal date : prop explicite, sinon 0 h si certificat de décès dans le panier. */
 const effectiveMinLeadTimeHours = computed(() => {
@@ -1298,7 +1301,7 @@ watch(() => props.selectedServices, (svcs) => {
 watch([formDataByService, bookingClockNow, () => props.bookingWizardSection, () => props.activeSlotServiceId], () => {
   props.selectedServices.forEach((s) => {
     const max = availabilityMaxHour(s.type);
-    if (props.bookingWizardSection === 'slot-datetime' && formDataByService[s.id]?.availability_type !== 'urgent' && renderedServices.value.some((row) => row.id === s.id)) {
+    if (!isSuperAdminBooking.value && props.bookingWizardSection === 'slot-datetime' && formDataByService[s.id]?.availability_type !== 'urgent' && renderedServices.value.some((row) => row.id === s.id)) {
       const next = nextBookingDateAfterClosing(formDataByService[s.id]?.scheduled_at, max, {
         minLeadTimeHours: effectiveMinLeadTimeHours.value,
         acceptSaturday: props.acceptSaturday,

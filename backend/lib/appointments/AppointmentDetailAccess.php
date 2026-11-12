@@ -43,7 +43,7 @@ final class AppointmentDetailAccess
         $mergedSelect = $hasMergedColumn ? ', merged_into_appointment_id' : '';
         $creationBatchSelect = $hasCreationBatchColumn ? ', creation_batch_id' : '';
         $stmt = $db->prepare("
-            SELECT patient_id, relative_id, assigned_nurse_id, assigned_lab_id, assigned_to, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
+            SELECT patient_id, relative_id, assigned_nurse_id, assigned_lab_id, assigned_to, assigned_pro_id, created_by, type, status, location_lat, location_lng{$creationBatchSelect}{$mergedSelect}
             FROM appointments
             WHERE id = ?
         ");
@@ -88,6 +88,8 @@ final class AppointmentDetailAccess
             || $appointmentCheck['assigned_lab_id'] === $user['user_id']
             || (!empty($appointmentCheck['assigned_to']) && $appointmentCheck['assigned_to'] === $user['user_id'])
             || $appointmentCheck['created_by'] === $user['user_id']
+            // Professionnel à qui le patient a adressé le RDV (QR code / réservation dirigée).
+            || (!empty($appointmentCheck['assigned_pro_id']) && $appointmentCheck['assigned_pro_id'] === $user['user_id'])
             || $user['role'] === 'super_admin'
         );
 

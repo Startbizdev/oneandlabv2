@@ -31,7 +31,7 @@ export default function PatientMore() {
                   ) : undefined,
               },
               { icon: FileText, label: 'Mes documents', onPress: () => nav('/profile/documents') },
-              { icon: Pill, label: 'Mes traitements', onPress: () => nav('/(patient)/traitements') },
+              { icon: Pill, label: 'Mes commandes pharmacie', onPress: () => nav('/(patient)/traitements') },
               { icon: Activity, label: 'Mes données santé', onPress: () => nav('/(patient)/health-data') },
             ],
           },

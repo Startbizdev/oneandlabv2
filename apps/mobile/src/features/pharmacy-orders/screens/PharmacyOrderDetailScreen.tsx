@@ -267,18 +267,22 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
       onPress: () => setPharmacyProfileOpen(true),
     });
   }
-  if (isReceiver) {
+  // Fiche patient depuis toute commande vue par un soignant ou une pharmacie (envoyée ou reçue).
+  const staffPrefix = rolePrefix === '/(patient)' ? null : rolePrefix;
+  if (staffPrefix) {
     linkItems.push({
       icon: UserRound,
       label: 'Fiche patient',
       onPress: () => {
         if (order.relative_profile_id) {
-          router.push(staffPatientHref('/(pro)', order.relative_profile_id));
+          router.push(staffPatientHref(staffPrefix, order.relative_profile_id));
           return;
         }
-        router.push(staffPatientHref('/(pro)', order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}));
+        router.push(staffPatientHref(staffPrefix, order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}));
       },
     });
+  }
+  if (isReceiver) {
     if (hasStaffRequester) {
       linkItems.push({
         icon: Stethoscope,

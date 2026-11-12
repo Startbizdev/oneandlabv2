@@ -21,6 +21,8 @@ const props = defineProps<{
   acceptSunday?: boolean
   /** Classe du contenu popover, utile quand le calendrier est dans une modale custom. */
   popoverContentClass?: string
+  /** Admin : jours passés sélectionnables (saisie a posteriori). */
+  allowPast?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,7 +40,7 @@ const df = new DateFormatter('fr-FR', {
 // -----------------------------------------------------
 // Min date : aujourd'hui à Paris (jours passés grisés) + optionnel minLeadTimeHours
 // -----------------------------------------------------
-const minDate = computed(() => bookingMinCalendarDate(props.minLeadTimeHours))
+const minDate = computed(() => (props.allowPast ? null : bookingMinCalendarDate(props.minLeadTimeHours)))
 
 // -----------------------------------------------------
 // Internal Date pour UCalendar

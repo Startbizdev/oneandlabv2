@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { MessageCircle, Phone } from 'lucide-react-native';
+import { Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { IconActionButton } from '@/components/ui/IconActionButton';
 import { buildPhoneContactActions } from '@/utils/contact-actions';
@@ -14,7 +14,7 @@ type Props = {
   phone?: string | null;
 };
 
-const CONTACT_ICONS = { phone: Phone, message: MessageCircle } as const;
+const CONTACT_ICONS = { phone: Phone, message: MessageCircle, mail: Mail } as const;
 
 export function PassagePatientHeader({ name, seed, profileImageUrl, gender, phone }: Props) {
   const c = useAppColors();

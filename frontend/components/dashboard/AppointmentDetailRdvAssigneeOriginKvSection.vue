@@ -35,6 +35,7 @@
           </div>
           <div class="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
             <AppointmentDetailContactPhoneRow :phone="appointment.assigned_nurse_phone" />
+            <a v-if="appointment.assigned_nurse_email" :href="`mailto:${appointment.assigned_nurse_email}`" class="text-xs text-primary hover:underline break-all">{{ appointment.assigned_nurse_email }}</a>
             <UButton
               v-if="appointment.assigned_nurse_public_slug"
               size="xs"
@@ -92,6 +93,8 @@
           </div>
           <div class="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto">
             <AppointmentDetailContactPhoneRow :phone="appointment.assigned_lab_phone" />
+            <a v-if="appointment.assigned_lab_email" :href="`mailto:${appointment.assigned_lab_email}`" class="text-xs text-primary hover:underline break-all">{{ appointment.assigned_lab_email }}</a>
+            <p v-if="appointment.assigned_lab_address" class="text-xs text-muted">{{ appointment.assigned_lab_address }}</p>
             <UButton
               v-if="appointment.assigned_lab_public_slug"
               size="xs"
@@ -207,6 +210,8 @@
               <p class="text-xs text-muted">
                 Saisie par un infirmier
               </p>
+              <AppointmentDetailContactPhoneRow :phone="appointment.creator_origin.phone" />
+              <a v-if="appointment.creator_origin.email" :href="`mailto:${appointment.creator_origin.email}`" class="text-xs text-primary hover:underline break-all">{{ appointment.creator_origin.email }}</a>
             </div>
             <div
               v-if="appointment.creator_origin.public_slug"
@@ -328,6 +333,7 @@
               </div>
             </div>
             <AppointmentDetailContactPhoneRow :phone="appointment.creator_origin.phone" />
+            <a v-if="appointment.creator_origin.email" :href="`mailto:${appointment.creator_origin.email}`" class="text-xs text-primary hover:underline break-all">{{ appointment.creator_origin.email }}</a>
             <div class="flex flex-wrap gap-2 pt-1">
               <UButton
                 variant="outline"

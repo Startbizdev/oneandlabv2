@@ -3,7 +3,7 @@
     :order-id="String(route.params.id)"
     list-path="/patient/traitements"
     mode="patient"
-    page-title="Détail du traitement"
+    page-title="Détail de la commande"
   />
 </template>
 

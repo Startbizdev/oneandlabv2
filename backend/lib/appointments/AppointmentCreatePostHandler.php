@@ -177,6 +177,11 @@ final class AppointmentCreatePostHandler
             $createUserRole = $createActor['createUserRole'];
             $notifyCreatorRole = $createActor['notifyCreatorRole'];
 
+            // Date passée : seulement pour un admin connecté (saisie a posteriori), jamais sur demande du client.
+            unset($inputForCreate['allow_past_schedule']);
+            if (($user['role'] ?? '') === 'super_admin') {
+                $inputForCreate['allow_past_schedule'] = true;
+            }
             $id = $appointmentModel->create($inputForCreate, $createUserId, $createUserRole, false, (string) $user['user_id'], AppointmentRequestFingerprint::forInput($input));
             if ($appointmentModel->creationResponseAlreadyCompleted()) {
                 echo json_encode(['success' => true, 'data' => ['id' => $id]]);

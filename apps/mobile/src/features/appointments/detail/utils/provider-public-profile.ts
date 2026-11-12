@@ -22,6 +22,7 @@ export type CreatorOrigin = {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  email?: string | null;
   profile_image_url?: string;
   public_slug?: string;
   emploi?: string;

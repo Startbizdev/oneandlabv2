@@ -485,7 +485,10 @@ class Email
 
     public function sendNewAppointmentToPro(string $to, array $p): bool
     {
-        $content = '<p style="margin:0 0 14px 0;">Un nouveau rendez-vous est disponible dans votre zone.</p>';
+        $directed = !empty($p['directed']);
+        $content = $directed
+            ? '<p style="margin:0 0 14px 0;">Un patient vous a adressé une demande de rendez-vous en scannant votre QR code Cary.</p>'
+            : '<p style="margin:0 0 14px 0;">Un nouveau rendez-vous est disponible dans votre zone.</p>';
         $dateCreneau = $this->formatDateAndCreneau($p['scheduled_at'] ?? null, $p['form_data'] ?? null);
         if ($dateCreneau) {
             $content .= '<p style="margin:0 0 14px 0;"><strong>Date et créneau :</strong> ' . htmlspecialchars($dateCreneau) . '</p>';
@@ -497,14 +500,16 @@ class Email
         $listPath = ProfessionalAppointmentLinks::listPath($role);
         $detailPath = ProfessionalAppointmentLinks::detailPath($role, (string) $appointmentId);
         $body = $this->baseLayout($content, [
-            'title' => 'Nouveau rendez-vous disponible',
-            'preheader' => 'Un rendez-vous est disponible dans votre zone. Ouvrez-le pour agir.',
+            'title' => $directed ? 'Un patient vous a adressé une demande' : 'Nouveau rendez-vous disponible',
+            'preheader' => $directed
+                ? 'Demande reçue via votre QR code Cary. Ouvrez-la pour agir.'
+                : 'Un rendez-vous est disponible dans votre zone. Ouvrez-le pour agir.',
             'ctaUrl' => $baseUrl . $detailPath,
             'ctaLabel' => $appointmentId ? 'Ouvrir le rendez-vous' : 'Voir mes rendez-vous',
             'ctaSecondaryUrl' => $baseUrl . $listPath,
             'ctaSecondaryLabel' => 'Tous mes rendez-vous',
         ]);
-        return $this->send($to, 'Nouveau rendez-vous disponible — Cary', $body, true);
+        return $this->send($to, $directed ? 'Demande de rendez-vous via votre QR code — Cary' : 'Nouveau rendez-vous disponible — Cary', $body, true);
     }
 
     public function sendAppointmentAssignedToPreleveur(string $to, array $p): bool

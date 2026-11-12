@@ -54,6 +54,14 @@ final class PatientProfessionalAccessService
             }
         }
 
+        // Patient qui adresse sa demande à un professionnel (QR code, réservation dirigée) : ce pro suit le dossier.
+        if ($sessionRole === 'patient') {
+            $directedProId = trim((string) ($appointmentInput['assigned_pro_id'] ?? ''));
+            if ($directedProId !== '') {
+                $linkIds[] = $directedProId;
+            }
+        }
+
         $linkIds = array_values(array_unique(array_filter($linkIds)));
         if ($linkIds === []) {
             return;
@@ -297,6 +305,37 @@ final class PatientProfessionalAccessService
             require_once __DIR__ . '/../MedicalDocumentAccess.php';
 
             return MedicalDocumentAccess::userHasNurseAppointmentWithPatient($this->db, $requesterId, $patientId);
+        }
+
+        return false;
+    }
+
+    /**
+     * Consultation seule de la fiche : en plus des droits de modification, le laboratoire (et son équipe)
+     * assigné à un RDV du patient, et le professionnel à qui un RDV du patient est adressé (QR code), quel
+     * que soit le statut du RDV.
+     */
+    public function canStaffViewPatientProfile(string $requesterId, string $requesterRole, string $patientId): bool
+    {
+        if ($this->canStaffEditPatientProfile($requesterId, $requesterRole, $patientId)) {
+            return true;
+        }
+        if ($patientId === '' || $requesterId === '' || PatientArchive::isArchived($this->db, $patientId)) {
+            return false;
+        }
+        require_once __DIR__ . '/../MedicalDocumentAccess.php';
+        if ($requesterRole === 'lab') {
+            return MedicalDocumentAccess::userHasLabPatientDossierAccess($this->db, $requesterId, $patientId);
+        }
+        if ($requesterRole === 'subaccount') {
+            return MedicalDocumentAccess::userHasAssignedAppointmentWithPatient(
+                $this->db,
+                ['user_id' => $requesterId, 'role' => 'subaccount'],
+                $patientId,
+            );
+        }
+        if ($requesterRole === 'pro') {
+            return MedicalDocumentAccess::userHasAppointmentAddressedToProWithPatient($this->db, $requesterId, $patientId);
         }
 
         return false;

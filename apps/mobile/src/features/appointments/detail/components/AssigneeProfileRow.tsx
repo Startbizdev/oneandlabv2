@@ -1,12 +1,12 @@
 import { useAppColors } from '@/theme/use-app-colors';
 import { Image, StyleSheet, View } from 'react-native';
-import { MessageCircle, Phone, User } from 'lucide-react-native';
+import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { Button } from '@/components/ui/Button';
 import { CompactAssigneeRating } from '@/features/appointments/detail/components/CompactAssigneeRating';
 import type { AssigneeReviewSummary } from '@/features/appointments/detail/utils/assignee-review-display';
-import { buildPhoneContactActions } from '@/utils/contact-actions';
+import { buildEmailContactAction, buildPhoneContactActions } from '@/utils/contact-actions';
 import { radius, spacing, iconSize, AppText, useStyles, font, type Theme } from '@/theme';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   avatarSeed?: string;
   gender?: string | null;
   phone?: string;
+  email?: string;
   subtitle?: string;
   reviewSummary?: AssigneeReviewSummary | null;
   onViewProfile?: () => void;
@@ -27,6 +28,7 @@ interface Props {
 const CONTACT_ICONS = {
   phone: Phone,
   message: MessageCircle,
+  mail: Mail,
 } as const;
 
 const AVATAR_SIZE = 40;
@@ -39,6 +41,7 @@ export function AssigneeProfileRow({
   avatarSeed,
   gender,
   phone,
+  email,
   subtitle,
   reviewSummary,
   onViewProfile,
@@ -48,7 +51,8 @@ export function AssigneeProfileRow({
   const c = useAppColors();
   const styles = useStyles(buildStyles);
 
-  const contactActions = buildPhoneContactActions(phone);
+  const emailAction = buildEmailContactAction(email);
+  const contactActions = emailAction ? [...buildPhoneContactActions(phone), emailAction] : buildPhoneContactActions(phone);
 
   const avatar =
     brandLogo === 'cary' ? (

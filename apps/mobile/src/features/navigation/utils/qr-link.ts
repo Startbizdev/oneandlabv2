@@ -104,6 +104,8 @@ export function dispatchQrLinkTarget(
     if (target.providerId) params.provider_id = target.providerId;
     // Le formulaire lit `provider_role` (nurse | lab | pro), valeurs identiques à `provider_type`.
     if (target.providerType) params.provider_role = target.providerType;
+    // Jeton du QR : le serveur en déduit l'attribution et rattache le patient au professionnel.
+    if (target.utmQr) params.utm_qr = target.utmQr;
     return { href: { pathname: '/(patient)/booking/new', params }, message: null };
   }
   return { href: home, message: UNKNOWN_MESSAGE };

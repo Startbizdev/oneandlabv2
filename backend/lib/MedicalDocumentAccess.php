@@ -351,6 +351,19 @@ class MedicalDocumentAccess
         return (bool) $chk->fetchColumn();
     }
 
+    /** Professionnel créateur d'un RDV du patient, ou à qui il est adressé (assigned_pro_id), tous statuts. */
+    public static function userHasAppointmentAddressedToProWithPatient(
+        PDO $db,
+        string $userId,
+        string $patientId,
+    ): bool {
+        [$subjectSql, $subjectParams] = RelativeProfile::appointmentSubjectSql($db, 'a', $patientId);
+        $chk = $db->prepare("SELECT 1 FROM appointments a WHERE $subjectSql AND (a.created_by = ? OR a.assigned_pro_id = ?) LIMIT 1");
+        $chk->execute([...$subjectParams, $userId, $userId]);
+
+        return (bool) $chk->fetchColumn();
+    }
+
     /** Infirmier : assignée, créatrice ou invitée en binôme sur au moins un RDV du patient. */
     public static function userHasNurseAppointmentWithPatient(
         PDO $db,

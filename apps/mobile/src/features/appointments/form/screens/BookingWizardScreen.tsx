@@ -116,6 +116,7 @@ function BookingWizardFlow({
     relative_id: relativeIdParam,
     provider_id: providerIdParam,
     provider_role: providerRoleParam,
+    utm_qr: utmQrParam,
     care_type: careTypeParam,
     category_id: categoryIdParam,
     date: dateParam,
@@ -126,6 +127,8 @@ function BookingWizardFlow({
     relative_id?: string;
     provider_id?: string;
     provider_role?: string;
+    /** Jeton du QR code scanné (attribution côté serveur). */
+    utm_qr?: string;
     /** `blood_test` | `nursing` : filtre initial de l'étape soins. */
     care_type?: string;
     /** Réservation préremplie par l'assistant : soin, jour (AAAA-MM-JJ) et plage horaire (heures). */
@@ -160,6 +163,7 @@ function BookingWizardFlow({
     initialDraft,
     onBookingCreated: draftSession.discard,
     directedProvider,
+    utmQr: mode === 'patient' ? utmQrParam : undefined,
   });
   useBookingDraftAutosave(bw, draftSession);
   useAssistantBookingPrefill(bw.wizard, categoryIdParam, { date: dateParam, timeFrom: timeFromParam, timeTo: timeToParam });

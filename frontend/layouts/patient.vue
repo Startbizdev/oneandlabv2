@@ -81,7 +81,7 @@
                 class="rounded-lg px-2 py-1 text-[13px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
                 :class="{ 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white': route.path.startsWith('/patient/traitements') }"
               >
-                Mes traitements
+                Mes commandes pharmacie
               </NuxtLink>
               <NuxtLink
                 to="/profile"
@@ -501,7 +501,7 @@ const patientMobileNavItems = [
   { to: '/patient', label: 'Mes rendez-vous', icon: 'i-lucide-calendar' },
   { to: '/rendez-vous/nouveau', label: 'Nouveau RDV', icon: 'i-lucide-calendar-plus' },
   { to: '/patient/relatives', label: 'Mes proches', icon: 'i-lucide-users' },
-  { to: '/patient/traitements', label: 'Mes traitements', icon: 'i-lucide-pill' },
+  { to: '/patient/traitements', label: 'Mes commandes pharmacie', icon: 'i-lucide-pill' },
   { to: '/patient/resultats', label: 'Résultats', icon: 'i-lucide-flask-conical' },
   { to: '/patient/reviews', label: 'Mes avis', icon: 'i-lucide-star' },
   { to: '/profile', label: 'Mon profil', icon: 'i-lucide-user' },

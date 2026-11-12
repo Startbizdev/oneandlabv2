@@ -15,7 +15,7 @@ export type PatientContactButton = {
 export type PhoneContactAction = {
   key: string;
   label: string;
-  icon: 'phone' | 'message';
+  icon: 'phone' | 'message' | 'mail';
   onPress: () => void;
 };
 
@@ -50,6 +50,13 @@ export function buildPhoneContactActions(phone?: string | null): PhoneContactAct
       onPress: () => openContactUrl(`sms:${tel}`),
     },
   ];
+}
+
+/** Bouton « E-mail » d'un intervenant (infirmier, laboratoire…) ; null sans adresse. */
+export function buildEmailContactAction(email?: string | null): PhoneContactAction | null {
+  const address = String(email ?? '').trim();
+  if (!address.includes('@')) return null;
+  return { key: 'email', label: 'E-mail', icon: 'mail', onPress: () => openContactUrl(`mailto:${address}`) };
 }
 
 export function buildPatientContactButtons(

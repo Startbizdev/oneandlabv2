@@ -2,9 +2,9 @@
   <PharmacyOrderListPage
     role-base="/patient/traitements"
     scope="patient"
-    title="Mes traitements"
-    description="Commandez en pharmacie et suivez vos traitements."
-    empty-description="Vos commandes de traitement apparaîtront ici."
+    title="Mes commandes pharmacie"
+    description="Commandez en pharmacie et suivez vos commandes."
+    empty-description="Vos commandes pharmacie apparaîtront ici."
     show-new-button
   />
 </template>

@@ -30,6 +30,7 @@ export type AssigneeEntry = {
   avatarSeed?: string;
   gender?: string | null;
   phone?: string;
+  email?: string;
   subtitle?: string;
   reviewSummary?: AssigneeReviewSummary | null;
   brandLogo?: 'cary';
@@ -190,6 +191,7 @@ export function buildAssigneeEntries({
       avatarSeed: nurseId,
       gender: appointmentAssigneeGender(apt, 'nurse'),
       phone: String(ext.assigned_nurse_phone ?? ''),
+      email: String(ext.assigned_nurse_email ?? ''),
       reviewSummary: assigneeReviewFromPrefix(ext, 'assigned_nurse'),
       onViewProfile: slug
         ? () =>
@@ -217,6 +219,8 @@ export function buildAssigneeEntries({
       avatarSeed: labId,
       gender: appointmentAssigneeGender(apt, 'lab'),
       phone: String(ext.assigned_lab_phone ?? ''),
+      email: String(ext.assigned_lab_email ?? ''),
+      subtitle: String(ext.assigned_lab_address ?? '').trim() || undefined,
       reviewSummary: assigneeReviewFromPrefix(ext, 'assigned_lab'),
       onViewProfile: slug
         ? () =>
@@ -276,6 +280,7 @@ export function buildAssigneeEntries({
         avatarSeed: creatorId,
         brandLogo: platformOriginRow ? 'cary' : undefined,
         phone: creator.phone,
+        email: creator.email ?? undefined,
         subtitle: creatorOriginSubtitle(creator, viewerRole),
         reviewSummary: creatorOriginReviewSummary(creator as Record<string, unknown>),
         onViewProfile: profileSheet ? () => onOpenProfileSheet(profileSheet) : undefined,

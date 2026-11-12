@@ -91,6 +91,8 @@ export function useBookingWizard(opts: {
   onBookingCreated?: () => void;
   /** Patient : soignant présélectionné (« Mes donneurs de soins »). */
   directedProvider?: DirectedProvider | null;
+  /** Jeton du QR code scanné : transmis tel quel, le serveur en déduit l'attribution. */
+  utmQr?: string;
 }) {
   const directedProvider = opts.mode === 'patient' ? (opts.directedProvider ?? null) : null;
   const draft = opts.initialDraft ?? null;
@@ -694,6 +696,8 @@ export function useBookingWizard(opts: {
         payloads = payloads.map((p) => ({ ...p, relative_id: selectedRelativeId }));
       }
       payloads = applyDirectedProviderToPayloads(payloads, directedProvider);
+      const utmQr = opts.utmQr?.trim();
+      if (utmQr) payloads = payloads.map((p) => ({ ...p, utm_qr: utmQr }));
 
       if (needsVip) {
         const draftFd = await buildPatientBookingDraftFormData(

@@ -12,5 +12,5 @@ definePageMeta({
 const route = useRoute();
 const orderId = computed(() => String(route.params.id ?? ''));
 
-useHead({ title: 'Messages – Traitement' });
+useHead({ title: 'Messages – Commande pharmacie' });
 </script>

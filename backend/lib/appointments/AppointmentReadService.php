@@ -160,6 +160,7 @@ final class AppointmentReadService
         $appointment['assigned_lab_display_name'] = null;
         $appointment['assigned_lab_role'] = null;
         $appointment['assigned_lab_phone'] = null;
+        $appointment['assigned_lab_email'] = null;
         $appointment['assigned_lab_address'] = null;
         $appointment['assigned_lab_profile_image_url'] = null;
         $appointment['assigned_lab_public_slug'] = null;
@@ -173,6 +174,7 @@ final class AppointmentReadService
         $appointment['assigned_nurse_profile_image_url'] = null;
         $appointment['assigned_nurse_public_slug'] = null;
         $appointment['assigned_nurse_phone'] = null;
+        $appointment['assigned_nurse_email'] = null;
         try {
             require_once __DIR__ . '/../../models/User.php';
             $userModel = new User();
@@ -186,6 +188,7 @@ final class AppointmentReadService
                     $appointment['assigned_lab_display_name'] = $company !== '' ? $company : ($name !== '' ? $name : null);
                     $appointment['assigned_lab_role'] = $labProfile['role'] ?? null;
                     $appointment['assigned_lab_phone'] = isset($labProfile['phone']) ? trim((string)$labProfile['phone']) : null;
+                    $appointment['assigned_lab_email'] = isset($labProfile['email']) && trim((string) $labProfile['email']) !== '' ? trim((string) $labProfile['email']) : null;
                     $appointment['assigned_lab_address'] = isset($labProfile['address']['label']) ? trim((string)$labProfile['address']['label']) : (is_string($labProfile['address'] ?? null) ? trim($labProfile['address']) : null);
                     $appointment['assigned_lab_profile_image_url'] = isset($labProfile['profile_image_url']) ? trim((string)$labProfile['profile_image_url']) : null;
                     $appointment['assigned_lab_public_slug'] = isset($labProfile['public_slug']) && trim((string)$labProfile['public_slug']) !== '' ? trim((string)$labProfile['public_slug']) : null;
@@ -200,6 +203,7 @@ final class AppointmentReadService
                     $appointment['assigned_nurse_profile_image_url'] = isset($nurseProfile['profile_image_url']) ? trim((string)$nurseProfile['profile_image_url']) : null;
                     $appointment['assigned_nurse_public_slug'] = isset($nurseProfile['public_slug']) && trim((string)$nurseProfile['public_slug']) !== '' ? trim((string)$nurseProfile['public_slug']) : null;
                     $appointment['assigned_nurse_phone'] = isset($nurseProfile['phone']) ? trim((string)$nurseProfile['phone']) : null;
+                    $appointment['assigned_nurse_email'] = isset($nurseProfile['email']) && trim((string) $nurseProfile['email']) !== '' ? trim((string) $nurseProfile['email']) : null;
                 }
             }
             if (!empty($appointment['assigned_to'])) {
@@ -241,6 +245,7 @@ final class AppointmentReadService
                             'first_name' => $fn !== '' ? $fn : null,
                             'last_name' => $ln !== '' ? $ln : null,
                             'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
+                            'email' => isset($cp['email']) && trim((string) $cp['email']) !== '' ? trim((string) $cp['email']) : null,
                             'profile_image_url' => isset($cp['profile_image_url']) ? trim((string) $cp['profile_image_url']) : null,
                             'public_slug' => isset($cp['public_slug']) && trim((string) $cp['public_slug']) !== '' ? trim((string) $cp['public_slug']) : null,
                         ], $this->reviewStats->forUserId((string) $cb));
@@ -272,6 +277,7 @@ final class AppointmentReadService
                             'first_name' => $fn !== '' ? $fn : null,
                             'last_name' => $ln !== '' ? $ln : null,
                             'phone' => isset($cp['phone']) ? trim((string) $cp['phone']) : null,
+                            'email' => isset($cp['email']) && trim((string) $cp['email']) !== '' ? trim((string) $cp['email']) : null,
                             'adeli' => isset($cp['adeli']) ? trim((string) $cp['adeli']) : null,
                             'emploi' => $emploi !== '' ? $emploi : null,
                             'biography' => $bio !== '' ? $bio : null,

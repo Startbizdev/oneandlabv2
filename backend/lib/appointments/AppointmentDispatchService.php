@@ -765,6 +765,8 @@ final class AppointmentDispatchService
                 'scheduled_at' => $scheduledAt ?? date('Y-m-d H:i:s'),
                 'role' => 'pro',
                 'form_data' => $formData,
+                // Demande adressée à ce pro par le patient (QR code), pas un RDV de zone.
+                'directed' => true,
             ], $proId);
         } catch (Exception $e) {
             error_log('dispatchDirectedProOnly notify: ' . $e->getMessage());

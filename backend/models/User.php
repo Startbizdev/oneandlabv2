@@ -1650,6 +1650,11 @@ class User
         return $this->patientAccess()->canStaffEditPatientProfile($requesterId, $requesterRole, $patientId);
     }
 
+    public function canStaffViewPatientProfile(string $requesterId, string $requesterRole, string $patientId): bool
+    {
+        return $this->patientAccess()->canStaffViewPatientProfile($requesterId, $requesterRole, $patientId);
+    }
+
     public function revokePatientProfessionalAccessAfterRedispatch(
         string $patientId,
         string $professionalId,

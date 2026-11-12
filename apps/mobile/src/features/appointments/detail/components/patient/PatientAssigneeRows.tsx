@@ -46,6 +46,7 @@ export function PatientAssigneeRows({ apt }: Props) {
             avatarSeed={entry.avatarSeed}
             gender={entry.gender}
             phone={entry.phone}
+            email={entry.email}
             subtitle={entry.subtitle}
             reviewSummary={entry.reviewSummary}
             brandLogo={entry.brandLogo}

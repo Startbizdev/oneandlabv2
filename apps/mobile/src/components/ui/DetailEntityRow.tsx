@@ -2,7 +2,7 @@ import { useAppColors } from '@/theme/use-app-colors';
 import { Cluster, Row } from '@/components/layout/primitives';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { MessageCircle, Phone, User } from 'lucide-react-native';
+import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import type { PhoneContactAction } from '@/utils/contact-actions';
 import { spacing, iconSize, AppText, useStyles, font, ICON_STROKE_WIDTH, type Theme } from '@/theme';
@@ -27,6 +27,7 @@ export type DetailEntityRowProps = {
 const CONTACT_ICONS = {
   phone: Phone,
   message: MessageCircle,
+  mail: Mail,
 } as const;
 
 /**

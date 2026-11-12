@@ -117,7 +117,7 @@ const PATIENT_SECTIONS: HelpFaqSectionDef[] = [
       {
         question: 'Que trouve-t-on dans Compte ?',
         answer:
-          'Votre profil, votre santé (carnet, documents, traitements, données santé), vos proches et vos avis, puis les paramètres, l’aide et la déconnexion.',
+          'Votre profil, votre santé (carnet, documents, commandes pharmacie, données santé), vos proches et vos avis, puis les paramètres, l’aide et la déconnexion.',
       },
     ],
   },

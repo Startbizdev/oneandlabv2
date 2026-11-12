@@ -120,7 +120,9 @@ final class AppointmentCreationService
         
         // Référence « maintenant » en heure de Paris (cohérent avec les chaînes sans fuseau)
         $now = new DateTime('now', $tzParis);
-        if ($scheduledDate < $now) {
+        $allowPastSchedule = !empty($data['allow_past_schedule']);
+        unset($data['allow_past_schedule']);
+        if ($scheduledDate < $now && !$allowPastSchedule) {
             // « Toute la journée » : le front envie souvent 00:00:00 (heure Paris) ; ce même jour à 18 h, ce timestamp
             // est techniquement « dans le passé » mais il désigne encore le jour courant → on accepte ce cas uniquement.
             // Un horaire explicite déjà passé (ex. 08:00 alors qu’il est 18:00) reste refusé ci-dessous.

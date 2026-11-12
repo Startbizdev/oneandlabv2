@@ -37,7 +37,7 @@
                 <dt class="text-muted">Patient</dt>
                 <dd class="font-medium">
                   <NuxtLink
-                    v-if="mode === 'admin' || mode === 'receiver'"
+                    v-if="mode !== 'patient'"
                     :to="patientProfileLink(order)"
                     class="text-primary hover:underline"
                   >

@@ -79,16 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
         }
-        if (!$allowed && in_array($user['role'], ['pro', 'nurse'], true)) {
+        // Consultation : en plus des droits de modification, labo assigné et pro destinataire d'un RDV du patient.
+        if (!$allowed && in_array($user['role'], ['pro', 'nurse', 'subaccount', 'preleveur', 'lab'], true)) {
             $allowed = (($userData['role'] ?? '') === 'patient')
-                && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
-        }
-        if (!$allowed && in_array($user['role'], ['subaccount', 'preleveur'], true)) {
-            $allowed = (($userData['role'] ?? '') === 'patient')
-                && $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
-        }
-        if (!$allowed && $user['role'] === 'lab' && ($userData['role'] ?? '') === 'patient') {
-            $allowed = $userModel->canStaffEditPatientProfile($user['user_id'], $user['role'], $id);
+                && $userModel->canStaffViewPatientProfile($user['user_id'], $user['role'], $id);
         }
         if (!$allowed && in_array($user['role'], ['pro', 'nurse', 'super_admin'], true)) {
             $allowed = $userModel->pharmacyHasOrderWithUser((string) $user['user_id'], (string) $id);
