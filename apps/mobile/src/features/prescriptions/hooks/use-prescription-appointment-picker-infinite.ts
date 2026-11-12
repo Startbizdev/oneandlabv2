@@ -25,7 +25,8 @@ export function usePrescriptionAppointmentPickerInfinite(
         patient_id: patientId,
         limit: PRESCRIPTION_APPOINTMENT_PAGE_SIZE,
         page: pageParam,
-        ...(prescriptionKind === 'nursing' ? { type: 'nursing' } : {}),
+        // Tous les RDV du patient visibles : une ordonnance se joint aussi à une prise de sang
+        // (filtrer sur les soins infirmiers masquait les bilans, ex. ordonnance de bilan sanguin).
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>

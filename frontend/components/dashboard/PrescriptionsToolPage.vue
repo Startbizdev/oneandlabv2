@@ -409,9 +409,8 @@ async function fetchAppointmentsForPatient(patientId: string) {
     });
     const res = await apiFetch(`/appointments?${params.toString()}`, { method: 'GET' });
     if (res?.success && Array.isArray(res.data)) {
-      appointments.value = res.data.filter((a: Appointment) =>
-        prescriptionKind.value === 'nursing' ? a.type === 'nursing' : true,
-      );
+      // Tous les RDV du patient : une ordonnance se joint aussi à une prise de sang.
+      appointments.value = res.data as Appointment[];
     } else {
       appointments.value = [];
     }

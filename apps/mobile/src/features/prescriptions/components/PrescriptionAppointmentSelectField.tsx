@@ -112,7 +112,11 @@ export function PrescriptionAppointmentSelectField({
         onClose={() => setOpen(false)}
         rows={grouped}
         selectedId={selectedId}
-        onSelect={onSelect}
+        onSelect={(id) => {
+          // Comme le choix du patient : la feuille se ferme pour laisser voir l'ordonnance à rédiger.
+          onSelect(id);
+          setOpen(false);
+        }}
         loading={loading}
         totalCount={totalCount}
         hasNextPage={hasNextPage}
