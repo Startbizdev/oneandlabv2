@@ -89,9 +89,10 @@ export function PassagePlanningSection({ state, onChange, passageCount }: Props)
               <IsoDatePicker
                 label="Date de fin"
                 value={state.endDate}
+                // Toujours cliquable : choisir une date décoche « Passage chronique ».
                 onChange={(endDate) => onChange({ endDate, openEnded: false })}
-                placeholder="Optionnelle"
-                disabled={state.openEnded && isRecurring}
+                placeholder={state.openEnded && isRecurring ? 'Aucune (passage chronique)' : 'Optionnelle'}
+                minimumDate={/^\d{4}-\d{2}-\d{2}$/.test(state.startDate) ? new Date(`${state.startDate}T12:00:00`) : undefined}
               />
               {isRecurring ? (
                 <PlanningOption

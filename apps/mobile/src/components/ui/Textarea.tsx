@@ -1,10 +1,11 @@
 import { useAppColors } from '@/theme/use-app-colors';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { spacing, AppText, useStyles, font, lh, type Theme } from '@/theme';
 import { buildFieldStyles } from './field-styles';
 import { useInBottomSheet } from './sheet-keyboard-context';
+import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 
 interface TextareaProps extends TextInputProps {
   label?: string;
@@ -32,6 +33,8 @@ function TextareaComponent(
 
   const [isFocused, setIsFocused] = useState(false);
   const inSheet = useInBottomSheet();
+  const wrapRef = useRef<View>(null);
+  const scrollIntoView = useScrollFocusedFieldIntoView();
   const borderColor = error
     ? c.borderError
     : isFocused
@@ -41,9 +44,11 @@ function TextareaComponent(
   const handleFocus = useCallback(
     (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
       setIsFocused(true);
+      // Sheet : le pied (« Enregistrer ») suit le clavier ; la zone de saisie remonte en haut pour rester visible.
+      if (inSheet) scrollIntoView(wrapRef);
       onFocus?.(e);
     },
-    [onFocus],
+    [onFocus, inSheet, scrollIntoView],
   );
 
   const handleBlur = useCallback(
@@ -55,7 +60,7 @@ function TextareaComponent(
   );
 
   return (
-    <View style={field.wrapper}>
+    <View ref={wrapRef} collapsable={false} style={field.wrapper}>
       {label ? (
         <AppText style={[field.label, isFocused && field.labelFocused]}>{label}</AppText>
       ) : null}

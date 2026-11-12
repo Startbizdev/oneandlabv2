@@ -1,0 +1,38 @@
+diff --git a/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm b/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
+--- a/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
++++ b/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
+@@ -169,11 +169,6 @@ NSDate* adjustMinimumDate (NSDate* minimumDate, int minuteInterval) {
+     const auto &newPickerProps = *std::static_pointer_cast<const RNDateTimePickerProps>(props);
+     Boolean needsToUpdateMeasurements = false;
+ 
+-    if (oldPickerProps.date != newPickerProps.date) {
+-        picker.date = convertJSTimeToDate(newPickerProps.date);
+-        needsToUpdateMeasurements = true;
+-    }
+-
+     if (oldPickerProps.minimumDate != newPickerProps.minimumDate) {
+         NSDate *minimumDate = convertJSTimeToDate(newPickerProps.minimumDate);
+         picker.minimumDate = adjustMinimumDate(minimumDate, newPickerProps.minuteInterval);
+@@ -191,6 +186,10 @@ NSDate* adjustMinimumDate (NSDate* minimumDate, int minuteInterval) {
+         needsToUpdateMeasurements = true;
+     }
+ 
++    // Recycled view (e.g. a former time picker): apply the date after the mode,
++    // otherwise the wheels keep the previous display (January 1, 1970).
++    Boolean modeOrStyleChanged = oldPickerProps.mode != newPickerProps.mode || oldPickerProps.displayIOS != newPickerProps.displayIOS;
++
+     if (oldPickerProps.mode != newPickerProps.mode) {
+         switch(newPickerProps.mode) {
+             case RNDateTimePickerMode::Time:
+@@ -290,6 +289,11 @@ NSDate* adjustMinimumDate (NSDate* minimumDate, int minuteInterval) {
+         picker.enabled = newPickerProps.enabled;
+     }
+ 
++    if (oldPickerProps.date != newPickerProps.date || modeOrStyleChanged) {
++        picker.date = convertJSTimeToDate(newPickerProps.date);
++        needsToUpdateMeasurements = true;
++    }
++
+     return needsToUpdateMeasurements;
+ }
+ 

@@ -470,13 +470,21 @@
               <div
                 v-if="dashboardBookingWizardSection === 'personal'"
                 id="wizard-rgpd-consent"
-                class="mb-4 scroll-mt-28"
+                :class="[
+                  'mb-4 scroll-mt-28 rounded-xl border p-3 transition-colors',
+                  consentMissing
+                    ? 'border-red-400 bg-red-50 ring-2 ring-red-200 dark:border-red-700 dark:bg-red-950/30 dark:ring-red-900/50'
+                    : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/40',
+                ]"
               >
                 <UCheckbox
                   v-model="rgpdConsent"
                   :label="STAFF_PATIENT_BOOKING_CONSENT_LABEL"
                   :ui="{ label: 'text-xs font-medium leading-snug text-default' }"
                 />
+                <p v-if="consentMissing" role="alert" class="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
+                  Merci de cocher le consentement pour continuer.
+                </p>
               </div>
               <RendezVousStickyFooter
                 dashboard-layout
@@ -1015,8 +1023,7 @@ async function selectStaffRelative(relative: any | null) {
 
 function openStaffRelativeDrawer() {
   if (!rgpdConsent.value) {
-    validationError.value = STAFF_PATIENT_BOOKING_CONSENT_ERROR;
-    scrollToValidationError('wizard-rgpd-consent');
+    requirePatientConsent(STAFF_PATIENT_BOOKING_CONSENT_ERROR);
     return;
   }
   relativeDrawerOpen.value = true;
@@ -1223,12 +1230,28 @@ async function confirmAdoptExistingPatientFromLookup() {
   duplicatePatientSuppressKey.value = '';
   if (!rgpdConsent.value) {
     lookupAdoptionAwaitingConsent.value = found;
-    validationError.value = LOOKUP_ADOPTION_CONSENT_HINT;
-    scrollToValidationError('wizard-rgpd-consent');
+    requirePatientConsent(LOOKUP_ADOPTION_CONSENT_HINT);
     return;
   }
   await adoptLookupPatient(found);
 }
+
+/** Case de consentement manquante : surlignée en rouge, message dessous, défilement jusqu'à elle (pas en haut de page). */
+const consentMissing = ref(false);
+function requirePatientConsent(message: string) {
+  validationError.value = message;
+  consentMissing.value = true;
+  nextTick(() => {
+    document.getElementById('wizard-rgpd-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+
+watch(rgpdConsent, (given) => {
+  if (given) {
+    consentMissing.value = false;
+    if (validationError.value === STAFF_PATIENT_BOOKING_CONSENT_ERROR) validationError.value = '';
+  }
+});
 
 watch(rgpdConsent, (given) => {
   const pending = lookupAdoptionAwaitingConsent.value;
@@ -1762,6 +1785,10 @@ async function onDashboardWizardContinue() {
 function onDashboardFooterPrimary() {
   if (patientMode.value === 'existing' && (patientProfileLoading.value || patientProfileError.value)) return;
   if (dashboardBookingWizardFinalStep.value) {
+    if (!rgpdConsent.value) {
+      requirePatientConsent(STAFF_PATIENT_BOOKING_CONSENT_ERROR);
+      return;
+    }
     unifiedFormRef.value?.commitPatientWizardSubmit?.();
     return;
   }
@@ -1823,8 +1850,7 @@ async function onUnifiedSubmit(payload: any) {
   formData.value = payload;
 
   if (!rgpdConsent.value) {
-    validationError.value = STAFF_PATIENT_BOOKING_CONSENT_ERROR;
-    scrollToValidationError('wizard-rgpd-consent');
+    requirePatientConsent(STAFF_PATIENT_BOOKING_CONSENT_ERROR);
     return;
   }
 

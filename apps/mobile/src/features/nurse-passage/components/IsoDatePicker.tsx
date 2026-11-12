@@ -105,9 +105,8 @@ export function IsoDatePicker({
       >
         <AppText
           style={[styles.value, !parsedValid && styles.placeholder]}
+          // Pas d'adjustsFontSizeToFit : dans une sheet iOS, il réduisait la date à quelques pixels.
           numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.85}
         >
           {display}
         </AppText>

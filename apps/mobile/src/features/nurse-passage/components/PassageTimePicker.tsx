@@ -15,9 +15,11 @@ type Props = {
   disabled?: boolean;
 };
 
+/** Heure posée sur la date du jour : une roue iOS recyclée ne doit jamais afficher 1970. */
 function parseTimeToDate(hhmm: string): Date {
-  const parsed = dayjs(`1970-01-01T${hhmm}`, 'YYYY-MM-DDTHH:mm', true);
-  return parsed.isValid() ? parsed.toDate() : dayjs('1970-01-01T09:00').toDate();
+  const today = dayjs().format('YYYY-MM-DD');
+  const parsed = dayjs(`${today}T${hhmm}`);
+  return /^\d{2}:\d{2}$/.test(hhmm) && parsed.isValid() ? parsed.toDate() : dayjs(`${today}T09:00`).toDate();
 }
 
 export function PassageTimePicker({ label = 'Heure', value, onChange, disabled }: Props) {
