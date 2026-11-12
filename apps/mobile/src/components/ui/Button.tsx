@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import {
   Pressable,
   ActivityIndicator,
+  StyleSheet,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
@@ -63,6 +64,32 @@ function textColorFor(variant: Variant, c: AppColors): string {
   }
 }
 
+/** Placement du bouton dans son parent (rangée, grille) : à porter par le conteneur, pas par la surface. */
+const OUTER_LAYOUT_KEYS = [
+  'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'alignSelf',
+  'width', 'minWidth', 'maxWidth',
+  'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical',
+] as const;
+
+/**
+ * Sépare le placement (conteneur animé) du style visuel (surface pressable). Avant, un `flex: 1` passé
+ * pour partager une rangée tombait sur la surface : le bouton s'étirait en hauteur au lieu de partager la largeur.
+ */
+function splitButtonStyle(style: StyleProp<ViewStyle>): { outer: ViewStyle; inner: ViewStyle } {
+  const flat = (StyleSheet.flatten(style) ?? {}) as ViewStyle & Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = { ...flat };
+  for (const key of OUTER_LAYOUT_KEYS) {
+    if (key in flat) {
+      outer[key] = flat[key];
+      delete inner[key];
+    }
+  }
+  // La surface remplit le conteneur dès qu'il a une largeur imposée ou partagée.
+  if ('flex' in outer || 'flexGrow' in outer || 'width' in outer || 'flexBasis' in outer) inner.alignSelf = 'stretch';
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
+}
+
 function ButtonComponent({
   title,
   variant = 'primary',
@@ -99,12 +126,13 @@ function ButtonComponent({
     [onPress],
   );
 
+  const { outer: outerStyle, inner: innerStyle } = splitButtonStyle(style);
   const isDisabled = disabled || loading;
   const isMini = size === 'mini';
   const labelColor = textColorFor(variant, c);
 
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, isMini && styles.inlineWrap, animatedStyle]}>
+    <Animated.View style={[fullWidth && styles.fullWidth, isMini && styles.inlineWrap, outerStyle, animatedStyle]}>
       <Pressable
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -118,7 +146,7 @@ function ButtonComponent({
           variantStyleFor(variant, c),
           isDisabled && styles.disabled,
           fullWidth && styles.fullWidth,
-          style,
+          innerStyle,
         ]}
         {...props}
         accessibilityState={{ ...props.accessibilityState, disabled: !!isDisabled, ...(loading ? { busy: true } : null) }}
@@ -130,7 +158,11 @@ function ButtonComponent({
         ) : (
           <>
             {leftIcon ?? null}
-            <Animated.Text style={[styles.label, styles[TEXT_SIZE_STYLE_KEY[size]], { color: labelColor }]}>
+            <Animated.Text
+              style={[styles.label, styles[TEXT_SIZE_STYLE_KEY[size]], { color: labelColor }]}
+              // Petits boutons côte à côte : une ligne, le texte ne fait plus grandir le bouton.
+              numberOfLines={size === 'sm' || size === 'mini' ? 1 : undefined}
+            >
               {title}
             </Animated.Text>
             {rightIcon ?? null}

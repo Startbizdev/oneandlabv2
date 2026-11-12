@@ -1,6 +1,6 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import { Image, StyleSheet, View } from 'react-native';
-import { Mail, MessageCircle, Phone, User } from 'lucide-react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { ChevronRight, Mail, MessageCircle, Phone } from 'lucide-react-native';
 import { Cluster, Row } from '@/components/layout/primitives';
 import { ProfileAvatar } from '@/components/ui/ProfileAvatar';
 import { Button } from '@/components/ui/Button';
@@ -71,44 +71,54 @@ export function AssigneeProfileRow({
       />
     );
 
+  const identity = (
+    <Cluster
+      gap={spacing[3]}
+      align="start"
+      leading={<View style={styles.avatarWrap}>{avatar}</View>}
+      actions={
+        onViewProfile ? (
+          <ChevronRight size={iconSize.md} color={c.textTertiary} strokeWidth={2} />
+        ) : undefined
+      }
+    >
+      <View style={styles.meta}>
+        <AppText style={styles.name} numberOfLines={2}>
+          {name}
+        </AppText>
+        <AppText style={styles.role} numberOfLines={1}>
+          {title}
+        </AppText>
+
+        <CompactAssigneeRating summary={reviewSummary} />
+
+        {subtitle ? (
+          <AppText style={styles.subtitle} numberOfLines={2}>
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
+    </Cluster>
+  );
+
   return (
     <View style={styles.block}>
-      <Cluster
-        gap={spacing[3]}
-        align="start"
-        leading={<View style={styles.avatarWrap}>{avatar}</View>}
-      >
-        <View style={styles.meta}>
-          <AppText style={styles.name} numberOfLines={2}>
-            {name}
-          </AppText>
-          <AppText style={styles.role} numberOfLines={1}>
-            {title}
-          </AppText>
+      {/* Profil : on touche l'identité (chevron) ; les boutons restent sur une ligne pour les contacts. */}
+      {onViewProfile ? (
+        <Pressable
+          onPress={onViewProfile}
+          accessibilityRole="button"
+          accessibilityLabel={`Voir le profil de ${name}`}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          {identity}
+        </Pressable>
+      ) : (
+        identity
+      )}
 
-          <CompactAssigneeRating summary={reviewSummary} />
-
-          {subtitle ? (
-            <AppText style={styles.subtitle} numberOfLines={2}>
-              {subtitle}
-            </AppText>
-          ) : null}
-        </View>
-      </Cluster>
-
-      {onViewProfile || contactActions.length > 0 ? (
-        <Row wrap gap={spacing[1.5]} style={styles.actionsRow}>
-          {onViewProfile ? (
-            <Button
-              title="Voir le profil"
-              variant="muted"
-              size="sm"
-              leftIcon={<User size={iconSize.xs} color={c.textSecondary} strokeWidth={2.25} />}
-              onPress={onViewProfile}
-              style={styles.actionButton}
-              accessibilityLabel={`Voir le profil de ${name}`}
-            />
-          ) : null}
+      {contactActions.length > 0 ? (
+        <Row gap={spacing[1.5]} style={styles.actionsRow}>
           {contactActions.map((action) => {
             const Icon = CONTACT_ICONS[action.icon];
             return (
@@ -166,12 +176,15 @@ function buildStyles({ colors: c, fontSize }: Theme) {
   actionsRow: {
     width: '100%' as const,
   },
+  pressed: { opacity: 0.6 },
   actionButton: {
     flex: 1,
-    minWidth: 92,
+    minWidth: 0,
     minHeight: 36,
     paddingVertical: spacing[1.5],
-    paddingHorizontal: spacing[2],
+    paddingHorizontal: spacing[1],
+    // Trois boutons sur une ligne même sur un petit écran (320 pt) : icône collée au libellé.
+    gap: spacing[1],
   },
   avatar: {
     borderWidth: StyleSheet.hairlineWidth,
