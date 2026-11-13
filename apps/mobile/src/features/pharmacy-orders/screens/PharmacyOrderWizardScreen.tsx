@@ -43,6 +43,7 @@ import { HeaderBackButton } from '@/navigation/HeaderBackButton';
 import { pharmacyOrdersListHref } from '@/navigation/role-hrefs';
 import type { StaffRoutePrefix } from '@/navigation/role-route-prefix';
 import { PharmacyCatalogCard } from '../components/PharmacyCatalogCard';
+import { PharmacyOrderCoverageDocuments } from '../components/PharmacyOrderCoverageDocuments';
 import { PharmacyPublicProfileSheet } from '../components/PharmacyPublicProfileSheet';
 import { IsoDatePicker } from '@/features/nurse-passage/components/IsoDatePicker';
 import {
@@ -738,6 +739,8 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId, initia
                 </AppText>
               </Pressable>
             </View>
+
+            {patientId ? <PharmacyOrderCoverageDocuments patientId={patientId} relativeId={relativeId} /> : null}
 
             <Input
               label="Commentaire pour la pharmacie (optionnel)"

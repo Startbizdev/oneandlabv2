@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-na
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FilePlus2, FileText, MessageCircle, Stethoscope, Store, UserRound, XCircle } from 'lucide-react-native';
+import { CreditCard, FilePlus2, FileText, MessageCircle, Stethoscope, Store, UserRound, XCircle } from 'lucide-react-native';
 import type { PharmacyOrderStatus } from '@oneandlab/shared-types';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -280,6 +280,14 @@ export function PharmacyOrderDetailScreen({ mode, rolePrefix }: Props) {
         }
         router.push(staffPatientHref(staffPrefix, order.patient_id, undefined, order.relative_id ? { relative_id: order.relative_id } : {}));
       },
+    });
+    // Carte Vitale et mutuelle : rangées dans la fiche patient, pas dans les ordonnances de la commande.
+    const coverageDossierId = order.relative_id ? order.relative_profile_id : order.patient_id;
+    if (coverageDossierId) linkItems.push({
+      icon: CreditCard,
+      label: 'Carte Vitale et mutuelle',
+      onPress: () =>
+        router.push(staffPatientHref(staffPrefix, coverageDossierId, 'documents')),
     });
   }
   if (isReceiver) {

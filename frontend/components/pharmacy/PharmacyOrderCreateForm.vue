@@ -217,6 +217,50 @@
           Aucune ordonnance pour l’instant — vous pouvez envoyer la commande sans document.
         </p>
       </div>
+      <div v-if="selectedPatientId && coverageAvailable" class="mt-6 space-y-3 border-t border-default/60 pt-4">
+        <div>
+          <h3 class="text-sm font-medium">Carte Vitale et mutuelle</h3>
+          <p class="text-sm text-muted">
+            Enregistrées dans la fiche patient : la pharmacie y a accès et vous n’aurez pas à les remettre.
+          </p>
+        </div>
+        <div
+          v-for="slot in COVERAGE_SLOTS"
+          :key="slot.type"
+          class="flex items-center justify-between gap-3 rounded-lg border border-default/60 px-3 py-2 text-sm"
+        >
+          <div class="flex min-w-0 items-center gap-3">
+            <UIcon
+              :name="coverageTypes.has(slot.type) ? 'i-lucide-circle-check' : 'i-lucide-credit-card'"
+              :class="coverageTypes.has(slot.type) ? 'h-5 w-5 text-success' : 'h-5 w-5 text-muted'"
+            />
+            <div class="min-w-0">
+              <p class="font-medium">{{ slot.label }}</p>
+              <p class="text-xs text-muted">
+                {{ coverageTypes.has(slot.type) ? 'Dans la fiche patient' : 'Non fournie' }}
+              </p>
+            </div>
+          </div>
+          <UButton
+            type="button"
+            size="xs"
+            :variant="coverageTypes.has(slot.type) ? 'ghost' : 'outline'"
+            color="neutral"
+            :loading="coverageUploading === slot.type"
+            :disabled="coverageUploading !== null"
+            @click="openCoveragePicker(slot.type)"
+          >
+            {{ coverageTypes.has(slot.type) ? 'Remplacer' : 'Ajouter' }}
+          </UButton>
+        </div>
+        <input
+          ref="coverageInputRef"
+          type="file"
+          class="hidden"
+          :accept="MEDICAL_DOCUMENT_ACCEPT"
+          @change="onCoverageFileChange"
+        >
+      </div>
       <UFormField label="Commentaire (optionnel)" name="comment" class="mt-4">
         <UTextarea v-model="comment" :rows="3" placeholder="Instructions pour la pharmacie…" />
       </UFormField>
@@ -309,6 +353,19 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 const comment = ref('');
 const submitting = ref(false);
 const totalPrescriptionCount = computed(() => selectedDocIds.value.length + pendingFiles.value.length);
+
+const COVERAGE_SLOTS = [
+  { type: 'carte_vitale', label: 'Carte Vitale' },
+  { type: 'carte_mutuelle', label: 'Mutuelle' },
+] as const;
+type CoverageType = (typeof COVERAGE_SLOTS)[number]['type'];
+/** Carte Vitale / mutuelle : rangées dans la fiche patient (pas dans les ordonnances de la commande). */
+const coverageTypes = ref(new Set<string>());
+const coverageAvailable = ref(false);
+const coverageUploading = ref<CoverageType | null>(null);
+const coveragePickType = ref<CoverageType | null>(null);
+const coverageInputRef = ref<HTMLInputElement | null>(null);
+const beneficiaryRelativeId = computed(() => (forSelf.value && selfRelativeId.value ? selfRelativeId.value : null));
 
 const modeOptions = [
   { label: PHARMACY_FULFILLMENT_LABELS.click_collect, value: 'click_collect' },
@@ -575,6 +632,75 @@ async function loadDocuments(patientId: string) {
     ordonnanceOptions.value = [];
   } finally {
     docsLoading.value = false;
+  }
+}
+
+async function loadCoverage() {
+  const patientId = selectedPatientId.value;
+  coverageTypes.value = new Set();
+  coverageAvailable.value = false;
+  if (!patientId) return;
+  const qs = new URLSearchParams({ user_id: patientId });
+  if (beneficiaryRelativeId.value) qs.set('relative_id', beneficiaryRelativeId.value);
+  try {
+    const res = (await apiFetch(`/patient-documents?${qs.toString()}`, { method: 'GET' })) as {
+      success?: boolean;
+      data?: Array<{ document_type?: string }>;
+    };
+    if (!res.success || patientId !== selectedPatientId.value) return;
+    coverageTypes.value = new Set((res.data ?? []).map((d) => d.document_type ?? ''));
+    coverageAvailable.value = true;
+  } catch (cause) {
+    // Dossier hors périmètre (ex. pharmacie qui prépare elle-même) : pas de rubrique.
+    console.warn('[pharmacie] documents de couverture', cause);
+  }
+}
+
+watch([selectedPatientId, beneficiaryRelativeId], () => {
+  void loadCoverage();
+}, { immediate: true });
+
+function openCoveragePicker(type: CoverageType) {
+  coveragePickType.value = type;
+  coverageInputRef.value?.click();
+}
+
+async function onCoverageFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  const type = coveragePickType.value;
+  if (!file || !type || !selectedPatientId.value) return;
+  if (!isAllowedMedicalDocumentFile(file, type)) {
+    toast.add({ title: medicalDocumentFormatError(type), color: 'warning' });
+    return;
+  }
+  if (isMedicalDocumentTooLarge(file)) {
+    toast.add({ title: 'Fichier trop volumineux (25 Mo max)', color: 'warning' });
+    return;
+  }
+  coverageUploading.value = type;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('document_type', type);
+    formData.append('user_id', selectedPatientId.value);
+    if (beneficiaryRelativeId.value) formData.append('relative_id', beneficiaryRelativeId.value);
+    const res = (await apiFetch('/patient-documents/upload', { method: 'POST', body: formData })) as {
+      success?: boolean;
+      error?: string;
+    };
+    if (!res.success) throw new Error(res.error || 'Le document n’a pas été enregistré.');
+    coverageTypes.value = new Set([...coverageTypes.value, type]);
+    toast.add({ title: 'Ajouté à la fiche patient', color: 'success' });
+  } catch (e: unknown) {
+    toast.add({
+      title: 'Erreur',
+      description: e instanceof Error ? e.message : 'Envoi impossible',
+      color: 'error',
+    });
+  } finally {
+    coverageUploading.value = null;
   }
 }
 
