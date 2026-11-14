@@ -46,6 +46,15 @@ module.exports = {
       appVariant: IS_DEV ? 'development' : 'production',
     },
     platforms: ['ios', 'android'],
+    // Mises à jour à distance (EAS Update) : corrections JS publiées sans nouvelle version store.
+    // runtimeVersion = version de l'app : une mise à jour ne vise que les builds de la même version (même code natif).
+    runtimeVersion: { policy: 'appVersion' },
+    updates: {
+      url: 'https://u.expo.dev/7aee15c6-b9f9-45ac-b30e-0577641fcb03',
+      // Téléchargée en arrière-plan au lancement, appliquée au lancement suivant : jamais d'attente à l'ouverture.
+      checkAutomatically: 'ON_LOAD',
+      fallbackToCacheTimeout: 0,
+    },
     ios: {
       ...appJson.expo.ios,
       bundleIdentifier: IS_DEV ? 'com.carybioapp.app.dev' : appJson.expo.ios.bundleIdentifier,
