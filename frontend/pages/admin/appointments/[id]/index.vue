@@ -127,7 +127,7 @@
                 {{ getStatusLabel(update.status) }}
               </UBadge>
               <span class="text-sm text-gray-600 dark:text-gray-400">
-                par {{ update.actor_role }} le {{ formatDate(update.created_at) }}
+                par {{ historyActorLabel(update) }} le {{ formatDate(update.created_at) }}
               </span>
             </div>
             <div v-if="update.note" class="text-sm text-gray-500 dark:text-gray-400">
@@ -184,6 +184,24 @@ function appointmentCanceledOrCompleted(status: unknown) {
 }
 
 const statusHistory = ref<any[]>([]);
+
+const HISTORY_ROLE_LABELS: Record<string, string> = {
+  pro: 'Professionnel',
+  nurse: 'Infirmier',
+  lab: 'Laboratoire',
+  subaccount: 'Sous-compte labo',
+  preleveur: 'Préleveur',
+  patient: 'Patient',
+  super_admin: 'Administrateur',
+};
+
+/** « Johanna Benedettini (Infirmier) » ; rôle seul si le compte n'a plus de nom. */
+function historyActorLabel(update: { actor_name?: string | null; actor_role?: string | null }): string {
+  const role = update.actor_role ? HISTORY_ROLE_LABELS[update.actor_role] ?? update.actor_role : '';
+  const name = update.actor_name?.trim();
+  if (name) return role ? `${name} (${role})` : name;
+  return role || 'inconnu';
+}
 const showCancelModal = ref(false);
 const currentAppointmentForCancel = ref<any>(null);
 const currentLoadAppointmentForCancel = ref<(() => Promise<void>) | null>(null);

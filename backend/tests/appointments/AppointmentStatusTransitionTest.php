@@ -52,25 +52,7 @@ final class AppointmentStatusTransitionTest extends TestCase
             $db->prepare('INSERT INTO appointment_offers VALUES (?, ?)')->execute([$id, 'fixture-nurse']);
         }
 
-        $reflection = new ReflectionClass(Appointment::class);
-        $model = $reflection->newInstanceWithoutConstructor();
-        $reflection->getProperty('db')->setValue($model, $db);
-        $reflection->getProperty('logger')->setValue($model, new Logger($db));
-        $reflection->getProperty('crypto')->setValue($model, new Crypto());
-        $reflection->getProperty('email')->setValue($model, new Email());
-        $reflection->getProperty('notificationService')->setValue($model, new NotificationService());
-        $reflection->getProperty('sms')->setValue($model, null);
-        $reflection->getProperty('itemsResolver')->setValue($model, null);
-        $reflection->getProperty('creationService')->setValue($model, null);
-        $reflection->getProperty('readService')->setValue($model, null);
-        $reflection->getProperty('dispatchService')->setValue($model, null);
-        $reflection->getProperty('appointmentNotificationService')->setValue($model, null);
-        $reflection->getProperty('statusService')->setValue($model, null);
-        $reflection->getProperty('dispatchEventLogger')->setValue($model, null);
-        $reflection->getProperty('formDataCrypto')->setValue($model, null);
-        $reflection->getProperty('reviewStats')->setValue($model, null);
-        $reflection->getProperty('creationRequestContext')->setValue($model, null);
-        $reflection->getProperty('creationResponseReplayed')->setValue($model, false);
+        $model = self::appointmentModel($db);
 
         try {
             $model->updateStatus('batch-a', 'confirmed', 'fixture-nurse', 'nurse');
@@ -94,5 +76,56 @@ final class AppointmentStatusTransitionTest extends TestCase
         $this->assertSame(2, (int) $db->query('SELECT COUNT(*) FROM appointment_offers')->fetchColumn());
         $this->assertSame(0, (int) $db->query('SELECT COUNT(*) FROM appointment_status_updates')->fetchColumn());
         $this->assertFalse($db->inTransaction());
+    }
+
+    private static function appointmentModel(PDO $db): Appointment
+    {
+        $reflection = new ReflectionClass(Appointment::class);
+        $model = $reflection->newInstanceWithoutConstructor();
+        $reflection->getProperty('db')->setValue($model, $db);
+        $reflection->getProperty('logger')->setValue($model, new Logger($db));
+        $reflection->getProperty('crypto')->setValue($model, new Crypto());
+        $reflection->getProperty('email')->setValue($model, new Email());
+        $reflection->getProperty('notificationService')->setValue($model, new NotificationService());
+        $reflection->getProperty('sms')->setValue($model, null);
+        $reflection->getProperty('itemsResolver')->setValue($model, null);
+        $reflection->getProperty('creationService')->setValue($model, null);
+        $reflection->getProperty('readService')->setValue($model, null);
+        $reflection->getProperty('dispatchService')->setValue($model, null);
+        $reflection->getProperty('appointmentNotificationService')->setValue($model, null);
+        $reflection->getProperty('statusService')->setValue($model, null);
+        $reflection->getProperty('dispatchEventLogger')->setValue($model, null);
+        $reflection->getProperty('formDataCrypto')->setValue($model, null);
+        $reflection->getProperty('reviewStats')->setValue($model, null);
+        $reflection->getProperty('creationRequestContext')->setValue($model, null);
+        $reflection->getProperty('creationResponseReplayed')->setValue($model, false);
+
+        return $model;
+    }
+
+    /** 13/11 : A accepte, B clique « Refuser » sur l'offre encore affichée 2 s après — le RDV reste à A. */
+    public function testLateRefusalByAnotherNurseKeepsConfirmedAppointment(): void
+    {
+        $db = new PDO('sqlite::memory:', null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
+        $db->sqliteCreateFunction('NOW', static fn () => '2026-11-13 16:47:03');
+        $db->exec('CREATE TABLE appointments (id TEXT PRIMARY KEY, type TEXT, status TEXT, assigned_nurse_id TEXT, assigned_lab_id TEXT, assigned_to TEXT, location_lat REAL, location_lng REAL, scheduled_at TEXT, patient_id TEXT, relative_id TEXT, form_data_encrypted TEXT, form_data_dek TEXT, creation_batch_id TEXT, passage_source TEXT, updated_at TEXT, nurse_share_released_at TEXT)');
+        $db->exec('CREATE TABLE appointment_status_updates (id TEXT, appointment_id TEXT, status TEXT, actor_id TEXT, actor_role TEXT, note TEXT, created_at TEXT)');
+        $db->exec('CREATE TABLE appointment_offers (appointment_id TEXT, profile_id TEXT)');
+        $db->exec("INSERT INTO appointments (id, type, status, assigned_nurse_id, scheduled_at, patient_id) VALUES ('apt', 'nursing', 'confirmed', 'nurse-a', '2026-11-14 09:00:00', 'patient')");
+        $model = self::appointmentModel($db);
+
+        try {
+            $model->updateStatus('apt', 'refused', 'nurse-b', 'nurse');
+            $this->fail('expected DomainException');
+        } catch (DomainException $e) {
+            $this->assertStringContainsString('déjà été accepté', $e->getMessage());
+        }
+
+        $row = $db->query("SELECT status, assigned_nurse_id FROM appointments WHERE id = 'apt'")->fetch();
+        $this->assertSame(['status' => 'confirmed', 'assigned_nurse_id' => 'nurse-a'], $row);
+        $this->assertSame(0, (int) $db->query('SELECT COUNT(*) FROM appointment_status_updates')->fetchColumn());
     }
 }

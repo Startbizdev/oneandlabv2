@@ -145,7 +145,18 @@ final class AppointmentStatusService
                 return 'declined_offer';
             }
         }
-        
+
+        /**
+         * Un professionnel ne « refuse » qu'une demande encore en attente. Si un confrère l'a acceptée
+         * entre-temps (offre encore affichée), le refus ne doit pas écraser le RDV confirmé.
+         */
+        $proRefusal = $newStatus === 'refused'
+            && !$redispatch
+            && in_array($actorRole, ['nurse', 'lab', 'subaccount', 'preleveur'], true);
+        if ($proRefusal && $oldStatus !== 'pending') {
+            throw new DomainException('Ce rendez-vous a déjà été accepté par un autre professionnel.');
+        }
+
         // Préparer la requête de mise à jour
         $updateFields = ['status = ?', 'updated_at = NOW()'];
         $params = [$newStatus];
@@ -316,12 +327,15 @@ final class AppointmentStatusService
             }
             $whereSql = 'WHERE id = ? AND status = ? AND (assigned_to IS NULL OR assigned_to = ? OR assigned_to = \'\') AND (assigned_lab_id IS NULL OR assigned_lab_id = ? OR assigned_lab_id = \'\')';
             $whereParams = [$id, 'pending', $actorId, $preleveurLabId];
+        } elseif ($proRefusal) {
+            $whereSql = 'WHERE id = ? AND status = ?';
+            $whereParams = [$id, 'pending'];
         }
 
         $setParams = array_slice($params, 0, -1);
         $finalParams = array_merge($setParams, $whereParams);
 
-        $writeStatus = function () use ($updateFields, $whereSql, $finalParams, $atomicNurseConfirm, $atomicLabConfirm, $atomicPreleveurConfirm, $id, $actorId, $actorRole, $appointment, $newStatus, $preleveurLabId, $redispatch, $note, $oldStatus, $republishedOfferExpiresAt): array {
+        $writeStatus = function () use ($updateFields, $whereSql, $finalParams, $atomicNurseConfirm, $atomicLabConfirm, $atomicPreleveurConfirm, $proRefusal, $id, $actorId, $actorRole, $appointment, $newStatus, $preleveurLabId, $redispatch, $note, $oldStatus, $republishedOfferExpiresAt): array {
         // Mettre à jour le statut (et potentiellement l'assignation)
         $sql = 'UPDATE appointments SET ' . implode(', ', $updateFields) . ' ' . $whereSql;
         $stmt = $this->db->prepare($sql);
@@ -330,6 +344,9 @@ final class AppointmentStatusService
 
         if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected === 0) {
             throw new DomainException('Ce rendez-vous n\'est plus disponible (déjà accepté par un autre professionnel).');
+        }
+        if ($proRefusal && $mainUpdateAffected === 0) {
+            throw new DomainException('Ce rendez-vous a déjà été accepté par un autre professionnel.');
         }
 
         if (($atomicNurseConfirm || $atomicLabConfirm || $atomicPreleveurConfirm) && $mainUpdateAffected > 0) {

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../../../middleware/RoleMiddleware.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/cors.php';
+require_once __DIR__ . '/../../../models/User.php';
 
 $corsConfig = require __DIR__ . '/../../../config/cors.php';
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -24,7 +25,8 @@ $authMiddleware = new AuthMiddleware();
 $user = $authMiddleware->handle();
 
 $roleMiddleware = new RoleMiddleware();
-$roleMiddleware->handle($user, ['super_admin', 'lab', 'nurse']);
+// Seul l'écran admin consomme cet historique (noms des intervenants inclus).
+$roleMiddleware->handle($user, ['super_admin']);
 
 $pathParts = explode('/', trim($_SERVER['REQUEST_URI'], '/'));
 $appointmentId = $pathParts[array_search('appointments', $pathParts) + 1] ?? null;
@@ -43,6 +45,16 @@ $sql = 'SELECT * FROM appointment_status_updates WHERE appointment_id = :id ORDE
 $stmt = $pdo->prepare($sql);
 $stmt->execute([':id' => $appointmentId]);
 $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$actorIds = array_values(array_unique(array_filter(array_map(
+    static fn (array $row): string => (string) ($row['actor_id'] ?? ''),
+    $history
+))));
+$actorNames = $actorIds === [] ? [] : (new User())->getDisplayNamesByIds($actorIds);
+foreach ($history as &$row) {
+    $row['actor_name'] = $actorNames[(string) ($row['actor_id'] ?? '')] ?? null;
+}
+unset($row);
 
 echo json_encode([
     'success' => true,
