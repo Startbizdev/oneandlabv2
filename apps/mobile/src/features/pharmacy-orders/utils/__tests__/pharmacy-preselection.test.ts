@@ -1,6 +1,7 @@
 import type { PharmacyCatalogItem, PharmacyPublicProfile } from '@oneandlab/shared-types';
 import {
   catalogItemFromPharmacyProfile,
+  catalogOpenOnDate,
   initialModeForPharmacy,
   preselectedPharmacyIssue,
   sortWizardCatalog,
@@ -118,5 +119,28 @@ describe('catalogItemFromPharmacyProfile', () => {
       click_collect_days: [1, 2],
       postal_code: '69001',
     });
+  });
+});
+
+describe('catalogOpenOnDate', () => {
+  // 2026-11-14 est un samedi (jour ISO 6) : cas Pharmacie Du Stade Velodrome (lun.-ven. + dim.).
+  const SATURDAY = '2026-11-14';
+  const closedSaturday = pharmacy('velodrome', { home_delivery_days: [1, 2, 3, 4, 5, 7] });
+  const openSaturday = pharmacy('paradis', { home_delivery_days: [1, 2, 3, 4, 5, 6] });
+  const noDays = pharmacy('sans-jours');
+
+  it('retire une pharmacie fermée le jour choisi', () => {
+    const ids = catalogOpenOnDate([closedSaturday, openSaturday, noDays], 'home_delivery', SATURDAY, null).map((p) => p.id);
+    expect(ids).toEqual(['paradis', 'sans-jours']);
+  });
+
+  it('garde la pharmacie du QR même fermée (son message explique la date)', () => {
+    const ids = catalogOpenOnDate([closedSaturday], 'home_delivery', SATURDAY, 'velodrome').map((p) => p.id);
+    expect(ids).toEqual(['velodrome']);
+  });
+
+  it('jours propres au mode : le retrait reste possible si seuls les jours de livraison excluent la date', () => {
+    const ids = catalogOpenOnDate([closedSaturday], 'click_collect', SATURDAY, null).map((p) => p.id);
+    expect(ids).toEqual(['velodrome']);
   });
 });

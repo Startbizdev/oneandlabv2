@@ -46,3 +46,18 @@ export function withOwnPharmacyOption(
     ...items,
   ];
 }
+
+/** Jour ISO (1 = lundi … 7 = dimanche) d'une date `YYYY-MM-DD`, à midi pour éviter les décalages. */
+function isoWeekday(date: string): number {
+  return new Date(`${date}T12:00:00`).getDay() || 7;
+}
+
+/** La pharmacie prépare-t-elle ce jour-là pour ce mode ? Jours non renseignés : oui. */
+export function pharmacyOpenOnDate(
+  pharmacy: PharmacyCatalogItem,
+  mode: 'click_collect' | 'home_delivery',
+  date: string,
+): boolean {
+  const days = mode === 'home_delivery' ? pharmacy.home_delivery_days : pharmacy.click_collect_days;
+  return !date || !days?.length || days.includes(isoWeekday(date));
+}

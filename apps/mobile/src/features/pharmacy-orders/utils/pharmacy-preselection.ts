@@ -102,6 +102,19 @@ export function sortWizardCatalog(
   });
 }
 
+/**
+ * Retire les pharmacies qui ne préparent pas le jour choisi (mode courant).
+ * La pharmacie du QR reste affichée : son message explique le problème de date.
+ */
+export function catalogOpenOnDate(
+  items: readonly PharmacyCatalogItem[],
+  mode: PharmacyFulfillmentMode,
+  date: string,
+  keepId: string | null,
+): PharmacyCatalogItem[] {
+  return items.filter((p) => p.id === keepId || pharmacyOpenOnDate(p, mode, date));
+}
+
 /** Liste visible repliée : pharmacies du patient et pharmacie du QR ; tout le catalogue sinon. */
 export function visibleWizardCatalog(
   sorted: readonly PharmacyCatalogItem[],

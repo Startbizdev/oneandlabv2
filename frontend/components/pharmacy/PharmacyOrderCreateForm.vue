@@ -295,6 +295,7 @@ import {
   splitPharmacyCatalog,
   withOwnPharmacyOption,
   type PharmacyCatalogRow,
+  pharmacyOpenOnDate,
 } from '~/utils/pharmacy-catalog-priority';
 
 const props = withDefaults(
@@ -419,9 +420,20 @@ watch(
   { immediate: true },
 );
 
+/** Pharmacies fermées le jour choisi : non proposées (sinon refus à l'envoi). QR et compte pharmacie gardés. */
+const pharmacyCatalogOpen = computed(() => pharmacyCatalog.value.filter((item) => (
+  item.id === pinnedPharmacyId || pharmacyOpenOnDate(item, fulfillmentMode.value, desiredDate.value)
+)));
+
 const pharmacySplit = computed(() => {
   const ownId = isOwnPharmacy.value ? selfUserId() : '';
-  return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalog.value, ownId), ownId, pinnedPharmacyId);
+  return splitPharmacyCatalog(withOwnPharmacyOption(pharmacyCatalogOpen.value, ownId), ownId, pinnedPharmacyId);
+});
+
+watch(desiredDate, () => {
+  if (isOwnPharmacy.value || pharmacyId.value === '' || pharmacyId.value === pinnedPharmacyId) return;
+  if (visiblePharmacyOptions.value.some((option) => option.value === pharmacyId.value)) return;
+  pharmacyId.value = pharmacySplit.value.preferred[0]?.id ?? '';
 });
 
 const pinnedPharmacyMissing = computed(() => (
@@ -591,7 +603,7 @@ async function loadPharmacies() {
       pharmacyId.value = pinnedPharmacyId;
       return;
     }
-    const patientPharmacy = items.find((item) => item.is_patient_pharmacy === true);
+    const patientPharmacy = pharmacyCatalogOpen.value.find((item) => item.is_patient_pharmacy === true);
     if (patientPharmacy && (pharmacyId.value === '' || pharmacyId.value === ownId)) {
       pharmacyId.value = patientPharmacy.id;
       return;

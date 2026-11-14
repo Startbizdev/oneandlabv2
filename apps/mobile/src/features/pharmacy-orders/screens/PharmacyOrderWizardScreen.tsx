@@ -65,8 +65,10 @@ import {
 import { usePharmacyModuleEnabled } from '../hooks/use-pharmacy-module-enabled';
 import {
   catalogItemFromPharmacyProfile,
+  catalogOpenOnDate,
   initialModeForPharmacy,
   pharmacyAcceptsMode,
+  pharmacyOpenOnDate,
   preselectedPharmacyIssue,
   sortWizardCatalog,
   visibleWizardCatalog,
@@ -243,10 +245,19 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId, initia
       setSelectedPharmacyId(userId);
       return;
     }
+    const catalog = catalogQ.data ?? [];
+    const selected = catalog.find((item) => item.id === selectedPharmacyId);
+    // Date changée : une pharmacie fermée ce jour-là n'est plus proposée, donc plus sélectionnée.
+    if (selected && selected.id !== qrPharmacyId && !pharmacyOpenOnDate(selected, fulfillmentMode, desiredDate)) {
+      setSelectedPharmacyId('');
+      return;
+    }
     if (selectedPharmacyId) return;
-    const primary = (catalogQ.data ?? []).find((item) => item.is_patient_pharmacy);
+    const primary = catalog.find(
+      (item) => item.is_patient_pharmacy && pharmacyOpenOnDate(item, fulfillmentMode, desiredDate),
+    );
     if (primary) setSelectedPharmacyId(primary.id);
-  }, [catalogQ.data, isOwnPharmacy, selectedPharmacyId, userId]);
+  }, [catalogQ.data, desiredDate, fulfillmentMode, isOwnPharmacy, qrPharmacyId, selectedPharmacyId, userId]);
 
   const selectedPatient = patients.find((p) => p.id === patientId);
 
@@ -341,10 +352,16 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId, initia
     selectedRelative,
   ]);
 
+  // Pharmacies fermées le jour choisi : non proposées (sinon refus au moment de continuer).
   const sortedCatalog = useMemo(
     () =>
-      sortWizardCatalog(catalogQ.data ?? [], favoritesQ.data ?? new Set<string>(), qrPharmacy, fulfillmentMode),
-    [catalogQ.data, favoritesQ.data, fulfillmentMode, qrPharmacy],
+      catalogOpenOnDate(
+        sortWizardCatalog(catalogQ.data ?? [], favoritesQ.data ?? new Set<string>(), qrPharmacy, fulfillmentMode),
+        fulfillmentMode,
+        desiredDate,
+        qrPharmacyId,
+      ),
+    [catalogQ.data, desiredDate, favoritesQ.data, fulfillmentMode, qrPharmacy, qrPharmacyId],
   );
   const visibleCatalog = visibleWizardCatalog(sortedCatalog, showOtherPharmacies, qrPharmacyId);
 
@@ -673,7 +690,9 @@ export function PharmacyOrderWizardScreen({ rolePrefix, initialPatientId, initia
                 onRetry={() => void catalogQ.refetch()}
               />
             ) : visibleCatalog.length === 0 ? (
-              <AppText variant="secondary">Aucune pharmacie disponible pour ce mode et ce secteur.</AppText>
+              <AppText variant="secondary">
+                Aucune pharmacie disponible ce jour-là pour ce mode et ce secteur : essayez une autre date.
+              </AppText>
             ) : (
               <View style={styles.catalogList}>
                 {visibleCatalog.map((item: PharmacyCatalogItem) => {
