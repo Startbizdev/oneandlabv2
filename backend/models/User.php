@@ -6,6 +6,7 @@ require_once __DIR__ . '/../lib/Logger.php';
 require_once __DIR__ . '/../lib/DbSchemaCache.php';
 require_once __DIR__ . '/../lib/DatabaseTransaction.php';
 require_once __DIR__ . '/../lib/users/bootstrap.php';
+require_once __DIR__ . '/../lib/search/PersonSearchIndex.php';
 
 /**
  * Modèle User (profiles)
@@ -372,7 +373,9 @@ class User
                 error_log('User create admin email (admin): ' . $e->getMessage());
             }
         }
-        
+
+        PersonSearchIndex::safeReindex($this->db, 'profile', $id);
+
         return $id;
     }
 
@@ -408,6 +411,7 @@ class User
             throw $e;
         }
         $this->logger->log('system', 'system', 'create', 'profile', $id, ['role' => 'patient', 'relative_profile' => true]);
+        PersonSearchIndex::safeReindex($this->db, 'profile', $id);
 
         return $id;
     }
@@ -1209,6 +1213,9 @@ class User
             $id,
             ['updated_fields' => array_keys($data)]
         );
+        if ($result) {
+            PersonSearchIndex::safeReindexPerson($this->db, $id);
+        }
         
         return $result;
     }
@@ -1944,6 +1951,7 @@ class User
 
         $stmt = $this->db->prepare('DELETE FROM profiles WHERE id = ?');
         $stmt->execute([$id]);
+        PersonSearchIndex::safeReindex($this->db, 'profile', $id);
 
         return $stmt->rowCount() > 0;
     }
@@ -1987,6 +1995,7 @@ class User
 
         $del = $this->db->prepare('DELETE FROM profiles WHERE id = ?');
         $del->execute([$patientId]);
+        PersonSearchIndex::safeReindex($this->db, 'profile', $patientId);
 
         return $del->rowCount() > 0;
     }

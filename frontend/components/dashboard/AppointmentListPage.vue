@@ -300,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, useSlots, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, useSlots, watch } from 'vue';
 import { apiFetch } from '~/utils/api';
 import { appointmentListAddressLine } from '~/utils/address-display';
 import { isPendingIncomingOffer } from '~/utils/appointment-offer';
@@ -518,7 +518,9 @@ function syncNurseQueryToUrl() {
 
 watch(() => route.query, applyNurseNavFromRoute, { immediate: true });
 
-const currentPage = ref(1);
+const currentPage = ref(
+  props.basePath === '/admin' ? Math.max(1, Number.parseInt(String(route.query.page ?? '1'), 10) || 1) : 1,
+);
 /** Taille de page : 24 cartes (admin regroupe les lots multisoins). */
 const pageSize = ref(24);
 const totalItems = ref(0);
@@ -628,31 +630,10 @@ function invalidateAdminCardsCache() {
   adminCardsCache = null;
 }
 
-function appointmentsFromListRow(row: AppointmentListRow): any[] {
-  return row.kind === 'batch' ? row.appointments : [row.appointment];
-}
-
-function filterListRowsBySearch(rows: AppointmentListRow[], q: string): AppointmentListRow[] {
-  if (!q) return rows;
-  const searchPhone = q.replace(/\s/g, '');
-  return rows.filter((row) =>
-    appointmentsFromListRow(row).some((a) => {
-      const fd = normalizeAppointmentFormData(a.form_data) ?? {};
-      const phone = String(fd.phone ?? '').replace(/\s/g, '');
-      const address =
-        typeof a.address === 'string' ? a.address.toLowerCase() : (a.address?.label || '').toLowerCase();
-      const nameBlob = appointmentPatientSearchTextLower(a);
-      return nameBlob.includes(q) || phone.includes(searchPhone) || address.includes(q);
-    }),
-  );
-}
-
 const displayRows = computed((): AppointmentListRow[] => {
   if (isAdminCardPagination.value) {
-    return filterListRowsBySearch(
-      adminCardPageRows.value,
-      (searchQuery.value || '').trim().toLowerCase(),
-    );
+    // Filtrés par le serveur (noms, prénoms, téléphones de tous les RDV).
+    return adminCardPageRows.value;
   }
   const list = filteredAndSorted.value;
   if (props.basePath === '/nurse' && props.nurseLockedSegment === 'en_attente') {
@@ -661,9 +642,25 @@ const displayRows = computed((): AppointmentListRow[] => {
   return groupAppointmentsByBatch(list);
 });
 const dateFilter = ref<'upcoming' | 'past'>('upcoming');
-const searchQuery = ref('');
+const searchQuery = ref(props.basePath === '/admin' ? String(route.query.q ?? '') : '');
 const filtersSheetOpen = ref(false);
-const statusFilter = ref('all');
+const statusFilter = ref(
+  props.basePath === '/admin' && typeof route.query.status === 'string' && route.query.status ? route.query.status : 'all',
+);
+
+/** Admin : recherche, statut et page dans l'URL — le retour arrière depuis une fiche RDV les retrouve. */
+function syncAdminListQueryToUrl() {
+  if (props.basePath !== '/admin') return;
+  const q = { ...route.query } as Record<string, string | string[] | undefined>;
+  const search = (searchQuery.value || '').trim();
+  if (search) q.q = search;
+  else delete q.q;
+  if (statusFilter.value && statusFilter.value !== 'all') q.status = statusFilter.value;
+  else delete q.status;
+  if (currentPage.value > 1) q.page = String(currentPage.value);
+  else delete q.page;
+  if (JSON.stringify(route.query) !== JSON.stringify(q)) void router.replace({ path: route.path, query: q });
+}
 const dateRangeStart = ref<string | null>(null);
 const dateRangeEnd = ref<string | null>(null);
 
@@ -696,6 +693,7 @@ const statusFilterOptions = [
   { label: 'Terminé', value: 'completed' },
   { label: 'Annulé', value: 'canceled' },
   { label: 'Refusé', value: 'refused' },
+  { label: 'Expiré', value: 'expired' },
 ];
 
 /** Liste brute après fetch + filtre date uniquement (sans tri ni filtre statut/recherche). */
@@ -869,14 +867,20 @@ function buildAppointmentListParams(apiPage: number, apiLimit: number): Record<s
   const q = (searchQuery.value || '').trim();
   if (q) {
     params.q = q;
-    params.page = '1';
-    params.limit = '100';
+    // Admin : recherche faite par le serveur sur tous les RDV (index des noms), pagination normale.
+    if (!isAdminCardPagination.value) {
+      params.page = '1';
+      params.limit = '100';
+    }
   }
   return params;
 }
 
+/** Numéro de la dernière requête liste : une réponse plus ancienne (frappe rapide) est ignorée. */
+let listFetchSeq = 0;
+
 /** Admin : une requête API `view=cards` — pagination cartes côté serveur. */
-async function fetchAdminCardPage() {
+async function fetchAdminCardPage(seq: number) {
   const params = buildAppointmentListParams(currentPage.value, pageSize.value);
   params.view = 'cards';
   if (currentPage.value > 1) {
@@ -899,6 +903,7 @@ async function fetchAdminCardPage() {
   const response = await apiFetch(`/appointments?${new URLSearchParams(params).toString()}`, {
     method: 'GET',
   });
+  if (seq !== listFetchSeq) return;
 
   if (!response.success) {
     throw new Error((response as { error?: string }).error || 'Erreur lors du chargement des rendez-vous');
@@ -936,10 +941,11 @@ async function fetchAdminCardPage() {
 }
 
 const fetchAppointments = async (silent = false) => {
+  const seq = ++listFetchSeq;
   if (!silent) loading.value = true;
   try {
     if (isAdminCardPagination.value) {
-      await fetchAdminCardPage();
+      await fetchAdminCardPage(seq);
       return;
     }
     const params = buildAppointmentListParams(currentPage.value, pageSize.value);
@@ -984,7 +990,7 @@ const fetchAppointments = async (silent = false) => {
     totalItems.value = 0;
     serverHasMore.value = false;
   } finally {
-    if (!silent) loading.value = false;
+    if (!silent && seq === listFetchSeq) loading.value = false;
   }
 };
 
@@ -1210,7 +1216,11 @@ async function nurseRefuseOffer(apt: any, opts?: { termsKey?: string }) {
 
 watch([dateFilter, statusFilter, dateRangeStart, dateRangeEnd], () => {
   invalidateAdminCardsCache();
-  currentPage.value = 1;
+  if (currentPage.value !== 1) {
+    currentPage.value = 1; // le watcher de page recharge et met l'URL à jour
+    return;
+  }
+  syncAdminListQueryToUrl();
   fetchAppointments();
 });
 
@@ -1222,6 +1232,7 @@ watch([nurseListTab, nurseSegment], () => {
 });
 
 watch(currentPage, () => {
+  syncAdminListQueryToUrl();
   fetchAppointments();
   if (typeof window !== 'undefined') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1294,13 +1305,23 @@ watch(() => props.userIdFilter, () => {
   fetchAppointments();
 });
 
-/** Recherche : recharge la première page élargie, puis filtre les noms déchiffrés. */
+/** Recherche : relancée 350 ms après la dernière frappe (pas une requête par lettre), depuis la page 1. */
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 watch(searchQuery, () => {
-  if (currentPage.value !== 1) {
-    currentPage.value = 1;
-    return;
-  }
-  fetchAppointments();
+  if (searchDebounce) clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    searchDebounce = null;
+    invalidateAdminCardsCache();
+    syncAdminListQueryToUrl();
+    if (currentPage.value !== 1) {
+      currentPage.value = 1;
+      return;
+    }
+    fetchAppointments();
+  }, 350);
+});
+onBeforeUnmount(() => {
+  if (searchDebounce) clearTimeout(searchDebounce);
 });
 
 onMounted(() => {

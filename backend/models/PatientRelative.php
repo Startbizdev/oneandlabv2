@@ -5,6 +5,7 @@ require_once __DIR__ . '/../lib/Crypto.php';
 require_once __DIR__ . '/../lib/Logger.php';
 require_once __DIR__ . '/../lib/DatabaseTransaction.php';
 require_once __DIR__ . '/../lib/RelativeProfile.php';
+require_once __DIR__ . '/../lib/search/PersonSearchIndex.php';
 
 /**
  * Modèle PatientRelative
@@ -55,12 +56,15 @@ class PatientRelative
      */
     public function create(array $data, string $patientId, ?array $actor = null): string
     {
-        return DatabaseTransaction::run($this->db, function () use ($data, $patientId, $actor): string {
+        $id = DatabaseTransaction::run($this->db, function () use ($data, $patientId, $actor): string {
             $id = $this->insertRelative($data, $patientId, $actor);
             RelativeProfile::ensureProfile($this->db, $id);
 
             return $id;
         });
+        PersonSearchIndex::safeReindexRelative($this->db, $id);
+
+        return $id;
     }
 
     private function insertRelative(array $data, string $patientId, ?array $actor): string
@@ -336,6 +340,7 @@ class PatientRelative
                 $id,
                 ['fields' => array_keys($data)]
             );
+            PersonSearchIndex::safeReindexRelative($this->db, $id);
         }
 
         return $result;
@@ -354,6 +359,7 @@ class PatientRelative
 
         $stmt = $this->db->prepare('DELETE FROM patient_relatives WHERE id = ? AND patient_id = ?');
         $result = $stmt->execute([$id, $patientId]);
+        PersonSearchIndex::safeReindex($this->db, 'relative', $id);
         if (!empty($relative['profile_id'])) {
             RelativeProfile::forget((string) $relative['profile_id']);
         }

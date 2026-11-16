@@ -30,6 +30,15 @@ class Crypto
     }
 
     /**
+     * Clé HMAC de l'index de recherche (empreintes des noms) : dérivée de la KEK, jamais stockée.
+     * Une rotation de KEK impose de reconstruire l'index (scripts/rebuild-person-search-index.php).
+     */
+    public function searchIndexKey(): string
+    {
+        return hash_hkdf('sha256', $this->kek, self::KEY_LENGTH, 'cary-person-search-index-v1');
+    }
+
+    /**
      * Génère une DEK (Data Encryption Key) aléatoire
      */
     public function generateDEK(): string

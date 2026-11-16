@@ -76,6 +76,10 @@ final class AppointmentListGetHandler
             require_once __DIR__ . '/../AppointmentListCards.php';
             require_once __DIR__ . '/../AppointmentListPayload.php';
 
+            if ($search !== '') {
+                [$sql, $params] = self::withPersonSearch($db, $sql, $params, $search);
+            }
+
             $cardLimit = min(max($limit, 1), 48);
             $cardPage = max(1, $page);
 
@@ -408,6 +412,36 @@ final class AppointmentListGetHandler
                 'next_cursor' => $scan['next_cursor'],
             ],
         ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Recherche par nom / téléphone via l'index des personnes (noms chiffrés en base) :
+     * RDV dont le patient ou le proche correspond, sur toute la liste (pas seulement la page affichée).
+     *
+     * @param list<mixed> $params
+     * @return array{0: string, 1: list<mixed>}
+     */
+    public static function withPersonSearch(PDO $db, string $sql, array $params, string $search): array
+    {
+        require_once __DIR__ . '/../search/PersonSearchIndex.php';
+        if (!PersonSearchIndex::available($db)) {
+            return [$sql, $params];
+        }
+        $found = (new PersonSearchIndex($db))->find($search);
+        if (!$found['searchable']) {
+            return [$sql, $params];
+        }
+        $clauses = [];
+        if ($found['profile_ids'] !== []) {
+            $clauses[] = 'a.patient_id IN (' . implode(',', array_fill(0, count($found['profile_ids']), '?')) . ')';
+            $params = array_merge($params, $found['profile_ids']);
+        }
+        if ($found['relative_ids'] !== []) {
+            $clauses[] = 'a.relative_id IN (' . implode(',', array_fill(0, count($found['relative_ids']), '?')) . ')';
+            $params = array_merge($params, $found['relative_ids']);
+        }
+
+        return [$sql . ' AND ' . ($clauses === [] ? '1 = 0' : '(' . implode(' OR ', $clauses) . ')'), $params];
     }
 
     /**

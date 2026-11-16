@@ -15,6 +15,7 @@
       <directory>tests/users</directory>
       <directory>tests/pharmacy</directory>
       <directory>tests/subscriptions</directory>
+      <directory>tests/search</directory>
     </testsuite>
     <testsuite name="Assistant">
       <directory>tests/assistant</directory>
