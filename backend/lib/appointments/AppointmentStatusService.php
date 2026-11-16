@@ -100,6 +100,15 @@ final class AppointmentStatusService
         
         $oldStatus = $appointment['status'];
 
+        /**
+         * Admin qui repasse un RDV expiré « en attente » : c'est une republication. Même circuit que
+         * « Redispatcher » — nouvelle fenêtre d'offre (sinon l'ancienne date, dépassée, le refait expirer
+         * au passage suivant du cron) et propositions renvoyées aux professionnels (effacées à l'expiration).
+         */
+        if (!$redispatch && $newStatus === 'pending' && $oldStatus === 'expired' && $actorRole === 'super_admin') {
+            $redispatch = true;
+        }
+
         if ($appointment['type'] === 'blood_test' && $actorRole === 'nurse' && in_array($newStatus, ['confirmed', 'refused'], true)) {
             throw new DomainException('Les demandes de prise de sang sont acceptées ou refusées par les laboratoires, pas par l\'infirmier.');
         }
@@ -173,7 +182,7 @@ final class AppointmentStatusService
             $params[] = $republishedOfferExpiresAt;
         }
 
-        // Admin : repasser en attente → redémarrer la fenêtre d'offre (TTL 2 h depuis created_at)
+        // Admin : repasser en attente → redémarrer la fenêtre d'offre (TTL 2 h à partir de maintenant)
         if (
             $newStatus === 'pending'
             && $oldStatus !== 'pending'
@@ -181,6 +190,10 @@ final class AppointmentStatusService
             && !$redispatch
         ) {
             $updateFields[] = 'created_at = NOW()';
+            if ($this->hasColumn('appointments', 'pending_offer_expires_at')) {
+                $updateFields[] = 'pending_offer_expires_at = ?';
+                $params[] = PendingOfferExpiry::formatSqlDateTime(PendingOfferExpiry::computeRepublishedExpiresAt());
+            }
         }
         
         // Annulation par un pro : enregistrer motif, commentaire, photo
@@ -204,6 +217,7 @@ final class AppointmentStatusService
             if ($actorRole === 'super_admin') {
                 $allowedRedispatchFrom[] = 'canceled';
                 $allowedRedispatchFrom[] = 'cancelled';
+                $allowedRedispatchFrom[] = 'expired';
             }
             if (!in_array($oldStatus, $allowedRedispatchFrom, true)) {
                 throw new DomainException('Seuls les rendez-vous confirmés, planifiés, en cours ou annulés peuvent être redispatchés.');
