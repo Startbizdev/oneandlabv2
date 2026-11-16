@@ -239,10 +239,15 @@ function resolvedStatsVariant(): 'sent' | 'received' | 'admin' | 'none' {
   return 'none';
 }
 
+/** Dernier chargement lancé : une réponse plus ancienne (frappe rapide) est ignorée. */
+let ordersRequest = 0;
+
 async function load() {
+  const request = ++ordersRequest;
   loading.value = true;
   try {
     const loaded = await fetchOrders(props.scope, segment.value, searchQuery.value);
+    if (request !== ordersRequest) return;
     orders.value = loaded.orders;
     segmentCounts.value = loaded.counts;
     const variant = resolvedStatsVariant();
@@ -272,13 +277,14 @@ async function load() {
       statsCards.value = [];
     }
   } catch (e: unknown) {
+    if (request !== ordersRequest) return;
     toast.add({
       title: 'Erreur',
       description: e instanceof Error ? e.message : 'Chargement impossible',
       color: 'error',
     });
   } finally {
-    loading.value = false;
+    if (request === ordersRequest) loading.value = false;
   }
 }
 

@@ -119,6 +119,14 @@
         </div>
       </div>
 
+      <!-- Recherche : chargement des pages suivantes avant de conclure « aucun résultat » -->
+      <p
+        v-else-if="displayRows.length === 0 && searchingAllPages"
+        class="py-10 text-center text-sm text-gray-500 dark:text-gray-400"
+      >
+        Recherche dans tous vos rendez-vous…
+      </p>
+
       <!-- Liste vide (onglet ou recherche) -->
       <section
         v-else-if="displayRows.length === 0"
@@ -365,6 +373,18 @@ const filteredAppointments = computed(() => {
   const qn = stripDiacritics(q);
   return list.filter((apt: any) => appointmentSearchHaystack(apt).includes(qn));
 });
+
+/**
+ * Recherche : elle porte sur la liste chargée (soins, équipe, statut, date…). Les pages suivantes sont
+ * donc chargées automatiquement tant qu'une recherche est saisie, pour couvrir tous les rendez-vous.
+ */
+const searchingAllPages = computed(() => searchQuery.value.trim() !== '' && (hasMore.value || loadingMore.value));
+watch(
+  [() => searchQuery.value.trim(), hasMore, loadingMore, loading],
+  ([q, more, busyMore, busy]) => {
+    if (q && more && !busyMore && !busy) void loadMore();
+  },
+);
 
 /** Lots multi-soins : une carte par lot (comme liste infirmier) */
 const displayRows = computed(() => groupAppointmentsByBatch(filteredAppointments.value));

@@ -145,14 +145,20 @@ function appointmentHref(appointmentId: string) {
   return `${props.appointmentBasePath}/${encodeURIComponent(appointmentId)}#resultats`;
 }
 
+/** Dernière recherche lancée : une réponse plus ancienne (frappe rapide) est ignorée. */
+let resultsRequest = 0;
+
 async function loadResults() {
+  const request = ++resultsRequest;
   loading.value = true;
   try {
     const q = search.value.trim();
     const qs = q ? `&q=${encodeURIComponent(q)}` : '';
     const res = await apiFetch(`/lab-results?limit=100${qs}`, { method: 'GET' });
+    if (request !== resultsRequest) return;
     items.value = res?.success && res.data?.items ? res.data.items : [];
   } catch (e: any) {
+    if (request !== resultsRequest) return;
     items.value = [];
     toast.add({
       title: 'Erreur',
@@ -160,7 +166,7 @@ async function loadResults() {
       color: 'error',
     });
   } finally {
-    loading.value = false;
+    if (request === resultsRequest) loading.value = false;
   }
 }
 

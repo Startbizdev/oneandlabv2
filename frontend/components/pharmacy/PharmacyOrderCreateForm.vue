@@ -572,15 +572,38 @@ async function uploadPendingOrdonnances(patientId: string): Promise<string[]> {
   return ids;
 }
 
+let patientsRequest = 0;
+
+/** Admin : annuaire patients (recherche indexée sur toute la base) — le hub `/search` est réservé aux soignants. */
+async function fetchAdminPatientItems(q: string): Promise<StaffHubPatientItem[]> {
+  const params = new URLSearchParams({ role: 'patient', limit: '30', page: '1' });
+  if (q.trim()) params.set('search', q.trim());
+  const response = await apiFetch(`/users?${params.toString()}`, { method: 'GET' });
+  const rows = Array.isArray(response?.data) ? response.data : [];
+  return rows.map((row: Record<string, unknown>) => ({
+    kind: 'patient' as const,
+    id: String(row.id),
+    patient_id: String(row.id),
+    first_name: String(row.first_name ?? ''),
+    last_name: String(row.last_name ?? ''),
+    email: typeof row.email_display === 'string' ? undefined : (row.email as string | undefined),
+    phone: (row.phone as string | null | undefined) ?? null,
+  }));
+}
+
 async function loadPatients() {
+  const request = ++patientsRequest;
   patientsLoading.value = true;
   try {
-    const data = await fetchStaffPatientHubSearch(debouncedPatientSearch.value, 30);
-    patientItems.value = (data.items ?? []).filter((i): i is StaffHubPatientItem => i.kind === 'patient');
+    const items = user.value?.role === 'super_admin'
+      ? await fetchAdminPatientItems(debouncedPatientSearch.value)
+      : ((await fetchStaffPatientHubSearch(debouncedPatientSearch.value, 30)).items ?? [])
+          .filter((i): i is StaffHubPatientItem => i.kind === 'patient');
+    if (request === patientsRequest) patientItems.value = items;
   } catch {
-    patientItems.value = [];
+    if (request === patientsRequest) patientItems.value = [];
   } finally {
-    patientsLoading.value = false;
+    if (request === patientsRequest) patientsLoading.value = false;
   }
 }
 

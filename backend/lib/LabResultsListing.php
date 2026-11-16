@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/search/PersonSearchIndex.php';
+
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/Crypto.php';
 
@@ -77,6 +79,29 @@ final class LabResultsListing
         }
         if ($hasMergedColumn) {
             $whereParts[] = 'a.merged_into_appointment_id IS NULL';
+        }
+
+        // Nom / téléphone du patient : index des empreintes, filtré en SQL (pagination normale, pas de lecture
+        // de tous les résultats). Rien trouvé (ex. nom de fichier, soin) : ancienne recherche texte.
+        if ($q !== '' && PersonSearchIndex::available($this->db)) {
+            try {
+                $found = (new PersonSearchIndex($this->db))->find($q);
+                $personClauses = [];
+                if ($found['profile_ids'] !== []) {
+                    $personClauses[] = 'a.patient_id IN (' . implode(',', array_fill(0, count($found['profile_ids']), '?')) . ')';
+                    $params = array_merge($params, $found['profile_ids']);
+                }
+                if ($found['relative_ids'] !== []) {
+                    $personClauses[] = 'a.relative_id IN (' . implode(',', array_fill(0, count($found['relative_ids']), '?')) . ')';
+                    $params = array_merge($params, $found['relative_ids']);
+                }
+                if ($personClauses !== []) {
+                    $whereParts[] = '(' . implode(' OR ', $personClauses) . ')';
+                    $q = '';
+                }
+            } catch (Throwable $e) {
+                error_log('LabResultsListing index recherche: ' . $e->getMessage());
+            }
         }
 
         $where = implode(' AND ', $whereParts);

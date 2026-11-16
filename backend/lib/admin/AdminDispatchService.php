@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../AppointmentListPayload.php';
 require_once __DIR__ . '/../../models/Appointment.php';
 require_once __DIR__ . '/../../models/User.php';
+require_once __DIR__ . '/../search/PersonSearchIndex.php';
 
 /**
  * Lecture agrégée pour le tableau de bord dispatch admin (liste + détail 360°).
@@ -85,6 +86,23 @@ final class AdminDispatchService
                 $params[] = $like;
                 $params[] = $like;
                 $params[] = $like;
+            } elseif (PersonSearchIndex::available($this->db)) {
+                // Nom / téléphone (champs chiffrés) : patient, proche, créateur ou soignant attribué via l'index.
+                $found = (new PersonSearchIndex($this->db))->find($search);
+                $clauses = [];
+                if ($found['profile_ids'] !== []) {
+                    $in = implode(',', array_fill(0, count($found['profile_ids']), '?'));
+                    $personColumns = ['a.patient_id', 'a.created_by', 'a.assigned_nurse_id', 'a.assigned_lab_id', 'a.assigned_to'];
+                    foreach ($personColumns as $column) {
+                        $clauses[] = "{$column} IN ({$in})";
+                        $params = array_merge($params, $found['profile_ids']);
+                    }
+                }
+                if ($found['relative_ids'] !== []) {
+                    $clauses[] = 'a.relative_id IN (' . implode(',', array_fill(0, count($found['relative_ids']), '?')) . ')';
+                    $params = array_merge($params, $found['relative_ids']);
+                }
+                $where[] = $clauses === [] ? '1 = 0' : '(' . implode(' OR ', $clauses) . ')';
             }
         }
 

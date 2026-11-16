@@ -7,7 +7,7 @@ require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../users/UserIdentityLookup.php';
 
 /**
- * Recherche des patients et proches par nom / téléphone alors que ces champs sont chiffrés en base.
+ * Recherche des comptes (patients, soignants, labos, pros) et des proches par nom / société / téléphone, champs chiffrés en base.
  *
  * Index « aveugle » : pour chaque début de mot (2 caractères ou plus) du prénom, du nom et du téléphone,
  * on stocke une empreinte HMAC-SHA256 (clé dérivée de la KEK). La recherche calcule les mêmes empreintes
@@ -20,7 +20,7 @@ final class PersonSearchIndex
     private const MIN_PREFIX = 2;
     private const MAX_PREFIX = 24;
     private const MIN_PHONE_PREFIX = 4;
-    private const MAX_SUBJECTS = 500;
+    private const MAX_SUBJECTS = 2000;
 
     private PDO $db;
     private Crypto $crypto;
@@ -86,10 +86,10 @@ final class PersonSearchIndex
      *
      * @return list<string>
      */
-    public function tokensFor(string $firstName, string $lastName, ?string $phone): array
+    public function tokensFor(string $firstName, string $lastName, ?string $phone, string $companyName = ''): array
     {
         $tokens = [];
-        foreach (self::words($firstName . ' ' . $lastName) as $word) {
+        foreach (self::words($firstName . ' ' . $lastName . ' ' . $companyName) as $word) {
             $max = min(strlen($word), self::MAX_PREFIX);
             for ($len = self::MIN_PREFIX; $len <= $max; $len++) {
                 $tokens[$this->token('n', substr($word, 0, $len))] = true;
@@ -169,17 +169,19 @@ final class PersonSearchIndex
         return ['profile_ids' => $profileIds, 'relative_ids' => $relativeIds, 'searchable' => true];
     }
 
-    /** Patient (role=patient) : (ré)indexe ; autre rôle ou profil supprimé : retire de l'index. */
+    /** Tout compte (patients, soignants, labos, pros) : (ré)indexe ; profil supprimé : retire de l'index. */
     public function reindexProfile(string $profileId): void
     {
+        $company = DbSchemaCache::tableHasColumn($this->db, 'profiles', 'company_name_encrypted')
+            ? ', company_name_encrypted, company_name_dek'
+            : '';
         $stmt = $this->db->prepare(
-            'SELECT role, first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, phone_encrypted, phone_dek
-             FROM profiles WHERE id = ? LIMIT 1'
+            'SELECT first_name_encrypted, first_name_dek, last_name_encrypted, last_name_dek, phone_encrypted, phone_dek'
+            . $company . ' FROM profiles WHERE id = ? LIMIT 1'
         );
         $stmt->execute([$profileId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $tokens = $row && ($row['role'] ?? '') === 'patient' ? $this->tokensForRow($row) : [];
-        $this->replace('profile', $profileId, $tokens);
+        $this->replace('profile', $profileId, $row ? $this->tokensForRow($row) : []);
     }
 
     public function reindexRelative(string $relativeId): void
@@ -199,7 +201,8 @@ final class PersonSearchIndex
         return $this->tokensFor(
             $this->decryptOrEmpty($row, 'first_name'),
             $this->decryptOrEmpty($row, 'last_name'),
-            $this->decryptOrEmpty($row, 'phone') ?: null
+            $this->decryptOrEmpty($row, 'phone') ?: null,
+            $this->decryptOrEmpty($row, 'company_name')
         );
     }
 

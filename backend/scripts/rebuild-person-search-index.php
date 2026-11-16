@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Crée la table d'index (migration 135, idempotente) puis (ré)indexe tous les patients et proches.
+ * Crée la table d'index (migration 135, idempotente) puis (ré)indexe tous les comptes et proches.
  * Usage : php scripts/rebuild-person-search-index.php
  * À relancer après une rotation de KEK (les empreintes dépendent d'une clé dérivée de la KEK).
  */
@@ -33,7 +33,7 @@ $profiles = 0;
 $relatives = 0;
 $errors = 0;
 
-foreach ($db->query("SELECT id FROM profiles WHERE role = 'patient'")->fetchAll(PDO::FETCH_COLUMN) as $id) {
+foreach ($db->query('SELECT id FROM profiles')->fetchAll(PDO::FETCH_COLUMN) as $id) {
     try {
         $index->reindexProfile((string) $id);
         $profiles++;
@@ -51,13 +51,15 @@ foreach ($db->query('SELECT id FROM patient_relatives')->fetchAll(PDO::FETCH_COL
         fwrite(STDERR, "proche {$id}: {$e->getMessage()}\n");
     }
 }
-// Profils qui ne sont plus patients (rôle changé) : retirés de l'index.
+// Profils ou proches supprimés : retirés de l'index.
 $db->exec("DELETE t FROM person_search_tokens t LEFT JOIN profiles p ON p.id = t.subject_id
-           WHERE t.subject_type = 'profile' AND (p.id IS NULL OR p.role <> 'patient')");
+           WHERE t.subject_type = 'profile' AND p.id IS NULL");
+$db->exec("DELETE t FROM person_search_tokens t LEFT JOIN patient_relatives r ON r.id = t.subject_id
+           WHERE t.subject_type = 'relative' AND r.id IS NULL");
 
 $tokens = (int) $db->query('SELECT COUNT(*) FROM person_search_tokens')->fetchColumn();
 printf(
-    "Index recherche : %d patients, %d proches, %d empreintes, %d erreurs, %.1fs\n",
+    "Index recherche : %d comptes, %d proches, %d empreintes, %d erreurs, %.1fs\n",
     $profiles,
     $relatives,
     $tokens,

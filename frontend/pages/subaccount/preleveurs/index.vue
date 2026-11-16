@@ -65,7 +65,7 @@ const fetchPreleveurs = async () => {
   loading.value = true;
   loadError.value = false;
   try {
-    const response = await apiFetch('/users?role=preleveur', {
+    const response = await apiFetch('/lab/preleveurs?limit=100', {
       method: 'GET',
     });
     if (!response.success || !Array.isArray(response.data)) throw new Error('Chargement impossible');

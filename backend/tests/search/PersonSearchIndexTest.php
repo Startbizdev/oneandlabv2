@@ -77,4 +77,16 @@ final class PersonSearchIndexTest extends TestCase
             self::assertNotSame(hash('sha256', 'n|al'), $token);
         }
     }
+
+    public function testFindsLabByCompanyName(): void
+    {
+        $index = $this->index();
+        $tokens = array_flip($index->tokensFor('Labo', 'Central', null, 'Biogroup Saint-Loup'));
+
+        foreach (['biogroup', 'saint', 'loup', 'bio'] as $query) {
+            foreach ($index->queryTokens($query) as $token) {
+                self::assertArrayHasKey($token, $tokens, $query);
+            }
+        }
+    }
 }

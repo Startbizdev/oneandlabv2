@@ -6,6 +6,7 @@ require_once __DIR__ . '/../Crypto.php';
 require_once __DIR__ . '/../DbSchemaCache.php';
 require_once __DIR__ . '/../Logger.php';
 require_once __DIR__ . '/UserDirectoryHelpers.php';
+require_once __DIR__ . '/../search/PersonSearchIndex.php';
 
 /** Liste paginée des profils (admin / picker / mes patients) avec déchiffrement batch. */
 final class UserDirectoryQuery
@@ -133,6 +134,24 @@ final class UserDirectoryQuery
                 $countSql .= ' AND banned_until > NOW() AND banned_until < \'9999-12-31\'';
             } elseif ($filters['status'] === 'active') {
                 $countSql .= ' AND (banned_until IS NULL OR banned_until < NOW())';
+            }
+        }
+
+        // Nom, prénom, société ou téléphone : index des empreintes (champs chiffrés), toute la base,
+        // pagination normale. Rien trouvé (ex. bout d'e-mail) : ancienne lecture des comptes récents.
+        if ($textSearchMode && PersonSearchIndex::available($this->db)) {
+            try {
+                $found = (new PersonSearchIndex($this->db, $this->crypto))->find($searchText);
+                if ($found['searchable'] && $found['profile_ids'] !== []) {
+                    $in = implode(',', array_fill(0, count($found['profile_ids']), '?'));
+                    $sql .= " AND id IN ($in)";
+                    $params = array_merge($params, $found['profile_ids']);
+                    $countSql .= " AND id IN ($in)";
+                    $countParams = array_merge($countParams, $found['profile_ids']);
+                    $textSearchMode = false;
+                }
+            } catch (Throwable $e) {
+                error_log('UserDirectoryQuery index recherche: ' . $e->getMessage());
             }
         }
 
