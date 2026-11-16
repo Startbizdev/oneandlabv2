@@ -31,7 +31,7 @@
               class="flex min-w-0 items-center gap-2 shrink-0"
             >
               <img 
-                src="/images/logo-cary.png" 
+                src="/images/logo-cary-header.png" width="132" height="40" 
                 alt="Cary" 
                 class="w-auto max-w-[min(104px,32vw)] object-contain object-left sm:max-w-[118px]"
                 :class="isRendezVousFlow ? 'h-7 sm:h-8' : 'h-[22px] sm:h-[26px]'"
@@ -349,7 +349,7 @@
             @click="mobileMenuOpen = false"
           >
             <img
-              src="/images/logo-cary.png"
+              src="/images/logo-cary-header.png"
               alt="Cary"
               class="h-8 w-auto max-w-[4.5rem] object-contain"
               width="120"

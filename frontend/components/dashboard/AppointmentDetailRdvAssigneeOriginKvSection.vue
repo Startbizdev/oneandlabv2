@@ -157,7 +157,7 @@
           class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-default bg-default p-1 ring-1 ring-black/5 dark:ring-white/10 sm:h-9 sm:w-9"
         >
           <img
-            src="/images/logo-cary.png"
+            src="/images/logo-cary-header.png" width="132" height="40"
             alt="Cary"
             class="h-full w-full object-contain"
           >

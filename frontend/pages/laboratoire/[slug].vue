@@ -99,7 +99,7 @@ useHead({
     },
     {
       property: 'og:image',
-      content: computed(() => profile.value?.profile_image_url || '/images/logo-cary.png'),
+      content: computed(() => profile.value?.profile_image_url || '/images/logo-cary-header.png'),
     },
     {
       property: 'og:type',

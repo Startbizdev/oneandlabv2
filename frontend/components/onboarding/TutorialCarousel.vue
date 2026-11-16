@@ -58,7 +58,7 @@ const currentSlide = computed(() => slides.value[index.value])
   >
     <div class="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
       <header class="flex shrink-0 items-center justify-between py-3">
-        <img src="/images/logo-cary.png" alt="Cary" class="h-9 w-auto max-w-28 object-contain" />
+        <img src="/images/logo-cary-header.png" width="132" height="40" alt="Cary" class="h-9 w-auto max-w-28 object-contain" />
         <button
           type="button"
           class="min-h-11 rounded-xl px-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-white hover:text-slate-900"

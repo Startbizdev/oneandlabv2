@@ -5,7 +5,7 @@
     <div class="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center">
       <div class="mb-6 text-center">
         <NuxtLink to="/login">
-          <img src="/images/logo-cary.png" alt="Cary" class="mx-auto h-8 w-auto" />
+          <img src="/images/logo-cary-header.png" width="132" height="40" alt="Cary" class="mx-auto h-8 w-auto" />
         </NuxtLink>
       </div>
 

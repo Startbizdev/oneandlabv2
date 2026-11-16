@@ -7,7 +7,7 @@
       <div class="mb-8 flex flex-col items-center gap-4">
         <NuxtLink to="/" class="transition-opacity hover:opacity-90" aria-label="Cary — Accueil">
           <img
-            src="/images/logo-cary.png"
+            src="/images/logo-cary-header.png" width="132" height="40"
             alt="Cary"
             class="h-7 w-auto max-w-[120px] object-contain sm:h-8 sm:max-w-[132px] dark:opacity-95"
             loading="eager"

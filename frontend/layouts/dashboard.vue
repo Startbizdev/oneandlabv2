@@ -25,7 +25,7 @@
           aria-label="Cary — Accueil"
         >
           <img
-            src="/images/logo-cary.png"
+            src="/images/logo-cary-header.png"
             alt="Cary"
             class="h-8 w-auto max-w-[4.5rem] object-contain"
             width="120"

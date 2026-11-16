@@ -8,11 +8,13 @@
     >
       <NuxtLink to="/" class="flex shrink-0 items-center gap-2" aria-label="Cary — Accueil">
         <img
-          src="/images/logo-cary.png"
+          src="/images/logo-cary-header.png"
           alt="Cary"
+          width="132"
+          height="40"
           class="h-8 w-auto max-h-10 object-contain object-left sm:h-9 md:h-10"
           loading="eager"
-          decoding="async"
+          fetchpriority="high"
         />
       </NuxtLink>
 

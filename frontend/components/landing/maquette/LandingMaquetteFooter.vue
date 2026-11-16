@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-[1200px] px-6 py-12 lg:px-12 lg:py-16">
       <div class="grid gap-10 lg:grid-cols-[1fr_2fr]">
         <div class="max-w-xs">
-          <NuxtLink to="/" aria-label="Cary, accueil"><img src="/images/logo-cary.png" alt="Cary" width="120" height="44" class="h-10 w-auto object-contain" loading="lazy" /></NuxtLink>
+          <NuxtLink to="/" aria-label="Cary, accueil"><img src="/images/logo-cary-header.png" alt="Cary" width="120" height="44" class="h-10 w-auto object-contain" loading="lazy" /></NuxtLink>
           <p class="mt-5 text-sm leading-relaxed text-gray-600 dark:text-gray-400">Les soins à domicile, organisés autour des patients et des professionnels qui les accompagnent.</p>
         </div>
         <nav class="grid grid-cols-2 gap-8 sm:grid-cols-3" aria-label="Liens du pied de page">
