@@ -263,7 +263,15 @@
                     <span class="flex flex-col gap-0.5 min-w-0 flex-1">
                       <span :class="{ 'font-medium': !item.isRead }" class="whitespace-normal break-words">{{ item.label }}</span>
                       <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
-                      <span v-if="item.message" class="text-xs text-gray-500 whitespace-normal break-words">{{ item.message }}</span>
+                      <span v-if="item.message" class="text-xs text-gray-500 whitespace-normal break-words">{{ expandedNotifIndexes[index] && item.fullMessage ? item.fullMessage : item.message }}</span>
+                      <span
+                        v-if="item.fullMessage"
+                        role="button"
+                        tabindex="0"
+                        class="self-start text-xs font-semibold text-primary hover:underline"
+                        @click.stop="toggleNotifExpanded(index)"
+                        @keydown.enter.stop.prevent="toggleNotifExpanded(index)"
+                      >{{ expandedNotifIndexes[index] ? 'Voir moins' : 'Voir plus' }}</span>
                     </span>
                   </component>
                 </template>
@@ -348,6 +356,13 @@ import { isPendingIncomingOffer, isOfferModalSnoozed } from "~/utils/appointment
 import { isBloodTestAppointment } from "~/utils/appointment-type-rules";
 import { notificationIsNavigable, notificationShouldRefreshAppointmentsList } from "@oneandlab/shared-utils";
 import { formatBellNotificationLines, sanitizeNotificationText } from "~/utils/notification-display";
+
+/** Notifications au texte coupé : index des cartes dépliées (« Voir plus »). */
+const expandedNotifIndexes = ref<Record<number, boolean>>({});
+function toggleNotifExpanded(index: number) {
+  expandedNotifIndexes.value = { ...expandedNotifIndexes.value, [index]: !expandedNotifIndexes.value[index] };
+}
+
 import { webNotificationNeedsPendingModal, webNotificationRoute } from "~/utils/notification-navigation-web";
 
 const { user, logout, fetchCurrentUser } = useAuth();
@@ -1342,7 +1357,7 @@ const notificationItems = computed(() => {
       notif.type === "new_review_on_pro_patient" ||
       !!data.review_id;
     const navigable = notificationIsNavigable(notif, role ?? undefined);
-    const { label: notifLabel, message: notifMessage } = formatBellNotificationLines(
+    const { label: notifLabel, message: notifMessage, fullMessage: notifFullMessage } = formatBellNotificationLines(
       notif.title,
       notif.message,
       { type: notif.type },
@@ -1350,6 +1365,7 @@ const notificationItems = computed(() => {
     items.push({
       label: notifLabel,
       message: notifMessage,
+      fullMessage: notifFullMessage,
       description: notif.created_at ? new Date(notif.created_at).toLocaleString("fr-FR") : undefined,
       icon:
         notif.type === "marketing"

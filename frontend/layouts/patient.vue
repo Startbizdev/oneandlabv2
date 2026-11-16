@@ -158,7 +158,15 @@
                     >
                       <span class="flex min-w-0 flex-1 flex-col gap-1">
                         <span :class="{ 'font-medium': !item.isRead }" class="whitespace-normal break-words">{{ item.label }}</span>
-                        <span v-if="item.message" class="text-xs leading-relaxed text-gray-500 whitespace-normal break-words dark:text-gray-400">{{ item.message }}</span>
+                        <span v-if="item.message" class="text-xs leading-relaxed text-gray-500 whitespace-normal break-words dark:text-gray-400">{{ expandedNotifIndexes[index] && item.fullMessage ? item.fullMessage : item.message }}</span>
+                        <span
+                        v-if="item.fullMessage"
+                        role="button"
+                        tabindex="0"
+                        class="self-start text-xs font-semibold text-primary hover:underline"
+                        @click.stop="toggleNotifExpanded(index)"
+                        @keydown.enter.stop.prevent="toggleNotifExpanded(index)"
+                      >{{ expandedNotifIndexes[index] ? 'Voir moins' : 'Voir plus' }}</span>
                         <span v-if="item.description" class="text-xs text-gray-400">{{ item.description }}</span>
                       </span>
                     </component>
@@ -433,6 +441,12 @@ import { notificationIsNavigable, notificationShouldRefreshAppointmentsList } fr
 import { formatBellNotificationLines } from '~/utils/notification-display'
 import { webNotificationRoute } from '~/utils/notification-navigation-web'
 
+/** Notifications au texte coupé : index des cartes dépliées (« Voir plus »). */
+const expandedNotifIndexes = ref<Record<number, boolean>>({})
+function toggleNotifExpanded(index: number) {
+  expandedNotifIndexes.value = { ...expandedNotifIndexes.value, [index]: !expandedNotifIndexes.value[index] }
+}
+
 const { holdCount } = useBookingApiHold()
 const route = useRoute()
 const router = useRouter()
@@ -663,7 +677,7 @@ const unreadCount = computed(
   () => notifications.value.filter(n => !n.read_at).length
 )
 
-const notificationItems = computed<Array<{ label: string; message?: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
+const notificationItems = computed<Array<{ label: string; message?: string; fullMessage?: string; description?: string; isRead?: boolean; disabled?: boolean; click?: () => void }>>(() => {
   if (!notifications.value.length) {
     return [
       {
@@ -676,10 +690,11 @@ const notificationItems = computed<Array<{ label: string; message?: string; desc
   const role = user.value?.role
   return notifications.value.slice(0, 10).map((notif) => {
     const navigable = notificationIsNavigable(notif, role ?? undefined)
-    const { label, message } = formatBellNotificationLines(notif.title, notif.message, { type: notif.type })
+    const { label, message, fullMessage } = formatBellNotificationLines(notif.title, notif.message, { type: notif.type })
     return {
       label,
       message,
+      fullMessage,
       description: notif.created_at ? new Date(notif.created_at).toLocaleString('fr-FR') : undefined,
       isRead: !!notif.read_at,
       disabled: !navigable,

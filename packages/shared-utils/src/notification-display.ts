@@ -39,7 +39,7 @@ export function formatBellNotificationLines(
   title: string | null | undefined,
   message: string | null | undefined,
   options?: BellNotificationFormatOptions,
-): { label: string; message?: string } {
+): { label: string; message?: string; fullMessage?: string } {
   const titleMaxLen = options?.titleMaxLen ?? BELL_TITLE_MAX_LEN;
   const bodyMaxLen =
     options?.bodyMaxLen ?? (options?.type === 'welcome' ? WELCOME_NOTIFICATION_BODY_MAX_LEN : BELL_BODY_MAX_LEN);
@@ -52,8 +52,11 @@ export function formatBellNotificationLines(
   const tSan = hasTitle ? sanitizeNotificationText(title) : '';
   const mSan = hasMessage ? sanitizeNotificationText(message) : '';
   let secondary: string | undefined;
+  // Texte coupé : `fullMessage` donne la suite pour « Voir plus ».
+  let fullMessage: string | undefined;
   if (hasTitle && hasMessage && mSan !== tSan) {
     secondary = truncateForNotificationBody(mSan, bodyMaxLen);
+    if (secondary !== undefined && secondary !== mSan) fullMessage = mSan;
   }
-  return { label, message: secondary };
+  return fullMessage ? { label, message: secondary, fullMessage } : { label, message: secondary };
 }

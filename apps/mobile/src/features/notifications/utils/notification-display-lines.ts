@@ -48,6 +48,8 @@ function normalizeCompletedAppointmentLines(
 export function resolveNotificationDisplayLines(item: AppNotification): {
   label: string;
   message?: string;
+  /** Texte entier quand `message` est coupé (« Voir plus »). */
+  fullMessage?: string;
 } {
   const title = item.title?.trim() || readDataField(item.data, 'title');
   const body = item.message?.trim() || readDataField(item.data, 'message');

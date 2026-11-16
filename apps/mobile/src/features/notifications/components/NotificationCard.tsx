@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ChevronRight } from 'lucide-react-native';
@@ -33,19 +33,22 @@ export const NotificationCard = React.memo(function NotificationCard({ item, fir
   const role = useAuthStore((s) => s.user?.role);
   const { isOwnPharmacy } = usePharmacyModuleEnabled();
 
-  const { label, message } = resolveNotificationDisplayLines(item);
+  const { label, message, fullMessage } = resolveNotificationDisplayLines(item);
+  const [expanded, setExpanded] = useState(false);
   const isUnread = !item.read_at;
   const hasLink = resolveNotificationNavigation(item, role, { isPharmacyAccount: isOwnPharmacy }) !== null;
   const time = formatNotificationTime(item.created_at);
   const Icon = notificationIcon(item.type);
-  const pressable = hasLink || isUnread;
+  // Sans page liée (annonce) : un appui déplie le texte coupé au lieu de ne rien faire.
+  const pressable = hasLink || isUnread || Boolean(fullMessage);
 
   return (
     <Pressable
       onPress={() => {
         if (!pressable) return;
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
+        if (!hasLink && fullMessage) setExpanded((v) => !v);
+        if (hasLink || isUnread) onPress();
       }}
       disabled={!pressable}
       style={({ pressed }) => [
@@ -57,7 +60,13 @@ export const NotificationCard = React.memo(function NotificationCard({ item, fir
       accessibilityRole={pressable ? 'button' : 'text'}
       accessibilityLabel={[isUnread ? 'Non lue' : null, label, message, time].filter(Boolean).join(', ')}
       accessibilityHint={
-        hasLink ? 'Ouvre le détail' : isUnread ? 'Marque la notification comme lue' : undefined
+        hasLink
+          ? 'Ouvre le détail'
+          : fullMessage
+            ? 'Affiche tout le texte'
+            : isUnread
+              ? 'Marque la notification comme lue'
+              : undefined
       }
     >
       {!first ? <View style={styles.divider} /> : null}
@@ -74,7 +83,18 @@ export const NotificationCard = React.memo(function NotificationCard({ item, fir
               <AppText style={[styles.title, isUnread && styles.titleUnread]}>{label}</AppText>
               {time ? <AppText variant="caption" style={styles.time}>{time}</AppText> : null}
             </Row>
-            {message ? <AppText variant="secondary">{message}</AppText> : null}
+            {message ? <AppText variant="secondary">{expanded && fullMessage ? fullMessage : message}</AppText> : null}
+            {fullMessage ? (
+              <Pressable
+                onPress={() => setExpanded((v) => !v)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={expanded ? 'Voir moins' : 'Voir la suite de la notification'}
+                style={styles.moreBtn}
+              >
+                <AppText style={styles.moreText}>{expanded ? 'Voir moins' : 'Voir plus'}</AppText>
+              </Pressable>
+            ) : null}
           </View>
         }
         trailing={
@@ -146,6 +166,15 @@ function buildStyles({ colors: c, text }: Theme) {
     },
     time: {
       flexShrink: 0,
+    },
+    moreBtn: {
+      alignSelf: 'flex-start' as const,
+      paddingVertical: spacing[1],
+    },
+    moreText: {
+      ...text.secondary,
+      ...font.semiBold,
+      color: c.primary,
     },
     unreadDot: {
       width: UNREAD_DOT,

@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
-import { Platform, RefreshControl, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, RefreshControl, type ScrollView, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardScrollView } from '@/components/layout/KeyboardScrollView';
 import { useScrollToTopOnPop } from '@/lib/hooks/use-scroll-to-top-on-pop';
 import { useStyles } from '@/theme';
 import { useAppColors } from '@/theme/use-app-colors';
@@ -14,7 +15,10 @@ type Props = {
   showsVerticalScrollIndicator?: boolean;
 };
 
-/** Scroll vertical du corps d'un écran (onglet ou pile), sous le header. Parent : `flex: 1`. */
+/**
+ * Scroll vertical du corps d'un écran (onglet ou pile), sous le header. Parent : `flex: 1`.
+ * Remonte le champ en cours de saisie au-dessus du clavier (sinon le texte tapé est caché).
+ */
 export function SceneScrollView({
   children,
   scrollRef: scrollRefProp,
@@ -31,10 +35,12 @@ export function SceneScrollView({
   useScrollToTopOnPop(scrollRef);
 
   return (
-    <ScrollView
+    <KeyboardScrollView
       ref={scrollRef}
       style={styles.scroll}
       collapsable={false}
+      contentInsetAdjustmentBehavior="never"
+      keyboardDismissMode="none"
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled={Platform.OS === 'android'}
       contentContainerStyle={contentContainerStyle}
@@ -46,7 +52,7 @@ export function SceneScrollView({
       }
     >
       {children}
-    </ScrollView>
+    </KeyboardScrollView>
   );
 }
 
