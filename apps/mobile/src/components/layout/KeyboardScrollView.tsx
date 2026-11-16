@@ -1,5 +1,5 @@
-import { forwardRef, useCallback, useImperativeHandle } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView, ScrollViewProps } from 'react-native';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
+import { Keyboard, View, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollView, type ScrollViewProps } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FormScrollContext, useFormScrollProviderValue } from './form-scroll-context';
@@ -26,6 +26,7 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     showsVerticalScrollIndicator = false,
     contentInsetAdjustmentBehavior = 'automatic',
     onScroll,
+    children,
     ...props
   },
   ref,
@@ -44,6 +45,18 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
     [formScroll.scrollYRef, onScroll],
   );
 
+  // Clavier ouvert : espace de sa hauteur en bas de page, pour pouvoir remonter un champ placé en fin
+  // de page jusqu'en haut de l'écran (sinon le défilement bute sur la fin du contenu).
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
   const resolvedBottomOffset = (bottomOffset ?? Math.max(bottom, 8)) + KEYBOARD_CLEARANCE;
 
   return (
@@ -60,7 +73,10 @@ export const KeyboardScrollView = forwardRef<ScrollView, Props>(function Keyboar
         scrollEventThrottle={16}
         onScroll={handleScroll}
         {...props}
-      />
+      >
+        {children}
+        {keyboardHeight > 0 ? <View style={{ height: keyboardHeight }} pointerEvents="none" /> : null}
+      </KeyboardAwareScrollView>
     </FormScrollContext.Provider>
   );
 });

@@ -44,11 +44,12 @@ function TextareaComponent(
   const handleFocus = useCallback(
     (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
       setIsFocused(true);
-      // Sheet : le pied (« Enregistrer ») suit le clavier ; la zone de saisie remonte en haut pour rester visible.
-      if (inSheet) scrollIntoView(wrapRef);
+      // Zone de saisie remontée en haut de l'écran (comme les apps natives) : le texte tapé et ce qui suit
+      // (compteur, « Enregistrer ») restent visibles au-dessus du clavier, en écran comme en sheet.
+      scrollIntoView(wrapRef);
       onFocus?.(e);
     },
-    [onFocus, inSheet, scrollIntoView],
+    [onFocus, scrollIntoView],
   );
 
   const handleBlur = useCallback(

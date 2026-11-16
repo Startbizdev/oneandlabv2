@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, type RefObject } from 'react';
-import type { View } from 'react-native';
+import { Keyboard, type View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 /** Contrat du ScrollView de formulaire (écran ou sheet native, via `KeyboardScrollView`). */
@@ -61,6 +61,13 @@ export function useScrollFocusedFieldIntoView() {
 
       requestAnimationFrame(run);
       setTimeout(run, 140);
+      // Tant que le clavier s'ouvre, la page n'a pas encore l'espace pour défiler : on repositionne
+      // une fois le clavier affiché (sinon le défilement est bloqué en bas de page).
+      const shown = Keyboard.addListener('keyboardDidShow', () => {
+        shown.remove();
+        run();
+      });
+      setTimeout(() => shown.remove(), 1200);
     },
     [formScroll, reducedMotion],
   );

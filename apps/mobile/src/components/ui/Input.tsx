@@ -1,7 +1,8 @@
 import { useAppColors } from '@/theme/use-app-colors';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Platform, TextInput, View, type TextInputProps } from 'react-native';
 import { Row } from '@/components/layout/primitives';
+import { useScrollFocusedFieldIntoView } from '@/components/layout/form-scroll-context';
 import { spacing, AppText, useStyles, font, type Theme } from '@/theme';
 import { buildFieldStyles, FIELD_MIN_HEIGHT } from './field-styles';
 
@@ -59,6 +60,8 @@ function InputComponent(
   const styles = useStyles(buildStyles);
   const field = useStyles(buildFieldStyles);
   const [isFocused, setIsFocused] = useState(false);
+  const wrapRef = useRef<View>(null);
+  const scrollIntoView = useScrollFocusedFieldIntoView();
   const isNumeric = Boolean(keyboardType && NUMERIC_KEYBOARDS.has(String(keyboardType)));
   const isMultiline = Boolean(multiline);
 
@@ -71,9 +74,11 @@ function InputComponent(
   const handleFocus = useCallback(
     (e: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) => {
       setIsFocused(true);
+      // Multi-lignes : même règle que `Textarea`, le champ remonte en haut pour garder la suite visible.
+      if (isMultiline) scrollIntoView(wrapRef);
       onFocus?.(e);
     },
-    [onFocus],
+    [onFocus, isMultiline, scrollIntoView],
   );
 
   const handleBlur = useCallback(
@@ -121,7 +126,7 @@ function InputComponent(
   };
 
   return (
-    <View style={field.wrapper}>
+    <View ref={wrapRef} collapsable={false} style={field.wrapper}>
       {label ? (
         <AppText style={[field.label, isFocused && field.labelFocused]}>{label}</AppText>
       ) : null}
