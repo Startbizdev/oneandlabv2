@@ -80,7 +80,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-8">
           <!-- Colonne gauche : formulaire (sans bouton) -->
           <UCard>
-            <UForm id="pro-create-patient-form" :state="profileFormSafe" @submit.prevent="saveProfile()" class="space-y-6">
+            <UForm id="pro-create-patient-form" :state="profileFormSafe" @submit.prevent="void saveProfile()" class="space-y-6">
               <fieldset :disabled="saving || !!createdPatientId">
               <ProfilePersonalInfo
                 ref="personalInfoRef"
@@ -955,13 +955,13 @@
                   :ui="{ label: 'text-sm font-medium leading-snug text-default' }"
                 />
               </div>
-              <div v-if="isProEditingPatient" class="pt-2 w-full shrink-0">
+              <div class="pt-2 w-full shrink-0">
                 <UButton
                   size="xl"
                   color="primary"
                   icon="i-lucide-save"
                   :loading="saving"
-                  :disabled="isEditingRelativeProfile && !relativeEditBookingConsent"
+                  :disabled="isProEditingPatient && isEditingRelativeProfile && !relativeEditBookingConsent"
                   class="w-full justify-center font-medium text-base py-4 rounded-xl"
                   @click="saveAll"
                 >
@@ -2207,16 +2207,18 @@ const loadProfile = async () => {
 // Sauvegarde profil
 // ============================
 
-const saveProfile = async (fromSaveAll = false) => {
-  if (profileLoadError.value || loading.value) return
-  if (!fromSaveAll && saving.value) return
+/** @returns true seulement si le profil a bien été enregistré (validation et serveur OK). */
+const saveProfile = async (fromSaveAll = false): Promise<boolean> => {
+  if (profileLoadError.value || loading.value) return false
+  if (!fromSaveAll && saving.value) return false
   if (!fromSaveAll) saving.value = true
+  let saved = false
   try {
     if (newPreleveurMode.value) {
       const { first_name, last_name, email, phone } = profileForm.value
       if (!email?.trim() || !first_name?.trim() || !last_name?.trim()) {
         toast.add({ title: 'Champs requis manquants (email, prénom, nom)', color: 'red' })
-        return
+        return false
       }
       const res = await apiFetch('/lab/preleveurs', {
         method: 'POST',
@@ -2234,18 +2236,18 @@ const saveProfile = async (fromSaveAll = false) => {
       } else {
         toast.add({ title: 'Erreur', description: res?.error || 'Impossible de créer le préleveur', color: 'red' })
       }
-      return
+      return false
     }
 
     if (newPatientMode.value) {
       const { first_name, last_name, email, phone, address } = profileForm.value
       if (!first_name?.trim() || !last_name?.trim() || !phone?.trim()) {
         toast.add({ title: 'Champs requis', description: 'Prénom, nom et téléphone sont obligatoires.', color: 'red' })
-        return
+        return false
       }
       if (!staffManagesPatients.value && !email?.trim()) {
         toast.add({ title: 'Champs requis', description: 'Email, prénom, nom et téléphone sont obligatoires.', color: 'red' })
-        return
+        return false
       }
       if (!newPatientBookingConsent.value) {
         toast.add({
@@ -2253,7 +2255,7 @@ const saveProfile = async (fromSaveAll = false) => {
           description: 'Veuillez confirmer le consentement du patient pour la prise de rendez-vous.',
           color: 'red',
         })
-        return
+        return false
       }
       const addressBody = address && typeof address === 'object' && address.label?.trim()
         ? { label: address.label.trim(), lat: address.lat, lng: address.lng }
@@ -2296,18 +2298,18 @@ const saveProfile = async (fromSaveAll = false) => {
           }
         } catch (err: any) {
           documentError.value = err.message || 'Impossible d’envoyer ce document. Réessayez.'
-          return
+          return false
         } finally { uploadingDocument.value = null }
       }
       toast.add({ title: 'Patient créé', color: 'green' })
       const r = user.value?.role
       const base = r === 'pro' ? '/pro' : r === 'nurse' ? '/nurse' : r === 'lab' ? '/lab' : r === 'preleveur' ? '/preleveur' : '/subaccount'
       await navigateTo(`${base}/appointments/new?patient_id=${encodeURIComponent(newPatientId)}`)
-      return
+      return false
     }
 
     const targetId = effectiveUserId.value
-    if (!targetId) return
+    if (!targetId) return false
 
     if (isEditingRelativeProfile.value && editingRelativeId.value) {
       if (!relativeEditBookingConsent.value) {
@@ -2316,7 +2318,7 @@ const saveProfile = async (fromSaveAll = false) => {
           description: 'Confirmez le consentement du patient avant d’enregistrer.',
           color: 'red',
         })
-        return
+        return false
       }
       const relativeBody: Record<string, unknown> = {
         patient_booking_consent: true,
@@ -2355,7 +2357,7 @@ const saveProfile = async (fromSaveAll = false) => {
           color: 'red',
         })
       }
-      return
+      return relativeRes.success === true
     }
 
     if (isNurse.value && !profileForm.value.gender?.trim()) {
@@ -2365,7 +2367,7 @@ const saveProfile = async (fromSaveAll = false) => {
         color: 'red',
       })
       if (!fromSaveAll) saving.value = false
-      return
+      return false
     }
 
     if (isNurse.value) {
@@ -2377,7 +2379,7 @@ const saveProfile = async (fromSaveAll = false) => {
           color: 'red',
         })
         if (!fromSaveAll) saving.value = false
-        return
+        return false
       }
     }
 
@@ -2406,7 +2408,7 @@ const saveProfile = async (fromSaveAll = false) => {
             color: 'red',
           })
           if (!fromSaveAll) saving.value = false
-          return
+          return false
         }
         const split = splitProfessionalId(profileForm.value.rpps || '')
         body.professional_id = profileForm.value.rpps?.replace(/\s/g, '') || null
@@ -2497,6 +2499,7 @@ const saveProfile = async (fromSaveAll = false) => {
           color: 'green',
         })
       }
+      saved = true
       // saveAll recharge une seule fois à la fin : recharger ici écraserait la photo avant savePublicProfile
       if (editingUserId.value) initialForm.value = { ...profileForm.value }
       else if (!fromSaveAll) await loadProfile()
@@ -2508,6 +2511,7 @@ const saveProfile = async (fromSaveAll = false) => {
   } finally {
     if (!fromSaveAll) saving.value = false
   }
+  return saved
 }
 
 function onProfileFormUpdate(v: import('~/types/profile').ProfileForm | null | undefined) {
@@ -2534,9 +2538,10 @@ async function saveAll() {
 
   saving.value = true
   try {
-    await saveProfile(true)
-    if (hasCoverageZone.value) await saveCoverage(true)
-    if (hasPublicProfile.value) await savePublicProfile(true)
+    // Chaque étape affiche déjà son erreur : on s'arrête à la première, sans faux « Enregistré ».
+    if (!(await saveProfile(true))) return
+    if (hasCoverageZone.value && hasValidAddress.value && !(await saveCoverage(true))) return
+    if (hasPublicProfile.value && !(await savePublicProfile(true))) return
     if (!editingUserId.value) await loadProfile()
     toast.add({ title: 'Enregistré', description: 'Toutes les modifications ont été enregistrées.', color: 'green' })
   } catch {
@@ -2682,9 +2687,10 @@ function generatePublicSlug() {
   }
 }
 
-async function savePublicProfile(fromSaveAll = false) {
-  if (!user.value?.id) return
+async function savePublicProfile(fromSaveAll = false): Promise<boolean> {
+  if (!user.value?.id) return false
   if (!fromSaveAll) savingPublicProfile.value = true
+  let saved = false
   try {
     const body: Record<string, unknown> = {
       is_public_profile_enabled: publicProfileForm.value.is_public_profile_enabled,
@@ -2712,12 +2718,13 @@ async function savePublicProfile(fromSaveAll = false) {
       body.nurse_qualifications = builtQualifications?.length ? builtQualifications : null
     }
     const targetId = effectiveUserId.value
-    if (!targetId) return
+    if (!targetId) return false
     const response = await apiFetch(`/users/${targetId}`, {
       method: 'PUT',
       body,
     })
     if (response.success) {
+      saved = true
       if (!fromSaveAll) {
         const enabled = publicProfileForm.value.is_public_profile_enabled
         toast.add({
@@ -2735,6 +2742,7 @@ async function savePublicProfile(fromSaveAll = false) {
   } finally {
     if (!fromSaveAll) savingPublicProfile.value = false
   }
+  return saved
 }
 
 // ============================
