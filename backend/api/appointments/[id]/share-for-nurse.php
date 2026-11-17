@@ -316,6 +316,7 @@ $patientLabel = (in_array(strtolower($patientGenre ?? ''), ['f', 'female'], true
 
 // Durée : passage (minutes) ou durée classique (jours), jamais la valeur brute to_define
 $durationPart = NotificationMessageFormatter::shareCareDurationPart($formData);
+$frequencyPart = NotificationMessageFormatter::shareCareFrequencyPart($formData);
 
 // Récupérer ou créer le token
 $stmt = $db->prepare('SELECT token, expires_at FROM appointment_share_tokens WHERE appointment_id = ? ORDER BY created_at DESC LIMIT 1');
@@ -527,6 +528,9 @@ if ($durationPart !== '' && count($careLines) <= 1) {
     $shareText .= "\t• Durée du soins : " . $durationPart . "\n";
 } elseif ($durationPart !== '' && count($careLines) > 1) {
     $shareText .= "\t• Durée (soin du partage) : " . $durationPart . "\n";
+}
+if ($frequencyPart !== '') {
+    $shareText .= "\t• Fréquence : " . $frequencyPart . "\n";
 }
 
 $shareText .= "\t• Si quelqu'un est dispo pour assurer cette prise en charge, ce serait top ! 🙏✨\n\n"

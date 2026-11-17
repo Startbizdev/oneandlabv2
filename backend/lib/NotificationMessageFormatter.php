@@ -271,7 +271,8 @@ class NotificationMessageFormatter
             $valueLabel = isset($valueLabels[$value])
                 ? trim((string) $valueLabels[$value])
                 : self::humanizeOptionValue($value);
-            if ($valueLabel !== '') {
+            // « Autre » n'apprend rien à l'infirmier qui lit le partage : on ne l'affiche pas.
+            if ($valueLabel !== '' && !self::isOtherChoice($value, $valueLabel)) {
                 $details[] = $fieldLabel . ' : ' . $valueLabel;
             }
         }
@@ -383,6 +384,27 @@ class NotificationMessageFormatter
         return function_exists('mb_strtoupper')
             ? mb_strtoupper(mb_substr($readable, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($readable, 1, null, 'UTF-8')
             : ucfirst($readable);
+    }
+
+    private static function isOtherChoice(string $value, string $label): bool
+    {
+        $norm = static fn (string $v): string => function_exists('mb_strtolower') ? mb_strtolower(trim($v), 'UTF-8') : strtolower(trim($v));
+
+        return in_array($norm($value), ['autre', 'other'], true) || in_array($norm($label), ['autre', 'other'], true);
+    }
+
+    /**
+     * Fréquence pour un partage : seulement si elle apporte une info (pas « à définir », pas un soin unique).
+     *
+     * @param array<string,mixed> $formData
+     */
+    public static function shareCareFrequencyPart(array $formData): string
+    {
+        if ((string) ($formData['frequency'] ?? '') === 'to_define') {
+            return '';
+        }
+
+        return self::nursingFrequencyLabel($formData);
     }
 
     /** @param array<string,mixed> $formData */

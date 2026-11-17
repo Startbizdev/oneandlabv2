@@ -119,4 +119,29 @@ final class NotificationMessageFormatterWoundShareTest extends TestCase
             )
         );
     }
+
+    public function testHidesOtherChoiceButKeepsRealOnes(): void
+    {
+        $meta = $this->optionMeta();
+        $meta['wound_type']['valueLabels']['autre'] = 'Autre';
+        $meta['location']['valueLabels']['autre'] = 'Autre';
+
+        $this->assertSame('', NotificationMessageFormatter::shareWoundCareDetails(
+            ['care_options' => ['wound_type' => 'autre', 'location' => 'autre']],
+            [],
+            $meta
+        ));
+        $this->assertSame('Localisation : Pied', NotificationMessageFormatter::shareWoundCareDetails(
+            ['care_options' => ['wound_type' => 'autre', 'location' => 'pied']],
+            [],
+            $meta
+        ));
+    }
+
+    public function testShareFrequencyOnlyWhenInformative(): void
+    {
+        $this->assertSame('1 fois par jour', NotificationMessageFormatter::shareCareFrequencyPart(['duration_days' => '15', 'frequency' => 'once_daily']));
+        $this->assertSame('', NotificationMessageFormatter::shareCareFrequencyPart(['duration_days' => '15', 'frequency' => 'to_define']));
+        $this->assertSame('', NotificationMessageFormatter::shareCareFrequencyPart(['duration_days' => '1', 'frequency' => 'once_daily']));
+    }
 }
